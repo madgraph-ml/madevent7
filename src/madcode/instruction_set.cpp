@@ -1,6 +1,6 @@
 #include "madevent/madcode/instruction_set.h"
 
-#include <vector>
+#include <initializer_list>
 
 using namespace madevent;
 
@@ -31,8 +31,10 @@ const std::unordered_map<std::string, InstructionPtr> madevent::build_instructio
         mi("clip_min", {scalar, scalar}, {scalar}),
         mi("sqrt", {scalar}, {scalar}),
         mi("square", {scalar}, {scalar}),
-        mi("uniform", {scalar, scalar, scalar}, {scalar}),
-        mi("uniform_inverse", {scalar, scalar, scalar}, {scalar}),
+        mi("uniform_phi", {scalar}, {scalar}),
+        mi("uniform_phi_inverse", {scalar}, {scalar}),
+        mi("uniform_costheta", {scalar}, {scalar}),
+        mi("uniform_costheta_inverse", {scalar}, {scalar}),
 
         // Kinematics
         mi("rotate_zy", {four_vector, scalar, scalar}, {four_vector}),

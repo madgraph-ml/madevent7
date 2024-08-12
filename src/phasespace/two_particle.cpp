@@ -4,7 +4,6 @@
 
 using namespace madevent;
 
-const double PI = 3.14159265358979323846;
 
 Mapping::Result TwoParticle::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
@@ -12,8 +11,8 @@ Mapping::Result TwoParticle::build_forward_impl(
     auto r1 = inputs[0], r2 = inputs[1];
     auto s = inputs[2], sqrt_s = inputs[3], m1 = inputs[4], m2 = inputs[5];
     auto p0 = com ? fb.com_momentum(sqrt_s) : inputs[6];
-    auto phi = fb.uniform(r1, -PI, PI);
-    auto costheta = fb.uniform(r2, -1.0, 1.0);
+    auto phi = fb.uniform_phi(r1);
+    auto costheta = fb.uniform_costheta(r2);
     auto p1 = fb.decay_momentum(s, sqrt_s, m1, m2);
     p1 = fb.rotate_zy(p1, phi, costheta);
     if (!com) p1 = fb.boost(p1, p0);
@@ -32,8 +31,8 @@ Mapping::Result TwoParticle::build_inverse_impl(
     auto m2 = fb.sqrt_s(p2);
     if (!com) p1 = fb.boost_inverse(p1, p0);
     auto [phi, costheta] = fb.com_angles(p1);
-    auto r1 = fb.uniform_inverse(phi, -PI, PI);
-    auto r2 = fb.uniform_inverse(costheta, -1.0, 1.0);
+    auto r1 = fb.uniform_phi_inverse(phi);
+    auto r2 = fb.uniform_costheta_inverse(costheta);
     auto gs = fb.two_particle_density_inverse(s, m1, m2);
     if (com) {
         return {{r1, r2, s, sqrt_s, m1, m2}, gs};
@@ -54,7 +53,7 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
     auto p_in1_com = com ? p_in1 : fb.boost_inverse(p_in1, p_tot);
     auto [t_min, t_max] = fb.invt_min_max(s, s_in1, s_in2, m1, m2);
     auto [t_vec, det_t] = invariant.build_forward(fb, {r2}, {t_min, t_max});
-    auto phi = fb.uniform(r1, -PI, PI);
+    auto phi = fb.uniform_phi(r1);
     auto costheta = fb.invt_to_costheta(s, s_in1, s_in2, m1, m2, t_vec[0]);
     auto p1 = fb.decay_momentum(s, sqrt_s, m1, m2);
     p1 = fb.rotate_zy(p1, phi, costheta);
@@ -89,7 +88,7 @@ Mapping::Result TInvariantTwoParticle::build_inverse_impl(
     auto [t_min, t_max] = fb.invt_min_max(s, s_in1, s_in2, m1, m2);
     auto t = fb.costheta_to_invt(s, s_in1, s_in2, m1, m2, costheta);
     auto [r2_vec, det_t] = invariant.build_inverse(fb, {t}, {t_min, t_max});
-    auto r1 = fb.uniform_inverse(phi, -PI, PI);
+    auto r1 = fb.uniform_phi_inverse(phi);
     auto det = fb.tinv_two_particle_density_inverse(det_t, s, s_in1, s_in2);
     return {{r1, r2_vec[0], m1, m2}, det};
 }

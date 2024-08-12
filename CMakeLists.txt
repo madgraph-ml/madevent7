@@ -5,6 +5,8 @@ project (
     LANGUAGES CXX
 )
 
+set(CMAKE_POSITION_INDEPENDENT_CODE 1)
+
 include(FetchContent)
 FetchContent_Declare(fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git

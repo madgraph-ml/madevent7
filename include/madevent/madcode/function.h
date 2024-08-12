@@ -1,7 +1,14 @@
 #pragma once
 
 #include <map>
+#include <vector>
 #include <iostream>
+#include <variant>
+#include <string>
+#include <type_traits>
+#include <algorithm>
+#include <optional>
+#include <array>
 
 #include "instruction_set.h"
 

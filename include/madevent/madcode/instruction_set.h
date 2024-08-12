@@ -1,14 +1,15 @@
 #pragma once
 
+#include <memory>
 #include <unordered_map>
+#include <string>
 
 #include "madevent/madcode/type.h"
 #include "madevent/madcode/instruction.h"
 
 #define INSTRUCTIONS \
     X(print, -1, 0) \
-    X(uniform, 3, 1) \
-    X(uniform_inverse, 3, 1) \
+    /* Math */ \
     X(add, 2, 1) \
     X(sub, 2, 1) \
     X(mul, 2, 1) \
@@ -16,6 +17,11 @@
     X(clip_min, 2, 1) \
     X(sqrt, 1, 1) \
     X(square, 1, 1) \
+    X(uniform_phi, 1, 1) \
+    X(uniform_phi_inverse, 1, 1) \
+    X(uniform_costheta, 1, 1) \
+    X(uniform_costheta_inverse, 1, 1) \
+    /* Kinematics */ \
     X(rotate_zy, 3, 1) \
     X(rotate_zy_inverse, 3, 1) \
     X(boost, 2, 1) \
@@ -31,6 +37,7 @@
     X(r_to_x1x2, 3, 3) \
     X(x1x2_to_r, 3, 2) \
     X(rapidity, 2, 1) \
+    /* Two-body decays */ \
     X(decay_momentum, 4, 1) \
     X(invt_min_max, 5, 2) \
     X(invt_to_costheta, 6, 1) \
@@ -39,6 +46,7 @@
     X(two_particle_density_inverse, 3, 1) \
     X(tinv_two_particle_density, 4, 1) \
     X(tinv_two_particle_density_inverse, 4, 1) \
+    /* Invariants */ \
     X(uniform_invariant, 3, 2) \
     X(uniform_invariant_inverse, 3, 2) \
     X(breit_wigner_invariant, 5, 2) \

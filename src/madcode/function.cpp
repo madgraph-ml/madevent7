@@ -1,5 +1,7 @@
 #include "madevent/madcode/function.h"
 
+#include <stdexcept>
+
 #include <fmt/core.h>
 
 

@@ -1,14 +1,3 @@
-#pragma once
-
-#include <cmath>
-
-namespace madevent {
-namespace cpu {
-
-const double EPS = 1e-12;
-const double EPS2 = 1e-24;
-
-
 // Helper functions
 
 inline double _kaellen(double x, double y, double z) {
@@ -39,6 +28,3 @@ def invt_to_costheta(
 
 def tinv_two_particle_density(det_t: Tensor, s: Tensor, s_in1: Tensor, s_in2: Tensor) -> Tensor:
     return det_t * pi / (2 * kin.kaellen(s, s_in1, s_in2).sqrt())
-
-}
-}
