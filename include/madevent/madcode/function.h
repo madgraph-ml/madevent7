@@ -10,7 +10,7 @@
 #include <optional>
 #include <array>
 
-#include "instruction_set.h"
+#include "instruction.h"
 
 namespace madevent {
 
@@ -62,48 +62,7 @@ public:
     ValueList instruction(std::string name, ValueList args);
     Function function();
 
-#define X(name, n_inputs, n_outputs) \
-template< \
-class ...Ts, \
-typename = typename std::enable_if< \
-    (sizeof...(Ts) == n_inputs || n_inputs == -1) && n_outputs == -1 \
->::type \
-> \
-ValueList name(Ts... args) { \
-return instruction(#name, {args...}); \
-} \
-template< \
-class ...Ts, \
-typename = typename std::enable_if< \
-    (sizeof...(Ts) == n_inputs || n_inputs == -1) && n_outputs == 0 \
->::type \
-> \
-void name(Ts... args) { \
-instruction(#name, {args...}); \
-} \
-template< \
-class ...Ts, \
-typename = typename std::enable_if< \
-    (sizeof...(Ts) == n_inputs || n_inputs == -1) && n_outputs == 1 \
->::type \
-> \
-Value name(Ts... args) { \
-return instruction(#name, {args...})[0]; \
-} \
-template< \
-class ...Ts, \
-typename = typename std::enable_if< \
-    (sizeof...(Ts) == n_inputs || n_inputs == -1) && n_outputs >= 2 \
->::type \
-> \
-std::array<Value, n_outputs> name(Ts... args) { \
-std::array<Value, n_outputs> output_array; \
-auto output_vector = instruction(#name, {args...}); \
-std::copy_n(output_vector.begin(), n_outputs, output_array.begin()); \
-return output_array; \
-}
-    INSTRUCTIONS
-#undef X
+#include "function_builder_mixin.h"
 
 private:
     std::vector<Type> output_types;

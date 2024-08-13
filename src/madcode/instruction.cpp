@@ -114,3 +114,12 @@ const TypeList SimpleInstruction::signature(
     }
     return output_types;
 }
+
+const std::unordered_map<std::string, InstructionPtr> madevent::build_instruction_set() {
+#include "instruction_set_mixin.h"
+    std::unordered_map<std::string, InstructionPtr> instruction_set;
+    for (auto& instruction : instructions) {
+        instruction_set[instruction->name] = std::move(instruction);
+    }
+    return instruction_set;
+}

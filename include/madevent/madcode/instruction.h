@@ -5,6 +5,8 @@
 #include <tuple>
 #include <variant>
 #include <initializer_list>
+#include <memory>
+#include <unordered_map>
 
 namespace madevent {
 
@@ -33,11 +35,13 @@ const Type scalar{DT_FLOAT, {}};
 const Type scalar_int{DT_INT, {}};
 const Type scalar_bool{DT_BOOL, {}};
 const Type four_vector{DT_FLOAT, {4}};
+
 class Instruction {
 public:
     std::string name;
+    int opcode;
 
-    Instruction(std::string _name) : name(_name) {}
+    Instruction(std::string _name, int _opcode) : name(_name), opcode(_opcode) {}
     virtual ~Instruction() = default;
     virtual const TypeList signature(const TypeList& args) const = 0;
 };
@@ -49,9 +53,10 @@ public:
 
     SimpleInstruction(
         std::string _name,
+        int _opcode,
         std::initializer_list<SigType> _inputs,
         std::initializer_list<SigType> _outputs
-    ) : Instruction(_name), inputs(_inputs), outputs(_outputs) {}
+    ) : Instruction(_name, _opcode), inputs(_inputs), outputs(_outputs) {}
 
     const TypeList signature(const TypeList& args) const override;
 
@@ -62,10 +67,14 @@ private:
 
 class PrintInstruction : public Instruction {
 public:
-    PrintInstruction() : Instruction("print") {}
+    PrintInstruction(int _opcode) : Instruction("print", _opcode) {}
     const TypeList signature(const TypeList& args) const override {
         return {};
     }
 };
+
+using InstructionPtr = std::unique_ptr<Instruction>;
+const std::unordered_map<std::string, InstructionPtr> build_instruction_set();
+const std::unordered_map<std::string, InstructionPtr> instruction_set = build_instruction_set();
 
 }

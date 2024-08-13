@@ -4,7 +4,7 @@
 
 #include "accessor.h"
 
-#define KERNELSPEC inline
+#define KERNELSPEC static inline
 
 namespace madevent {
 namespace cpu {

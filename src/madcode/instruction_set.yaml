@@ -1,0 +1,708 @@
+types:
+  all:
+    dtype: float
+    shape: ["..."]
+  scalar:
+    dtype: float
+    shape: []
+  four_vector:
+    dtype: float
+    shape: [4]
+  four_vector_array:
+    dtype: float
+    shape: [n, 4]
+
+---
+title: Math
+
+add:
+  inputs:
+    - name: in1
+      type: all
+      desc: first input to addition
+    - name: in2
+      type: all
+      desc: second input to addition
+  outputs:
+    - name: out
+      type: all
+      desc: sum of the two inputs
+  desc: Computes the sum of the two inputs.
+
+sub:
+  inputs:
+    - name: in1
+      type: all
+      desc: first input to subtraction
+    - name: in2
+      type: all
+      desc: second input to subtraction
+  outputs:
+    - name: out
+      type: all
+      desc: difference of the two inputs
+  desc: Computes the difference of the two inputs.
+
+mul:
+  inputs:
+    - name: in1
+      type: all
+      desc: first input to multiplication
+    - name: in2
+      type: all
+      desc: second input to multiplication
+  outputs:
+    - name: out
+      type: all
+      desc: product of the two inputs
+  desc: Computes the product of the two inputs.
+
+mul_scalar:
+  inputs:
+    - name: in1
+      type: all
+      desc:
+    - name: in2
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: all
+      desc:
+
+clip_min:
+  inputs:
+    - name: x
+      type: scalar
+      desc:
+    - name: min
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+sqrt:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+square:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+uniform_phi:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+uniform_phi_inverse:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+uniform_costheta:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+uniform_costheta_inverse:
+  inputs:
+    - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+
+---
+title: Kinematics
+
+rotate_zy:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+    - name: phi
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: scalar
+      desc:
+  outputs:
+    - name: q
+      type: four_vector
+      desc:
+
+rotate_zy_inverse:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+    - name: phi
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: scalar
+      desc:
+  outputs:
+    - name: q
+      type: four_vector
+      desc:
+
+boost:
+  inputs:
+    - name: p1
+      type: four_vector
+      desc:
+    - name: p2
+      type: four_vector
+      desc:
+  outputs:
+    - name: p_out
+      type: four_vector
+      desc:
+
+boost_inverse:
+  inputs:
+    - name: p1
+      type: four_vector
+      desc:
+    - name: p2
+      type: four_vector
+      desc:
+  outputs:
+    - name: p_out
+      type: four_vector
+      desc:
+
+boost_beam:
+  inputs:
+    - name: p1
+      type: four_vector_array
+      desc:
+    - name: rap
+      type: scalar
+      desc:
+  outputs:
+    - name: p_out
+      type: four_vector_array
+      desc:
+
+boost_beam_inverse:
+  inputs:
+    - name: p1
+      type: four_vector_array
+      desc:
+    - name: rap
+      type: scalar
+      desc:
+  outputs:
+    - name: p_out
+      type: four_vector_array
+      desc:
+
+com_momentum:
+  inputs:
+    - name: sqrt_s
+      type: scalar
+      desc:
+  outputs:
+    - name: p
+      type: four_vector
+      desc:
+
+com_p_in:
+  inputs:
+    - name: e_cm
+      type: scalar
+      desc:
+  outputs:
+    - name: p1
+      type: four_vector
+      desc:
+    - name: p2
+      type: four_vector
+      desc:
+
+com_angles:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+  outputs:
+    - name: phi
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: scalar
+      desc:
+
+s:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+
+sqrt_s:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+  outputs:
+    - name: sqrt_s
+      type: scalar
+      desc:
+
+s_and_sqrt_s:
+  inputs:
+    - name: p
+      type: four_vector
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: sqrt_s
+      type: scalar
+      desc:
+
+r_to_x1x2:
+  inputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: s_hat
+      type: scalar
+      desc:
+    - name: s_lab
+      type: scalar
+      desc:
+  outputs:
+    - name: x1
+      type: scalar
+      desc:
+    - name: x2
+      type: scalar
+      desc:
+    - name: det
+      type: scalar
+      desc:
+
+x1x2_to_r:
+  inputs:
+    - name: x1
+      type: scalar
+      desc:
+    - name: x2
+      type: scalar
+      desc:
+    - name: s_lab
+      type: scalar
+      desc:
+  outputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: det
+      type: scalar
+      desc:
+
+rapidity:
+  inputs:
+    - name: x1
+      type: scalar
+      desc:
+    - name: x2
+      type: scalar
+      desc:
+  outputs:
+    - name: rap
+      type: scalar
+      desc:
+
+---
+title: Two-body decays and scattering
+
+decay_momentum:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: sqrt_s
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+  outputs:
+    - name: p
+      type: four_vector
+      desc:
+
+invt_min_max:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_in1
+      type: scalar
+      desc:
+    - name: s_in2
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+  outputs:
+    - name: t_min
+      type: scalar
+      desc:
+    - name: t_max
+      type: scalar
+      desc:
+
+invt_to_costheta:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_in1
+      type: scalar
+      desc:
+    - name: s_in2
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+    - name: t
+      type: scalar
+      desc:
+  outputs:
+    - name: cos_theta
+      type: scalar
+      desc:
+
+costheta_to_invt:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_in1
+      type: scalar
+      desc:
+    - name: s_in2
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: scalar
+      desc:
+  outputs:
+    - name: t
+      type: scalar
+      desc:
+
+two_particle_density:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+  outputs:
+    - name: gs
+      type: scalar
+      desc:
+
+two_particle_density_inverse:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: m1
+      type: scalar
+      desc:
+    - name: m2
+      type: scalar
+      desc:
+  outputs:
+    - name: gs
+      type: scalar
+      desc:
+
+tinv_two_particle_density:
+  inputs:
+    - name: det_t
+      type: scalar
+      desc:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_in1
+      type: scalar
+      desc:
+    - name: s_in2
+      type: scalar
+      desc:
+  outputs:
+    - name: det
+      type: scalar
+      desc:
+
+tinv_two_particle_density_inverse:
+  inputs:
+    - name: det_t
+      type: scalar
+      desc:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_in1
+      type: scalar
+      desc:
+    - name: s_in2
+      type: scalar
+      desc:
+  outputs:
+    - name: det
+      type: scalar
+      desc:
+
+---
+title: Invariants
+
+uniform_invariant:
+  inputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+uniform_invariant_inverse:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+breit_wigner_invariant:
+  inputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: width
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+breit_wigner_invariant_inverse:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: width
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+stable_invariant:
+  inputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+stable_invariant_inverse:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+stable_invariant_nu:
+  inputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: nu
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+
+stable_invariant_nu_inverse:
+  inputs:
+    - name: s
+      type: scalar
+      desc:
+    - name: mass
+      type: scalar
+      desc:
+    - name: nu
+      type: scalar
+      desc:
+    - name: s_min
+      type: scalar
+      desc:
+    - name: s_max
+      type: scalar
+      desc:
+  outputs:
+    - name: r
+      type: scalar
+      desc:
+    - name: gs
+      type: scalar
+      desc:
+

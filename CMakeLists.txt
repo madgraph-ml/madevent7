@@ -37,15 +37,15 @@ add_library(
     madevent SHARED
     src/madcode/function.cpp
     src/madcode/instruction.cpp
-    src/madcode/instruction_set.cpp
+    src/madcode/instruction_set_mixin.h
     src/phasespace/mapping.cpp
     src/phasespace/invariants.cpp
     src/phasespace/two_particle.cpp
     src/phasespace/luminosity.cpp
     include/madevent/madcode.h
     include/madevent/madcode/function.h
+    include/madevent/madcode/function_builder_mixin.h
     include/madevent/madcode/instruction.h
-    include/madevent/madcode/instruction_set.h
     include/madevent/phasespace.h
     include/madevent/phasespace/mapping.h
     include/madevent/phasespace/invariants.h

@@ -19,7 +19,6 @@ KERNELSPEC void _boost(const Accessor k, const Accessor p_boost, double sign, Ac
     p_out[3] = k[3] + c1 * p_boost[3];
 }
 
-
 KERNELSPEC void _boost_beam(const Accessor q, double rapidity, double sign, Accessor p_out) {
     auto cosh_rap = cosh(rapidity);
     auto sinh_rap = sinh(rapidity);
@@ -45,7 +44,9 @@ KERNELSPEC void kernel_rotate_zy(
     q[3] = p[3] * cos_theta - p[1] * sin_theta;
 }
 
-KERNELSPEC void kernel_rotate_zy_inverse(p: Tensor, phi: Tensor, cos_theta: Tensor) -> Tensor:
+KERNELSPEC void kernel_rotate_zy_inverse(
+    const Accessor p, double phi, double cos_theta, Accessor q
+) {
     auto sin_theta = sqrt(1 - cos_theta * cos_theta);
     auto cos_phi = cos(phi);
     auto sin_phi = sin(phi);
@@ -91,9 +92,9 @@ KERNELSPEC void kernel_com_p_in(double e_cm, Accessor p1, Accessor p2) {
     p2[3] = -p_cms;
 }
 
-KERNELSPEC void kernel_com_angles(const Accessor p, double& phi, double& costheta) {
+KERNELSPEC void kernel_com_angles(const Accessor p, double& phi, double& cos_theta) {
     phi = atan2(p[2], p[1]);
-    costheta = p[3] / sqrt(p[1] * p[1] + p[2] * p[2] + p[3] * p[3]);
+    cos_theta = p[3] / sqrt(p[1] * p[1] + p[2] * p[2] + p[3] * p[3]);
 }
 
 KERNELSPEC void kernel_s(const Accessor p, double& s) {
