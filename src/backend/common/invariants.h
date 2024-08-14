@@ -1,19 +1,19 @@
 KERNELSPEC void kernel_uniform_invariant(
-    double r, double s_min, double s_max, double& s, double& gs
+    DoubleInput r, DoubleInput s_min, DoubleInput s_max, DoubleOutput s, DoubleOutput gs
 ) {
     gs = s_max - s_min;
     s = s_min + gs * r;
 }
 
 KERNELSPEC void kernel_uniform_invariant_inverse(
-    double s, double s_min, double s_max, double& r, double& gs
+    DoubleInput s, DoubleInput s_min, DoubleInput s_max, DoubleOutput r, DoubleOutput gs
 ) {
     gs = 1 / (s_max - s_min);
     r = (s - s_min) * gs;
 }
 
 KERNELSPEC void kernel_breit_wigner_invariant(
-    double r, double mass, double width, double s_min, double s_max, double& s, double& gs
+    DoubleInput r, DoubleInput mass, DoubleInput width, DoubleInput s_min, DoubleInput s_max, DoubleOutput s, DoubleOutput gs
 ) {
     auto m2 = mass * mass;
     auto gm = mass * width;
@@ -27,7 +27,7 @@ KERNELSPEC void kernel_breit_wigner_invariant(
 }
 
 KERNELSPEC void kernel_breit_wigner_invariant_inverse(
-    double s, double mass, double width, double s_min, double s_max, double& r, double& gs
+    DoubleInput s, DoubleInput mass, DoubleInput width, DoubleInput s_min, DoubleInput s_max, DoubleOutput r, DoubleOutput gs
 ) {
     auto m2 = mass * mass;
     auto gm = mass * width;
@@ -41,7 +41,7 @@ KERNELSPEC void kernel_breit_wigner_invariant_inverse(
 }
 
 KERNELSPEC void kernel_stable_invariant(
-    double r, double mass, double s_min, double s_max, double& s, double& gs
+    DoubleInput r, DoubleInput mass, DoubleInput s_min, DoubleInput s_max, DoubleOutput s, DoubleOutput gs
 ) {
     auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
     auto q_max = s_max - m2;
@@ -52,19 +52,20 @@ KERNELSPEC void kernel_stable_invariant(
 }
 
 KERNELSPEC void kernel_stable_invariant_inverse(
-    double s, double mass, double s_min, double s_max, double& r, double& gs
+    DoubleInput s, DoubleInput mass, DoubleInput s_min, DoubleInput s_max, DoubleOutput r, DoubleOutput gs
 ) {
     auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
     auto q = s - m2;
+    auto log_q_max_min = log(q_max / q_min);
 
-    r = torch.log(q / q_min) / torch.log(q_max / q_min);
-    gs = 1 / (q * log(q_max/ q_min.log));
+    r = log(q / q_min) / log_q_max_min;
+    gs = 1 / (q * log_q_max_min);
 }
 
 KERNELSPEC void kernel_stable_invariant_nu(
-    double r, double mass, double nu, double s_min, double s_max, double& s, double& gs
+    DoubleInput r, DoubleInput mass, DoubleInput nu, DoubleInput s_min, DoubleInput s_max, DoubleOutput s, DoubleOutput gs
 ) {
     auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
     auto q_max = s_max - m2;
@@ -78,7 +79,7 @@ KERNELSPEC void kernel_stable_invariant_nu(
 }
 
 KERNELSPEC void kernel_stable_invariant_nu_inverse(
-    double s, double mass, double nu, double s_min, double s_max, double& r, double& gs
+    DoubleInput s, DoubleInput mass, DoubleInput nu, DoubleInput s_min, DoubleInput s_max, DoubleOutput r, DoubleOutput gs
 ) {
     auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
     auto q = s - m2;

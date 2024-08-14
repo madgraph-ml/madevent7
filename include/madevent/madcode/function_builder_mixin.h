@@ -1,4 +1,4 @@
-// This file was automatically generated from the contents of instruction_set.yaml
+// This file was automatically generated based on instruction_set.yaml
 // Do not modify its content directly
 
 Value add(Value in1, Value in2) {

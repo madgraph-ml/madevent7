@@ -1,12 +1,13 @@
 // Helper functions
 
-inline double _kaellen(double x, double y, double z) {
-    return (x - y - z) ** 2 - 4 * y * z;
+double _kaellen(double x, double y, double z) {
+    auto xyz = x - y - z;
+    return xyz * xyz - 4 * y * z;
 }
 
 // Kernels
 
-KERNELSPEC void decay_momentum(double s, double sqrt_s, double m1, double m2, Accessor p) {
+KERNELSPEC void kernel_decay_momentum(DoubleInput s, DoubleInput sqrt_s, DoubleInput m1, DoubleInput m2, DoubleOutput p) {
     /*p = torch.zeros((s.shape[0], 4), dtype=s.dtype, device=s.device)
     sqrt_kaellen = kin.kaellen(s, m1**2, m2**2).sqrt()
     p[:, 0] = (s + m1**2 - m2**2) / (2 * sqrt_s)
@@ -15,8 +16,8 @@ KERNELSPEC void decay_momentum(double s, double sqrt_s, double m1, double m2, Ac
     return p, gs*/
 }
 
-KERNELSPEC void invt_min_max(
-    double s, double s_in1, double s_in2, double m1, double m2, double& t_min, double& t_max
+KERNELSPEC void kernel_invt_min_max(
+    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2, DoubleOutput t_min, DoubleOutput t_max
 ) {
     /*cos_min = (-1.0) * torch.ones_like(s)
     cos_max = (+1.0) * torch.ones_like(s)
@@ -25,34 +26,34 @@ KERNELSPEC void invt_min_max(
     return t_min, t_max*/
 }
 
-KERNELSPEC void invt_to_costheta(
-    double s, double s_in1, double s_in2, double m1, double m2, double t, double& cos_theta
+KERNELSPEC void kernel_invt_to_costheta(
+    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2, DoubleInput t, DoubleOutput cos_theta
 ) {
     //return tc.invt_to_costheta(s, s_in1, s_in2, m1, m2, -t)
 }
 
-KERNELSPEC void costheta_to_invt(
-    double s, double s_in1, double s_in2, double m1, double m2, double cos_theta, double& t
+KERNELSPEC void kernel_costheta_to_invt(
+    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2, DoubleInput cos_theta, DoubleOutput t
 ) {
     //return tc.invt_to_costheta(s, s_in1, s_in2, m1, m2, -t)
 }
 
-KERNELSPEC void two_particle_density(double s, double m1, double m2, double& gs) {
+KERNELSPEC void kernel_two_particle_density(DoubleInput s, DoubleInput m1, DoubleInput m2, DoubleOutput gs) {
 
 }
 
-KERNELSPEC void inverse_two_particle_density(double s, double m1, double m2, double& gs) {
+KERNELSPEC void kernel_two_particle_density_inverse(DoubleInput s, DoubleInput m1, DoubleInput m2, DoubleOutput gs) {
 
 }
 
-KERNELSPEC void tinv_two_particle_density(
-    double det_t, double s, double s_in1, double s_in2, double& det
+KERNELSPEC void kernel_tinv_two_particle_density(
+    DoubleInput det_t, DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleOutput det
 ) {
     //return det_t * pi / (2 * kin.kaellen(s, s_in1, s_in2).sqrt())
 }
 
-KERNELSPEC void tinv_two_particle_density_inverse(
-    double det_t, double s, double s_in1, double s_in2, double& det
+KERNELSPEC void kernel_tinv_two_particle_density_inverse(
+    DoubleInput det_t, DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleOutput det
 ) {
 
 }

@@ -16,11 +16,12 @@ def main():
 
     function_builder_mixin(commands)
     instruction_set_mixin(types, commands)
+    cpu_runtime_mixin(commands)
 
 
 def write_autogen(f):
     f.write(
-        "// This file was automatically generated from the contents of instruction_set.yaml\n"
+        "// This file was automatically generated based on instruction_set.yaml\n"
         "// Do not modify its content directly\n\n"
     )
 
@@ -78,6 +79,21 @@ def instruction_set_mixin(types, commands):
             output_types = ", ".join(ret["type"] for ret in cmd["outputs"])
             f.write(f"    mi(\"{name}\", {opcode}, {{{input_types}}}, {{{output_types}}}),\n")
         f.write("};\n")
+
+
+def cpu_runtime_mixin(commands):
+    with open("src/backend/cpu/runtime_mixin.h", "w") as f:
+        write_autogen(f)
+
+        for name, cmd in commands.items():
+            opcode = cmd["opcode"]
+            n_inputs = len(cmd["inputs"])
+            n_outputs = len(cmd["outputs"])
+            f.write(
+                f"case {opcode}:\n"
+                f"    batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}>(instr, locals);\n"
+                f"    break;\n"
+            )
 
 
 if __name__ == "__main__":
