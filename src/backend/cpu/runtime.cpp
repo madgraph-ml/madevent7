@@ -5,6 +5,7 @@
 #include <tuple>
 #include <array>
 #include <functional>
+#include <algorithm>
 
 #define KERNELSPEC
 
@@ -55,6 +56,10 @@ void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
                 throw std::runtime_error("incompatible input shapes");
             }
         }
+        for (int j = 0; j < batch_size; j++) {
+            double d = static_cast<DoubleInput>(input.view()[j]);
+            std::cout << i << " " << j << " " << d << "\n";
+        }
         return input.view();
     });
     auto outputs = create_array<NOut>([&](auto i) {
@@ -76,23 +81,36 @@ void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
     }
 }
 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 }
 
-Tensor::Tensor(DataType _dtype, SizeVec _shape) : dtype(_dtype), shape(_shape) {
+Tensor::Tensor(DataType _dtype, SizeVec _shape, DataPtr _data)
+    : dtype(_dtype), shape(_shape), data(_data)
+{
     std::size_t stride_prod;
     switch (_dtype) {
         case DT_BOOL: stride_prod = sizeof(bool); break;
         case DT_INT: stride_prod = sizeof(int); break;
         case DT_FLOAT: stride_prod = sizeof(double); break;
     }
+    bool first = true;
     for (auto size : _shape) {
-        stride.push_back(stride_prod);
+        if (first && size == 1) {
+            stride.push_back(0);
+        } else {
+            stride.push_back(stride_prod);
+        }
+        first = false;
         stride_prod *= size;
     }
-    data = std::make_shared<std::vector<uint8_t>>(stride_prod);
+    if (!data) {
+        data = std::shared_ptr<uint8_t[]>(new uint8_t[stride_prod]);
+    }
 }
 
-Runtime::Runtime(const Function& function) : local_count(function.locals.size()) {
+Runtime::Runtime(const Function& function) {
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
         for (auto& in : instr.inputs) {
@@ -111,13 +129,30 @@ Runtime::Runtime(const Function& function) : local_count(function.locals.size())
         });
     }
 
+    for (auto& local : function.locals) {
+        if (local.literal_value == std::monostate{}) {
+            continue;
+        }
+        std::visit(overloaded{
+            [local, &locals_init](auto val) {
+                Tensor tensor(local.dtype, {1});
+                tensor.view<decltype(val)>() = val;
+                locals_init[local.local_index] = tensor;
+            },
+            [](std::string val){}
+            [](std::monostate val){}
+        }, local.literal_value); 
+    }
+
     for (auto& out : function.outputs) {
         output_indices.push_back(out.local_index);
     }
 }
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
-    LocalVec locals(local_count);
+    LocalVec locals(locals_init);
+    std::copy(inputs.begin(), inputs.end(), locals.begin());
+
     for (auto& instr : instructions) {
         switch (instr.opcode) {
             case -1: // free memory

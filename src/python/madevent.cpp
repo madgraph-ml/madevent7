@@ -5,6 +5,7 @@
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
 #include "instruction_set.h"
+#include "tensor.h"
 
 namespace py = pybind11;
 using namespace madevent;
@@ -128,4 +129,6 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<TInvariantTwoParticle, Mapping>(m, "TInvariantTwoParticle")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
+
+    m.def("run_function", &run_function);
 }

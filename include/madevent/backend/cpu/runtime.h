@@ -16,18 +16,18 @@ class TensorView {
 public:
     TensorView(uint8_t* _data, std::size_t* _stride) : data(_data), stride(_stride) {}
     const TensorView<T> operator[](std::size_t index) const {
-        if constexpr (batch) {
-            return TensorView<T>(data + stride[0], stride + 1);
-        } else {
+        //if (batch) {
+            //return TensorView<T>(data + index, stride + 1);
+        //} else {
             return TensorView<T>(data + index * stride[0], stride + 1);
-        }
+        //}
     }
     TensorView<T> operator[](std::size_t index) {
-        if constexpr (batch) {
-            return TensorView<T>(data + stride[0], stride + 1);
-        } else {
+        //if (batch) {
+            //return TensorView<T>(data + index, stride + 1);
+        //} else {
             return TensorView<T>(data + index * stride[0], stride + 1);
-        }
+        //}
     }
     operator T() const { return *reinterpret_cast<T* const>(data); }
     //operator T&() { return *static_cast<T*>(data); }
@@ -42,13 +42,14 @@ private:
 
 class Tensor {
 public:
-    Tensor(DataType dtype, SizeVec shape);
-    template<class T> operator TensorView<T>() { return TensorView<T>(data->data(), stride.data()); }
-    TensorView<Untyped, true> view() { return TensorView<Untyped, true>(data->data(), stride.data()); }
+    using DataPtr = std::shared_ptr<uint8_t[]>;
+    Tensor(DataType dtype, SizeVec shape, DataPtr data = nullptr);
+    //template<class T> operator TensorView<T>() { return TensorView<T>(data.get(), stride.data()); }
+    TensorView<Untyped, true> view() { return TensorView<Untyped, true>(data.get(), stride.data()); }
     std::size_t size(std::size_t i) { return shape[i]; }
 
-private:
-    std::shared_ptr<std::vector<uint8_t>> data;
+//private:
+    DataPtr data;
     DataType dtype;
     SizeVec shape;
     SizeVec stride;
@@ -71,7 +72,7 @@ public:
 private:
     std::vector<Instruction> instructions;
     SizeVec output_indices;
-    std::size_t local_count;
+    std::vector<Tensor> locals_init;
 };
 
 }

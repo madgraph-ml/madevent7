@@ -78,5 +78,7 @@ pybind11_add_module(
     madevent_py
     src/python/madevent.cpp
     src/python/instruction_set.h
+    src/python/tensor.h
 )
 target_link_libraries(madevent_py PUBLIC madevent)
+target_link_libraries(madevent_py PRIVATE fmt::fmt)
