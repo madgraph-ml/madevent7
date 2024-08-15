@@ -73,3 +73,10 @@ add_executable(test src/test/main.cpp)
 target_link_libraries(test PUBLIC madevent)
 target_link_libraries(test PUBLIC Backward::Object)
 target_link_libraries(test PRIVATE fmt::fmt)
+
+pybind11_add_module(
+    madevent_py
+    src/python/madevent.cpp
+    src/python/instruction_set.h
+)
+target_link_libraries(madevent_py PUBLIC madevent)

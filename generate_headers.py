@@ -15,6 +15,7 @@ def main():
     ]
 
     function_builder_mixin(commands)
+    instruction_set_python(commands)
     instruction_set_mixin(types, commands)
     cpu_runtime_mixin(commands)
 
@@ -50,6 +51,29 @@ def function_builder_mixin(commands):
                 )
 
             f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n\n");
+
+def instruction_set_python(commands):
+    with open("src/python/instruction_set.h", "w") as f:
+        write_autogen(f)
+        f.write(
+            '#pragma once\n\n'
+            '#include <pybind11/pybind11.h>\n'
+            '#include <pybind11/stl.h>\n'
+            '#include "madevent/madcode.h"\n\n'
+            'namespace py = pybind11;\n'
+            'using madevent::FunctionBuilder;\n\n'
+            'namespace {\n\n'
+            'void add_instructions(py::class_<FunctionBuilder>& fb) {\n'
+        )
+
+        for name, cmd in commands.items():
+            f.write(f'    fb.def("{name}", &FunctionBuilder::{name}')
+            for arg in cmd["inputs"]:
+                f.write(f', py::arg("{arg["name"]}")')
+            f.write(');\n')
+
+        f.write('}\n}\n')
+
 
 def instruction_set_mixin(types, commands):
     with open("src/madcode/instruction_set_mixin.h", "w") as f:

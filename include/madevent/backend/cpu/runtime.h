@@ -11,15 +11,23 @@ using SizeVec = std::vector<std::size_t>;
 
 struct Untyped {};
 
-template<class T>
+template<class T, bool batch = false>
 class TensorView {
 public:
-    TensorView(uint8_t* _data, size_t* _stride) : data(_data), stride(_stride) {}
-    const TensorView<T> operator[](size_t index) const {
-        return TensorView(data + index * stride[0], stride + 1);
+    TensorView(uint8_t* _data, std::size_t* _stride) : data(_data), stride(_stride) {}
+    const TensorView<T> operator[](std::size_t index) const {
+        if constexpr (batch) {
+            return TensorView<T>(data + stride[0], stride + 1);
+        } else {
+            return TensorView<T>(data + index * stride[0], stride + 1);
+        }
     }
-    TensorView<T> operator[](size_t index) {
-        return TensorView(data + index * stride[0], stride + 1);
+    TensorView<T> operator[](std::size_t index) {
+        if constexpr (batch) {
+            return TensorView<T>(data + stride[0], stride + 1);
+        } else {
+            return TensorView<T>(data + index * stride[0], stride + 1);
+        }
     }
     operator T() const { return *reinterpret_cast<T* const>(data); }
     //operator T&() { return *static_cast<T*>(data); }
@@ -28,7 +36,7 @@ public:
 
 private:
     uint8_t* data;
-    size_t* stride;
+    std::size_t* stride;
 };
 
 
@@ -36,8 +44,8 @@ class Tensor {
 public:
     Tensor(DataType dtype, SizeVec shape);
     template<class T> operator TensorView<T>() { return TensorView<T>(data->data(), stride.data()); }
-    TensorView<Untyped> view() { return TensorView<Untyped>(data->data(), stride.data()); }
-    size_t size(size_t i) { return shape[i]; }
+    TensorView<Untyped, true> view() { return TensorView<Untyped, true>(data->data(), stride.data()); }
+    std::size_t size(std::size_t i) { return shape[i]; }
 
 private:
     std::shared_ptr<std::vector<uint8_t>> data;
@@ -63,7 +71,7 @@ public:
 private:
     std::vector<Instruction> instructions;
     SizeVec output_indices;
-    size_t local_count;
+    std::size_t local_count;
 };
 
 }

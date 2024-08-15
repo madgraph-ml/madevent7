@@ -45,7 +45,7 @@ constexpr auto create_array(F&& function) {
 template<auto function, int NIn, int NOut>
 void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
     std::size_t batch_size = 1;
-    auto inputs = create_array<NIn>([&](auto i) -> Tensor& {
+    auto inputs = create_array<NIn>([&](auto i) {
         auto& input = *locals[instruction.input_indices[i]];
         auto input_size = input.size(0);
         if (input_size != 1) {
@@ -55,31 +55,31 @@ void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
                 throw std::runtime_error("incompatible input shapes");
             }
         }
-        return input;
+        return input.view();
     });
-    auto outputs = create_array<NOut>([&](auto i) -> Tensor& {
+    auto outputs = create_array<NOut>([&](auto i) {
         auto& output = locals[instruction.output_indices[i]];
         auto& output_shape = instruction.output_shapes[i];
-        std::vector<std::size_t> shape {batch_size};
+        SizeVec shape {batch_size};
         shape.insert(shape.end(), output_shape.begin(), output_shape.end());
         output.emplace(instruction.output_dtypes[i], shape);
-        return *output;
+        return output->view();
     });
 
-    auto views = std::apply([](auto&&... args){
-        return std::make_tuple(args.view()...);
-    }, std::tuple_cat(inputs, outputs));
-
-    #pragma omp parallel for
-    for (size_t i = 0; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) { function(args[i]...); }, views);
+    //#pragma omp parallel for
+    //#pragma omp for simd
+    for (std::size_t i = 0; i < batch_size; ++i) {
+        std::apply(
+            [i](auto&&... args) { function(args[i]...); },
+            std::tuple_cat(inputs, outputs)
+        );
     }
 }
 
 }
 
 Tensor::Tensor(DataType _dtype, SizeVec _shape) : dtype(_dtype), shape(_shape) {
-    size_t stride_prod;
+    std::size_t stride_prod;
     switch (_dtype) {
         case DT_BOOL: stride_prod = sizeof(bool); break;
         case DT_INT: stride_prod = sizeof(int); break;
@@ -92,8 +92,28 @@ Tensor::Tensor(DataType _dtype, SizeVec _shape) : dtype(_dtype), shape(_shape) {
     data = std::make_shared<std::vector<uint8_t>>(stride_prod);
 }
 
-Runtime::Runtime(const Function& function) {
+Runtime::Runtime(const Function& function) : local_count(function.locals.size()) {
+    for (auto& instr : function.instructions) {
+        SizeVec input_indices;
+        for (auto& in : instr.inputs) {
+            input_indices.push_back(in.local_index);
+        }
+        SizeVec output_indices;
+        std::vector<DataType> output_dtypes;
+        std::vector<SizeVec> output_shapes;
+        for (auto& out : instr.outputs) {
+            output_indices.push_back(out.local_index);
+            output_dtypes.push_back(out.type.dtype);
+            output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
+        }
+        instructions.push_back({
+            instr.instruction->opcode, input_indices, output_indices, output_dtypes, output_shapes
+        });
+    }
 
+    for (auto& out : function.outputs) {
+        output_indices.push_back(out.local_index);
+    }
 }
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
@@ -103,9 +123,6 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
             case -1: // free memory
                 locals[instr.input_indices[0]].reset();
                 break;
-            /*case 34:
-                batch_foreach<3, 2>(kernel_uniform_invariant_inverse, instr, locals);
-                break;*/
 #include "runtime_mixin.h"
         }
     }
