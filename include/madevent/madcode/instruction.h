@@ -35,6 +35,7 @@ const Type scalar{DT_FLOAT, {}};
 const Type scalar_int{DT_INT, {}};
 const Type scalar_bool{DT_BOOL, {}};
 const Type four_vector{DT_FLOAT, {4}};
+Type four_vector_array(std::size_t count) { return {DT_FLOAT, {count, 4}}; }
 
 class Instruction {
 public:

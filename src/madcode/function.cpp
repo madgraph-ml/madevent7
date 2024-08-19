@@ -94,6 +94,8 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
         if (find_literal == literals.end()) {
             int local_index = locals.size();
             arg = Value(arg.type, arg.literal_value, local_index);
+            locals.push_back(arg);
+            literals[arg.literal_value] = arg;
         } else {
             arg = find_literal->second;
         }
@@ -173,4 +175,26 @@ void FunctionBuilder::output_range(int start_index, ValueList values) {
         ));
     }
     std::copy(values.begin(), values.end(), outputs.begin() + start_index);
+}
+
+Value FunctionBuilder::sum(ValueList values, Value zero) {
+    if (values.size() == 0) {
+        return zero;
+    }
+    auto result = values[0];
+    for (auto value = values.begin() + 1; value != values.end(), ++value) {
+        result = add(result, value);
+    }
+    return result;
+}
+
+Value FunctionBuilder::product(ValueList values, Value one) {
+    if (values.size() == 0) {
+        return one;
+    }
+    auto result = values[0];
+    for (auto value = values.begin() + 1; value != values.end(), ++value) {
+        result = mul(result, value);
+    }
+    return result;
 }

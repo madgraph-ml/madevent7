@@ -12,9 +12,9 @@
 using namespace madevent;
 namespace py = pybind11;
 
-namespace {
+//namespace {
 
-std::vector<py::array_t<double>> run_function(const Function& function, py::tuple args) {
+std::vector<py::array_t<double>> run_function(const cpu::Runtime& runtime, const Function& function, py::tuple args) {
     std::vector<cpu::Tensor> inputs;
     auto n_args = function.inputs.size();
     if (args.size() != n_args) {
@@ -43,7 +43,6 @@ std::vector<py::array_t<double>> run_function(const Function& function, py::tupl
         ));
     }
 
-    cpu::Runtime runtime(function);
     auto outputs = runtime.run(inputs);
     std::vector<py::array_t<double>> outputs_numpy;
     for (auto& output : outputs) {
@@ -58,4 +57,4 @@ std::vector<py::array_t<double>> run_function(const Function& function, py::tupl
     return outputs_numpy;
 }
 
-}
+//}

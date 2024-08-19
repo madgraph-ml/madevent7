@@ -17,6 +17,8 @@ public:
         s_hat_min(_s_hat_min),
         s_hat_max(_s_hat_max == 0 ? _s_lab : _s_hat_max),
         invariant(nu, mass, width) {}
+
+private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
@@ -24,7 +26,6 @@ public:
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
 
-private:
     double s_lab, s_hat_min, s_hat_max;
     Invariant invariant;
 };

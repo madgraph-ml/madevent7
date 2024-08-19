@@ -20,9 +20,10 @@ KERNELSPEC void kernel_breit_wigner_invariant(
     auto y1 = atan((s_min - m2) / gm);
     auto y2 = atan((s_max - m2) / gm);
     auto dy21 = y2 - y1;
-    auto s_sub_m2 = s - m2;
+    auto _s = gm * tan(y1 + dy21 * r) + m2;
+    auto s_sub_m2 = _s - m2;
 
-    s = gm * tan(y1 + dy21 * r) + m2;
+    s = _s;
     gs = dy21 * (s_sub_m2 * s_sub_m2 + gm * gm) / gm;
 }
 
@@ -73,9 +74,10 @@ KERNELSPEC void kernel_stable_invariant_nu(
     auto power = 1.0 - nu;
     auto qmaxpow = pow(q_max, power);
     auto qminpow = pow(q_min, power);
+    auto _s = pow(r * qmaxpow + (1 - r) * qminpow, 1 / power) + m2;
 
-    s = pow(r * qmaxpow + (1 - r) * qminpow, 1 / power) + m2;
-    gs = (qmaxpow - qminpow) * pow(s - m2, nu) / power;
+    s = _s;
+    gs = (qmaxpow - qminpow) * pow(_s - m2, nu) / power;
 }
 
 KERNELSPEC void kernel_stable_invariant_nu_inverse(

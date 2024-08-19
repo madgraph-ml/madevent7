@@ -10,6 +10,8 @@ public:
     Invariant(double _nu = 0, double _mass = 0, double _width = 0) :
         Mapping({scalar}, {scalar}, {scalar, scalar}),
         nu(_nu), mass(_mass), width(_width) {}
+
+private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
@@ -17,7 +19,6 @@ public:
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
 
-private:
     double nu, mass, width;
 };
 

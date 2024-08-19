@@ -14,6 +14,8 @@ public:
         {four_vector, four_vector},
         {}
     ), com(_com) {}
+
+private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
@@ -21,7 +23,6 @@ public:
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
 
-private:
     bool com;
 };
 
@@ -34,6 +35,8 @@ public:
             {four_vector, four_vector},
             {four_vector, four_vector}
         ), com(_com), invariant(nu, mass, width) {}
+
+private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
@@ -41,7 +44,6 @@ public:
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override;
 
-private:
     bool com;
     Invariant invariant;
 };

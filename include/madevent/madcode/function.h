@@ -62,6 +62,9 @@ public:
     ValueList instruction(std::string name, ValueList args);
     Function function();
 
+    Value sum(ValueList values, Value zero = 0.);
+    Value product(ValueList values, Value one = 1.);
+
 #include "function_builder_mixin.h"
 
 private:

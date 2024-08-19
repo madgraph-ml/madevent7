@@ -31,22 +31,30 @@ using DoubleOutput = TensorView<double>;
 
 #include "../common/kernels.h"
 
-using LocalVec = std::vector<std::optional<Tensor>>;
-
-template<std::size_t N, typename F, std::size_t... I>
-constexpr auto create_array_impl(F&& function, std::index_sequence<I...>) {
-    return std::make_tuple(function(I)...);
+// call function(i) with argument i=0...N-1 and return the results as a tuple
+template<std::size_t N, typename F, std::size_t... i>
+constexpr auto range_to_tuple_impl(F&& function, std::index_sequence<i...>) {
+    return std::make_tuple(function(i)...);
 }
-
 template<std::size_t N, typename F>
-constexpr auto create_array(F&& function) {
-    return create_array_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
+constexpr auto range_to_tuple(F&& function) {
+    return range_to_tuple_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
 }
+
+// return the tuple of TensorViews where the type is extracted from the signature of F
+template<typename F> struct get_views;
+template<typename... TParam>
+struct get_views<void(*)(TParam...)> {
+    template <typename... TArg>
+    auto operator()(TArg&&... args) {
+        return std::make_tuple(args.template view<typename TParam::DType>()...);
+    }
+};
 
 template<auto function, int NIn, int NOut>
-void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
+void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) {
     std::size_t batch_size = 1;
-    auto inputs = create_array<NIn>([&](auto i) {
+    auto inputs = range_to_tuple<NIn>([&](auto i) {
         auto& input = *locals[instruction.input_indices[i]];
         auto input_size = input.size(0);
         if (input_size != 1) {
@@ -56,31 +64,34 @@ void batch_foreach(Runtime::Instruction instruction, LocalVec& locals) {
                 throw std::runtime_error("incompatible input shapes");
             }
         }
-        for (int j = 0; j < batch_size; j++) {
-            double d = static_cast<DoubleInput>(input.view()[j]);
+        /*for (int j = 0; j < batch_size; j++) {
+            double d = input.template view<double>()[j];
             std::cout << i << " " << j << " " << d << "\n";
-        }
-        return input.view();
+        }*/
+        return input;
     });
-    auto outputs = create_array<NOut>([&](auto i) {
+    auto outputs = range_to_tuple<NOut>([&](auto i) {
         auto& output = locals[instruction.output_indices[i]];
         auto& output_shape = instruction.output_shapes[i];
         SizeVec shape {batch_size};
         shape.insert(shape.end(), output_shape.begin(), output_shape.end());
         output.emplace(instruction.output_dtypes[i], shape);
-        return output->view();
+        return *output;
     });
+
+    
+    auto args = std::tuple_cat(inputs, outputs);
+    // get views to the tensors with the correct types based on the signature of function
+    auto views = std::apply(get_views<decltype(function)>(), args);
 
     //#pragma omp parallel for
     //#pragma omp for simd
     for (std::size_t i = 0; i < batch_size; ++i) {
-        std::apply(
-            [i](auto&&... args) { function(args[i]...); },
-            std::tuple_cat(inputs, outputs)
-        );
+        std::apply([i](auto&&... args) { function(args[i]...); }, views);
     }
 }
 
+// Some helper definitions to use with std::visit and std::variant
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
@@ -110,7 +121,7 @@ Tensor::Tensor(DataType _dtype, SizeVec _shape, DataPtr _data)
     }
 }
 
-Runtime::Runtime(const Function& function) {
+Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
         for (auto& in : instr.inputs) {
@@ -130,16 +141,13 @@ Runtime::Runtime(const Function& function) {
     }
 
     for (auto& local : function.locals) {
-        if (local.literal_value == std::monostate{}) {
-            continue;
-        }
         std::visit(overloaded{
-            [local, &locals_init](auto val) {
-                Tensor tensor(local.dtype, {1});
-                tensor.view<decltype(val)>() = val;
+            [local, this](auto val) {
+                Tensor tensor(local.type.dtype, {1});
+                tensor.template view<decltype(val)>() = val;
                 locals_init[local.local_index] = tensor;
             },
-            [](std::string val){}
+            [](std::string val){},
             [](std::monostate val){}
         }, local.literal_value); 
     }
@@ -150,7 +158,7 @@ Runtime::Runtime(const Function& function) {
 }
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
-    LocalVec locals(locals_init);
+    Runtime::LocalVec locals(locals_init);
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
     for (auto& instr : instructions) {

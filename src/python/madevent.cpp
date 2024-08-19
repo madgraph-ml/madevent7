@@ -10,7 +10,7 @@
 namespace py = pybind11;
 using namespace madevent;
 
-namespace {
+//namespace {
 
 template<typename T>
 auto to_string(const T& object) {
@@ -42,7 +42,7 @@ public:
     }
 };
 
-}
+//}
 
 PYBIND11_MODULE(madevent_py, m) {
     py::enum_<DataType>(m, "DataType")
@@ -116,7 +116,6 @@ PYBIND11_MODULE(madevent_py, m) {
              py::arg("builder"), py::arg("inputs"), py::arg("conditions"))
         .def("build_inverse", &Mapping::build_inverse,
              py::arg("builder"), py::arg("inputs"), py::arg("conditions"));
-
     py::class_<Invariant, Mapping>(m, "Invariant")
         .def(py::init<double, double, double>(),
              py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
@@ -130,5 +129,8 @@ PYBIND11_MODULE(madevent_py, m) {
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
 
-    m.def("run_function", &run_function);
+    //m.def("run_function", &run_function);
+    py::class_<cpu::Runtime>(m, "Runtime")
+        .def(py::init<const Function&>(), py::arg("function"))
+        .def("run", &run_function);
 }
