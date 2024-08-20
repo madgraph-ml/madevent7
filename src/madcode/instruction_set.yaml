@@ -28,6 +28,7 @@ add:
       type: all
       desc: sum of the two inputs
   desc: Computes the sum of the two inputs.
+  flatten: True
 
 sub:
   inputs:
@@ -42,18 +43,19 @@ sub:
       type: all
       desc: difference of the two inputs
   desc: Computes the difference of the two inputs.
+  flatten: True
 
 mul:
   inputs:
     - name: in1
-      type: all
+      type: scalar
       desc: first input to multiplication
     - name: in2
-      type: all
+      type: scalar
       desc: second input to multiplication
   outputs:
     - name: out
-      type: all
+      type: scalar
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
 
@@ -69,6 +71,7 @@ mul_scalar:
     - name: out
       type: all
       desc:
+  flatten: True
 
 clip_min:
   inputs:
@@ -375,6 +378,9 @@ decay_momentum:
     - name: p
       type: four_vector
       desc:
+    - name: gs
+      type: scalar
+      desc:
 
 invt_min_max:
   inputs:
@@ -451,21 +457,21 @@ costheta_to_invt:
       type: scalar
       desc:
 
-two_particle_density:
-  inputs:
-    - name: s
-      type: scalar
-      desc:
-    - name: m1
-      type: scalar
-      desc:
-    - name: m2
-      type: scalar
-      desc:
-  outputs:
-    - name: gs
-      type: scalar
-      desc:
+        #two_particle_density:
+        #  inputs:
+        #    - name: s
+        #      type: scalar
+        #      desc:
+        #    - name: m1
+        #      type: scalar
+        #      desc:
+        #    - name: m2
+        #      type: scalar
+        #      desc:
+        #  outputs:
+        #    - name: gs
+        #      type: scalar
+        #      desc:
 
 two_particle_density_inverse:
   inputs:

@@ -110,8 +110,9 @@ Value rapidity(Value x1, Value x2) {
     return instruction("rapidity", {x1, x2})[0];
 }
 
-Value decay_momentum(Value s, Value sqrt_s, Value m1, Value m2) {
-    return instruction("decay_momentum", {s, sqrt_s, m1, m2})[0];
+std::array<Value, 2> decay_momentum(Value s, Value sqrt_s, Value m1, Value m2) {
+    auto output_vector = instruction("decay_momentum", {s, sqrt_s, m1, m2});
+    return {output_vector[0], output_vector[1]};
 }
 
 std::array<Value, 2> invt_min_max(Value s, Value s_in1, Value s_in2, Value m1, Value m2) {
@@ -125,10 +126,6 @@ Value invt_to_costheta(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Va
 
 Value costheta_to_invt(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Value cos_theta) {
     return instruction("costheta_to_invt", {s, s_in1, s_in2, m1, m2, cos_theta})[0];
-}
-
-Value two_particle_density(Value s, Value m1, Value m2) {
-    return instruction("two_particle_density", {s, m1, m2})[0];
 }
 
 Value two_particle_density_inverse(Value s, Value m1, Value m2) {

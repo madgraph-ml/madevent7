@@ -113,9 +113,10 @@ def cpu_runtime_mixin(commands):
             opcode = cmd["opcode"]
             n_inputs = len(cmd["inputs"])
             n_outputs = len(cmd["outputs"])
+            flatten = "true" if cmd.get("flatten", False) else "false";
             f.write(
                 f"case {opcode}:\n"
-                f"    batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}>(instr, locals);\n"
+                f"    batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}, {flatten}>(instr, locals);\n"
                 f"    break;\n"
             )
 

@@ -1,9 +1,13 @@
 KERNELSPEC void kernel_add(DoubleInput in1, DoubleInput in2, DoubleOutput out) {
-    out = in1 + in2;
+    for (std::size_t i = 0; i < in1.size(); ++i) {
+        out[i] = in1[i] + in2[i];
+    }
 }
 
 KERNELSPEC void kernel_sub(DoubleInput in1, DoubleInput in2, DoubleOutput out) {
-    out = in1 - in2;
+    for (std::size_t i = 0; i < in1.size(); ++i) {
+        out[i] = in1[i] - in2[i];
+    }
 }
 
 KERNELSPEC void kernel_mul(DoubleInput in1, DoubleInput in2, DoubleOutput out) {
@@ -11,7 +15,9 @@ KERNELSPEC void kernel_mul(DoubleInput in1, DoubleInput in2, DoubleOutput out) {
 }
 
 KERNELSPEC void kernel_mul_scalar(DoubleInput in1, DoubleInput in2, DoubleOutput out) {
-    out = in1 * in2;
+    for (std::size_t i = 0; i < in1.size(); ++i) {
+        out[i] = in1[i] * in2[0];
+    }
 }
 
 KERNELSPEC void kernel_clip_min(DoubleInput x, DoubleInput min, DoubleOutput out) {

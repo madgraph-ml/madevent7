@@ -42,16 +42,16 @@ constexpr auto range_to_tuple(F&& function) {
 }
 
 // return the tuple of TensorViews where the type is extracted from the signature of F
-template<typename F> struct get_views;
-template<typename... TParam>
-struct get_views<void(*)(TParam...)> {
+template<typename F, bool flatten> struct get_views;
+template<typename... TParam, bool flatten>
+struct get_views<void(*)(TParam...), flatten> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
-        return std::make_tuple(args.template view<typename TParam::DType>()...);
+        return std::make_tuple(args.template view<typename TParam::DType>(flatten)...);
     }
 };
 
-template<auto function, int NIn, int NOut>
+template<auto function, int NIn, int NOut, bool flatten>
 void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) {
     std::size_t batch_size = 1;
     auto inputs = range_to_tuple<NIn>([&](auto i) {
@@ -64,10 +64,6 @@ void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) 
                 throw std::runtime_error("incompatible input shapes");
             }
         }
-        /*for (int j = 0; j < batch_size; j++) {
-            double d = input.template view<double>()[j];
-            std::cout << i << " " << j << " " << d << "\n";
-        }*/
         return input;
     });
     auto outputs = range_to_tuple<NOut>([&](auto i) {
@@ -78,11 +74,10 @@ void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) 
         output.emplace(instruction.output_dtypes[i], shape);
         return *output;
     });
-
     
     auto args = std::tuple_cat(inputs, outputs);
     // get views to the tensors with the correct types based on the signature of function
-    auto views = std::apply(get_views<decltype(function)>(), args);
+    auto views = std::apply(get_views<decltype(function), flatten>(), args);
 
     //#pragma omp parallel for
     //#pragma omp for simd
@@ -107,15 +102,21 @@ Tensor::Tensor(DataType _dtype, SizeVec _shape, DataPtr _data)
         case DT_FLOAT: stride_prod = sizeof(double); break;
     }
     bool first = true;
+    std::size_t size_prod = 1;
     for (auto size : _shape) {
         if (first && size == 1) {
             stride.push_back(0);
         } else {
             stride.push_back(stride_prod);
         }
-        first = false;
+        if (first) {
+            first = false;
+        } else {
+            size_prod *= size;
+        }
         stride_prod *= size;
     }
+    flat_shape = {_shape[0], size_prod};
     if (!data) {
         data = std::shared_ptr<uint8_t[]>(new uint8_t[stride_prod]);
     }

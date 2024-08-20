@@ -22,8 +22,10 @@ std::vector<py::array_t<double>> run_function(const cpu::Runtime& runtime, const
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
         ));
     }
+    using Arr = py::array_t<double, py::array::f_style | py::array::forcecast>;
+    std::vector<Arr> arrays;
     for (int i = 0; i < n_args; ++i) {
-        auto arr = py::array_t<double, py::array::f_style | py::array::forcecast>::ensure(args[i]);
+        auto arr = Arr::ensure(args[i]);
         if (!arr) {
             throw std::invalid_argument(fmt::format("Argument {}: wrong dtype", i));
         }
@@ -41,6 +43,7 @@ std::vector<py::array_t<double>> run_function(const cpu::Runtime& runtime, const
         inputs.emplace_back(DT_FLOAT, shape, std::shared_ptr<uint8_t[]>(
             reinterpret_cast<uint8_t*>(arr.mutable_data()), [](auto ptr) {}
         ));
+        arrays.push_back(arr);
     }
 
     auto outputs = runtime.run(inputs);

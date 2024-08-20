@@ -18,7 +18,7 @@ Mapping::Result Mapping::build_inverse(
 ) const {
     check_types(inputs, output_types, "Input");
     check_types(conditions, condition_types, "Condition");
-    auto [outputs, det] = build_forward_impl(fb, inputs, conditions);
+    auto [outputs, det] = build_inverse_impl(fb, inputs, conditions);
     check_types(outputs, input_types, "Output");
     check_types({det}, {scalar}, "Determinant");
     return {outputs, det};

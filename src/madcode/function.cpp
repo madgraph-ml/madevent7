@@ -182,8 +182,8 @@ Value FunctionBuilder::sum(ValueList values, Value zero) {
         return zero;
     }
     auto result = values[0];
-    for (auto value = values.begin() + 1; value != values.end(), ++value) {
-        result = add(result, value);
+    for (auto value = values.begin() + 1; value != values.end(); ++value) {
+        result = add(result, *value);
     }
     return result;
 }
@@ -193,8 +193,8 @@ Value FunctionBuilder::product(ValueList values, Value one) {
         return one;
     }
     auto result = values[0];
-    for (auto value = values.begin() + 1; value != values.end(), ++value) {
-        result = mul(result, value);
+    for (auto value = values.begin() + 1; value != values.end(); ++value) {
+        result = mul(result, *value);
     }
     return result;
 }

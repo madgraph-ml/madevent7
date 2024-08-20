@@ -13,11 +13,10 @@ Mapping::Result TwoParticle::build_forward_impl(
     auto p0 = com ? fb.com_momentum(sqrt_s) : inputs[6];
     auto phi = fb.uniform_phi(r1);
     auto costheta = fb.uniform_costheta(r2);
-    auto p1 = fb.decay_momentum(s, sqrt_s, m1, m2);
+    auto [p1, gs] = fb.decay_momentum(s, sqrt_s, m1, m2);
     p1 = fb.rotate_zy(p1, phi, costheta);
     if (!com) p1 = fb.boost(p1, p0);
     auto p2 = fb.sub(p0, p1);
-    auto gs = fb.two_particle_density(s, m1, m2);
     return {{p1, p2}, gs};
 }
 
@@ -55,7 +54,7 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
     auto [t_vec, det_t] = invariant.build_forward(fb, {r2}, {t_min, t_max});
     auto phi = fb.uniform_phi(r1);
     auto costheta = fb.invt_to_costheta(s, s_in1, s_in2, m1, m2, t_vec[0]);
-    auto p1 = fb.decay_momentum(s, sqrt_s, m1, m2);
+    auto [p1, _] = fb.decay_momentum(s, sqrt_s, m1, m2);
     p1 = fb.rotate_zy(p1, phi, costheta);
     if (!com) {
         auto [phi1, costheta1] = fb.com_angles(p_in1_com);

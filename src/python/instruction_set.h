@@ -43,7 +43,6 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("invt_min_max", &FunctionBuilder::invt_min_max, py::arg("s"), py::arg("s_in1"), py::arg("s_in2"), py::arg("m1"), py::arg("m2"));
     fb.def("invt_to_costheta", &FunctionBuilder::invt_to_costheta, py::arg("s"), py::arg("s_in1"), py::arg("s_in2"), py::arg("m1"), py::arg("m2"), py::arg("t"));
     fb.def("costheta_to_invt", &FunctionBuilder::costheta_to_invt, py::arg("s"), py::arg("s_in1"), py::arg("s_in2"), py::arg("m1"), py::arg("m2"), py::arg("cos_theta"));
-    fb.def("two_particle_density", &FunctionBuilder::two_particle_density, py::arg("s"), py::arg("m1"), py::arg("m2"));
     fb.def("two_particle_density_inverse", &FunctionBuilder::two_particle_density_inverse, py::arg("s"), py::arg("m1"), py::arg("m2"));
     fb.def("tinv_two_particle_density", &FunctionBuilder::tinv_two_particle_density, py::arg("det_t"), py::arg("s"), py::arg("s_in1"), py::arg("s_in2"));
     fb.def("tinv_two_particle_density_inverse", &FunctionBuilder::tinv_two_particle_density_inverse, py::arg("det_t"), py::arg("s"), py::arg("s_in1"), py::arg("s_in2"));
