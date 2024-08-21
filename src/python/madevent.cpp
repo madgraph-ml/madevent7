@@ -6,11 +6,13 @@
 #include "madevent/phasespace.h"
 #include "instruction_set.h"
 #include "tensor.h"
+#include "function.h"
 
 namespace py = pybind11;
 using namespace madevent;
+using namespace madevent_py;
 
-//namespace {
+namespace {
 
 template<typename T>
 auto to_string(const T& object) {
@@ -42,7 +44,7 @@ public:
     }
 };
 
-//}
+}
 
 PYBIND11_MODULE(madevent_py, m) {
     py::enum_<DataType>(m, "DataType")
@@ -86,13 +88,20 @@ PYBIND11_MODULE(madevent_py, m) {
         .def_readonly("inputs", &InstructionCall::inputs)
         .def_readonly("outputs", &InstructionCall::outputs);
 
-    py::class_<Function>(m, "Function")
+    py::class_<Function>(m, "Function", py::dynamic_attr())
         .def("__str__", &to_string<Function>)
         .def("__repr__", &to_string<Function>)
         .def_readonly("inputs", &Function::inputs)
         .def_readonly("outputs", &Function::outputs)
         .def_readonly("locals", &Function::locals)
         .def_readonly("instructions", &Function::instructions);
+
+    py::class_<FunctionRuntime>(m, "FunctionRuntime")
+        .def(py::init<Function>(), py::arg("function"))
+#ifdef TORCH_FOUND
+        .def("call", &FunctionRuntime::call_torch)
+#endif
+        .def("call", &FunctionRuntime::call_numpy);
 
     auto& fb = py::class_<FunctionBuilder>(m, "FunctionBuilder")
         .def(py::init<const std::vector<Type>, const std::vector<Type>>(),
@@ -107,7 +116,7 @@ PYBIND11_MODULE(madevent_py, m) {
         .def("function", &FunctionBuilder::function);
     add_instructions(fb);
 
-    py::class_<Mapping, PyMapping>(m, "Mapping")
+    py::class_<Mapping, PyMapping>(m, "Mapping", py::dynamic_attr())
         .def(py::init<TypeList, TypeList, TypeList>(),
              py::arg("input_types"), py::arg("output_types"), py::arg("condition_types"))
         .def("forward_function", &Mapping::forward_function)
@@ -128,9 +137,4 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<TInvariantTwoParticle, Mapping>(m, "TInvariantTwoParticle")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
-
-    //m.def("run_function", &run_function);
-    py::class_<cpu::Runtime>(m, "Runtime")
-        .def(py::init<const Function&>(), py::arg("function"))
-        .def("run", &run_function);
 }

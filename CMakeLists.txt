@@ -2,12 +2,15 @@ cmake_minimum_required (VERSION 3.14)
 project (
     madevent
     VERSION 0.1
-    LANGUAGES CXX
+    LANGUAGES CXX #CUDA
 )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
 find_package(OpenMP)
+
+find_package(Torch CONFIG)
+find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 
 include(FetchContent)
 FetchContent_Declare(fmt
@@ -28,12 +31,13 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/pybind/pybind11
     GIT_TAG        v2.13.1
 )
+FetchContent_MakeAvailable(pybind11)
 
-FetchContent_GetProperties(pybind11)
-if(NOT pybind11_POPULATED)
-    FetchContent_Populate(pybind11)
-    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
-endif()
+#FetchContent_GetProperties(pybind11)
+#if(NOT pybind11_POPULATED)
+#    FetchContent_Populate(pybind11)
+#    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
+#endif()
 
 add_library(
     madevent SHARED
@@ -77,8 +81,15 @@ target_link_libraries(test PRIVATE fmt::fmt)
 pybind11_add_module(
     madevent_py
     src/python/madevent.cpp
+    src/python/function.cpp
     src/python/instruction_set.h
+    src/python/function.h
     src/python/tensor.h
 )
+if(TORCH_FOUND)
+    target_compile_definitions(madevent_py PRIVATE TORCH_FOUND=1)
+endif()
+
 target_link_libraries(madevent_py PUBLIC madevent)
+target_link_libraries(madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
 target_link_libraries(madevent_py PRIVATE fmt::fmt)
