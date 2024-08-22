@@ -111,7 +111,6 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     auto outputs = cpu_runtime->run(inputs);
     std::vector<torch::Tensor> output_tensors;
     for (auto& output : outputs) {
-        auto ptr = new cpu::Tensor::DataPtr(output.data);
         std::vector<long int> shape {output.shape.begin(), output.shape.end()};
         std::vector<long int> stride;
         for (auto s : output.stride) {
@@ -121,16 +120,9 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             output.data.get(),
             shape,
             stride,
-            [&ptr] (void* data) { delete ptr; },
+            [data_ptr = output.data] (void* data) mutable { data_ptr.reset(); },
             torch::TensorOptions().dtype(torch::kFloat64)
         ));
-
-        /*auto data_raw = reinterpret_cast<double*>(output.data.get());
-        py::capsule destroy(
-            new cpu::Tensor::DataPtr(output.data),
-            [](void* ptr) { delete static_cast<cpu::Tensor::DataPtr*>(ptr); }
-        );
-        outputs_numpy.emplace_back(output.shape, output.stride, data_raw, destroy);*/
     }
     return output_tensors;
 }

@@ -1,7 +1,6 @@
 #include "madevent/backend/cpu/runtime.h"
 #include "kernels.h"
 
-#include <optional>
 #include <tuple>
 #include <array>
 #include <functional>
@@ -59,10 +58,9 @@ void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) 
     // get views to the tensors with the correct types based on the signature of function
     auto views = std::apply(get_views<decltype(function), flatten>(), args);
 
-    #pragma omp parallel for
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) { function(args[i]...); }, views);
-    }
+    std::apply([i](auto&&... args) {
+        run_kernel<function><<<whatever,instruction.stream>>>(args[i]...);
+    }, views);
 }
 
 // Some helper definitions to use with std::visit and std::variant
@@ -94,7 +92,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
         std::visit(overloaded{
             [local, this](auto val) {
                 Tensor tensor(local.type.dtype, {1});
-                tensor.template view<decltype(val)>() = val;
+                cudaMemcpy(tensor.data(), &val, sizeof val, cudaMemcpyDefault);
                 locals_init[local.local_index] = tensor;
             },
             [](std::string val){},
@@ -113,8 +111,14 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
 
     for (auto& instr : instructions) {
         switch (instr.opcode) {
+            case -3: // record event
+                cudaEventRecord(instr.event, instr.stream);
+                break;
+            case -2: // wait for event
+                cudaStreamWaitEvent(instr.stream, instr.event);
+                break;
             case -1: // free memory
-                locals[instr.input_indices[0]].reset();
+                locals[instr.input_indices[0]].reset_async(instr.stream);
                 break;
 #include "runtime_mixin.h"
         }

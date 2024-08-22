@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.14)
 project (
     madevent
     VERSION 0.1
-    LANGUAGES CXX #CUDA
+    LANGUAGES CXX CUDA
 )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
@@ -19,25 +19,12 @@ FetchContent_Declare(fmt
 )
 FetchContent_MakeAvailable(fmt)
 
-FetchContent_Declare(backward
-    GIT_REPOSITORY https://github.com/bombela/backward-cpp
-    GIT_TAG master
-    SYSTEM
-)
-FetchContent_MakeAvailable(backward)
-
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
     GIT_TAG        v2.13.1
 )
 FetchContent_MakeAvailable(pybind11)
-
-#FetchContent_GetProperties(pybind11)
-#if(NOT pybind11_POPULATED)
-#    FetchContent_Populate(pybind11)
-#    add_subdirectory(${pybind11_SOURCE_DIR} ${pybind11_BINARY_DIR})
-#endif()
 
 add_library(
     madevent SHARED
@@ -47,7 +34,9 @@ add_library(
     src/backend/common/math.h
     src/backend/common/two_particle.h
     src/backend/cpu/runtime.cpp
+    src/backend/cpu/tensor.cpp
     src/backend/cpu/kernels.h
+    src/backend/cpu/runtime_mixin.h
     src/madcode/function.cpp
     src/madcode/instruction.cpp
     src/madcode/instruction_set_mixin.h
@@ -56,6 +45,7 @@ add_library(
     src/phasespace/two_particle.cpp
     src/phasespace/luminosity.cpp
     include/madevent/backend/cpu/runtime.h
+    include/madevent/backend/cpu/tensor.h
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
@@ -65,6 +55,12 @@ add_library(
     include/madevent/phasespace/invariants.h
     include/madevent/phasespace/two_particle.h
     include/madevent/phasespace/luminosity.h
+
+    src/backend/cuda/runtime.cu
+    src/backend/cuda/tensor.cu
+    src/backend/cuda/kernels.h
+    include/madevent/backend/cuda/runtime.h
+    include/madevent/backend/cuda/tensor.h
 )
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_17)
@@ -73,18 +69,12 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
 endif()
 
-add_executable(test src/test/main.cpp)
-target_link_libraries(test PUBLIC madevent)
-target_link_libraries(test PUBLIC Backward::Object)
-target_link_libraries(test PRIVATE fmt::fmt)
-
 pybind11_add_module(
     madevent_py
     src/python/madevent.cpp
     src/python/function.cpp
     src/python/instruction_set.h
     src/python/function.h
-    src/python/tensor.h
 )
 if(TORCH_FOUND)
     target_compile_definitions(madevent_py PRIVATE TORCH_FOUND=1)

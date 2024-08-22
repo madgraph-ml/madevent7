@@ -5,7 +5,6 @@
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
 #include "instruction_set.h"
-#include "tensor.h"
 #include "function.h"
 
 namespace py = pybind11;
