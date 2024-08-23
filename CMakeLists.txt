@@ -7,7 +7,7 @@ project (
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
-find_package(OpenMP)
+#find_package(OpenMP)
 
 find_package(Torch CONFIG)
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
@@ -33,8 +33,8 @@ add_library(
     src/backend/common/kinematics.h
     src/backend/common/math.h
     src/backend/common/two_particle.h
+    src/backend/tensor.cpp
     src/backend/cpu/runtime.cpp
-    src/backend/cpu/tensor.cpp
     src/backend/cpu/kernels.h
     src/backend/cpu/runtime_mixin.h
     src/madcode/function.cpp
@@ -44,8 +44,8 @@ add_library(
     src/phasespace/invariants.cpp
     src/phasespace/two_particle.cpp
     src/phasespace/luminosity.cpp
+    include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
-    include/madevent/backend/cpu/tensor.h
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
@@ -57,10 +57,11 @@ add_library(
     include/madevent/phasespace/luminosity.h
 
     src/backend/cuda/runtime.cu
-    src/backend/cuda/tensor.cu
+    src/backend/cuda/device.cu
     src/backend/cuda/kernels.h
     include/madevent/backend/cuda/runtime.h
     include/madevent/backend/cuda/tensor.h
+    include/madevent/backend/cuda/device.h
 )
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_17)

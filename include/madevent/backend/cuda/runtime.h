@@ -8,10 +8,6 @@ namespace cuda {
 
 class Runtime {
 public:
-    Runtime(const Function& function);
-    std::vector<Tensor> run(std::vector<Tensor>& inputs) const;
-
-private:
     struct Instruction {
         int opcode;
         SizeVec input_indices;
@@ -22,6 +18,10 @@ private:
         cudaEvent_t event;
     };
 
+    Runtime(const Function& function);
+    std::vector<Tensor> run(std::vector<Tensor>& inputs) const;
+
+private:
     std::vector<Instruction> instructions;
     SizeVec output_indices;
     std::vector<Tensor> locals_init;

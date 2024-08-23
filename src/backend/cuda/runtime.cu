@@ -1,4 +1,4 @@
-#include "madevent/backend/cpu/runtime.h"
+#include "madevent/backend/cuda/runtime.h"
 #include "kernels.h"
 
 #include <tuple>
@@ -6,7 +6,8 @@
 #include <functional>
 #include <algorithm>
 
-using namespace madevent::cpu;
+using namespace madevent;
+using namespace madevent::cuda;
 
 namespace {
 
@@ -26,15 +27,25 @@ template<typename... TParam, bool flatten>
 struct get_views<void(*)(TParam...), flatten> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
-        return std::make_tuple(args.template view<typename TParam::DType>(flatten)...);
+        return std::make_tuple(
+            CudaTensorView(args.template view<typename TParam::DType>(flatten))...
+        );
     }
 };
 
+template<auto function, typename... TArgs>
+__global__ void run_kernel(std::size_t batch_size, TArgs... args) {
+    auto i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < batch_size) {
+        function(args[i]...);
+    }
+}
+
 template<auto function, int NIn, int NOut, bool flatten>
-void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) {
+void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 1;
     auto inputs = range_to_tuple<NIn>([&](auto i) {
-        auto& input = *locals[instruction.input_indices[i]];
+        auto& input = locals[instruction.input_indices[i]];
         auto input_size = input.size(0);
         if (input_size != 1) {
             if (batch_size == 1) {
@@ -50,16 +61,21 @@ void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) 
         auto& output_shape = instruction.output_shapes[i];
         SizeVec shape {batch_size};
         shape.insert(shape.end(), output_shape.begin(), output_shape.end());
-        output.emplace(instruction.output_dtypes[i], shape);
-        return *output;
+        output = Tensor(instruction.output_dtypes[i], shape);
+        return output;
     });
 
-    auto args = std::tuple_cat(inputs, outputs);
     // get views to the tensors with the correct types based on the signature of function
-    auto views = std::apply(get_views<decltype(function), flatten>(), args);
+    auto views = std::apply(
+        get_views<decltype(function), flatten>(),
+        std::tuple_cat(inputs, outputs)
+    );
 
-    std::apply([i](auto&&... args) {
-        run_kernel<function><<<whatever,instruction.stream>>>(args[i]...);
+    int n_threads = 512;
+    int n_blocks = (batch_size + n_threads - 1) / n_threads;
+    std::apply([&](auto&&... args) {
+        run_kernel<function><<<n_blocks, n_threads, 0, instruction.stream>>>
+            (batch_size, args...);
     }, views);
 }
 
@@ -106,7 +122,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
 }
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
-    Runtime::LocalVec locals(locals_init);
+    auto locals = locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
     for (auto& instr : instructions) {
@@ -118,14 +134,16 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
                 cudaStreamWaitEvent(instr.stream, instr.event);
                 break;
             case -1: // free memory
-                locals[instr.input_indices[0]].reset_async(instr.stream);
+                locals[instr.input_indices[0]].reset([stream = instr.stream] (void* ptr) {
+                    cudaFreeAsync(ptr, stream);
+                });
                 break;
 #include "runtime_mixin.h"
         }
     }
     std::vector<Tensor> outputs;
     for (auto index : output_indices) {
-        outputs.push_back(*locals[index]);
+        outputs.push_back(locals[index]);
     }
     return outputs;
 }

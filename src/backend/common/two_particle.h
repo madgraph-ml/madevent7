@@ -1,11 +1,11 @@
 // Helper functions
 
-double _kaellen(double x, double y, double z) {
+KERNELSPEC double _kaellen(double x, double y, double z) {
     auto xyz = x - y - z;
     return xyz * xyz - 4 * y * z;
 }
 
-double _costheta_to_invt(
+KERNELSPEC double _costheta_to_invt(
     double s, double p1_2, double p2_2, double m1, double m2, double cos_theta
 ) {
     // Mandelstam invariant t=(p1-k1)^2 formula (C.21) in https://arxiv.org/pdf/hep-ph/0008033.pdf
@@ -25,7 +25,7 @@ double _costheta_to_invt(
 }
 
 
-double _invt_to_costheta(
+KERNELSPEC double _invt_to_costheta(
     double s, double p1_2, double p2_2, double m1, double m2, double t
 ) {
     // https://arxiv.org/pdf/hep-ph/0008033.pdf Eq.(C.21)

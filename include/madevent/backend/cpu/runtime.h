@@ -1,6 +1,6 @@
 #pragma once
 
-#include "madevent/backend/cpu/tensor.h"
+#include "madevent/backend/tensor.h"
 #include "madevent/madcode/function.h"
 
 namespace madevent {
@@ -8,7 +8,6 @@ namespace cpu {
 
 class Runtime {
 public:
-    using LocalVec = std::vector<std::optional<Tensor>>;
     struct Instruction {
         int opcode;
         SizeVec input_indices;
@@ -18,12 +17,12 @@ public:
     };
 
     Runtime(const Function& function);
-    std::vector<Tensor> run(std::vector<Tensor>& inputs) const;
+    std::vector<madevent::Tensor> run(std::vector<madevent::Tensor>& inputs) const;
 
 private:
     std::vector<Instruction> instructions;
     SizeVec output_indices;
-    LocalVec locals_init;
+    std::vector<madevent::Tensor> locals_init;
 };
 
 }

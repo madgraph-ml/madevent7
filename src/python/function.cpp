@@ -14,7 +14,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
     }
     using Arr = py::array_t<double, py::array::f_style | py::array::forcecast>;
     std::vector<Arr> arrays;
-    std::vector<cpu::Tensor> inputs;
+    std::vector<Tensor> inputs;
     for (int i = 0; i < n_args; ++i) {
         auto arr = Arr::ensure(args[i]);
         if (!arr) {
@@ -38,9 +38,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             }
             shape.push_back(arr_size);
         }
-        inputs.emplace_back(DT_FLOAT, shape, std::shared_ptr<uint8_t[]>(
-            reinterpret_cast<uint8_t*>(arr.mutable_data()), [](auto ptr) {}
-        ));
+        inputs.emplace_back(DT_FLOAT, shape, arr.mutable_data());
         arrays.push_back(arr);
     }
 
@@ -50,12 +48,12 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
     auto outputs = cpu_runtime->run(inputs);
     std::vector<py::array_t<double>> outputs_numpy;
     for (auto& output : outputs) {
-        auto data_raw = reinterpret_cast<double*>(output.data.get());
+        auto data_raw = reinterpret_cast<double*>(output.data());
         py::capsule destroy(
-            new cpu::Tensor::DataPtr(output.data),
-            [](void* ptr) { delete static_cast<cpu::Tensor::DataPtr*>(ptr); }
+            new Tensor(output),
+            [](void* ptr) { delete static_cast<Tensor*>(ptr); }
         );
-        outputs_numpy.emplace_back(output.shape, output.stride, data_raw, destroy);
+        outputs_numpy.emplace_back(output.shape(), output.stride(), data_raw, destroy);
     }
     return outputs_numpy;
 }
@@ -69,10 +67,10 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         ));
     }
     std::vector<torch::Tensor> tensors;
-    std::vector<cpu::Tensor> inputs;
+    std::vector<Tensor> inputs;
     for (int i = 0; i < n_args; ++i) {
         auto n_dims = args[i].dim();
-        std::vector<long int> permutation;
+        std::vector<int64_t> permutation;
         for (int k = n_dims-1; k >= 0; --k) {
             permutation.push_back(k);
         }
@@ -99,9 +97,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             }
             shape.push_back(tensor_size);
         }
-        inputs.emplace_back(DT_FLOAT, shape, std::shared_ptr<uint8_t[]>(
-            reinterpret_cast<uint8_t*>(tensor.data_ptr<double>()), [](auto ptr) {}
-        ));
+        inputs.emplace_back(DT_FLOAT, shape, tensor.data_ptr<double>());
         tensors.push_back(tensor);
     }
 
@@ -111,16 +107,16 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     auto outputs = cpu_runtime->run(inputs);
     std::vector<torch::Tensor> output_tensors;
     for (auto& output : outputs) {
-        std::vector<long int> shape {output.shape.begin(), output.shape.end()};
-        std::vector<long int> stride;
-        for (auto s : output.stride) {
+        std::vector<int64_t> shape {output.shape().begin(), output.shape().end()};
+        std::vector<int64_t> stride;
+        for (auto s : output.stride()) {
             stride.push_back(s / sizeof(double));
         }
         output_tensors.push_back(torch::from_blob(
-            output.data.get(),
+            output.data(),
             shape,
             stride,
-            [data_ptr = output.data] (void* data) mutable { data_ptr.reset(); },
+            [output] (void* data) mutable { output.reset(); },
             torch::TensorOptions().dtype(torch::kFloat64)
         ));
     }

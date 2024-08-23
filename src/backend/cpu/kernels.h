@@ -1,12 +1,10 @@
 #pragma once
 
-#include "madevent/backend/cpu/tensor.h"
+#include "madevent/backend/tensor.h"
 
 #include <cmath>
 
 #define KERNELSPEC
-
-using namespace madevent::cpu;
 
 namespace {
 
@@ -23,8 +21,8 @@ using std::tan;
 using std::atan;
 using std::exp;
 
-using DoubleInput = const TensorView<double>;
-using DoubleOutput = TensorView<double>;
+using DoubleInput = const madevent::TensorView<double>;
+using DoubleOutput = madevent::TensorView<double>;
 
 #include "../common/kernels.h"
 

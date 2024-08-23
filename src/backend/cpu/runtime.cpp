@@ -7,6 +7,7 @@
 #include <functional>
 #include <algorithm>
 
+using namespace madevent;
 using namespace madevent::cpu;
 
 namespace {
@@ -32,10 +33,10 @@ struct get_views<void(*)(TParam...), flatten> {
 };
 
 template<auto function, int NIn, int NOut, bool flatten>
-void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) {
+void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 1;
     auto inputs = range_to_tuple<NIn>([&](auto i) {
-        auto& input = *locals[instruction.input_indices[i]];
+        auto input = locals[instruction.input_indices[i]];
         auto input_size = input.size(0);
         if (input_size != 1) {
             if (batch_size == 1) {
@@ -51,15 +52,16 @@ void batch_foreach(Runtime::Instruction instruction, Runtime::LocalVec& locals) 
         auto& output_shape = instruction.output_shapes[i];
         SizeVec shape {batch_size};
         shape.insert(shape.end(), output_shape.begin(), output_shape.end());
-        output.emplace(instruction.output_dtypes[i], shape);
-        return *output;
+        output = Tensor(instruction.output_dtypes[i], shape);
+        return output;
     });
 
-    auto args = std::tuple_cat(inputs, outputs);
     // get views to the tensors with the correct types based on the signature of function
-    auto views = std::apply(get_views<decltype(function), flatten>(), args);
+    auto views = std::apply(
+        get_views<decltype(function), flatten>(), std::tuple_cat(inputs, outputs)
+    );
 
-    #pragma omp parallel for
+    //#pragma omp parallel for
     for (std::size_t i = 0; i < batch_size; ++i) {
         std::apply([i](auto&&... args) { function(args[i]...); }, views);
     }
@@ -108,7 +110,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
 }
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
-    Runtime::LocalVec locals(locals_init);
+    auto locals = locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
     for (auto& instr : instructions) {
@@ -121,7 +123,7 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
     }
     std::vector<Tensor> outputs;
     for (auto index : output_indices) {
-        outputs.push_back(*locals[index]);
+        outputs.push_back(locals[index]);
     }
     return outputs;
 }
