@@ -69,6 +69,7 @@ target_link_libraries(madevent PRIVATE fmt::fmt)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
 endif()
+target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 
 pybind11_add_module(
     madevent_py
@@ -77,6 +78,7 @@ pybind11_add_module(
     src/python/instruction_set.h
     src/python/function.h
 )
+target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
 if(TORCH_FOUND)
     target_compile_definitions(madevent_py PRIVATE TORCH_FOUND=1)
 endif()

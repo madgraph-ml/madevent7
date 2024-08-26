@@ -1,4 +1,6 @@
 #include "madevent/backend/cuda/runtime.h"
+#include "madevent/backend/cuda/tensor.h"
+
 #include "kernels.h"
 
 #include <tuple>
@@ -8,6 +10,31 @@
 
 using namespace madevent;
 using namespace madevent::cuda;
+
+namespace {
+
+struct CudaInstruction {
+    int opcode;
+    SizeVec input_indices;
+    SizeVec output_indices;
+    std::vector<DataType> output_dtypes;
+    std::vector<SizeVec> output_shapes;
+    cudaStream_t stream;
+    cudaEvent_t event;
+};
+
+}
+
+struct Runtime::Impl {
+    std::vector<CudaInstruction> instructions;
+    SizeVec output_indices;
+    std::vector<Tensor> locals_init;
+    std::vector<cudaStream_t> streams;
+    std::vector<cudaEvent_t> events;
+
+    //template<auto function, int NIn, int NOut, bool flatten>
+    //friend void batch_foreach(Runtime::Impl::Instruction& instruction, std::vector<Tensor>& locals);
+};
 
 namespace {
 
@@ -41,8 +68,15 @@ __global__ void run_kernel(std::size_t batch_size, TArgs... args) {
     }
 }
 
+// Some helper definitions to use with std::visit and std::variant
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+//namespace madevent {
+//namespace cuda {
+
 template<auto function, int NIn, int NOut, bool flatten>
-void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void batch_foreach(CudaInstruction& instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 1;
     auto inputs = range_to_tuple<NIn>([&](auto i) {
         auto& input = locals[instruction.input_indices[i]];
@@ -79,13 +113,11 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
     }, views);
 }
 
-// Some helper definitions to use with std::visit and std::variant
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
+// }
 }
 
-Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {
+Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
+    impl->locals_init.resize(function.locals.size());
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
         for (auto& in : instr.inputs) {
@@ -99,8 +131,12 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             output_dtypes.push_back(out.type.dtype);
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
         }
-        instructions.push_back({
-            instr.instruction->opcode, input_indices, output_indices, output_dtypes, output_shapes
+        impl->instructions.push_back({
+            instr.instruction->opcode,
+            input_indices,
+            output_indices,
+            output_dtypes,
+            output_shapes
         });
     }
 
@@ -109,7 +145,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             [local, this](auto val) {
                 Tensor tensor(local.type.dtype, {1});
                 cudaMemcpy(tensor.data(), &val, sizeof val, cudaMemcpyDefault);
-                locals_init[local.local_index] = tensor;
+                impl->locals_init[local.local_index] = tensor;
             },
             [](std::string val){},
             [](std::monostate val){}
@@ -117,15 +153,17 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
     }
 
     for (auto& out : function.outputs) {
-        output_indices.push_back(out.local_index);
+        impl->output_indices.push_back(out.local_index);
     }
 }
 
+Runtime::~Runtime() {}
+
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
-    auto locals = locals_init;
+    auto locals = impl->locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
-    for (auto& instr : instructions) {
+    for (auto& instr : impl->instructions) {
         switch (instr.opcode) {
             case -3: // record event
                 cudaEventRecord(instr.event, instr.stream);
@@ -142,7 +180,7 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
         }
     }
     std::vector<Tensor> outputs;
-    for (auto index : output_indices) {
+    for (auto index : impl->output_indices) {
         outputs.push_back(locals[index]);
     }
     return outputs;

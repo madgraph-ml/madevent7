@@ -68,6 +68,8 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     }
     std::vector<torch::Tensor> tensors;
     std::vector<Tensor> inputs;
+    bool is_cuda = false;
+    Device& device = cpu_device();
     for (int i = 0; i < n_args; ++i) {
         auto n_dims = args[i].dim();
         std::vector<int64_t> permutation;
@@ -79,6 +81,14 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             .to(torch::kFloat64)
             .contiguous()
             .permute(permutation);
+        if (i == 0) {
+            is_cuda = tensor.is_cuda();
+            if (is_cuda) {
+                device = cuda_device();
+            }
+        } else if (is_cuda != tensor.is_cuda()) {
+            throw std::invalid_argument("All inputs have to be on the same device.");
+        }
         auto& input_type = function.inputs[i].type;
         if (n_dims != input_type.shape.size() + 1) {
             throw std::invalid_argument(fmt::format(
@@ -97,12 +107,22 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             }
             shape.push_back(tensor_size);
         }
-        inputs.emplace_back(DT_FLOAT, shape, tensor.data_ptr<double>());
+        inputs.emplace_back(DT_FLOAT, shape, device, tensor.data_ptr<double>());
         tensors.push_back(tensor);
     }
 
-    if (!cpu_runtime) {
-        cpu_runtime.emplace(function);
+    if (is_cuda) {
+#ifdef CUDA_FOUND
+        if (!cuda_runtime) {
+            cuda_runtime.emplace(function);
+        }
+#else
+        throw std::exception("madevent was compiled without cuda support");
+#endif
+    } else {
+        if (!cpu_runtime) {
+            cpu_runtime.emplace(function);
+        }
     }
     auto outputs = cpu_runtime->run(inputs);
     std::vector<torch::Tensor> output_tensors;
@@ -117,7 +137,9 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             shape,
             stride,
             [output] (void* data) mutable { output.reset(); },
-            torch::TensorOptions().dtype(torch::kFloat64)
+            torch::TensorOptions()
+                .dtype(torch::kFloat64)
+                .device(is_cuda ? torch::kCUDA : torch::kCPU)
         ));
     }
     return output_tensors;

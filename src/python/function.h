@@ -9,6 +9,11 @@
 
 #include "madevent/backend/cpu/runtime.h"
 #include "madevent/madcode.h"
+#ifdef CUDA_FOUND
+#include "madevent/backend/cuda/runtime.h"
+#include "madevent/backend/cuda/device.h"
+#endif
+
 
 namespace py = pybind11;
 using namespace madevent;
@@ -26,6 +31,9 @@ public:
 private:
     Function function;
     std::optional<cpu::Runtime> cpu_runtime;
+#ifdef CUDA_FOUND
+    std::optional<cuda::Runtime> cuda_runtime;
+#endif
 };
 
 }

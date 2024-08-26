@@ -1,32 +1,23 @@
 #pragma once
 
-#include "madevent/backend/cuda/tensor.h"
+#include "madevent/backend/tensor.h"
 #include "madevent/madcode/function.h"
+
+#include <memory>
 
 namespace madevent {
 namespace cuda {
 
 class Runtime {
 public:
-    struct Instruction {
-        int opcode;
-        SizeVec input_indices;
-        SizeVec output_indices;
-        std::vector<DataType> output_dtypes;
-        std::vector<SizeVec> output_shapes;
-        cudaStream_t stream;
-        cudaEvent_t event;
-    };
-
     Runtime(const Function& function);
+    ~Runtime();
     std::vector<Tensor> run(std::vector<Tensor>& inputs) const;
 
 private:
-    std::vector<Instruction> instructions;
-    SizeVec output_indices;
-    std::vector<Tensor> locals_init;
-    std::vector<cudaStream_t> streams;
-    std::vector<cudaEvent_t> events;
+    // Hide implementation as it contains a few CUDA-specific types
+    struct Impl;
+    std::unique_ptr<Impl> impl;
 };
 
 }
