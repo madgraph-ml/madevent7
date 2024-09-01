@@ -111,11 +111,13 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         tensors.push_back(tensor);
     }
 
+    std::vector<Tensor> outputs;
     if (is_cuda) {
 #ifdef CUDA_FOUND
         if (!cuda_runtime) {
             cuda_runtime.emplace(function);
         }
+        outputs = cuda_runtime->run(inputs);
 #else
         throw std::exception("madevent was compiled without cuda support");
 #endif
@@ -123,8 +125,8 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         if (!cpu_runtime) {
             cpu_runtime.emplace(function);
         }
+        outputs = cpu_runtime->run(inputs);
     }
-    auto outputs = cpu_runtime->run(inputs);
     std::vector<torch::Tensor> output_tensors;
     for (auto& output : outputs) {
         std::vector<int64_t> shape {output.shape().begin(), output.shape().end()};

@@ -25,7 +25,7 @@ public:
     __device__ CudaTensorView<T>& operator=(CudaTensorView<T>& value) = delete;
     __device__ std::size_t size() const { return shape[0]; }
 
-private:
+//private:
     uint8_t* data;
     std::size_t* stride;
     std::size_t* shape;

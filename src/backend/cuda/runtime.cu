@@ -1,5 +1,6 @@
 #include "madevent/backend/cuda/runtime.h"
 #include "madevent/backend/cuda/tensor.h"
+#include "madevent/backend/cuda/device.h"
 
 #include "kernels.h"
 
@@ -95,7 +96,16 @@ void batch_foreach(CudaInstruction& instruction, std::vector<Tensor>& locals) {
         auto& output_shape = instruction.output_shapes[i];
         SizeVec shape {batch_size};
         shape.insert(shape.end(), output_shape.begin(), output_shape.end());
-        output = Tensor(instruction.output_dtypes[i], shape);
+        output = Tensor(
+            instruction.output_dtypes[i],
+            shape,
+            cuda_device(),
+            [stream=instruction.stream](auto size) {
+                void* ptr;
+                cudaMallocAsync(&ptr, size, stream);
+                return ptr;
+            }
+        );
         return output;
     });
 
@@ -179,6 +189,8 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
 #include "runtime_mixin.h"
         }
     }
+    cudaDeviceSynchronize();
+
     std::vector<Tensor> outputs;
     for (auto index : impl->output_indices) {
         outputs.push_back(locals[index]);
