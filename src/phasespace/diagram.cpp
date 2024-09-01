@@ -87,7 +87,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
 Mapping::Result TPropagatorMapping::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto p_in1 = inputs[0];
+    /*auto p_in1 = inputs[0];
     auto p_in2 = inputs[1];
     ValueList outputs;
     ValueList masses;
@@ -144,6 +144,6 @@ Mapping::Result TPropagatorMapping::build_inverse_impl(
     return {outputs, fb.product(dets)};
 
     outputs.push_back(e_cm);
-    outputs.insert(outputs.end(), masses.begin(), masses.end());
+    outputs.insert(outputs.end(), masses.begin(), masses.end());*/
     
 }

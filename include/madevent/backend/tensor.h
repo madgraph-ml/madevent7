@@ -10,6 +10,8 @@
 
 namespace madevent {
 
+struct Nothing;
+
 using SizeVec = std::vector<std::size_t>;
 
 template<class T, int _dim>
@@ -31,7 +33,7 @@ public:
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
 
-    operator typename std::conditional_t<_dim == 0, T, void>() const {
+    operator typename std::conditional_t<_dim == 0, T, Nothing>() const {
         return *reinterpret_cast<T*>(_data);
     }
 

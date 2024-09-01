@@ -55,9 +55,11 @@ template<typename... TParam, bool flatten>
 struct get_views<void(*)(TParam...), flatten> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
-        return std::make_tuple(CudaTensorView(
-            args.template view<typename TParam::DType, TParam::dim + 1>(flatten)...
-        ));
+        return std::make_tuple(
+            PackedCudaTensorView(
+                args.template view<typename TParam::DType, TParam::dim + 1>(flatten)
+            )...
+        );
     }
 };
 
@@ -153,7 +155,7 @@ Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
     for (auto& local : function.locals) {
         std::visit(overloaded{
             [local, this](auto val) {
-                Tensor tensor(local.type.dtype, {1});
+                Tensor tensor(local.type.dtype, {1}, cuda_device());
                 cudaMemcpy(tensor.data(), &val, sizeof val, cudaMemcpyDefault);
                 impl->locals_init[local.local_index] = tensor;
             },
