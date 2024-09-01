@@ -6,27 +6,42 @@
 #include <vector>
 #include <array>
 #include <functional>
+#include <type_traits>
 
 namespace madevent {
 
 using SizeVec = std::vector<std::size_t>;
 
-template<class T>
+template<class T, int _dim>
 class TensorView {
 public:
     using DType = T;
+    static const int dim = _dim;
 
     TensorView(uint8_t* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
-    const TensorView<T> operator[](std::size_t index) const {
-        return TensorView<T>(_data + index * _stride[0], _stride + 1, _shape + 1);
+
+    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    const TensorView<T, _dim-1> operator[](std::size_t index) const {
+        return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
-    TensorView<T> operator[](std::size_t index) {
-        return TensorView<T>(_data + index * _stride[0], _stride + 1, _shape + 1);
+
+    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    TensorView<T, _dim-1> operator[](std::size_t index) {
+        return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
-    operator T() const { return *reinterpret_cast<T*>(_data); }
-    T operator=(T value) { *reinterpret_cast<T*>(_data) = value; return value; }
-    TensorView<T>& operator=(TensorView<T>& value) = delete;
+
+    operator typename std::conditional_t<_dim == 0, T, void>() const {
+        return *reinterpret_cast<T*>(_data);
+    }
+
+    template<int d = _dim, typename = std::enable_if_t<d == 0>>
+    T operator=(T value) {
+        *reinterpret_cast<T*>(_data) = value;
+        return value;
+    }
+
+    TensorView<T, _dim>& operator=(TensorView<T, _dim>& value) = delete;
     std::size_t size() const { return _shape[0]; }
     uint8_t* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
@@ -131,8 +146,8 @@ public:
         return impl != nullptr;
     }
 
-    template<class T> TensorView<T> view(bool flatten = false) {
-        return TensorView<T>(
+    template<class T, int dim> TensorView<T, dim> view(bool flatten = false) {
+        return TensorView<T, dim>(
             static_cast<uint8_t*>(impl->data) + impl->offset,
             impl->stride.data(),
             flatten ? impl->flat_shape.data() : impl->shape.data()

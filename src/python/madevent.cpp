@@ -136,4 +136,11 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<TInvariantTwoParticle, Mapping>(m, "TInvariantTwoParticle")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
+    py::class_<Diagram::Propagator>(m, "Propagator")
+        .def(py::init<double, double>(), py::arg("mass"), py::arg("width"));
+    py::class_<Diagram>(m, "Diagram")
+        .def(py::init<std::vector<Diagram::Propagator>>(), py::arg("t_propagators"));
+    py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
+        .def(py::init<Diagram&, double, bool>(),
+             py::arg("diagram"), py::arg("nu")=0., py::arg("map_resonances")=false);
 }

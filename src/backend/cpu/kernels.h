@@ -21,8 +21,8 @@ using std::tan;
 using std::atan;
 using std::exp;
 
-using DoubleInput = const madevent::TensorView<double>;
-using DoubleOutput = madevent::TensorView<double>;
+template<int dim> using FViewIn = const madevent::TensorView<double, dim>;
+template<int dim> using FViewOut = madevent::TensorView<double, dim>;
 
 #include "../common/kernels.h"
 

@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.14)
 project (
     madevent
     VERSION 0.1
-    LANGUAGES CXX CUDA
+    LANGUAGES CXX #CUDA
 )
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
@@ -44,6 +44,7 @@ add_library(
     src/phasespace/invariants.cpp
     src/phasespace/two_particle.cpp
     src/phasespace/luminosity.cpp
+    src/phasespace/diagram.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/madcode.h
@@ -55,13 +56,14 @@ add_library(
     include/madevent/phasespace/invariants.h
     include/madevent/phasespace/two_particle.h
     include/madevent/phasespace/luminosity.h
+    include/madevent/phasespace/diagram.h
 
-    src/backend/cuda/runtime.cu
-    src/backend/cuda/device.cu
-    src/backend/cuda/kernels.h
-    include/madevent/backend/cuda/runtime.h
-    include/madevent/backend/cuda/tensor.h
-    include/madevent/backend/cuda/device.h
+    #src/backend/cuda/runtime.cu
+    #src/backend/cuda/device.cu
+    #src/backend/cuda/kernels.h
+    #include/madevent/backend/cuda/runtime.h
+    #include/madevent/backend/cuda/tensor.h
+    #include/madevent/backend/cuda/device.h
 )
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_17)
@@ -69,8 +71,9 @@ target_link_libraries(madevent PRIVATE fmt::fmt)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
 endif()
-target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
+#target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 
+message("TORCH_PYTHON_LIBRARY=${TORCH_PYTHON_LIBRARY}")
 pybind11_add_module(
     madevent_py
     src/python/madevent.cpp
@@ -78,7 +81,7 @@ pybind11_add_module(
     src/python/instruction_set.h
     src/python/function.h
 )
-target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
+#target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
 if(TORCH_FOUND)
     target_compile_definitions(madevent_py PRIVATE TORCH_FOUND=1)
 endif()

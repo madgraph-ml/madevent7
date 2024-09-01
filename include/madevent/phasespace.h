@@ -4,3 +4,4 @@
 #include "phasespace/invariants.h"
 #include "phasespace/two_particle.h"
 #include "phasespace/luminosity.h"
+#include "phasespace/diagram.h"

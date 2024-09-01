@@ -28,7 +28,9 @@ template<typename... TParam, bool flatten>
 struct get_views<void(*)(TParam...), flatten> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
-        return std::make_tuple(args.template view<typename TParam::DType>(flatten)...);
+        return std::make_tuple(
+            args.template view<typename TParam::DType, TParam::dim + 1>(flatten)...
+        );
     }
 };
 
@@ -96,7 +98,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
         std::visit(overloaded{
             [local, this](auto val) {
                 Tensor tensor(local.type.dtype, {1});
-                tensor.template view<decltype(val)>() = val;
+                tensor.template view<decltype(val), 0>() = val;
                 locals_init[local.local_index] = tensor;
             },
             [](std::string val){},
