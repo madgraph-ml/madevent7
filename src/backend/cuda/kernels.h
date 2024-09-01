@@ -9,8 +9,8 @@ using namespace madevent::cuda;
 namespace madevent {
 namespace cuda {
 
-using DoubleInput = const CudaTensorView<double>;
-using DoubleOutput = CudaTensorView<double>;
+template<int dim> using FViewIn = const CudaTensorView<double, dim>;
+template<int dim> using FViewOut = CudaTensorView<double, dim>;
 
 #include "../common/kernels.h"
 

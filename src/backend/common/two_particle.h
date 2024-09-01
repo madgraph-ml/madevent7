@@ -44,8 +44,8 @@ KERNELSPEC double _invt_to_costheta(
 // Kernels
 
 KERNELSPEC void kernel_decay_momentum(
-    DoubleInput s, DoubleInput sqrt_s, DoubleInput m1, DoubleInput m2,
-    DoubleOutput p, DoubleOutput gs
+    FViewIn<0> s, FViewIn<0> sqrt_s, FViewIn<0> m1, FViewIn<0> m2,
+    FViewOut<1> p, FViewOut<0> gs
 ) {
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
@@ -58,41 +58,41 @@ KERNELSPEC void kernel_decay_momentum(
 }
 
 KERNELSPEC void kernel_invt_min_max(
-    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2,
-    DoubleOutput t_min, DoubleOutput t_max
+    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
+    FViewOut<0> t_min, FViewOut<0> t_max
 ) {
     t_min = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, 1.0);
     t_max = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, -1.0);
 }
 
 KERNELSPEC void kernel_invt_to_costheta(
-    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2,
-    DoubleInput t, DoubleOutput cos_theta
+    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
+    FViewIn<0> t, FViewOut<0> cos_theta
 ) {
     cos_theta = _invt_to_costheta(s, s_in1, s_in2, m1, m2, -t);
 }
 
 KERNELSPEC void kernel_costheta_to_invt(
-    DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleInput m1, DoubleInput m2,
-    DoubleInput cos_theta, DoubleOutput t
+    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
+    FViewIn<0> cos_theta, FViewOut<0> t
 ) {
     t = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, cos_theta);
 }
 
 KERNELSPEC void kernel_two_particle_density_inverse(
-    DoubleInput s, DoubleInput m1, DoubleInput m2, DoubleOutput gs
+    FViewIn<0> s, FViewIn<0> m1, FViewIn<0> m2, FViewOut<0> gs
 ) {
     gs = (2 * s) / (PI * sqrt(_kaellen(s, m1 * m1, m2 * m2)));
 }
 
 KERNELSPEC void kernel_tinv_two_particle_density(
-    DoubleInput det_t, DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleOutput det
+    FViewIn<0> det_t, FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewOut<0> det
 ) {
     det = det_t * PI / (2 * sqrt(_kaellen(s, s_in1, s_in2)));
 }
 
 KERNELSPEC void kernel_tinv_two_particle_density_inverse(
-    DoubleInput det_t, DoubleInput s, DoubleInput s_in1, DoubleInput s_in2, DoubleOutput det
+    FViewIn<0> det_t, FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewOut<0> det
 ) {
     det = det_t * 2 * sqrt(_kaellen(s, s_in1, s_in2)) / PI;
 }

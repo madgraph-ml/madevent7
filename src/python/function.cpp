@@ -84,7 +84,11 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         if (i == 0) {
             is_cuda = tensor.is_cuda();
             if (is_cuda) {
+#ifdef CUDA_FOUND
                 device = cuda_device();
+#else
+                throw std::runtime_error("madevent was compiled without cuda support");
+#endif
             }
         } else if (is_cuda != tensor.is_cuda()) {
             throw std::invalid_argument("All inputs have to be on the same device.");
@@ -118,8 +122,6 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             cuda_runtime.emplace(function);
         }
         outputs = cuda_runtime->run(inputs);
-#else
-        throw std::exception("madevent was compiled without cuda support");
 #endif
     } else {
         if (!cpu_runtime) {
