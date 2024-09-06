@@ -130,6 +130,11 @@ void batch_foreach(CudaInstruction& instruction, std::vector<Tensor>& locals) {
 
 Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
     impl->locals_init.resize(function.locals.size());
+    InstructionDependencies deps(function);
+    LastUseOfLocals last_use(function);
+    std::vector<std::size_t> stream_last_instr;
+
+    std::size_t instr_index = 0;
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
         for (auto& in : instr.inputs) {
@@ -150,6 +155,10 @@ Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
             output_dtypes,
             output_shapes
         });
+        for (auto local_index : last_use.locals(instr_index)) {
+            impl->instructions.push_back({-1, {local_index}, {}, {}, {}});
+        }
+        ++instr_index;
     }
 
     for (auto& local : function.locals) {

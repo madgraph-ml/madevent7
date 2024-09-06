@@ -76,6 +76,8 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 }
 
 Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {
+    std::size_t instr_index = 0;
+    LastUseOfLocals last_use(function);
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
         for (auto& in : instr.inputs) {
@@ -90,8 +92,16 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
         }
         instructions.push_back({
-            instr.instruction->opcode, input_indices, output_indices, output_dtypes, output_shapes
+            instr.instruction->opcode,
+            input_indices,
+            output_indices,
+            output_dtypes,
+            output_shapes
         });
+        for (auto local_index : last_use.locals(instr_index)) {
+            impl->instructions.push_back({-1, {local_index}, {}, {}, {}});
+        }
+        ++instr_index;
     }
 
     for (auto& local : function.locals) {
