@@ -1,20 +1,21 @@
-#include "madevent/phasespace/diagram.h"
+#include "madevent/phasespace/t_propagator_mapping.h"
 
 using namespace madevent;
 
-
-TPropagatorMapping::TPropagatorMapping(const Diagram& diagram, double nu, bool map_resonances) :
+TPropagatorMapping::TPropagatorMapping(
+    const std::vector<Propagator>& propagators, double nu, bool map_resonances
+) :
     Mapping(
-        TypeList(4 * diagram.t_propagators.size() + 1, scalar),
-        TypeList(diagram.t_propagators.size() + 3, four_vector),
+        TypeList(4 * propagators.size() + 1, scalar),
+        TypeList(propagators.size() + 3, four_vector),
         {}
     ),
-    s_pseudo_invariants(diagram.t_propagators.size() - 1)
+    s_pseudo_invariants(propagators.size() - 1)
 {
     // TODO: maybe allow to change integration order
 
     bool com = true;
-    for (auto prop = diagram.t_propagators.rbegin(); prop != diagram.t_propagators.rend(); ++prop) {
+    for (auto prop = propagators.rbegin(); prop != propagators.rend(); ++prop) {
         t_invariants.emplace_back(com, nu, prop->mass, map_resonances ? prop->width : 0.);
         com = false;
     }

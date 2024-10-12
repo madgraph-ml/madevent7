@@ -92,7 +92,7 @@ public:
         if (impl != nullptr) ++impl->ref_count;
     }
 
-    Tensor(Tensor&& other) : impl(other.impl) {
+    Tensor(Tensor&& other) noexcept : impl(other.impl) {
         other.impl = nullptr;
     }
 
@@ -137,7 +137,7 @@ public:
         return *this;
     }
 
-    Tensor& operator=(Tensor&& other) {
+    Tensor& operator=(Tensor&& other) noexcept {
         reset();
         impl = other.impl;
         other.impl = nullptr;

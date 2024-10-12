@@ -1,4 +1,5 @@
 #include "madevent/backend/cpu/runtime.h"
+#include "madevent/madcode/optimizer.h"
 #include "kernels.h"
 
 #include <optional>
@@ -98,8 +99,8 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             output_dtypes,
             output_shapes
         });
-        for (auto local_index : last_use.locals(instr_index)) {
-            impl->instructions.push_back({-1, {local_index}, {}, {}, {}});
+        for (std::size_t local_index : last_use.local_indices(instr_index)) {
+            instructions.push_back({-1, {local_index}, {}, {}, {}});
         }
         ++instr_index;
     }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "madevent/madcode/function.h"
+
 #include <vector>
 
 namespace madevent {
@@ -14,10 +16,11 @@ public:
 private:
     std::size_t size;
     std::vector<bool> matrix;
-}
+};
 
 
 class LastUseOfLocals {
+public:
     LastUseOfLocals(const Function& function);
     std::vector<int>& local_indices(std::size_t index) {
         return last_used[index];
@@ -25,6 +28,6 @@ class LastUseOfLocals {
 
 private:
     std::vector<std::vector<int>> last_used;
-}
+};
 
 }
