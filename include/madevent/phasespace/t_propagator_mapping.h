@@ -17,7 +17,7 @@ public:
         double nu=0.,
         bool map_resonances=false
     );
-    std::size_t random_dim() {
+    std::size_t random_dim() const {
         return 4 * t_invariants.size() + 1;
     }
 

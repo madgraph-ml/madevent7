@@ -58,12 +58,12 @@ public:
     Value input(int index);
     ValueList input_range(int start_index, int end_index);
     void output(int index, Value value);
-    void output_range(int start_index, ValueList values);
+    void output_range(int start_index, const ValueList& values);
     ValueList instruction(std::string name, ValueList args);
     Function function();
 
-    Value sum(ValueList values, Value zero = 0.);
-    Value product(ValueList values, Value one = 1.);
+    Value sum(const ValueList& values);
+    Value product(const ValueList& values);
 
 #include "function_builder_mixin.h"
 

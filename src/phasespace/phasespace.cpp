@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <numeric>
+#include <algorithm>
 
 #include "madevent/constants.h"
 
@@ -21,18 +22,19 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     s_lab(_s_lab),
     s_hat_min(_s_hat_min),
     leptonic(_leptonic),
+    has_t_channel(topology.t_propagators.size() != 0),
     sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
     outgoing_masses(topology.outgoing_masses),
     permutation(topology.permutation),
     inverse_permutation(topology.inverse_permutation)
 {
-    bool has_t_channel = topology.t_propagators.size() != 0;
     // Initialize s invariants and decay mappings
     std::vector<double> sqrt_s_min(topology.outgoing_masses);
     for (auto& layer : topology.s_decays) {
         if (!has_t_channel && &layer == &topology.s_decays.back()) {
-            s_decay_invariants.emplace_back();
-            s_decays.emplace_back().emplace_back(true);
+            auto& decay_mappings = s_decays.emplace_back().emplace_back();
+            decay_mappings.count = layer[0].child_count;
+            decay_mappings.decay.emplace(true);
             break;
         }
         auto sqs_iter = sqrt_s_min.begin();
@@ -76,7 +78,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
     auto r = inputs.begin();
-    ValueList dets;
+    ValueList dets{pi_factors};
     Value x1, x2, s_hat;
     if (luminosity) {
         auto [x12s, det_lumi] = luminosity->build_forward(fb, {*(r++), *(r++)}, {});
@@ -97,114 +99,115 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         inverse_permutation.begin(), inverse_permutation.end(), std::back_inserter(sqrt_s),
         [this](auto index) { return outgoing_masses[index]; }
     );
-    std::vector<ValueList> decay_masses;
-    std::vector<std::vector<std::tuple<Value, Value>>> decay_s_sqrt_s;
+    struct DecayData {
+        const DecayMappings& mappings;
+        ValueList masses;
+        std::optional<Value> s;
+        std::optional<Value> sqrt_s;
+    };
+    std::vector<std::vector<DecayData>> decay_data;
     for (auto& layer_decays : s_decays) {
+        ValueList sqrt_s_min;
+        auto sqrt_s_iter = sqrt_s.begin();
+        auto& layer_data = decay_data.emplace_back();
+        bool skip_layer = false;
+        for (auto& decay : layer_decays) {
+            auto sqrt_s_iter_next = sqrt_s_iter + decay.count;
+            DecayData layer_data_item{decay, {sqrt_s_iter, sqrt_s_iter_next}};
+            if (layer_decays.size() == 1 && !decay.invariant) {
+                layer_data_item.s = s_hat;
+                layer_data_item.sqrt_s = sqrt_s_hat;
+                skip_layer = true;
+            }
+            layer_data.push_back(layer_data_item);
+            sqrt_s_min.push_back(fb.clip_min(
+                fb.sum(layer_data_item.masses), decay.count > 1 ? sqrt_s_epsilon : 0.0
+            ));
+            sqrt_s_iter = sqrt_s_iter_next;
+        }
+        if (skip_layer) continue;
 
+        ValueList sqs_min_sums;
+        std::partial_sum(
+            sqrt_s_min.rbegin(), sqrt_s_min.rend() - 1, std::back_inserter(sqs_min_sums),
+            [&fb](Value a, Value b) { return fb.add(a, b); }
+        );
+
+        auto sqs_sum = sqrt_s_hat;
+        sqrt_s.clear();
+        auto sqs_min_iter = sqrt_s_min.begin();
+        auto sqs_min_sums_iter = sqs_min_sums.rbegin();
+        for (auto& data : layer_data) {
+            auto sqs_min_item = *(sqs_min_iter++);
+            auto sqs_min_sum_item = *(sqs_min_sums_iter++);
+            if (data.mappings.count == 1) {
+                sqrt_s.push_back(sqs_min_item);
+                continue;
+            }
+            auto s_min = fb.square(sqs_min_item);
+            auto s_max =
+                &data == &layer_data.back() ?
+                fb.square(sqs_sum) :
+                fb.square(fb.sub(sqs_sum, sqs_min_sum_item));
+            auto [s_vec, det] = data.mappings.invariant->build_forward(
+                fb, {*(r++)}, {s_min, s_max}
+            );
+            auto sqs = fb.sqrt(s_vec[0]);
+            sqrt_s.push_back(sqs);
+            data.s = s_vec[0];
+            data.sqrt_s = sqs;
+            dets.push_back(det);
+        }
     }
 
-    /*
-    # sample s-invariants from decays, starting from the final state particles
-    sqrt_s = [ir.constant(
-        self.diagram.outgoing[self.diagram.inverse_permutation[i]].mass
-    ) for i in range(len(self.diagram.outgoing))]
-    decay_masses = []
-    decay_s_sqrt_s = []
-    for layer_counts, layer_invariants in zip(
-        self.diagram.s_decay_layers, self.s_decay_invariants
-    ):
-        sqrt_s_min = []
-        sqrt_s_index = 0
-        layer_masses = []
-        for decay_count in layer_counts:
-            sqs_clip = self.sqrt_s_epsilon if decay_count > 1 else 0.0
-            sqrt_s_min.append(
-                ir.clip_min(
-                    ir_sum(ir, sqrt_s[sqrt_s_index : sqrt_s_index + decay_count]),
-                    sqs_clip,
-                )
-            )
-            layer_masses.append(sqrt_s[sqrt_s_index : sqrt_s_index + decay_count])
-            sqrt_s_index += decay_count
-        decay_masses.append(layer_masses)
+    ValueList p_ext;
+    ValueList p_out;
+    if (has_t_channel) {
+        ValueList t_args;
+        std::copy_n(r, t_mapping->random_dim(), std::back_inserter(t_args));
+        r += t_mapping->random_dim();
+        t_args.push_back(sqrt_s_hat);
+        std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
+        auto [ps, det] = t_mapping->build_forward(fb, t_args, {});
+        p_ext = {ps[0], ps[1]};
+        std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
+    } else {
+        auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
+        p_ext = {p1, p2};
+    }
 
-        if len(layer_invariants) == 0:
-            decay_s_sqrt_s.append([(s_hat, sqrt_s_hat)])
-            assert not self.has_t_channel
-            continue
+    // build the momenta of the decays
+    for (auto data_iter = decay_data.rbegin(); data_iter != decay_data.rend(); ++data_iter) {
+        auto& layer_data = *data_iter;
+        auto p_out_prev = p_out;
+        p_out.clear();
+        auto k_in_iter = p_out_prev.begin();
+        for (auto& data : layer_data) {
+            if (data.mappings.count == 1) {
+                p_out.push_back(*(k_in_iter++));
+                continue;
+            }
+            auto k_in = *(k_in_iter++);
+            ValueList decay_args{*(r++), *(r++)};
+            if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
+            decay_args.push_back(*data.s);
+            decay_args.push_back(*data.sqrt_s);
+            std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
+            auto [k_out, det] = data.mappings.decay->build_forward(fb, decay_args, {});
+            std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
+            dets.push_back(det);
+        }
+    }
 
-        sqs_min_sums = [sqrt_s_min[-1]]
-        for sqs_min in sqrt_s_min[-2:0:-1]:
-            sqs_min_sums.append(ir.add(sqs_min_sums[-1], sqs_min))
-
-        sqs_sum = sqrt_s_hat
-        sqrt_s = []
-        layer_s_sqrt_s = []
-        invariant_iter = iter(layer_invariants)
-        for i, decay_count in enumerate(layer_counts):
-            if decay_count == 1:
-                sqrt_s.append(sqrt_s_min[i])
-                layer_s_sqrt_s.append((None, None))
-                continue
-            s_min = ir.square(sqrt_s_min[i])
-            if i == len(layer_counts) - 1:
-                s_max = ir.square(sqs_sum)
-            else:
-                s_max = ir.square(ir.sub(sqs_sum, sqs_min_sums[-i - 1]))
-            (s,), jac = next(invariant_iter).map(ir, rand(), condition=[s_min, s_max])
-            sqs = ir.sqrt(s)
-            sqrt_s.append(sqs)
-            layer_s_sqrt_s.append((s, sqs))
-            sqs_sum = ir.sub(sqs_sum, sqs)
-            dets.append(jac)
-        decay_s_sqrt_s.append(layer_s_sqrt_s)
-
-    if self.has_t_channel:
-        (p1, p2, *p_out), jac = self.t_mapping.map(
-            ir, [*rand(self.t_random_numbers), sqrt_s_hat, *sqrt_s]
-        )
-        if self.t_channel_type == "chili":
-            # TODO
-            x1 = p_in[:, 0, 0] * 2 / sqrt_s_hat
-            x2 = p_in[:, 1, 0] * 2 / sqrt_s_hat
-            x1x2 = torch.stack([x1, x2], dim=1)
-        dets.append(jac)
-    else:
-        p1, p2 = ir.com_p_in(sqrt_s_hat)
-        p_out = [None]
-
-    # build the momenta of the decays
-    for layer_counts, layer_decays, layer_masses, layer_s_sqrt_s in zip(
-        reversed(self.diagram.s_decay_layers),
-        reversed(self.s_decays),
-        reversed(decay_masses),
-        reversed(decay_s_sqrt_s),
-    ):
-        p_out_prev = p_out
-        p_out = []
-        decay_iter = iter(layer_decays)
-        for count, k_in, masses, (dp_s, dp_sqrt_s) in zip(
-            layer_counts, p_out_prev, layer_masses, layer_s_sqrt_s
-        ):
-            if count == 1:
-                p_out.append(k_in)
-                continue
-            k_in = [] if k_in is None else [k_in]
-            k_out, jac = next(decay_iter).map(
-                ir, [*rand(2), *k_in, dp_s, dp_sqrt_s, *masses]
-            )
-            p_out.extend(k_out)
-            dets.append(jac)
-
-    # we should have consumed all the random numbers
-    assert rand.empty()
-
-    # permute and return momenta
-    p_out_perm = [p_out[self.diagram.permutation[i]] for i in range(len(p_out))]
-    p_ext = ir.stack(p1, p2, *p_out_perm, 0)
-    p_ext_lab = p_ext if self.luminosity is None else ir.boost_beam(p_ext, rap)
-    ps_weight = ir.mul_const(ir_product(ir, dets), self.pi_factors)
-    return (p_ext_lab, x1, x2), ps_weight*/
+    // permute and return momenta
+    std::transform(
+        permutation.begin(), permutation.end(), std::back_inserter(p_ext),
+        [&p_out](auto index) { return p_out[index]; }
+    );
+    auto p_ext_stack = fb.stack(p_ext);
+    auto p_ext_lab = luminosity ? fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) : p_ext_stack;
+    auto ps_weight = fb.product(dets);
+    return {{p_ext_lab, x1, x2}, ps_weight};
 }
 
 Mapping::Result PhaseSpaceMapping::build_inverse_impl(

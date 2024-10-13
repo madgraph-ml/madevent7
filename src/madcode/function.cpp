@@ -167,7 +167,7 @@ void FunctionBuilder::output(int index, Value value) {
     outputs[index] = value;
 }
 
-void FunctionBuilder::output_range(int start_index, ValueList values) {
+void FunctionBuilder::output_range(int start_index, const ValueList& values) {
     if (start_index < 0 || start_index > outputs.size() - values.size()) {
         throw std::out_of_range(fmt::format(
             "Start index expected to be in range 0 to {}, got {}",
@@ -177,9 +177,9 @@ void FunctionBuilder::output_range(int start_index, ValueList values) {
     std::copy(values.begin(), values.end(), outputs.begin() + start_index);
 }
 
-Value FunctionBuilder::sum(ValueList values, Value zero) {
+Value FunctionBuilder::sum(const ValueList& values) {
     if (values.size() == 0) {
-        return zero;
+        return 0.0;
     }
     auto result = values[0];
     for (auto value = values.begin() + 1; value != values.end(); ++value) {
@@ -188,9 +188,9 @@ Value FunctionBuilder::sum(ValueList values, Value zero) {
     return result;
 }
 
-Value FunctionBuilder::product(ValueList values, Value one) {
+Value FunctionBuilder::product(const ValueList& values) {
     if (values.size() == 0) {
-        return one;
+        return 1.;
     }
     auto result = values[0];
     for (auto value = values.begin() + 1; value != values.end(); ++value) {

@@ -41,6 +41,7 @@ private:
     double s_lab;
     double s_hat_min;
     bool leptonic;
+    bool has_t_channel;
     double sqrt_s_epsilon;
     std::vector<std::vector<DecayMappings>> s_decays;
     std::optional<TPropagatorMapping> t_mapping;
