@@ -13,6 +13,24 @@ types:
     shape: [n, 4]
 
 ---
+title: Shapes, etc.
+
+stack:
+  inputs: any
+  outputs:
+    - name: out
+      desc: 
+  desc: Combines input tensors
+  class: StackInstruction
+unstack:
+  inputs:
+    - name: in
+      desc: 
+  outputs: any
+  desc: 
+  class: UnstackInstruction
+
+---
 title: Math
 
 add:

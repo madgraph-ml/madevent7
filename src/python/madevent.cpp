@@ -136,8 +136,34 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<TInvariantTwoParticle, Mapping>(m, "TInvariantTwoParticle")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
-    /*py::class_<Diagram::Propagator>(m, "Propagator")
+    py::class_<Propagator>(m, "Propagator")
         .def(py::init<double, double>(), py::arg("mass"), py::arg("width"));
+    py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
+        .def(py::init<std::vector<Propagator>, double, bool>(),
+             py::arg("propagators"), py::arg("nu")=0., py::arg("map_resonances")=false);
+
+    py::class_<Diagram::LineRef>(m, "LineRef")
+        .def(py::init<std::string>(), py::arg("str"))
+        .def("__repr__", &to_string<Diagram::LineRef>);
+    py::implicitly_convertible<std::string, Diagram::LineRef>();
+    py::class_<Diagram>(m, "Diagram")
+        .def(py::init<std::vector<double>&,
+                      std::vector<double>&,
+                      std::vector<Propagator>&,
+                      std::vector<Diagram::Vertex>&>(),
+             py::arg("incoming_masses"),
+             py::arg("outgoing_masses"),
+             py::arg("propagators"),
+             py::arg("vertices"))
+        .def_readonly("incoming_vertices", &Diagram::incoming_vertices)
+        .def_readonly("outgoing_vertices", &Diagram::outgoing_vertices)
+        .def_readonly("propagator_vertices", &Diagram::propagator_vertices)
+        .def_readonly("t_propagators", &Diagram::t_propagators)
+        .def_readonly("t_vertices", &Diagram::t_vertices)
+        .def_readonly("lines_after_t", &Diagram::lines_after_t)
+        .def_readonly("decays", &Diagram::decays);
+
+    /*
     py::class_<Diagram>(m, "Diagram")
         .def(py::init<std::vector<Diagram::Propagator>>(), py::arg("t_propagators"));
     py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")

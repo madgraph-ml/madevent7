@@ -35,6 +35,7 @@ const Type scalar{DT_FLOAT, {}};
 const Type scalar_int{DT_INT, {}};
 const Type scalar_bool{DT_BOOL, {}};
 const Type four_vector{DT_FLOAT, {4}};
+inline Type scalar_array(int count) { return {DT_FLOAT, {count}}; }
 inline Type four_vector_array(int count) { return {DT_FLOAT, {count, 4}}; }
 
 class Instruction {
@@ -44,7 +45,7 @@ public:
 
     Instruction(std::string _name, int _opcode) : name(_name), opcode(_opcode) {}
     virtual ~Instruction() = default;
-    virtual const TypeList signature(const TypeList& args) const = 0;
+    virtual TypeList signature(const TypeList& args) const = 0;
 };
 
 class SimpleInstruction : public Instruction {
@@ -59,7 +60,7 @@ public:
         std::initializer_list<SigType> _outputs
     ) : Instruction(_name, _opcode), inputs(_inputs), outputs(_outputs) {}
 
-    const TypeList signature(const TypeList& args) const override;
+    TypeList signature(const TypeList& args) const override;
 
 private:
     const std::vector<SigType> inputs;
@@ -69,9 +70,21 @@ private:
 class PrintInstruction : public Instruction {
 public:
     PrintInstruction(int _opcode) : Instruction("print", _opcode) {}
-    const TypeList signature(const TypeList& args) const override {
+    TypeList signature(const TypeList& args) const override {
         return {};
     }
+};
+
+class StackInstruction : public Instruction {
+public:
+    StackInstruction(int _opcode) : Instruction("stack", _opcode) {}
+    TypeList signature(const TypeList& args) const override;
+};
+
+class UnstackInstruction : public Instruction {
+public:
+    UnstackInstruction(int _opcode) : Instruction("unstack", _opcode) {}
+    TypeList signature(const TypeList& args) const override;
 };
 
 using InstructionPtr = std::unique_ptr<Instruction>;

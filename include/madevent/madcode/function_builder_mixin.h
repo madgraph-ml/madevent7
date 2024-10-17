@@ -1,6 +1,14 @@
 // This file was automatically generated based on instruction_set.yaml
 // Do not modify its content directly
 
+Value stack(ValueList args) {
+    return instruction("stack", args)[0];
+}
+
+ValueList unstack(Value in) {
+    return instruction("unstack", {in});
+}
+
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
 }

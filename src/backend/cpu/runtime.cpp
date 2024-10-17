@@ -74,6 +74,29 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+    std::size_t batch_size;
+    Tensor output;
+    bool first = true;
+    for (auto input_index : instruction.input_indices) {
+        auto input = locals[input_index];
+        auto input_size = input.size(0);
+        if (first) {
+            batch_size = input_size;
+            auto shape = input.shape();
+            shape.insert(shape.begin() + 1, instruction.input_indices.size());
+            output = Tensor(instruction.output_dtypes.front(), shape);
+            first = false;
+        } else if (input_size != batch_size) {
+            throw std::runtime_error("incompatible input shapes");
+        }
+    }
+}
+
+void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+
+}
+
 }
 
 Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {

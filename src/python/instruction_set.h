@@ -13,6 +13,8 @@ using madevent::FunctionBuilder;
 namespace {
 
 void add_instructions(py::class_<FunctionBuilder>& fb) {
+    fb.def("stack", &FunctionBuilder::stack, py::arg("args"));
+    fb.def("unstack", &FunctionBuilder::unstack, py::arg("in"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));

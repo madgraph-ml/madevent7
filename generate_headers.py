@@ -31,24 +31,32 @@ def function_builder_mixin(commands):
     with open("include/madevent/madcode/function_builder_mixin.h", "w") as f:
         write_autogen(f)
         for name, cmd in commands.items():
-            parameters = ", ".join(f"Value {arg['name']}" for arg in cmd["inputs"])
-            arguments = ", ".join(arg["name"] for arg in cmd["inputs"])
-            instruction_call = f"instruction(\"{name}\", {{{arguments}}})"
-
-            n_outputs = len(cmd["outputs"])
-            if n_outputs == 0:
-                return_type = "void"
-                func_body = f"    {instruction_call};"
-            elif n_outputs == 1:
-                return_type = "Value"
-                func_body = f"    return {instruction_call}[0];"
+            if cmd["inputs"] == "any":
+                parameters = "ValueList args"
+                instruction_call = f"instruction(\"{name}\", args)"
             else:
-                return_type = f"std::array<Value, {n_outputs}>"
-                return_array = ", ".join(f"output_vector[{i}]" for i in range(n_outputs))
-                func_body = (
-                    f"    auto output_vector = {instruction_call};\n"
-                    f"    return {{{return_array}}};"
-                )
+                parameters = ", ".join(f"Value {arg['name']}" for arg in cmd["inputs"])
+                arguments = ", ".join(arg["name"] for arg in cmd["inputs"])
+                instruction_call = f"instruction(\"{name}\", {{{arguments}}})"
+
+            if cmd["outputs"] == "any":
+                return_type = "ValueList"
+                func_body = f"    return {instruction_call};"
+            else:
+                n_outputs = len(cmd["outputs"])
+                if n_outputs == 0:
+                    return_type = "void"
+                    func_body = f"    {instruction_call};"
+                elif n_outputs == 1:
+                    return_type = "Value"
+                    func_body = f"    return {instruction_call}[0];"
+                else:
+                    return_type = f"std::array<Value, {n_outputs}>"
+                    return_array = ", ".join(f"output_vector[{i}]" for i in range(n_outputs))
+                    func_body = (
+                        f"    auto output_vector = {instruction_call};\n"
+                        f"    return {{{return_array}}};"
+                    )
 
             f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n\n");
 
@@ -68,8 +76,11 @@ def instruction_set_python(commands):
 
         for name, cmd in commands.items():
             f.write(f'    fb.def("{name}", &FunctionBuilder::{name}')
-            for arg in cmd["inputs"]:
-                f.write(f', py::arg("{arg["name"]}")')
+            if cmd["inputs"] == "any":
+                f.write(', py::arg("args")')
+            else:
+                for arg in cmd["inputs"]:
+                    f.write(f', py::arg("{arg["name"]}")')
             f.write(');\n')
 
         f.write('}\n}\n')
@@ -99,9 +110,12 @@ def instruction_set_mixin(types, commands):
         )
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
-            input_types = ", ".join(arg["type"] for arg in cmd["inputs"])
-            output_types = ", ".join(ret["type"] for ret in cmd["outputs"])
-            f.write(f"    mi(\"{name}\", {opcode}, {{{input_types}}}, {{{output_types}}}),\n")
+            if "class" in cmd:
+                f.write(f"    InstructionPtr(new {cmd['class']}({opcode})),\n")
+            else:
+                input_types = ", ".join(arg["type"] for arg in cmd["inputs"])
+                output_types = ", ".join(ret["type"] for ret in cmd["outputs"])
+                f.write(f"    mi(\"{name}\", {opcode}, {{{input_types}}}, {{{output_types}}}),\n")
         f.write("};\n")
 
 
@@ -111,12 +125,16 @@ def cpu_runtime_mixin(commands):
 
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
-            n_inputs = len(cmd["inputs"])
-            n_outputs = len(cmd["outputs"])
-            flatten = "true" if cmd.get("flatten", False) else "false";
+            if "class" in cmd:
+                func = f"op_{name}"
+            else:
+                n_inputs = len(cmd["inputs"])
+                n_outputs = len(cmd["outputs"])
+                flatten = "true" if cmd.get("flatten", False) else "false";
+                func = f"batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}, {flatten}>";
             f.write(
                 f"case {opcode}:\n"
-                f"    batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}, {flatten}>(instr, locals);\n"
+                f"    {func}(instr, locals);\n"
                 f"    break;\n"
             )
 

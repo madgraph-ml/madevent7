@@ -6,7 +6,7 @@
 
 using namespace madevent;
 
-const TypeList SimpleInstruction::signature(
+TypeList SimpleInstruction::signature(
     const TypeList& args
 ) const {
     if (inputs.size() != args.size()) {
@@ -113,6 +113,36 @@ const TypeList SimpleInstruction::signature(
         output_types.push_back(Type{out_dtype, out_shape});
     }
     return output_types;
+}
+
+TypeList StackInstruction::signature(const TypeList& args) const {
+    if (args.size() == 0) {
+        throw std::invalid_argument("stack has to be called with at least one argument");
+    }
+    auto type = args.front();
+    for (auto& arg : args) {
+        if (arg != type) {
+            throw std::invalid_argument("All arguments must have the same shape and dtype");
+        }
+    }
+    int args_size = args.size();
+    std::vector<int> out_shape{args_size};
+    std::copy(type.shape.begin(), type.shape.end(), std::back_inserter(out_shape));
+    return {{type.dtype, out_shape}};
+}
+
+TypeList UnstackInstruction::signature(const TypeList& args) const {
+    if (args.size() != 1) {
+        throw std::invalid_argument(fmt::format(
+            "unstack expectes one argument, got {}", args.size()
+        ));
+    }
+    auto arg = args[0];
+    if (arg.shape.size() == 0) {
+        throw std::invalid_argument("Argument of unstack must be at least one-dimensional");
+    }
+    std::vector<int> out_shape(arg.shape.begin() + 1, arg.shape.end());
+    return std::vector<Type>(arg.shape[0], {arg.dtype, out_shape});
 }
 
 const std::unordered_map<std::string, InstructionPtr> madevent::build_instruction_set() {

@@ -14,7 +14,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 ) :
     Mapping(
         //TODO: replace with scalar array
-        TypeList(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2), scalar),
+        {scalar_array(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2))},
         {four_vector_array(topology.outgoing_masses.size() + 2), scalar, scalar},
         {}
     ),
@@ -77,7 +77,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto r = inputs.begin();
+    auto random_numbers = fb.unstack(inputs[0]);
+    auto r = random_numbers.begin();
     ValueList dets{pi_factors};
     Value x1, x2, s_hat;
     if (luminosity) {
