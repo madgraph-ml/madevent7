@@ -137,7 +137,9 @@ PYBIND11_MODULE(madevent_py, m) {
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
     py::class_<Propagator>(m, "Propagator")
-        .def(py::init<double, double>(), py::arg("mass"), py::arg("width"));
+        .def(py::init<double, double>(), py::arg("mass"), py::arg("width"))
+        .def_readonly("mass", &Propagator::mass)
+        .def_readonly("width", &Propagator::width);
     py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<Propagator>, double, bool>(),
              py::arg("propagators"), py::arg("nu")=0., py::arg("map_resonances")=false);
@@ -162,6 +164,27 @@ PYBIND11_MODULE(madevent_py, m) {
         .def_readonly("t_vertices", &Diagram::t_vertices)
         .def_readonly("lines_after_t", &Diagram::lines_after_t)
         .def_readonly("decays", &Diagram::decays);
+    auto& topology = py::class_<Topology>(m, "Topology")
+        .def(py::init<Diagram&, Topology::DecayMode>(),
+             py::arg("diagram"), py::arg("decay_mode"))
+        .def_readonly("incoming_masses", &Topology::incoming_masses)
+        .def_readonly("outgoing_masses", &Topology::outgoing_masses)
+        .def_readonly("t_propagators", &Topology::t_propagators)
+        .def_readonly("decays", &Topology::decays)
+        .def_readonly("permutation", &Topology::permutation)
+        .def_readonly("inverse_permutation", &Topology::inverse_permutation);
+    py::enum_<Topology::DecayMode>(topology, "DecayMode")
+        .value("no_decays", Topology::no_decays)
+        .value("massive_decays", Topology::massive_decays)
+        .value("all_decays", Topology::all_decays)
+        .export_values();
+    py::class_<Topology::Decay>(m, "Decay")
+        .def_readonly("propagator", &Topology::Decay::propagator)
+        .def_readonly("child_count", &Topology::Decay::child_count);
+    py::class_<PhaseSpaceMapping, Mapping>(m, "PhaseSpaceMapping")
+        .def(py::init<Topology&, double, double, bool, double, double>(),
+             py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.);
 
     /*
     py::class_<Diagram>(m, "Diagram")

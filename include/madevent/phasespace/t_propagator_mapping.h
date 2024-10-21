@@ -18,7 +18,7 @@ public:
         bool map_resonances=false
     );
     std::size_t random_dim() const {
-        return 4 * t_invariants.size() + 1;
+        return 3 * t_invariants.size() - 1;
     }
 
 private:

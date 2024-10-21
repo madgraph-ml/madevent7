@@ -30,8 +30,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 {
     // Initialize s invariants and decay mappings
     std::vector<double> sqrt_s_min(topology.outgoing_masses);
-    for (auto& layer : topology.s_decays) {
-        if (!has_t_channel && &layer == &topology.s_decays.back()) {
+    for (auto& layer : topology.decays) {
+        if (!has_t_channel && &layer == &topology.decays.back()) {
             auto& decay_mappings = s_decays.emplace_back().emplace_back();
             decay_mappings.count = layer[0].child_count;
             decay_mappings.decay.emplace(true);
@@ -64,7 +64,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         }
         t_mapping = TPropagatorMapping(topology.t_propagators);
     } else if (!leptonic) {
-        auto& s_line = topology.s_decays.back()[0].propagator;
+        auto& s_line = topology.decays.back()[0].propagator;
         if (s_line.mass >= std::sqrt(s_hat_min)) {
             luminosity = Luminosity(s_lab, s_hat_min, s_lab, 0., s_line.mass, s_line.width);
         } else {
@@ -96,10 +96,9 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // sample s-invariants from decays, starting from the final state particles
     ValueList sqrt_s;
-    std::transform(
-        inverse_permutation.begin(), inverse_permutation.end(), std::back_inserter(sqrt_s),
-        [this](auto index) { return outgoing_masses[index]; }
-    );
+    for (auto index : inverse_permutation) {
+        sqrt_s.push_back(outgoing_masses[index]);
+    }
     struct DecayData {
         const DecayMappings& mappings;
         ValueList masses;
@@ -140,7 +139,6 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         auto sqs_min_sums_iter = sqs_min_sums.rbegin();
         for (auto& data : layer_data) {
             auto sqs_min_item = *(sqs_min_iter++);
-            auto sqs_min_sum_item = *(sqs_min_sums_iter++);
             if (data.mappings.count == 1) {
                 sqrt_s.push_back(sqs_min_item);
                 continue;
@@ -149,7 +147,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto s_max =
                 &data == &layer_data.back() ?
                 fb.square(sqs_sum) :
-                fb.square(fb.sub(sqs_sum, sqs_min_sum_item));
+                fb.square(fb.sub(sqs_sum, *(sqs_min_sums_iter++)));
             auto [s_vec, det] = data.mappings.invariant->build_forward(
                 fb, {*(r++)}, {s_min, s_max}
             );
@@ -188,23 +186,20 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 p_out.push_back(*(k_in_iter++));
                 continue;
             }
-            auto k_in = *(k_in_iter++);
-            ValueList decay_args{*(r++), *(r++)};
-            if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
-            decay_args.push_back(*data.s);
-            decay_args.push_back(*data.sqrt_s);
+            ValueList decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
             std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
+            if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
             auto [k_out, det] = data.mappings.decay->build_forward(fb, decay_args, {});
             std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
             dets.push_back(det);
         }
     }
 
+
     // permute and return momenta
-    std::transform(
-        permutation.begin(), permutation.end(), std::back_inserter(p_ext),
-        [&p_out](auto index) { return p_out[index]; }
-    );
+    for (auto index : permutation) {
+        p_ext.push_back(p_out[index]);
+    }
     auto p_ext_stack = fb.stack(p_ext);
     auto p_ext_lab = luminosity ? fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) : p_ext_stack;
     auto ps_weight = fb.product(dets);

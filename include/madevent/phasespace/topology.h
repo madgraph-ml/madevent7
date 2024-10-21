@@ -52,17 +52,22 @@ struct Topology {
     enum DecayMode { no_decays, massive_decays, all_decays };
     struct Decay {
         Propagator propagator;
-        std::size_t child_count;
+        std::size_t child_count = 1;
     };
 
     std::vector<double> incoming_masses;
     std::vector<double> outgoing_masses;
     std::vector<Propagator> t_propagators;
-    std::vector<std::vector<Decay>> s_decays;
+    std::vector<std::vector<Decay>> decays;
     IndexList permutation;
     IndexList inverse_permutation;
 
     Topology(const Diagram& diagram, DecayMode decay_mode);
+
+private:
+    std::tuple<std::size_t, std::size_t> build_decays(
+        const Diagram& diagram, DecayMode decay_mode, Diagram::LineRef line
+    );
 };
 
 }

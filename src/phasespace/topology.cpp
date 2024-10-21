@@ -1,6 +1,6 @@
 #include "madevent/phasespace/topology.h"
 
-#include <algorithm>
+#include <numeric>
 
 using namespace madevent;
 
@@ -123,7 +123,80 @@ std::ostream& madevent::operator<<(std::ostream& out, const Diagram::LineRef& va
 }
 
 Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
-    incoming_masses(diagram.incoming_masses), outgoing_masses(diagram.outgoing_masses)
+    incoming_masses(diagram.incoming_masses),
+    outgoing_masses(diagram.outgoing_masses),
+    permutation(diagram.outgoing_masses.size())
 {
+    std::size_t max_depth = 0;
+    std::size_t count_before = 0;
+    auto prop_iter = diagram.t_propagators.begin();
+    for (auto& lines : diagram.lines_after_t) {
+        for (auto& line : lines) {
+            auto [depth, count] = build_decays(diagram, decay_mode, line);
+            for (; max_depth < depth; ++max_depth) {
+                decays[max_depth].insert(decays[max_depth].begin(), count_before, Decay());
+            }
+            for (; depth < max_depth; ++depth) {
+                decays[depth].insert(decays[depth].end(), count, Decay());
+            }
+            for (int i = 0; i < count - 1; ++i) {
+                t_propagators.emplace_back();
+            }
+            count_before += count;
+        }
+        if (prop_iter != diagram.t_propagators.end()) {
+            t_propagators.push_back(diagram.propagators[*prop_iter]);
+            ++prop_iter;
+        }
+    }
 
+    std::iota(permutation.begin(), permutation.end(), 0);
+    std::sort(
+        permutation.begin(),
+        permutation.end(),
+        [this](auto i, auto j) { return inverse_permutation[i] < inverse_permutation[j]; }
+    );
+}
+
+std::tuple<std::size_t, std::size_t> Topology::build_decays(
+    const Diagram& diagram, DecayMode decay_mode, Diagram::LineRef line_in
+) {
+    if (line_in.type == Diagram::outgoing) {
+        inverse_permutation.push_back(line_in.index);
+        return {0, 1};
+    }
+
+    auto& propagator = diagram.propagators[line_in.index];
+    std::size_t max_depth = 0;
+    std::size_t count_before = 0;
+    std::vector<std::vector<Decay>::iterator> decay_layer_begin;
+    for (auto& decay_layer : decays) {
+        decay_layer_begin.push_back(decay_layer.begin());
+    }
+    for (auto& line : diagram.decays[line_in.index]) {
+        auto [depth, count] = build_decays(diagram, decay_mode, line);
+        for (; max_depth < depth; ++max_depth) {
+            if (decay_layer_begin.size() == max_depth) {
+                decay_layer_begin.push_back(decays[max_depth].begin());
+            }
+            decays[max_depth].insert(decay_layer_begin[max_depth], count_before, Decay());
+        }
+        for (; depth < max_depth; ++depth) {
+            decays[depth].insert(decays[depth].end(), count, Decay());
+        }
+        count_before += count;
+    }
+
+    // TODO maybe not check for mass 0 but for propagator mass > minimum mass
+    if (decay_mode == Topology::all_decays ||
+        (decay_mode == Topology::massive_decays && propagator.mass != 0)
+    ) {
+        if (decays.size() == max_depth) {
+            decays.emplace_back();
+        }
+        decays[max_depth].push_back({propagator, count_before});
+        ++max_depth;
+        count_before = 1;
+    }
+    return {max_depth, count_before};
 }
