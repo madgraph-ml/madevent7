@@ -38,7 +38,7 @@ std::ostream& madevent::operator<<(std::ostream& out, const InstructionCall& cal
 
 std::ostream& madevent::operator<<(std::ostream& out, const Function& func) {
     out << "inputs " << func.inputs << "\n";
-    for (auto instr : func.instructions) {
+    for (auto& instr : func.instructions) {
         out << instr << "\n";
     }
     out << "outputs " << func.outputs << "\n";
@@ -108,7 +108,8 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
         locals.push_back(value);
         call_outputs.push_back(value);
     }
-    instructions.push_back(InstructionCall{instruction, args, call_outputs});
+    instructions.push_back(InstructionCall{instruction.get(), args, call_outputs});
+    std::cout << instructions.back() << "\n";
     return call_outputs;
 }
 

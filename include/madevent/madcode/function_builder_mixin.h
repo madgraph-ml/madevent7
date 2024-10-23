@@ -9,6 +9,15 @@ ValueList unstack(Value in) {
     return instruction("unstack", {in});
 }
 
+std::array<Value, 2> batch_cat(ValueList args) {
+    auto output_vector = instruction("batch_cat", args);
+    return {output_vector[0], output_vector[1]};
+}
+
+ValueList batch_split(Value in, Value counts) {
+    return instruction("batch_split", {in, counts});
+}
+
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
 }

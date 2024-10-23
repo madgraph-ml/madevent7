@@ -36,6 +36,7 @@ const Type scalar_int{DT_INT, {}};
 const Type scalar_bool{DT_BOOL, {}};
 const Type four_vector{DT_FLOAT, {4}};
 inline Type scalar_array(int count) { return {DT_FLOAT, {count}}; }
+inline Type scalar_int_array(int count) { return {DT_INT, {count}}; }
 inline Type four_vector_array(int count) { return {DT_FLOAT, {count, 4}}; }
 
 class Instruction {
@@ -87,8 +88,21 @@ public:
     TypeList signature(const TypeList& args) const override;
 };
 
-using InstructionPtr = std::unique_ptr<Instruction>;
-const std::unordered_map<std::string, InstructionPtr> build_instruction_set();
-const std::unordered_map<std::string, InstructionPtr> instruction_set = build_instruction_set();
+class BatchCatInstruction : public Instruction {
+public:
+    BatchCatInstruction(int _opcode) : Instruction("batch_cat", _opcode) {}
+    TypeList signature(const TypeList& args) const override;
+};
+
+class BatchSplitInstruction : public Instruction {
+public:
+    BatchSplitInstruction(int _opcode) : Instruction("batch_split", _opcode) {}
+    TypeList signature(const TypeList& args) const override;
+};
+
+using InstructionOwner = std::unique_ptr<const Instruction>;
+using InstructionPtr = Instruction const*;
+const std::unordered_map<std::string, InstructionOwner> build_instruction_set();
+const std::unordered_map<std::string, InstructionOwner> instruction_set = build_instruction_set();
 
 }

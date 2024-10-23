@@ -104,14 +104,14 @@ def instruction_set_mixin(types, commands):
             "    int opcode,\n"
             "    std::initializer_list<SigType> inputs,\n"
             "    std::initializer_list<SigType> outputs\n"
-            ") { return InstructionPtr(new SimpleInstruction(name, opcode, inputs, outputs)); };\n"
+            ") { return InstructionOwner(new SimpleInstruction(name, opcode, inputs, outputs)); };\n"
             "\n"
-            "InstructionPtr instructions[] {\n"
+            "InstructionOwner instructions[] {\n"
         )
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
             if "class" in cmd:
-                f.write(f"    InstructionPtr(new {cmd['class']}({opcode})),\n")
+                f.write(f"    InstructionOwner(new {cmd['class']}({opcode})),\n")
             else:
                 input_types = ", ".join(arg["type"] for arg in cmd["inputs"])
                 output_types = ", ".join(ret["type"] for ret in cmd["outputs"])

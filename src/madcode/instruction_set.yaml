@@ -29,6 +29,24 @@ unstack:
   outputs: any
   desc: 
   class: UnstackInstruction
+batch_cat:
+  inputs: any
+  outputs:
+    - name: out
+      desc:
+    - name: counts
+      desc:
+  desc:
+  class: BatchCatInstruction
+batch_split:
+  inputs:
+    - name: in
+      desc:
+    - name: counts
+      desc:
+  outputs: any
+  desc:
+  class: BatchSplitInstruction
 
 ---
 title: Math

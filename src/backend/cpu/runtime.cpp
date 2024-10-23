@@ -97,6 +97,14 @@ void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
 
 }
 
+void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+
+}
+
+void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+
+}
+
 }
 
 Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {

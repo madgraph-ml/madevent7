@@ -18,7 +18,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         {four_vector_array(topology.outgoing_masses.size() + 2), scalar, scalar},
         {}
     ),
-    pi_factors(std::pow(2 * PI, 4 - 3 * topology.outgoing_masses.size())),
+    pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
     s_lab(_s_lab),
     s_hat_min(_s_hat_min),
     leptonic(_leptonic),

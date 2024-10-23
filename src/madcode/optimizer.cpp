@@ -1,6 +1,7 @@
 #include "madevent/madcode/optimizer.h"
 
 #include <algorithm>
+#include <numeric>
 
 using namespace madevent;
 
@@ -10,19 +11,22 @@ InstructionDependencies::InstructionDependencies(const Function& function) :
     std::vector<int> local_source(function.locals.size(), -1);
     int index = 0;
     for (auto& instr : function.instructions) {
+        int rank = 0;
         for (auto& input : instr.inputs) {
             auto source_index = local_source[input.local_index];
-            if (source_index != -1) {
-                matrix[index * size + source_index] = true;
-                for (int i = 0; i < size; ++i) {
-                    matrix[index * size + i] =
-                        matrix[index * size + i] | matrix[source_index * size + i];
-                }
+            if (source_index == -1) continue;
+            matrix[index * size + source_index] = true;
+            for (int i = 0; i < size; ++i) {
+                matrix[index * size + i] =
+                    matrix[index * size + i] | matrix[source_index * size + i];
             }
+            int source_rank = ranks[source_index];
+            if (rank < source_rank) rank = source_rank;
         }
         for (auto& output : instr.outputs) {
             local_source[output.local_index] = index;
         }
+        ranks.push_back(rank + 1);
         ++index;
     }
 }
@@ -49,4 +53,140 @@ LastUseOfLocals::LastUseOfLocals(const Function& function) :
         }
     }
     std::reverse(last_used.begin(), last_used.end());
+}
+
+MergeOptimizer::MergeOptimizer(const Function& function) {
+    InstructionDependencies dependencies(function);
+    auto size = function.instructions.size();
+    std::vector<std::size_t> perm(size);
+    std::iota(perm.begin(), perm.end(), 0);
+    std::sort(perm.begin(), perm.end(), [&dependencies](auto i, auto j) {
+        return dependencies.ranks[i] < dependencies.ranks[j];
+    });
+    for (auto i : perm) {
+        MergedInstruction instr{{function.instructions[i]}, dependencies.ranks[i]};
+        for (auto j : perm) {
+            instr.dependencies.push_back(dependencies.matrix[i * size + j]);
+        }
+        instructions.push_back(instr);
+    }
+}
+
+Function MergeOptimizer::optimize() {
+    int max_rank = instructions.back().rank;
+    std:size_t instr_size = instructions.size();
+    for (int rank_diff = 0; rank_diff < max_rank; ++rank_diff) {
+        for (std::size_t idx1 = 0; idx1 < instr_size; ++idx1) {
+            auto& instr1 = instructions[idx1];
+            if (!instr1.active) continue;
+            for (std::size_t idx2 = idx1 + 1; idx2 < instr_size; ++idx2) {
+                auto& instr2 = instructions[idx2];
+                if (instr2.rank - instr1.rank > rank_diff) break;
+                if (!instr2.active) continue;
+                merge_if_compatible(idx1, instr1, idx2, instr2);
+            }
+        }
+    }
+
+    int count = -1;
+    for (auto& instr : instructions) {
+        ++count;
+        if (!instr.active) continue;
+        if (instr.instructions.size() == 1) {
+            std::cout << count << " [" << instr.rank << "] " << instr.instructions.front() << "\n";
+        } else {
+            std::cout << count << " [" << instr.rank << "] {\n";
+            for (auto& sub_instr : instr.instructions) {
+                std::cout << "  " << sub_instr << "\n";
+            }
+            std::cout << "}\n";
+        }
+    }
+    return {};
+}
+
+void MergeOptimizer::merge_if_compatible(
+    std::size_t idx1,
+    MergedInstruction& instr1,
+    std::size_t idx2,
+    MergedInstruction& instr2
+) {
+    //return;
+    // Check if instructions can be merged, otherwise return
+    auto& instr1_first = instr1.instructions.front();
+    auto& instr2_first = instr2.instructions.front();
+    if (
+        instr1.dependencies[idx2] ||
+        instr2.dependencies[idx1] ||
+        instr1_first.instruction != instr2_first.instruction ||
+        instr1_first.instruction->name == "batch_cat" ||
+        instr1_first.instruction->name == "batch_split" ||
+        instr1_first.inputs.size() != instr2_first.inputs.size()
+    ) return;
+    for (
+        auto in1 = instr1_first.inputs.begin(), in2 = instr2_first.inputs.begin();
+        in1 != instr1_first.inputs.end();
+        ++in1, ++in2
+    ) {
+        if (in1->literal_value != in2->literal_value) return;
+        if (!std::holds_alternative<std::monostate>(in1->literal_value)) continue;
+        if (in1->type != in2->type) return;
+    }
+
+    // Deactivate first instruction, move content to second one
+    instr1.active = false;
+    instr2.instructions.insert(
+        instr2.instructions.end(),
+        std::make_move_iterator(instr1.instructions.begin()),
+        std::make_move_iterator(instr1.instructions.end())
+    );
+    instr1.instructions.clear();
+    auto dep1 = instr1.dependencies, dep2 = instr2.dependencies;
+
+    // Permute instructions and dependency matrix such that instructions which depended on the first
+    // instruction are executed after the second one
+    std::vector<std::size_t> perm_indices;
+    std::vector<std::size_t> indices_after;
+    for (std::size_t i = idx1 + 1; i < idx2; ++i) {
+        if (instructions[i].dependencies[idx1]) {
+            indices_after.push_back(i);
+        } else {
+            perm_indices.push_back(i);
+        }
+    }
+    auto new_idx2 = idx1 + 1 + perm_indices.size();
+    perm_indices.push_back(idx2);
+    perm_indices.insert(perm_indices.end(), indices_after.begin(), indices_after.end());
+    std::vector<MergedInstruction> perm_instructions;
+    for (auto perm_index : perm_indices) {
+        perm_instructions.push_back(std::move(instructions[perm_index]));
+    }
+    std::move(perm_instructions.begin(), perm_instructions.end(), instructions.begin() + idx1 + 1);
+    std::vector<bool> perm_dep(idx2 - idx1);
+    for (auto instr = instructions.begin() + idx1; instr != instructions.end(); ++instr) {
+        perm_dep.clear();
+        for (auto perm_index : perm_indices) {
+            perm_dep.push_back(instr->dependencies[perm_index]);
+        }
+        std::copy(perm_dep.begin(), perm_dep.end(), instr->dependencies.begin() + idx1 + 1);
+    }
+
+    // Update dependency matrix to account for the merge
+    auto& new_instr2 = instructions[new_idx2];
+    dep2[new_idx2] = true;
+    instr1.dependencies.assign(dep1.size(), false); // TODO: is this needed?
+    std::transform(
+        new_instr2.dependencies.begin(), new_instr2.dependencies.end(), dep1.begin(),
+        new_instr2.dependencies.begin(), std::logical_or<>{}
+    );
+    for (auto instr = instructions.begin() + new_idx2 + 1; instr != instructions.end(); ++instr) {
+        auto& dep = instr->dependencies;
+        if (dep[idx1]) {
+            std::transform(dep.begin(), dep.end(), dep2.begin(), dep.begin(), std::logical_or<>{});
+            dep[idx1] = false;
+        }
+        if (dep[new_idx2]) {
+            std::transform(dep.begin(), dep.end(), dep1.begin(), dep.begin(), std::logical_or<>{});
+        }
+    }
 }

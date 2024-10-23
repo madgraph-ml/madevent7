@@ -24,8 +24,11 @@ public:
     ) const;
     Function forward_function() const;
     Function inverse_function() const;
+    const TypeList& get_input_types() const { return input_types; }
+    const TypeList& get_output_types() const { return output_types; }
+    const TypeList& get_condition_types() const { return condition_types; }
 
-private:
+protected:
     TypeList input_types;
     TypeList output_types;
     TypeList condition_types;

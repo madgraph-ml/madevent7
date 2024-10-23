@@ -134,7 +134,7 @@ TypeList StackInstruction::signature(const TypeList& args) const {
 TypeList UnstackInstruction::signature(const TypeList& args) const {
     if (args.size() != 1) {
         throw std::invalid_argument(fmt::format(
-            "unstack expectes one argument, got {}", args.size()
+            "unstack expects one argument, got {}", args.size()
         ));
     }
     auto arg = args[0];
@@ -145,9 +145,36 @@ TypeList UnstackInstruction::signature(const TypeList& args) const {
     return std::vector<Type>(arg.shape[0], {arg.dtype, out_shape});
 }
 
-const std::unordered_map<std::string, InstructionPtr> madevent::build_instruction_set() {
+TypeList BatchCatInstruction::signature(const TypeList& args) const {
+    if (args.size() == 0) {
+        throw std::invalid_argument("batch_cat has to be called with at least one argument");
+    }
+    auto type = args.front();
+    for (auto& arg : args) {
+        if (arg != type) {
+            throw std::invalid_argument("All arguments must have the same shape and dtype");
+        }
+    }
+    int args_size = args.size();
+    return {type, {DT_INT, {args_size}}};
+}
+
+TypeList BatchSplitInstruction::signature(const TypeList& args) const {
+    if (args.size() != 2) {
+        throw std::invalid_argument(fmt::format(
+            "batch_split expects two arguments, got {}", args.size()
+        ));
+    }
+    auto split_arg = args[0], count_arg = args[1];
+    if (count_arg.shape.size() != 1 || count_arg.dtype != DT_INT) {
+        throw std::invalid_argument("Second argument of batch_split must be one-dimensional int");
+    }
+    return std::vector<Type>(count_arg.shape[0], split_arg);
+}
+
+const std::unordered_map<std::string, InstructionOwner> madevent::build_instruction_set() {
 #include "instruction_set_mixin.h"
-    std::unordered_map<std::string, InstructionPtr> instruction_set;
+    std::unordered_map<std::string, InstructionOwner> instruction_set;
     for (auto& instruction : instructions) {
         instruction_set[instruction->name] = std::move(instruction);
     }

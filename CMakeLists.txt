@@ -48,6 +48,7 @@ add_library(
     src/phasespace/topology.cpp
     src/phasespace/t_propagator_mapping.cpp
     src/phasespace/phasespace.cpp
+    src/phasespace/multichannel.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/madcode.h
@@ -63,6 +64,7 @@ add_library(
     include/madevent/phasespace/topology.h
     include/madevent/phasespace/t_propagator_mapping.h
     include/madevent/phasespace/phasespace.h
+    include/madevent/phasespace/multichannel.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu
@@ -79,6 +81,7 @@ if(OpenMP_CXX_FOUND)
 endif()
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 
+message("TORCH_PYTHON_LIBRARY=${TORCH_LIBRARIES}")
 message("TORCH_PYTHON_LIBRARY=${TORCH_PYTHON_LIBRARY}")
 pybind11_add_module(
     madevent_py

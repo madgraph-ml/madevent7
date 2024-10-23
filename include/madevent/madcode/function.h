@@ -35,7 +35,7 @@ struct Value {
 using ValueList = std::vector<Value>;
 
 struct InstructionCall {
-    const InstructionPtr& instruction;
+    InstructionPtr instruction;
     ValueList inputs;
     ValueList outputs;
 };
