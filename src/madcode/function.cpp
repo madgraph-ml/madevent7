@@ -109,7 +109,6 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
         call_outputs.push_back(value);
     }
     instructions.push_back(InstructionCall{instruction.get(), args, call_outputs});
-    std::cout << instructions.back() << "\n";
     return call_outputs;
 }
 

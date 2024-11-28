@@ -10,7 +10,7 @@ class Luminosity : public Mapping {
 public:
     Luminosity(
         double _s_lab, double _s_hat_min, double _s_hat_max = 0,
-        double nu = 0, double mass = 0, double width = 0
+        double nu = 1, double mass = 0, double width = 0
     ) :
         Mapping({scalar, scalar}, {scalar, scalar, scalar}, {}),
         s_lab(_s_lab),

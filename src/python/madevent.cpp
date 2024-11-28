@@ -68,6 +68,9 @@ PYBIND11_MODULE(madevent_py, m) {
         .def_readonly("opcode", &InstrCopy::opcode);
 
     py::class_<Value>(m, "Value")
+        .def(py::init<bool>(), py::arg("value"))
+        .def(py::init<int>(), py::arg("value"))
+        .def(py::init<double>(), py::arg("value"))
         .def("__str__", &to_string<Value>)
         .def("__repr__", &to_string<Value>)
         .def_readonly("type", &Value::type)
@@ -184,7 +187,7 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<PhaseSpaceMapping, Mapping>(m, "PhaseSpaceMapping")
         .def(py::init<Topology&, double, double, bool, double, double>(),
              py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.);
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4);
     py::class_<MergeOptimizer>(m, "MergeOptimizer")
         .def(py::init<Function&>(), py::arg("function"))
         .def("optimize", &MergeOptimizer::optimize);

@@ -39,7 +39,6 @@ private:
 
     double pi_factors;
     double s_lab;
-    double s_hat_min;
     bool leptonic;
     bool has_t_channel;
     double sqrt_s_epsilon;

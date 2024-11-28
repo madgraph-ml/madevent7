@@ -74,12 +74,69 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+void tensor_copy(Tensor source, Tensor target) {
+    uint8_t* source_ptr = source.bytes();
+    uint8_t* target_ptr = target.bytes();
+    std::size_t contiguous_dims = std::min(source.contiguous_dims(), target.contiguous_dims());
+    auto& shape = source.shape();
+    std::size_t dim_count = shape.size();
+    if (contiguous_dims == dim_count) {
+        std::memcpy(target_ptr, source_ptr, source.stride().back() * shape.back());
+        return;
+    }
+
+    std::size_t copy_size = contiguous_dims == 0 ?
+        source.dtype_size() :
+        source.stride()[contiguous_dims - 1] * shape[contiguous_dims - 1];
+    SizeVec indices(dim_count - contiguous_dims);
+    SizeVec source_step_sizes, target_step_sizes;
+    source_step_sizes.reserve(indices.size());
+    target_step_sizes.reserve(indices.size());
+    std::size_t prev_source_total_size = 0;
+    std::size_t prev_target_total_size = 0;
+    for (std::size_t i = contiguous_dims; i < dim_count; ++i) {
+        std::size_t source_step_size = source.stride()[i];
+        std::size_t target_step_size = target.stride()[i];
+        source_step_sizes.push_back(source_step_size - prev_source_total_size);
+        target_step_sizes.push_back(target_step_size - prev_target_total_size);
+        prev_source_total_size = source_step_size * shape[i];
+        prev_target_total_size = target_step_size * shape[i];
+    }
+
+    std::size_t max_dim = dim_count - contiguous_dims - 1;
+    std::size_t dim = max_dim;
+    while (true) {
+        auto& index = indices[dim];
+        if (index < shape[contiguous_dims + dim]) {
+            if (dim == 0) {
+                std::memcpy(target_ptr, source_ptr, copy_size);
+                source_ptr += source_step_sizes[dim];
+                target_ptr += target_step_sizes[dim];
+                ++index;
+            } else {
+                --dim;
+            }
+        } else {
+            if (dim == max_dim) {
+                break;
+            } else {
+                index = 0;
+                ++dim;
+                source_ptr += source_step_sizes[dim];
+                target_ptr += target_step_sizes[dim];
+                ++indices[dim];
+            }
+        }
+
+    }
+}
+
 void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-    std::size_t batch_size;
+    std::size_t batch_size, index = 0;
     Tensor output;
     bool first = true;
     for (auto input_index : instruction.input_indices) {
-        auto input = locals[input_index];
+        auto& input = locals[input_index];
         auto input_size = input.size(0);
         if (first) {
             batch_size = input_size;
@@ -90,19 +147,49 @@ void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
         } else if (input_size != batch_size) {
             throw std::runtime_error("incompatible input shapes");
         }
+        tensor_copy(input, output.select(1, index));
+        ++index;
     }
+    locals[instruction.output_indices[0]] = output;
 }
 
 void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-
+    auto tensors = locals[0].unstack(1);
+    auto output_index = instruction.output_indices.begin();
+    for (auto& tensor : tensors) {
+        locals[*output_index] = tensor;
+        ++output_index;
+    }
 }
 
 void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-
+    std::size_t batch_size = 0;
+    SizeVec sizes;
+    for (auto input_index : instruction.input_indices) {
+        auto size = locals[input_index].size(0);
+        sizes.push_back(size);
+        batch_size += size;
+    }
+    auto shape = locals[instruction.input_indices.front()].shape();
+    shape[0] = batch_size;
+    Tensor output(instruction.output_dtypes.front(), shape);
+    std::size_t offset = 0;
+    for (auto input_index : instruction.input_indices) {
+        auto& input = locals[input_index];
+        auto next_offset = offset + input.size(0);
+        tensor_copy(input, output.slice(0, offset, next_offset));
+        offset = next_offset;
+    }
 }
 
 void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-
+    SizeVec sizes;
+    auto tensors = locals[0].split(0, sizes);
+    auto output_index = instruction.output_indices.begin();
+    for (auto& tensor : tensors) {
+        locals[*output_index] = tensor;
+        ++output_index;
+    }
 }
 
 }

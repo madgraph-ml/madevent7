@@ -19,13 +19,17 @@ KERNELSPEC void _boost(FViewIn<1> k, FViewIn<1> p_boost, double sign, FViewOut<1
     p_out[3] = k[3] + c1 * p_boost[3];
 }
 
-KERNELSPEC void _boost_beam(FViewIn<1> q, double rapidity, double sign, FViewOut<1> p_out) {
+KERNELSPEC void _boost_beam(FViewIn<2> q, double rapidity, double sign, FViewOut<2> p_out) {
     auto cosh_rap = cosh(rapidity);
     auto sinh_rap = sinh(rapidity);
-    p_out[0] = q[0] * cosh_rap + sign * q[3] * sinh_rap;
-    p_out[1] = q[1];
-    p_out[2] = q[2];
-    p_out[3] = q[3] * cosh_rap + sign * q[0] * sinh_rap;
+    for (std::size_t i = 0; i < q.size(); ++i) {
+        auto q_i = q[i];
+        auto p_out_i = p_out[i];
+        p_out_i[0] = q_i[0] * cosh_rap + sign * q_i[3] * sinh_rap;
+        p_out_i[1] = q_i[1];
+        p_out_i[2] = q_i[2];
+        p_out_i[3] = q_i[3] * cosh_rap + sign * q_i[0] * sinh_rap;
+    }
 }
 
 
@@ -65,11 +69,11 @@ KERNELSPEC void kernel_boost_inverse(FViewIn<1> p1, FViewIn<1> p2, FViewOut<1> p
     _boost(p1, p2, -1.0, p_out);
 }
 
-KERNELSPEC void kernel_boost_beam(FViewIn<1> p1, FViewIn<0> rap, FViewOut<1> p_out) {
+KERNELSPEC void kernel_boost_beam(FViewIn<2> p1, FViewIn<0> rap, FViewOut<2> p_out) {
     _boost_beam(p1, rap, 1.0, p_out);
 }
 
-KERNELSPEC void kernel_boost_beam_inverse(FViewIn<1> p1, FViewIn<0> rap, FViewOut<1> p_out) {
+KERNELSPEC void kernel_boost_beam_inverse(FViewIn<2> p1, FViewIn<0> rap, FViewOut<2> p_out) {
     _boost_beam(p1, rap, -1.0, p_out);
 }
 

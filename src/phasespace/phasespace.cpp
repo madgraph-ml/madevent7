@@ -9,7 +9,7 @@
 using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
-    const Topology& topology, double _s_lab, double _s_hat_min, bool _leptonic,
+    const Topology& topology, double _s_lab, double s_hat_min, bool _leptonic,
     double s_min_epsilon, double nu
 ) :
     Mapping(
@@ -20,7 +20,6 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     ),
     pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
     s_lab(_s_lab),
-    s_hat_min(_s_hat_min),
     leptonic(_leptonic),
     has_t_channel(topology.t_propagators.size() != 0),
     sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
@@ -57,7 +56,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 
     // Initialize luminosity and t-channel mapping
     double sqs_min_sum = std::accumulate(sqrt_s_min.begin(), sqrt_s_min.end(), 0);
-    double s_hat_min = std::max(sqs_min_sum * sqs_min_sum, s_hat_min);
+    s_hat_min = std::max(sqs_min_sum * sqs_min_sum, s_hat_min);
     if (has_t_channel) {
         if (!leptonic) {
             luminosity = Luminosity(s_lab, s_hat_min);
@@ -120,9 +119,8 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 skip_layer = true;
             }
             layer_data.push_back(layer_data_item);
-            sqrt_s_min.push_back(fb.clip_min(
-                fb.sum(layer_data_item.masses), decay.count > 1 ? sqrt_s_epsilon : 0.0
-            ));
+            auto sqs_min = fb.sum(layer_data_item.masses);
+            sqrt_s_min.push_back(decay.count > 1 ? fb.clip_min(sqs_min, sqrt_s_epsilon) : sqs_min);
             sqrt_s_iter = sqrt_s_iter_next;
         }
         if (skip_layer) continue;
@@ -141,6 +139,8 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto sqs_min_item = *(sqs_min_iter++);
             if (data.mappings.count == 1) {
                 sqrt_s.push_back(sqs_min_item);
+                sqs_sum = fb.sub(sqs_sum, sqs_min_item);
+                ++sqs_min_sums_iter;
                 continue;
             }
             auto s_min = fb.square(sqs_min_item);
@@ -152,6 +152,9 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 fb, {*(r++)}, {s_min, s_max}
             );
             auto sqs = fb.sqrt(s_vec[0]);
+            if (&data != &layer_data.back()) {
+                sqs_sum = fb.sub(sqs_sum, sqs);
+            }
             sqrt_s.push_back(sqs);
             data.s = s_vec[0];
             data.sqrt_s = sqs;

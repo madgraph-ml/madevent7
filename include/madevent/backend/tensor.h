@@ -86,7 +86,7 @@ inline CpuDevice& cpu_device() {
 
 class Tensor {
 public:
-    Tensor() = default;
+    Tensor() : impl(nullptr) {}
 
     Tensor(const Tensor& other) : impl(other.impl) {
         if (impl != nullptr) ++impl->ref_count;
@@ -150,9 +150,7 @@ public:
 
     template<class T, int dim> TensorView<T, dim> view(bool flatten = false) {
         return TensorView<T, dim>(
-            static_cast<uint8_t*>(impl->data) + impl->offset,
-            impl->stride.data(),
-            flatten ? impl->flat_shape.data() : impl->shape.data()
+            bytes(), impl->stride.data(), flatten ? impl->flat_shape.data() : impl->shape.data()
         );
     }
 
@@ -160,16 +158,28 @@ public:
         return impl->data;
     }
 
-    SizeVec& shape() {
+    uint8_t* bytes() {
+        return static_cast<uint8_t*>(impl->data) + impl->offset;
+    }
+
+    const SizeVec& shape() const {
         return impl->shape;
     }
 
-    SizeVec& stride() {
+    const SizeVec& stride() const {
         return impl->stride;
     }
 
-    std::size_t size(std::size_t i) {
+    std::size_t size(std::size_t i) const {
         return impl->shape[i];
+    }
+
+    std::size_t dtype_size() const {
+        switch (impl->dtype) {
+            case DT_BOOL: return sizeof(bool);
+            case DT_INT: return sizeof(int);
+            case DT_FLOAT: return sizeof(double);
+        }
     }
 
     void reset() {
@@ -183,6 +193,12 @@ public:
         impl->reset(deleter);
         impl = nullptr;
     }
+
+    std::size_t contiguous_dims();
+    Tensor select(std::size_t axis, std::size_t index);
+    Tensor slice(std::size_t axis, std::size_t start, std::size_t stop);
+    std::vector<Tensor> split(std::size_t axis, SizeVec sizes);
+    std::vector<Tensor> unstack(std::size_t axis);
 
 private:
     struct TensorImpl {
@@ -211,6 +227,11 @@ private:
         }
     };
 
+    Tensor(TensorImpl* _impl) : impl(_impl) {
+        if (impl->data_owner != nullptr) {
+            ++impl->data_owner->ref_count;
+        }
+    }
     std::size_t init_stride();
     TensorImpl* impl;
 };
