@@ -32,6 +32,10 @@ KERNELSPEC void kernel_square(FViewIn<0> in, FViewOut<0> out) {
     out = in * in;
 }
 
+KERNELSPEC void kernel_pow(FViewIn<0> in1, FViewIn<0> in2, FViewOut<0> out) {
+    out = pow(in1, in2);
+}
+
 KERNELSPEC void kernel_uniform_phi(FViewIn<0> in, FViewOut<0> out) {
     out = 2 * PI * (in - 0.5);
 }

@@ -24,6 +24,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("clip_min", &FunctionBuilder::clip_min, py::arg("x"), py::arg("min"));
     fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in"));
     fb.def("square", &FunctionBuilder::square, py::arg("in"));
+    fb.def("pow", &FunctionBuilder::pow, py::arg("in1"), py::arg("in2"));
     fb.def("uniform_phi", &FunctionBuilder::uniform_phi, py::arg("in"));
     fb.def("uniform_phi_inverse", &FunctionBuilder::uniform_phi_inverse, py::arg("in"));
     fb.def("uniform_costheta", &FunctionBuilder::uniform_costheta, py::arg("in"));
@@ -58,5 +59,8 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("stable_invariant_inverse", &FunctionBuilder::stable_invariant_inverse, py::arg("s"), py::arg("mass"), py::arg("s_min"), py::arg("s_max"));
     fb.def("stable_invariant_nu", &FunctionBuilder::stable_invariant_nu, py::arg("r"), py::arg("mass"), py::arg("nu"), py::arg("s_min"), py::arg("s_max"));
     fb.def("stable_invariant_nu_inverse", &FunctionBuilder::stable_invariant_nu_inverse, py::arg("s"), py::arg("mass"), py::arg("nu"), py::arg("s_min"), py::arg("s_max"));
+    fb.def("fast_rambo_r_to_u", &FunctionBuilder::fast_rambo_r_to_u, py::arg("r"));
+    fb.def("rambo_four_vectors_massless", &FunctionBuilder::rambo_four_vectors_massless, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"));
+    fb.def("rambo_four_vectors_massive", &FunctionBuilder::rambo_four_vectors_massive, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"), py::arg("masses"));
 }
 }

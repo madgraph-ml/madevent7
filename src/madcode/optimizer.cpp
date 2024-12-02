@@ -52,6 +52,11 @@ Function madevent::optimize_constants(const Function& function) {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 result = arg0 * arg0;
                 break;
+            } case Opcode::pow: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                double arg1 = std::get<double>(inputs.at(1).literal_value);
+                result = std::pow(arg0, arg1);
+                break;
             } default:
                 const_opt = false;
             }

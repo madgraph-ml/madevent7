@@ -1,8 +1,7 @@
 #include "madevent/madcode/function.h"
 
 #include <stdexcept>
-
-#include <fmt/core.h>
+#include <format>
 
 
 using namespace madevent;
@@ -71,7 +70,7 @@ FunctionBuilder::FunctionBuilder(const Function& function) :
 ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
     auto find_instr = instruction_set.find(name);
     if (find_instr == instruction_set.end()) {
-        throw std::invalid_argument(fmt::format("Unknown instruction '{}'", name));
+        throw std::invalid_argument(std::format("Unknown instruction '{}'", name));
     }
     return instruction(find_instr->second.get(), args);
 }
@@ -85,20 +84,20 @@ ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList arg
 
         if (arg.local_index != -1) {
             if (arg.local_index < 0 || arg.local_index > locals.size()) {
-                throw std::invalid_argument(fmt::format(
+                throw std::invalid_argument(std::format(
                     "Argument {}: inconsistent value (local index)", arg_index
                 ));
             }
             auto local_value = locals.at(arg.local_index);
             if (local_value.type != arg.type || local_value.literal_value != arg.literal_value) {
-                throw std::invalid_argument(fmt::format(
+                throw std::invalid_argument(std::format(
                     "Argument {}: inconsistent value (type or value)", arg_index
                 ));
             }
             continue;
         }
         if (std::holds_alternative<std::monostate>(arg.literal_value)) {
-            throw std::invalid_argument(fmt::format(
+            throw std::invalid_argument(std::format(
                 "Argument {}: undefined value", arg_index
             ));
         }
@@ -131,7 +130,7 @@ Function FunctionBuilder::function() {
         if (output) {
             func_outputs.push_back(output.value());
         } else {
-            throw std::invalid_argument(fmt::format(
+            throw std::invalid_argument(std::format(
                 "No value assigned to output {}", output_index
             ));
         }
@@ -142,7 +141,7 @@ Function FunctionBuilder::function() {
 
 Value FunctionBuilder::input(int index) {
     if (index < 0 || index >= inputs.size()) {
-        throw std::out_of_range(fmt::format(
+        throw std::out_of_range(std::format(
             "Input index expected to be in range 0 to {}, got {}",
             inputs.size() - 1, index
         ));
@@ -152,13 +151,13 @@ Value FunctionBuilder::input(int index) {
 
 ValueList FunctionBuilder::input_range(int start_index, int end_index) {
     if (start_index < 0 || start_index > inputs.size()) {
-        throw std::out_of_range(fmt::format(
+        throw std::out_of_range(std::format(
             "Start index expected to be in range 0 to {}, got {}",
             inputs.size(), start_index
         ));
     }
     if (end_index < start_index || end_index > inputs.size()) {
-        throw std::out_of_range(fmt::format(
+        throw std::out_of_range(std::format(
             "End index expected to be in range {} to {}, got {}",
             start_index, inputs.size() - 1, end_index
         ));
@@ -168,20 +167,20 @@ ValueList FunctionBuilder::input_range(int start_index, int end_index) {
 
 void FunctionBuilder::output(int index, Value value) {
     if (index < 0 || index >= outputs.size()) {
-        throw std::out_of_range(fmt::format(
+        throw std::out_of_range(std::format(
             "Output index expected to be in range 0 to {}, got {}",
             outputs.size() - 1, index
         ));
     }
     if (output_types.at(index) != value.type) {
-        throw std::invalid_argument(fmt::format("Wrong output type for output {}", index));
+        throw std::invalid_argument(std::format("Wrong output type for output {}", index));
     }
     outputs.at(index) = value;
 }
 
 void FunctionBuilder::output_range(int start_index, const ValueList& values) {
     if (start_index < 0 || start_index > outputs.size() - values.size()) {
-        throw std::out_of_range(fmt::format(
+        throw std::out_of_range(std::format(
             "Start index expected to be in range 0 to {}, got {}",
             outputs.size() - values.size(), start_index
         ));

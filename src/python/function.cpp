@@ -1,14 +1,14 @@
 #include "function.h"
 
 #include <stdexcept>
-#include <fmt/core.h>
+#include <format>
 
 using namespace madevent_py;
 
 std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
     auto n_args = function.inputs.size();
     if (args.size() != n_args) {
-        throw std::invalid_argument(fmt::format(
+        throw std::invalid_argument(std::format(
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
         ));
     }
@@ -18,11 +18,11 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
     for (int i = 0; i < n_args; ++i) {
         auto arr = Arr::ensure(args[i]);
         if (!arr) {
-            throw std::invalid_argument(fmt::format("Argument {}: wrong dtype", i));
+            throw std::invalid_argument(std::format("Argument {}: wrong dtype", i));
         }
         auto& input_type = function.inputs[i].type;
         if (arr.ndim() != input_type.shape.size() + 1) {
-            throw std::invalid_argument(fmt::format(
+            throw std::invalid_argument(std::format(
                 "Argument {}: wrong input dimension. Expected {}, got {}",
                 i, input_type.shape.size() + 1, arr.ndim()
             ));
@@ -31,7 +31,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
         for (int j = 0; j < arr.ndim(); ++j) {
             auto arr_size = arr.shape(j);
             if (j != 0 && arr_size != input_type.shape[j-1]) {
-                throw std::invalid_argument(fmt::format(
+                throw std::invalid_argument(std::format(
                     "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
                     i, j, input_type.shape[j-1], arr_size
                 ));
@@ -62,7 +62,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
 std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor> args) {
     auto n_args = function.inputs.size();
     if (args.size() != n_args) {
-        throw std::invalid_argument(fmt::format(
+        throw std::invalid_argument(std::format(
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
         ));
     }
@@ -95,7 +95,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         }
         auto& input_type = function.inputs[i].type;
         if (n_dims != input_type.shape.size() + 1) {
-            throw std::invalid_argument(fmt::format(
+            throw std::invalid_argument(std::format(
                 "Argument {}: wrong input dimension. Expected {}, got {}",
                 i, input_type.shape.size() + 1, n_dims
             ));
@@ -104,7 +104,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         for (int j = 0; j < n_dims; ++j) {
             auto tensor_size = tensor.size(j);
             if (j != 0 && tensor_size != input_type.shape[j-1]) {
-                throw std::invalid_argument(fmt::format(
+                throw std::invalid_argument(std::format(
                     "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
                     i, j, input_type.shape[j-1], tensor_size
                 ));

@@ -8,3 +8,4 @@
 #include "phasespace/t_propagator_mapping.h"
 #include "phasespace/phasespace.h"
 #include "phasespace/multichannel.h"
+#include "phasespace/rambo.h"

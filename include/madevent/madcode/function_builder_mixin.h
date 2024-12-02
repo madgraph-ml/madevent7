@@ -46,6 +46,10 @@ Value square(Value in) {
     return instruction("square", {in})[0];
 }
 
+Value pow(Value in1, Value in2) {
+    return instruction("pow", {in1, in2})[0];
+}
+
 Value uniform_phi(Value in) {
     return instruction("uniform_phi", {in})[0];
 }
@@ -195,5 +199,20 @@ std::array<Value, 2> stable_invariant_nu(Value r, Value mass, Value nu, Value s_
 std::array<Value, 2> stable_invariant_nu_inverse(Value s, Value mass, Value nu, Value s_min, Value s_max) {
     auto output_vector = instruction("stable_invariant_nu_inverse", {s, mass, nu, s_min, s_max});
     return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> fast_rambo_r_to_u(Value r) {
+    auto output_vector = instruction("fast_rambo_r_to_u", {r});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> rambo_four_vectors_massless(Value u, Value e_cm, Value cos_theta, Value phi) {
+    auto output_vector = instruction("rambo_four_vectors_massless", {u, e_cm, cos_theta, phi});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 4> rambo_four_vectors_massive(Value u, Value e_cm, Value cos_theta, Value phi, Value masses) {
+    auto output_vector = instruction("rambo_four_vectors_massive", {u, e_cm, cos_theta, phi, masses});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 

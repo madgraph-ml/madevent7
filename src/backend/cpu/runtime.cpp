@@ -154,7 +154,7 @@ void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
 }
 
 void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-    auto tensors = locals[0].unstack(1);
+    auto tensors = locals[instruction.input_indices[0]].unstack(1);
     auto output_index = instruction.output_indices.begin();
     for (auto& tensor : tensors) {
         locals[*output_index] = tensor;

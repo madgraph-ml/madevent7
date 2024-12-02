@@ -5,12 +5,24 @@ types:
   scalar:
     dtype: float
     shape: []
+  array:
+    dtype: float
+    shape: [n]
+  array_plus:
+    dtype: float
+    shape: ["n+"]
+  array_plus_2:
+    dtype: float
+    shape: ["n++"]
   four_vector:
     dtype: float
     shape: [4]
   four_vector_array:
     dtype: float
     shape: [n, 4]
+  four_vector_array_plus:
+    dtype: float
+    shape: ["n+", 4]
 
 ---
 title: Shapes, etc.
@@ -135,6 +147,19 @@ sqrt:
 square:
   inputs:
     - name: in
+      type: scalar
+      desc:
+  outputs:
+    - name: out
+      type: scalar
+      desc:
+
+pow:
+  inputs:
+    - name: in1
+      type: scalar
+      desc:
+    - name: in2
       type: scalar
       desc:
   outputs:
@@ -748,3 +773,68 @@ stable_invariant_nu_inverse:
       type: scalar
       desc:
 
+fast_rambo_r_to_u:
+  inputs:
+    - name: r
+      type: array
+      desc:
+  outputs:
+    - name: u
+      type: array
+      desc:
+    - name: det
+      type: scalar
+      desc:
+
+rambo_four_vectors_massless:
+  inputs:
+    - name: u
+      type: array
+      desc:
+    - name: e_cm
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: array_plus
+      desc:
+    - name: phi
+      type: array_plus
+      desc:
+  outputs:
+    - name: ps
+      type: four_vector_array_plus
+      desc:
+    - name: qs
+      type: four_vector_array_plus
+      desc:
+
+rambo_four_vectors_massive:
+  inputs:
+    - name: u
+      type: array
+      desc:
+    - name: e_cm
+      type: scalar
+      desc:
+    - name: cos_theta
+      type: array_plus
+      desc:
+    - name: phi
+      type: array_plus
+      desc:
+    - name: masses
+      type: array_plus_2
+      desc:
+  outputs:
+    - name: ps
+      type: four_vector_array_plus
+      desc:
+    - name: qs
+      type: four_vector_array_plus
+      desc:
+    - name: e_cm_massless
+      type: scalar
+      desc:
+    - name: det
+      type: scalar
+      desc:

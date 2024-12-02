@@ -13,12 +13,6 @@ find_package(Torch CONFIG)
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 
 include(FetchContent)
-FetchContent_Declare(
-    fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(fmt)
 
 FetchContent_Declare(
     pybind11
@@ -41,6 +35,7 @@ add_library(
     src/backend/common/kinematics.h
     src/backend/common/math.h
     src/backend/common/two_particle.h
+    src/backend/common/rambo.h
     src/backend/tensor.cpp
     src/backend/cpu/runtime.cpp
     src/backend/cpu/kernels.h
@@ -57,6 +52,7 @@ add_library(
     src/phasespace/t_propagator_mapping.cpp
     src/phasespace/phasespace.cpp
     src/phasespace/multichannel.cpp
+    src/phasespace/rambo.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/madcode.h
@@ -74,6 +70,7 @@ add_library(
     include/madevent/phasespace/t_propagator_mapping.h
     include/madevent/phasespace/phasespace.h
     include/madevent/phasespace/multichannel.h
+    include/madevent/phasespace/rambo.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu
@@ -84,7 +81,6 @@ add_library(
 )
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
-target_link_libraries(madevent PRIVATE fmt::fmt)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
 endif()
@@ -106,4 +102,3 @@ endif()
 
 target_link_libraries(madevent_py PUBLIC madevent)
 target_link_libraries(madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
-target_link_libraries(madevent_py PRIVATE fmt::fmt)

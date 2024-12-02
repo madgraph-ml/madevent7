@@ -188,6 +188,8 @@ PYBIND11_MODULE(madevent_py, m) {
         .def(py::init<Topology&, double, double, bool, double, double>(),
              py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4);
+    py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
+        .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
     py::class_<MergeOptimizer>(m, "MergeOptimizer")
         .def(py::init<Function&>(), py::arg("function"))
         .def("optimize", &MergeOptimizer::optimize);
@@ -195,11 +197,4 @@ PYBIND11_MODULE(madevent_py, m) {
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
 
     m.def("optimize_constants", &optimize_constants);
-
-    /*
-    py::class_<Diagram>(m, "Diagram")
-        .def(py::init<std::vector<Diagram::Propagator>>(), py::arg("t_propagators"));
-    py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
-        .def(py::init<Diagram&, double, bool>(),
-             py::arg("diagram"), py::arg("nu")=0., py::arg("map_resonances")=false);*/
 }

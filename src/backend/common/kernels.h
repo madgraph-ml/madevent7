@@ -6,3 +6,4 @@ inline constexpr double EPS2 = 1e-24;
 #include "kinematics.h"
 #include "two_particle.h"
 #include "invariants.h"
+#include "rambo.h"

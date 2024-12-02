@@ -9,7 +9,7 @@ public:
     FastRamboMapping(std::size_t _n_particles, bool _massless);
 
     std::size_t random_dim() const {
-        return 3 * n_particles - 4;
+        return 3 * n_particles - 4 + (massless ? 0 : n_particles);
     }
 
 private:
@@ -24,6 +24,6 @@ private:
     bool massless;
     double e_cm_power;
     double massless_weight;
-}
+};
 
 }

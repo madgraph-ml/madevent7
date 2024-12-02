@@ -2,15 +2,29 @@
 
 #include <map>
 #include <algorithm>
-#include <fmt/ranges.h>
+#include <format>
+#include <tuple>
+#include <ranges>
 
 using namespace madevent;
+
+namespace {
+
+std::tuple<int, std::string> get_offset_and_name(const std::string& shape_str) {
+    int offset = std::ranges::count(shape_str, '+') - std::ranges::count(shape_str, '-');
+    auto var_name = shape_str
+                  | std::views::filter([](char c) { return c == '+' || c == '-'; })
+                  | std::ranges::to<std::string>();
+    return {offset, var_name};
+}
+
+}
 
 TypeList SimpleInstruction::signature(
     const TypeList& args
 ) const {
     if (inputs.size() != args.size()) {
-        throw std::invalid_argument(fmt::format(
+        throw std::invalid_argument(std::format(
             "Expected {} arguments, got {}", inputs.size(), args.size()
         ));
     }
@@ -23,8 +37,8 @@ TypeList SimpleInstruction::signature(
         auto& [input_dtype, input_shape] = inputs[i];
 
         if (input_dtype != arg_dtype) {
-            throw std::invalid_argument(fmt::format(
-                "Argument {}: dtypes not matching", i + 1
+            throw std::invalid_argument(std::format(
+                "{}, argument {}: dtypes not matching", name, i + 1
             ));
         }
 
@@ -41,9 +55,9 @@ TypeList SimpleInstruction::signature(
             auto wildcard_index = wildcard_pos - input_shape.begin();
             if (!found_wildcard) {
                 if (arg_shape.size() < input_shape.size() - 1) {
-                    throw std::invalid_argument(fmt::format(
-                        "Argument {}: expected dimension of at least {}, got {}",
-                        i, input_shape.size() - 1, arg_shape.size()
+                    throw std::invalid_argument(std::format(
+                        "{}, argument {}: expected dimension of at least {}, got {}",
+                        name, i + 1, input_shape.size() - 1, arg_shape.size()
                     ));
                 }
                 auto begin_pos = arg_shape.begin() + wildcard_index;
@@ -56,9 +70,9 @@ TypeList SimpleInstruction::signature(
         }
 
         if (arg_shape.size() != mod_input_shape.size()) {
-            throw std::invalid_argument(fmt::format(
-                "Argument {}: expected dimension {}, got {}",
-                i, mod_input_shape.size(), arg_shape.size()
+            throw std::invalid_argument(std::format(
+                "{}, argument {}: expected dimension {}, got {}",
+                name, i + 1, mod_input_shape.size(), arg_shape.size()
             ));
         }
         for (size_t j = 0; j < arg_shape.size(); ++j) {
@@ -66,22 +80,22 @@ TypeList SimpleInstruction::signature(
             auto arg_item = arg_shape[j];
             if (const auto shape_int = std::get_if<int>(&input_item)) {
                 if (arg_item != *shape_int) {
-                    throw std::invalid_argument(fmt::format(
-                        "Argument {}, dimension {}: expected size {}, got {}",
-                        i, j, *shape_int, arg_item
+                    throw std::invalid_argument(std::format(
+                        "{}, argument {}, dimension {}: expected size {}, got {}",
+                        name, i + 1, j, *shape_int, arg_item
                     ));
                 }
             } else {
-                auto shape_str = std::get<std::string>(input_item);
-                if (auto var = variables.find(shape_str); var != variables.end()) {
-                    if (arg_item != var->second) {
-                        throw std::invalid_argument(fmt::format(
-                            "Argument {}, dimension {}: expected size {}, got {}",
-                            i, j, var->second, arg_item
+                auto [offset, var_name] = get_offset_and_name(std::get<std::string>(input_item));
+                if (auto var = variables.find(var_name); var != variables.end()) {
+                    if (arg_item - offset != var->second) {
+                        throw std::invalid_argument(std::format(
+                            "{}, argument {}, dimension {}: expected size {}, got {}",
+                            name, i + 1, j, var->second, arg_item
                         ));
                     }
                 } else {
-                    variables[shape_str] = arg_item;
+                    variables[var_name] = arg_item - offset;
                 }
             }
 
@@ -106,7 +120,8 @@ TypeList SimpleInstruction::signature(
                         out_shape.end(), wildcard_shape.begin(), wildcard_shape.end()
                     );
                 } else {
-                    out_shape.push_back(variables.at(shape_str));
+                    auto [offset, var_name] = get_offset_and_name(shape_str);
+                    out_shape.push_back(variables.at(var_name) + offset);
                 }
             }
         }
@@ -133,7 +148,7 @@ TypeList StackInstruction::signature(const TypeList& args) const {
 
 TypeList UnstackInstruction::signature(const TypeList& args) const {
     if (args.size() != 1) {
-        throw std::invalid_argument(fmt::format(
+        throw std::invalid_argument(std::format(
             "unstack expects one argument, got {}", args.size()
         ));
     }
@@ -161,7 +176,7 @@ TypeList BatchCatInstruction::signature(const TypeList& args) const {
 
 TypeList BatchSplitInstruction::signature(const TypeList& args) const {
     if (args.size() != 2) {
-        throw std::invalid_argument(fmt::format(
+        throw std::invalid_argument(std::format(
             "batch_split expects two arguments, got {}", args.size()
         ));
     }
