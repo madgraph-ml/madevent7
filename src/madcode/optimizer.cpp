@@ -2,8 +2,78 @@
 
 #include <algorithm>
 #include <numeric>
+#include <ranges>
 
 using namespace madevent;
+
+Function madevent::optimize_constants(const Function& function) {
+    // add, sub, mul, clip_min, sqrt, square
+    FunctionBuilder fb(function);
+    ValueList new_locals(function.locals);
+    for (auto& instr : function.instructions) {
+        bool const_opt = true;
+        ValueList inputs;
+        for (auto& input : instr.inputs) {
+            Value new_input = std::holds_alternative<std::monostate>(input.literal_value) ?
+                new_locals.at(input.local_index) : Value(input.type, input.literal_value);
+            inputs.push_back(new_input);
+            if (std::holds_alternative<std::monostate>(new_input.literal_value)) {
+                const_opt = false;
+            }
+        }
+        double result;
+        if (const_opt) {
+            switch (instr.instruction->opcode) {
+            case Opcode::add: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                double arg1 = std::get<double>(inputs.at(1).literal_value);
+                result = arg0 + arg1;
+                break;
+            } case Opcode::sub: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                double arg1 = std::get<double>(inputs.at(1).literal_value);
+                result = arg0 - arg1;
+                break;
+            } case Opcode::mul: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                double arg1 = std::get<double>(inputs.at(1).literal_value);
+                result = arg0 * arg1;
+                break;
+            } case Opcode::clip_min: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                double arg1 = std::get<double>(inputs.at(1).literal_value);
+                result = arg0 < arg1 ? arg1 : arg0;
+                break;
+            } case Opcode::sqrt: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                result = std::sqrt(arg0);
+                break;
+            } case Opcode::square: {
+                double arg0 = std::get<double>(inputs.at(0).literal_value);
+                result = arg0 * arg0;
+                break;
+            } default:
+                const_opt = false;
+            }
+        }
+
+        if (const_opt) {
+            new_locals.at(instr.outputs.at(0).local_index) = result;
+        } else {
+            auto outputs = fb.instruction(instr.instruction, inputs);
+            for (auto [instr_output, output] : std::views::zip(instr.outputs, outputs)) {
+                new_locals.at(instr_output.local_index) = output;
+            }
+        }
+    }
+
+    ValueList outputs;
+    for (auto& output : function.outputs) {
+        outputs.push_back(new_locals.at(output.local_index));
+    }
+    fb.output_range(0, outputs);
+    return fb.function();
+}
 
 InstructionDependencies::InstructionDependencies(const Function& function) :
     size(function.instructions.size()), matrix(size * size)
@@ -119,8 +189,8 @@ void MergeOptimizer::merge_if_compatible(
         instr1.dependencies[idx2] ||
         instr2.dependencies[idx1] ||
         instr1_first.instruction != instr2_first.instruction ||
-        instr1_first.instruction->name == "batch_cat" ||
-        instr1_first.instruction->name == "batch_split" ||
+        instr1_first.instruction->opcode == Opcode::batch_cat ||
+        instr1_first.instruction->opcode == Opcode::batch_split ||
         instr1_first.inputs.size() != instr2_first.inputs.size()
     ) return;
     for (

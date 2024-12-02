@@ -1,0 +1,29 @@
+#pragma once
+
+#include "madevent/phasespace/mapping.h"
+
+namespace madevent {
+
+class FastRamboMapping : public Mapping {
+public:
+    FastRamboMapping(std::size_t _n_particles, bool _massless);
+
+    std::size_t random_dim() const {
+        return 3 * n_particles - 4;
+    }
+
+private:
+    Result build_forward_impl(
+        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    ) const override;
+    Result build_inverse_impl(
+        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    ) const override;
+
+    std::size_t n_particles;
+    bool massless;
+    double e_cm_power;
+    double massless_weight;
+}
+
+}

@@ -114,7 +114,7 @@ PYBIND11_MODULE(madevent_py, m) {
         .def("output", &FunctionBuilder::output, py::arg("index"), py::arg("value"))
         .def("output_range", &FunctionBuilder::output_range,
              py::arg("start_index"), py::arg("values"))
-        .def("instruction", &FunctionBuilder::instruction, py::arg("name"), py::arg("args"))
+        //.def("instruction", &FunctionBuilder::instruction, py::arg("name"), py::arg("args"))
         .def("function", &FunctionBuilder::function);
     add_instructions(fb);
 
@@ -193,6 +193,8 @@ PYBIND11_MODULE(madevent_py, m) {
         .def("optimize", &MergeOptimizer::optimize);
     py::class_<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
+
+    m.def("optimize_constants", &optimize_constants);
 
     /*
     py::class_<Diagram>(m, "Diagram")

@@ -28,7 +28,7 @@ struct Value {
     Value(std::string key, Type _type) : type(_type), literal_value(key) {}
     Value(Type _type, int _local_index)
         : type(_type), literal_value(std::monostate{}), local_index(_local_index) {}
-    Value(Type _type, LiteralValue _literal_value, int _local_index)
+    Value(Type _type, LiteralValue _literal_value, int _local_index = -1)
         : type(_type), literal_value(_literal_value), local_index(_local_index) {}
 };
 
@@ -55,11 +55,13 @@ std::ostream& operator<<(std::ostream& out, const Function& func);
 class FunctionBuilder {
 public:
     FunctionBuilder(const std::vector<Type> _input_types, const std::vector<Type> _output_types);
+    FunctionBuilder(const Function& function);
     Value input(int index);
     ValueList input_range(int start_index, int end_index);
     void output(int index, Value value);
     void output_range(int start_index, const ValueList& values);
     ValueList instruction(std::string name, ValueList args);
+    ValueList instruction(InstructionPtr instruction, ValueList args);
     Function function();
 
     Value sum(const ValueList& values);

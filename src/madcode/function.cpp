@@ -58,13 +58,25 @@ FunctionBuilder::FunctionBuilder(
     }
 }
 
+FunctionBuilder::FunctionBuilder(const Function& function) :
+    inputs(function.inputs), locals(function.inputs)
+{
+    TypeList output_types;
+    for (auto& output : function.outputs) {
+        output_types.push_back(output.type);
+        outputs.push_back(std::nullopt);
+    }
+}
+
 ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
     auto find_instr = instruction_set.find(name);
     if (find_instr == instruction_set.end()) {
         throw std::invalid_argument(fmt::format("Unknown instruction '{}'", name));
     }
-    auto& instruction = find_instr->second;
+    return instruction(find_instr->second.get(), args);
+}
 
+ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList args) {
     int arg_index = -1;
     std::vector<Type> arg_types;
     for (auto& arg : args) {
@@ -77,7 +89,7 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
                     "Argument {}: inconsistent value (local index)", arg_index
                 ));
             }
-            auto local_value = locals[arg.local_index];
+            auto local_value = locals.at(arg.local_index);
             if (local_value.type != arg.type || local_value.literal_value != arg.literal_value) {
                 throw std::invalid_argument(fmt::format(
                     "Argument {}: inconsistent value (type or value)", arg_index
@@ -108,7 +120,7 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
         locals.push_back(value);
         call_outputs.push_back(value);
     }
-    instructions.push_back(InstructionCall{instruction.get(), args, call_outputs});
+    instructions.push_back(InstructionCall{instruction, args, call_outputs});
     return call_outputs;
 }
 
@@ -135,7 +147,7 @@ Value FunctionBuilder::input(int index) {
             inputs.size() - 1, index
         ));
     }
-    return inputs[index];
+    return inputs.at(index);
 }
 
 ValueList FunctionBuilder::input_range(int start_index, int end_index) {
@@ -161,10 +173,10 @@ void FunctionBuilder::output(int index, Value value) {
             outputs.size() - 1, index
         ));
     }
-    if (output_types[index] != value.type) {
+    if (output_types.at(index) != value.type) {
         throw std::invalid_argument(fmt::format("Wrong output type for output {}", index));
     }
-    outputs[index] = value;
+    outputs.at(index) = value;
 }
 
 void FunctionBuilder::output_range(int start_index, const ValueList& values) {
@@ -181,7 +193,7 @@ Value FunctionBuilder::sum(const ValueList& values) {
     if (values.size() == 0) {
         return 0.0;
     }
-    auto result = values[0];
+    auto result = values.at(0);
     for (auto value = values.begin() + 1; value != values.end(); ++value) {
         result = add(result, *value);
     }
@@ -192,7 +204,7 @@ Value FunctionBuilder::product(const ValueList& values) {
     if (values.size() == 0) {
         return 1.;
     }
-    auto result = values[0];
+    auto result = values.at(0);
     for (auto value = values.begin() + 1; value != values.end(); ++value) {
         result = mul(result, *value);
     }

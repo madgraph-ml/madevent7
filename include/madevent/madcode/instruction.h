@@ -39,6 +39,10 @@ inline Type scalar_array(int count) { return {DT_FLOAT, {count}}; }
 inline Type scalar_int_array(int count) { return {DT_INT, {count}}; }
 inline Type four_vector_array(int count) { return {DT_FLOAT, {count, 4}}; }
 
+enum Opcode {
+#include "opcode_mixin.h"
+};
+
 class Instruction {
 public:
     std::string name;

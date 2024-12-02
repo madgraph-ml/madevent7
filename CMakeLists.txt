@@ -13,9 +13,10 @@ find_package(Torch CONFIG)
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
 
 include(FetchContent)
-FetchContent_Declare(fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG master
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG master
 )
 FetchContent_MakeAvailable(fmt)
 
@@ -25,6 +26,13 @@ FetchContent_Declare(
     GIT_TAG        v2.13.1
 )
 FetchContent_MakeAvailable(pybind11)
+
+#set(SLEEF_BUILD_TESTS OFF)
+#FetchContent_Declare(
+#    libsleef
+#    GIT_REPOSITORY https://github.com/shibatch/sleef
+#)
+#FetchContent_MakeAvailable(libsleef)
 
 add_library(
     madevent SHARED
@@ -54,6 +62,7 @@ add_library(
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
+    include/madevent/madcode/opcode_mixin.h
     include/madevent/madcode/instruction.h
     include/madevent/madcode/optimizer.h
     include/madevent/phasespace.h
@@ -74,7 +83,7 @@ add_library(
     #include/madevent/backend/cuda/device.h
 )
 target_include_directories(madevent PUBLIC include)
-target_compile_features(madevent PUBLIC cxx_std_17)
+target_compile_features(madevent PUBLIC cxx_std_23)
 target_link_libraries(madevent PRIVATE fmt::fmt)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)

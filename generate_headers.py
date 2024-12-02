@@ -87,7 +87,10 @@ def instruction_set_python(commands):
 
 
 def instruction_set_mixin(types, commands):
-    with open("src/madcode/instruction_set_mixin.h", "w") as f:
+    with (
+        open("src/madcode/instruction_set_mixin.h", "w") as f,
+        open("include/madevent/madcode/opcode_mixin.h", "w") as f_op,
+    ):
         write_autogen(f)
         f.write("using SigType = SimpleInstruction::SigType;\n")
 
@@ -108,6 +111,7 @@ def instruction_set_mixin(types, commands):
             "\n"
             "InstructionOwner instructions[] {\n"
         )
+        first = True
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
             if "class" in cmd:
@@ -116,7 +120,14 @@ def instruction_set_mixin(types, commands):
                 input_types = ", ".join(arg["type"] for arg in cmd["inputs"])
                 output_types = ", ".join(ret["type"] for ret in cmd["outputs"])
                 f.write(f"    mi(\"{name}\", {opcode}, {{{input_types}}}, {{{output_types}}}),\n")
+
+            if first:
+                first = False
+            else:
+                f_op.write(",\n")
+            f_op.write(f"{name} = {opcode}")
         f.write("};\n")
+        f_op.write("\n")
 
 
 def cpu_runtime_mixin(commands):
