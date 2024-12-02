@@ -146,5 +146,4 @@ Mapping::Result TPropagatorMapping::build_inverse_impl(
 
     outputs.push_back(e_cm);
     outputs.insert(outputs.end(), masses.begin(), masses.end());*/
-    
 }

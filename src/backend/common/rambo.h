@@ -98,6 +98,7 @@ KERNELSPEC void kernel_rambo_four_vectors_massive(
             cum_u *= u[i];
             cum_k = e_cm_massless * cum_u;
             total_mass -= mass;
+            if (total_mass < 0) total_mass = 0;
             cum_m = cum_k + total_mass;
         }
 

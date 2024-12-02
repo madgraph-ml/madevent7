@@ -9,19 +9,22 @@
 #include "madevent/phasespace/two_particle.h"
 #include "madevent/phasespace/luminosity.h"
 #include "madevent/phasespace/t_propagator_mapping.h"
-
+#include "madevent/phasespace/rambo.h"
 
 namespace madevent {
 
 class PhaseSpaceMapping : public Mapping {
 public:
+    enum TChannelMode { propagator, rambo };
+
     PhaseSpaceMapping(
         const Topology& topology,
         double s_lab,
         double s_hat_min = 0.0,
         bool leptonic = false,
         double s_min_epsilon = 1e-2,
-        double nu = 1.4
+        double nu = 1.4,
+        TChannelMode t_channel_mode = propagator
     );
 private:
     Result build_forward_impl(
@@ -34,7 +37,7 @@ private:
     struct DecayMappings {
         std::size_t count;
         std::optional<Invariant> invariant;
-        std::optional<TwoParticle> decay;
+        std::variant<TwoParticle, FastRamboMapping, std::monostate> decay = std::monostate{};
     };
 
     double pi_factors;
@@ -43,7 +46,7 @@ private:
     bool has_t_channel;
     double sqrt_s_epsilon;
     std::vector<std::vector<DecayMappings>> s_decays;
-    std::optional<TPropagatorMapping> t_mapping;
+    std::variant<TPropagatorMapping, FastRamboMapping, std::monostate> t_mapping;
     std::optional<Luminosity> luminosity;
     std::vector<double> outgoing_masses;
     std::vector<std::size_t> permutation;

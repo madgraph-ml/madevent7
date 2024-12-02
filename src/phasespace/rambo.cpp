@@ -9,14 +9,21 @@ using namespace madevent;
 namespace views = std::views;
 namespace ranges = std::ranges;
 
-FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless) :
+FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
     Mapping(
-        TypeList(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), scalar),
+        [&] {
+            TypeList input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), scalar);
+            if (!_com) {
+                input_types.push_back(four_vector);
+            }
+            return input_types;
+        }(),
         TypeList(_n_particles, four_vector),
         {}
     ),
     n_particles(_n_particles),
     massless(_massless),
+    com(_com),
     e_cm_power(2 * _n_particles - 4),
     massless_weight(std::pow(PI / 2.0, _n_particles - 1) / std::tgamma(_n_particles - 1))
 {
@@ -40,6 +47,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
                       | ranges::to<ValueList>();
     auto e_cm = inputs.at(3 * n_particles - 4);
     auto m_out = inputs | views::drop(3 * n_particles - 3)
+                        | views::take(n_particles)
                         | ranges::to<ValueList>();
 
     auto [u, det_u] = fb.fast_rambo_r_to_u(fb.stack(r_u));
@@ -56,7 +64,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
         );
     }
 
-    auto q = fb.com_momentum(e_cm);
+    auto q = com ? fb.com_momentum(e_cm) : inputs.back();
     ValueList p_out;
     for (auto [p_i, q_i] : views::zip(fb.unstack(ps), fb.unstack(qs))) {
         p_out.push_back(fb.boost(p_i, q));

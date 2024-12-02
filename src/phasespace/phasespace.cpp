@@ -10,7 +10,7 @@ using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology, double _s_lab, double s_hat_min, bool _leptonic,
-    double s_min_epsilon, double nu
+    double s_min_epsilon, double nu, TChannelMode t_channel_mode
 ) :
     Mapping(
         //TODO: replace with scalar array
@@ -23,6 +23,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     leptonic(_leptonic),
     has_t_channel(topology.t_propagators.size() != 0),
     sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
+    t_mapping(std::monostate{}),
     outgoing_masses(topology.outgoing_masses),
     permutation(topology.permutation),
     inverse_permutation(topology.inverse_permutation)
@@ -32,8 +33,13 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     for (auto& layer : topology.decays) {
         if (!has_t_channel && &layer == &topology.decays.back()) {
             auto& decay_mappings = s_decays.emplace_back().emplace_back();
-            decay_mappings.count = layer[0].child_count;
-            decay_mappings.decay.emplace(true);
+            auto child_count = layer[0].child_count;
+            decay_mappings.count = child_count;
+            if (child_count == 2) {
+                decay_mappings.decay = TwoParticle(false);
+            } else {
+                decay_mappings.decay = FastRamboMapping(child_count, false, false);
+            }
             break;
         }
         auto sqs_iter = sqrt_s_min.begin();
@@ -49,7 +55,11 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             if (decay.child_count == 1) continue;
             double mass = decay.propagator.mass < sqs_min ? 0. : decay.propagator.mass;
             decay_mappings.invariant.emplace(nu, mass, decay.propagator.width);
-            decay_mappings.decay.emplace(false);
+            if (decay.child_count == 2) {
+                decay_mappings.decay = TwoParticle(false);
+            } else {
+                decay_mappings.decay = FastRamboMapping(decay.child_count, false, false);
+            }
         }
         sqrt_s_min = sqrt_s_min_new;
     }
@@ -61,7 +71,12 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         if (!leptonic) {
             luminosity = Luminosity(s_lab, s_hat_min);
         }
-        t_mapping = TPropagatorMapping(topology.t_propagators);
+        if (t_channel_mode == PhaseSpaceMapping::propagator) {
+            t_mapping = TPropagatorMapping(topology.t_propagators);
+        } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
+            //TODO: add massless special case
+            t_mapping = FastRamboMapping(topology.t_propagators.size() + 1, false);
+        }
     } else if (!leptonic) {
         auto& s_line = topology.decays.back()[0].propagator;
         if (s_line.mass >= std::sqrt(s_hat_min)) {
@@ -166,13 +181,24 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     ValueList p_out;
     if (has_t_channel) {
         ValueList t_args;
-        std::copy_n(r, t_mapping->random_dim(), std::back_inserter(t_args));
-        r += t_mapping->random_dim();
-        t_args.push_back(sqrt_s_hat);
-        std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
-        auto [ps, det] = t_mapping->build_forward(fb, t_args, {});
-        p_ext = {ps[0], ps[1]};
-        std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
+        if (auto t_map = std::get_if<TPropagatorMapping>(&t_mapping)) {
+            std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
+            r += t_map->random_dim();
+            t_args.push_back(sqrt_s_hat);
+            std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
+            auto [ps, det] = t_map->build_forward(fb, t_args, {});
+            p_ext = {ps[0], ps[1]};
+            std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
+        } else if (auto t_map = std::get_if<FastRamboMapping>(&t_mapping)) {
+            std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
+            r += t_map->random_dim();
+            t_args.push_back(sqrt_s_hat);
+            std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
+            Value det;
+            std::tie(p_out, det) = t_map->build_forward(fb, t_args, {});
+            auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
+            p_ext = {p1, p2};
+        }
     } else {
         auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
         p_ext = {p1, p2};
@@ -189,15 +215,26 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 p_out.push_back(*(k_in_iter++));
                 continue;
             }
-            ValueList decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
-            std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
-            if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
-            auto [k_out, det] = data.mappings.decay->build_forward(fb, decay_args, {});
-            std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
-            dets.push_back(det);
+            if (auto decay_map = std::get_if<TwoParticle>(&data.mappings.decay)) {
+                ValueList decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
+                std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
+                if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
+                auto [k_out, det] = decay_map->build_forward(fb, decay_args, {});
+                std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
+                dets.push_back(det);
+            } else if (auto decay_map = std::get_if<FastRamboMapping>(&data.mappings.decay)) {
+                ValueList decay_args;
+                std::copy_n(r, decay_map->random_dim(), std::back_inserter(decay_args));
+                r += decay_map->random_dim();
+                decay_args.push_back(*data.sqrt_s);
+                std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
+                if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
+                auto [k_out, det] = decay_map->build_forward(fb, decay_args, {});
+                std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
+                dets.push_back(det);
+            }
         }
     }
-
 
     // permute and return momenta
     for (auto index : permutation) {
