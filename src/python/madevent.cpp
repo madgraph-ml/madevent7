@@ -184,10 +184,16 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<Topology::Decay>(m, "Decay")
         .def_readonly("propagator", &Topology::Decay::propagator)
         .def_readonly("child_count", &Topology::Decay::child_count);
-    py::class_<PhaseSpaceMapping, Mapping>(m, "PhaseSpaceMapping")
-        .def(py::init<Topology&, double, double, bool, double, double>(),
-             py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4);
+    py::class_<PhaseSpaceMapping, Mapping> psmap(m, "PhaseSpaceMapping");
+    py::enum_<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode")
+        .value("propagator", PhaseSpaceMapping::propagator)
+        .value("rambo", PhaseSpaceMapping::rambo)
+        .export_values();
+    psmap.def(py::init<Topology&, double, double, bool, double, double,
+                       PhaseSpaceMapping::TChannelMode>(),
+              py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
+              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
+              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator);
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
     py::class_<MergeOptimizer>(m, "MergeOptimizer")

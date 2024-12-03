@@ -85,20 +85,20 @@ ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList arg
         if (arg.local_index != -1) {
             if (arg.local_index < 0 || arg.local_index > locals.size()) {
                 throw std::invalid_argument(std::format(
-                    "Argument {}: inconsistent value (local index)", arg_index
+                    "{}, argument {}: inconsistent value (local index)", instruction->name, arg_index
                 ));
             }
             auto local_value = locals.at(arg.local_index);
             if (local_value.type != arg.type || local_value.literal_value != arg.literal_value) {
                 throw std::invalid_argument(std::format(
-                    "Argument {}: inconsistent value (type or value)", arg_index
+                    "{}, argument {}: inconsistent value (type or value)", instruction->name, arg_index
                 ));
             }
             continue;
         }
         if (std::holds_alternative<std::monostate>(arg.literal_value)) {
             throw std::invalid_argument(std::format(
-                "Argument {}: undefined value", arg_index
+                "{}, argument {}: undefined value", instruction->name, arg_index
             ));
         }
         auto find_literal = literals.find(arg.literal_value);

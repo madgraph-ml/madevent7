@@ -71,7 +71,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         if (!leptonic) {
             luminosity = Luminosity(s_lab, s_hat_min);
         }
-        if (t_channel_mode == PhaseSpaceMapping::propagator) {
+        if (t_channel_mode == PhaseSpaceMapping::propagator || topology.t_propagators.size() < 2) {
             t_mapping = TPropagatorMapping(topology.t_propagators);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
@@ -189,6 +189,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto [ps, det] = t_map->build_forward(fb, t_args, {});
             p_ext = {ps[0], ps[1]};
             std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
+            dets.push_back(det);
         } else if (auto t_map = std::get_if<FastRamboMapping>(&t_mapping)) {
             std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
             r += t_map->random_dim();
@@ -198,6 +199,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             std::tie(p_out, det) = t_map->build_forward(fb, t_args, {});
             auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
             p_ext = {p1, p2};
+            dets.push_back(det);
         }
     } else {
         auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
