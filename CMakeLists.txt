@@ -21,12 +21,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-#set(SLEEF_BUILD_TESTS OFF)
-#FetchContent_Declare(
-#    libsleef
-#    GIT_REPOSITORY https://github.com/shibatch/sleef
-#)
-#FetchContent_MakeAvailable(libsleef)
+find_package(sleef CONFIG REQUIRED)
 
 add_library(
     madevent SHARED
@@ -81,6 +76,7 @@ add_library(
 )
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
+target_link_libraries(madevent PUBLIC sleef::sleef)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
 endif()

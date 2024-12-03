@@ -5,7 +5,8 @@ constexpr double a_fit_vals[] {
     3.57883262988432, 3.662872056324554, 3.7285606321733686, 3.781315678863016, 3.82461375901416
 };
 
-void _map_fourvector_rambo_diet(double q0, double cos_theta, double phi, FViewOut<1> q) {
+template<typename T>
+KERNELSPEC void _map_fourvector_rambo_diet(FVal<T> q0, FVal<T> cos_theta, FVal<T> phi, FOut<T,1> q) {
     auto sin_theta = sqrt(1 - cos_theta * cos_theta);
     q[0] = q0;
     q[1] = q0 * sin_theta * cos(phi);
@@ -13,12 +14,14 @@ void _map_fourvector_rambo_diet(double q0, double cos_theta, double phi, FViewOu
     q[3] = q0 * cos_theta;
 }
 
-double _two_body_decay_factor_massless(double cum_m_prev, double cum_m) {
+template<typename T>
+KERNELSPEC FVal<T> _two_body_decay_factor_massless(FVal<T> cum_m_prev, FVal<T> cum_m) {
     auto cum_m_prev_square = cum_m_prev * cum_m_prev;
     return 1.0 / (8 * cum_m_prev_square) * (cum_m_prev_square - cum_m * cum_m);
 }
 
-double _two_body_decay_factor(double cum_m_prev, double cum_m, double m_prev) {
+template<typename T>
+KERNELSPEC FVal<T> _two_body_decay_factor(FVal<T> cum_m_prev, FVal<T> cum_m, FVal<T> m_prev) {
     auto cum_m_prev_square = cum_m_prev * cum_m_prev;
     auto mass_sum = cum_m + m_prev;
     auto mass_diff = cum_m - m_prev;
@@ -29,9 +32,10 @@ double _two_body_decay_factor(double cum_m_prev, double cum_m, double m_prev) {
 
 // Kernels
 
-KERNELSPEC void kernel_fast_rambo_r_to_u(FViewIn<1> r, FViewOut<1> u, FViewOut<0> det) {
+template<typename T>
+KERNELSPEC void kernel_fast_rambo_r_to_u(FIn<T,1> r, FOut<T,1> u, FOut<T,0> det) {
     std::size_t n_particles = r.size() + 2;
-    double jac = 1;
+    FVal<T> jac = 1;
     for (std::size_t i = 0, m = n_particles - 2; m > 0; ++i, --m) {
         auto a = a_fit_vals[m - 1];
         auto r_u = r[i];
@@ -42,29 +46,30 @@ KERNELSPEC void kernel_fast_rambo_r_to_u(FViewIn<1> r, FViewOut<1> u, FViewOut<0
         auto jac_denom = (1 + (a - 2) * x * xr);
         auto jac_x = (2 * x * xr + a * xr * xr) / (jac_denom * jac_denom);
         u[i] = u_i;
-        jac *= (1 - u_i * u_i) / jac_x;
+        jac = jac * (1 - u_i * u_i) / jac_x;
     }
     det = jac;
 }
 
+template<typename T>
 KERNELSPEC void kernel_rambo_four_vectors_massless(
-    FViewIn<1> u, FViewIn<0> e_cm, FViewIn<1> cos_theta, FViewIn<1> phi,
-    FViewOut<2> ps, FViewOut<2> qs
+    FIn<T,1> u, FIn<T,0> e_cm, FIn<T,1> cos_theta, FIn<T,1> phi,
+    FOut<T,2> ps, FOut<T,2> qs
 ) {
-    double cum_u = 1.;
-    double cum_m_prev = e_cm;
+    FVal<T> cum_u = 1.;
+    FVal<T> cum_m_prev = e_cm;
     for (std::size_t i = 0; i < ps.size(); ++i) {
-        double cum_m;
+        FVal<T> cum_m;
         if (i == ps.size() - 1) {
             cum_m = 0;
         } else {
-            cum_u *= u[i];
+            cum_u = cum_u * u[i];
             cum_m = e_cm * cum_u;
         }
 
-        auto e_massless = 4 * cum_m_prev * _two_body_decay_factor_massless(cum_m_prev, cum_m);
+        auto e_massless = 4 * cum_m_prev * _two_body_decay_factor_massless<T>(cum_m_prev, cum_m);
         auto q_i = qs[i], p_i = ps[i];
-        _map_fourvector_rambo_diet(e_massless, cos_theta[i], phi[i], p_i);
+        _map_fourvector_rambo_diet<T>(e_massless, cos_theta[i], phi[i], p_i);
         q_i[0] = sqrt(e_massless * e_massless + cum_m * cum_m);
         q_i[1] = -p_i[1];
         q_i[2] = -p_i[2];
@@ -74,43 +79,44 @@ KERNELSPEC void kernel_rambo_four_vectors_massless(
     }
 }
 
+template<typename T>
 KERNELSPEC void kernel_rambo_four_vectors_massive(
-    FViewIn<1> u, FViewIn<0> e_cm, FViewIn<1> cos_theta, FViewIn<1> phi, FViewIn<1> masses,
-    FViewOut<2> ps, FViewOut<2> qs, FViewOut<0> e_cm_massless, FViewOut<0> det
+    FIn<T,1> u, FIn<T,0> e_cm, FIn<T,1> cos_theta, FIn<T,1> phi, FIn<T,1> masses,
+    FOut<T,2> ps, FOut<T,2> qs, FOut<T,0> e_cm_massless, FOut<T,0> det
 ) {
-    double total_mass = 0;
+    FVal<T> total_mass = 0;
     for (std::size_t i = 0; i < masses.size(); ++i) {
-        total_mass += masses[i];
+        total_mass = total_mass + masses[i];
     }
     e_cm_massless = e_cm - total_mass;
 
-    double cum_u = 1.;
-    double cum_m_prev = e_cm;
-    double cum_k_prev = e_cm_massless;
-    double cum_det = 1;
+    FVal<T> cum_u = 1.;
+    FVal<T> cum_m_prev = e_cm;
+    FVal<T> cum_k_prev = e_cm_massless;
+    FVal<T> cum_det = 1;
     for (std::size_t i = 0; i < ps.size(); ++i) {
-        double cum_m, cum_k;
+        FVal<T> cum_m, cum_k;
         auto mass = masses[i];
         if (i == ps.size() - 1) {
             cum_k = 0;
             cum_m = masses[i+1];
         } else {
-            cum_u *= u[i];
+            cum_u = cum_u * u[i];
             cum_k = e_cm_massless * cum_u;
-            total_mass -= mass;
-            if (total_mass < 0) total_mass = 0;
+            total_mass = total_mass - mass;
+            total_mass = where(total_mass < 0., 0., total_mass);
             cum_m = cum_k + total_mass;
         }
 
-        auto rho_k = _two_body_decay_factor_massless(cum_k_prev, cum_k);
-        auto rho_m = _two_body_decay_factor(cum_m_prev, cum_m, mass);
-        cum_det *= rho_m / rho_k;
+        auto rho_k = _two_body_decay_factor_massless<T>(cum_k_prev, cum_k);
+        auto rho_m = _two_body_decay_factor<T>(cum_m_prev, cum_m, mass);
+        cum_det = cum_det * rho_m / rho_k;
         if (i < ps.size() - 1) {
-            cum_det *= cum_m / cum_k;
+            cum_det = cum_det * cum_m / cum_k;
         }
         auto e_massless = 4 * cum_m_prev * rho_m;
         auto q_i = qs[i], p_i = ps[i];
-        _map_fourvector_rambo_diet(e_massless, cos_theta[i], phi[i], p_i);
+        _map_fourvector_rambo_diet<T>(e_massless, cos_theta[i], phi[i], p_i);
         p_i[0] = sqrt(e_massless * e_massless + mass * mass);
         q_i[0] = sqrt(e_massless * e_massless + cum_m * cum_m);
         q_i[1] = -p_i[1];

@@ -141,8 +141,11 @@ def cpu_runtime_mixin(commands):
             else:
                 n_inputs = len(cmd["inputs"])
                 n_outputs = len(cmd["outputs"])
-                flatten = "true" if cmd.get("flatten", False) else "false";
-                func = f"batch_foreach<kernel_{name}, {n_inputs}, {n_outputs}, {flatten}>";
+                flatten = "true" if cmd.get("flatten", False) else "false"
+                func = (
+                    f"batch_foreach<kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>, "
+                    f"{n_inputs}, {n_outputs}, {flatten}>"
+                )
             f.write(
                 f"case {opcode}:\n"
                 f"    {func}(instr, locals);\n"

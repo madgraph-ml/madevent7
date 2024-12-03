@@ -154,6 +154,15 @@ public:
         );
     }
 
+    /*template<class T, int dim> VectorizedTensorView<T, dim> vectorized_view(bool flatten = false) {
+        return VectorizedTensorView<T, dim, true>(
+            bytes(),
+            impl->stride.data(),
+            flatten ? impl->flat_shape.data() : impl->shape.data(),
+            impl->stride[0]
+        );
+    }*/
+
     void* data() {
         return impl->data;
     }

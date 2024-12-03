@@ -1,12 +1,14 @@
 // Helper functions
 
-KERNELSPEC double _kaellen(double x, double y, double z) {
+template<typename T>
+KERNELSPEC FVal<T> _kaellen(FVal<T> x, FVal<T> y, FVal<T> z) {
     auto xyz = x - y - z;
     return xyz * xyz - 4 * y * z;
 }
 
-KERNELSPEC double _costheta_to_invt(
-    double s, double p1_2, double p2_2, double m1, double m2, double cos_theta
+template<typename T>
+KERNELSPEC FVal<T> _costheta_to_invt(
+    FVal<T> s, FVal<T> p1_2, FVal<T> p2_2, FVal<T> m1, FVal<T> m2, FVal<T> cos_theta
 ) {
     // Mandelstam invariant t=(p1-k1)^2 formula (C.21) in https://arxiv.org/pdf/hep-ph/0008033.pdf
     // p=p1+p2 is at rest;
@@ -17,16 +19,17 @@ KERNELSPEC double _costheta_to_invt(
     auto m1_2 = m1*m1;
     auto m2_2 = m2*m2;
     auto num1 = (s + m1_2 - m2_2) * (s + p1_2 - p2_2);
-    auto num2 = sqrt(_kaellen(s, m1_2, m2_2)) * sqrt(_kaellen(s, p1_2, p2_2)) * cos_theta;
+    auto num2 = sqrt(_kaellen<T>(s, m1_2, m2_2)) * sqrt(_kaellen<T>(s, p1_2, p2_2)) * cos_theta;
     auto num = num1 - num2;
     auto two_s = 2 * s;
-    auto t = m1_2 + p1_2 - num / (two_s >= EPS ? two_s : EPS);
-    return t <= -EPS ? t : -EPS;
+    auto t = m1_2 + p1_2 - num / where(two_s >= EPS, two_s, EPS);
+    return where(t <= -EPS, t, -EPS);
 }
 
 
-KERNELSPEC double _invt_to_costheta(
-    double s, double p1_2, double p2_2, double m1, double m2, double t
+template<typename T>
+KERNELSPEC FVal<T> _invt_to_costheta(
+    FVal<T> s, FVal<T> p1_2, FVal<T> p2_2, FVal<T> m1, FVal<T> m2, FVal<T> t
 ) {
     // https://arxiv.org/pdf/hep-ph/0008033.pdf Eq.(C.21)
     // invert t=(p1-k1)^2 to cos_theta = ...
@@ -36,20 +39,21 @@ KERNELSPEC double _invt_to_costheta(
     auto num1 = (t - m1_2 - p1_2) * 2 * s;
     auto num2 = (s + m1_2 - m2_2) * (s + p1_2 - p2_2);
     auto num = num1 + num2;
-    auto denom = sqrt(_kaellen(s, m1_2, m2_2)) * sqrt(_kaellen(s, p1_2, p2_2));
-    auto cos_theta = num / (denom >= EPS ? denom : EPS);
-    return cos_theta < -1.0 ? -1.0 : (cos_theta > 1.0 ? 1.0 : cos_theta);
+    auto denom = sqrt(_kaellen<T>(s, m1_2, m2_2)) * sqrt(_kaellen<T>(s, p1_2, p2_2));
+    auto cos_theta = num / where(denom >= EPS, denom, EPS);
+    return where(cos_theta < -1.0, -1.0, where(cos_theta > 1.0, 1.0, cos_theta));
 }
 
 // Kernels
 
+template<typename T>
 KERNELSPEC void kernel_decay_momentum(
-    FViewIn<0> s, FViewIn<0> sqrt_s, FViewIn<0> m1, FViewIn<0> m2,
-    FViewOut<1> p, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> sqrt_s, FIn<T,0> m1, FIn<T,0> m2,
+    FOut<T,1> p, FOut<T,0> gs
 ) {
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
-    auto sqrt_kaellen = sqrt(_kaellen(s, m1_2, m2_2));
+    auto sqrt_kaellen = sqrt(_kaellen<T>(s, m1_2, m2_2));
     p[0] = (s + m1_2 - m2_2) / (2 * sqrt_s);
     p[1] = 0;
     p[2] = 0;
@@ -57,42 +61,48 @@ KERNELSPEC void kernel_decay_momentum(
     gs = PI * sqrt_kaellen / (2 * s);
 }
 
+template<typename T>
 KERNELSPEC void kernel_invt_min_max(
-    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
-    FViewOut<0> t_min, FViewOut<0> t_max
+    FIn<T,0> s, FIn<T,0> s_in1, FIn<T,0> s_in2, FIn<T,0> m1, FIn<T,0> m2,
+    FOut<T,0> t_min, FOut<T,0> t_max
 ) {
-    t_min = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, 1.0);
-    t_max = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, -1.0);
+    t_min = - _costheta_to_invt<T>(s, s_in1, s_in2, m1, m2, 1.0);
+    t_max = - _costheta_to_invt<T>(s, s_in1, s_in2, m1, m2, -1.0);
 }
 
+template<typename T>
 KERNELSPEC void kernel_invt_to_costheta(
-    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
-    FViewIn<0> t, FViewOut<0> cos_theta
+    FIn<T,0> s, FIn<T,0> s_in1, FIn<T,0> s_in2, FIn<T,0> m1, FIn<T,0> m2,
+    FIn<T,0> t, FOut<T,0> cos_theta
 ) {
-    cos_theta = _invt_to_costheta(s, s_in1, s_in2, m1, m2, -t);
+    cos_theta = _invt_to_costheta<T>(s, s_in1, s_in2, m1, m2, -t);
 }
 
+template<typename T>
 KERNELSPEC void kernel_costheta_to_invt(
-    FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewIn<0> m1, FViewIn<0> m2,
-    FViewIn<0> cos_theta, FViewOut<0> t
+    FIn<T,0> s, FIn<T,0> s_in1, FIn<T,0> s_in2, FIn<T,0> m1, FIn<T,0> m2,
+    FIn<T,0> cos_theta, FOut<T,0> t
 ) {
-    t = - _costheta_to_invt(s, s_in1, s_in2, m1, m2, cos_theta);
+    t = - _costheta_to_invt<T>(s, s_in1, s_in2, m1, m2, cos_theta);
 }
 
+template<typename T>
 KERNELSPEC void kernel_two_particle_density_inverse(
-    FViewIn<0> s, FViewIn<0> m1, FViewIn<0> m2, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> m1, FIn<T,0> m2, FOut<T,0> gs
 ) {
-    gs = (2 * s) / (PI * sqrt(_kaellen(s, m1 * m1, m2 * m2)));
+    gs = (2 * s) / (PI * sqrt(_kaellen<T>(s, m1 * m1, m2 * m2)));
 }
 
+template<typename T>
 KERNELSPEC void kernel_tinv_two_particle_density(
-    FViewIn<0> det_t, FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewOut<0> det
+    FIn<T,0> det_t, FIn<T,0> s, FIn<T,0> s_in1, FIn<T,0> s_in2, FOut<T,0> det
 ) {
-    det = det_t * PI / (2 * sqrt(_kaellen(s, s_in1, s_in2)));
+    det = det_t * PI / (2 * sqrt(_kaellen<T>(s, s_in1, s_in2)));
 }
 
+template<typename T>
 KERNELSPEC void kernel_tinv_two_particle_density_inverse(
-    FViewIn<0> det_t, FViewIn<0> s, FViewIn<0> s_in1, FViewIn<0> s_in2, FViewOut<0> det
+    FIn<T,0> det_t, FIn<T,0> s, FIn<T,0> s_in1, FIn<T,0> s_in2, FOut<T,0> det
 ) {
-    det = det_t * 2 * sqrt(_kaellen(s, s_in1, s_in2)) / PI;
+    det = det_t * 2 * sqrt(_kaellen<T>(s, s_in1, s_in2)) / PI;
 }

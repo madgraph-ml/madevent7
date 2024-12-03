@@ -35,7 +35,18 @@ struct get_views<void(*)(TParam...), flatten> {
     }
 };
 
-template<auto function, int NIn, int NOut, bool flatten>
+template<typename F> struct get_vectorized_views;
+template<typename... TParam>
+struct get_vectorized_views<void(*)(TParam...)> {
+    template <typename... TArg>
+    auto operator()(TArg&&... args) {
+        return std::make_tuple(VectorizedTensorView<
+            typename TParam::VType, typename TParam::DType, TParam::dim + 1, true
+        >(args)...);
+    }
+};
+
+template<auto scalar_func, auto vector_func, int NIn, int NOut, bool flatten>
 void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 1;
     auto inputs = range_to_tuple<NIn>([&](auto i) {
@@ -59,14 +70,22 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
         return output;
     });
 
-    // get views to the tensors with the correct types based on the signature of function
+    // get views to the tensors with the correct types based on the signature of scalar_func
     auto views = std::apply(
-        get_views<decltype(function), flatten>(), std::tuple_cat(inputs, outputs)
+        get_views<decltype(scalar_func), flatten>(), std::tuple_cat(inputs, outputs)
+    );
+    auto vectorized_views = std::apply(
+        get_vectorized_views<decltype(vector_func)>(), views
     );
 
+    std::size_t vec_batch_size = batch_size / simd_vec_size;
     //#pragma omp parallel for
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) { function(args[i]...); }, views);
+    for (std::size_t i = 0; i < vec_batch_size; ++i) {
+        std::apply([i](auto&&... args) { vector_func(args[i]...); }, vectorized_views);
+    }
+
+    for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
+        std::apply([i](auto&&... args) { scalar_func(args[i]...); }, views);
     }
 }
 

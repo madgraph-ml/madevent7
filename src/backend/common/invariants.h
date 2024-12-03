@@ -1,19 +1,22 @@
+template<typename T>
 KERNELSPEC void kernel_uniform_invariant(
-    FViewIn<0> r, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> s, FViewOut<0> gs
+    FIn<T,0> r, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
     gs = s_max - s_min;
     s = s_min + gs * r;
 }
 
+template<typename T>
 KERNELSPEC void kernel_uniform_invariant_inverse(
-    FViewIn<0> s, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> r, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
     gs = 1 / (s_max - s_min);
     r = (s - s_min) * gs;
 }
 
+template<typename T>
 KERNELSPEC void kernel_breit_wigner_invariant(
-    FViewIn<0> r, FViewIn<0> mass, FViewIn<0> width, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> s, FViewOut<0> gs
+    FIn<T,0> r, FIn<T,0> mass, FIn<T,0> width, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
     auto m2 = mass * mass;
     auto gm = mass * width;
@@ -27,8 +30,9 @@ KERNELSPEC void kernel_breit_wigner_invariant(
     gs = dy21 * (s_sub_m2 * s_sub_m2 + gm * gm) / gm;
 }
 
+template<typename T>
 KERNELSPEC void kernel_breit_wigner_invariant_inverse(
-    FViewIn<0> s, FViewIn<0> mass, FViewIn<0> width, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> r, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> mass, FIn<T,0> width, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
     auto m2 = mass * mass;
     auto gm = mass * width;
@@ -41,10 +45,11 @@ KERNELSPEC void kernel_breit_wigner_invariant_inverse(
     gs = gm / (dy21 * (s_sub_m2 * s_sub_m2 + gm * gm));
 }
 
+template<typename T>
 KERNELSPEC void kernel_stable_invariant(
-    FViewIn<0> r, FViewIn<0> mass, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> s, FViewOut<0> gs
+    FIn<T,0> r, FIn<T,0> mass, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
-    auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
+    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
 
@@ -52,10 +57,11 @@ KERNELSPEC void kernel_stable_invariant(
     gs = (s - m2) * log(q_max / q_min);
 }
 
+template<typename T>
 KERNELSPEC void kernel_stable_invariant_inverse(
-    FViewIn<0> s, FViewIn<0> mass, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> r, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> mass, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
-    auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
+    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
     auto q = s - m2;
@@ -65,10 +71,11 @@ KERNELSPEC void kernel_stable_invariant_inverse(
     gs = 1 / (q * log_q_max_min);
 }
 
+template<typename T>
 KERNELSPEC void kernel_stable_invariant_nu(
-    FViewIn<0> r, FViewIn<0> mass, FViewIn<0> nu, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> s, FViewOut<0> gs
+    FIn<T,0> r, FIn<T,0> mass, FIn<T,0> nu, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
-    auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
+    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
     auto power = 1.0 - nu;
@@ -80,10 +87,11 @@ KERNELSPEC void kernel_stable_invariant_nu(
     gs = (qmaxpow - qminpow) * pow(_s - m2, nu) / power;
 }
 
+template<typename T>
 KERNELSPEC void kernel_stable_invariant_nu_inverse(
-    FViewIn<0> s, FViewIn<0> mass, FViewIn<0> nu, FViewIn<0> s_min, FViewIn<0> s_max, FViewOut<0> r, FViewOut<0> gs
+    FIn<T,0> s, FIn<T,0> mass, FIn<T,0> nu, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
-    auto m2 = mass == 0. && s_min == 0 ? -1e-8 : mass * mass;
+    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
     auto q = s - m2;
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
