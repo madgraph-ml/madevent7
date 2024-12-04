@@ -1,6 +1,7 @@
 #pragma once
 
 #include "madevent/backend/tensor.h"
+#include "madevent/backend/cpu/thread_pool.h"
 #include "simd.h"
 
 namespace {
@@ -131,11 +132,16 @@ void tensor_foreach(
         get_vectorized_views<decltype(vector_func), dims>(), views
     );
     std::size_t vec_batch_size = batch_size / simd_vec_size;
-    for (std::size_t i = 0; i < vec_batch_size; ++i) {
+    madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
         std::apply([i](auto&&... args) {
             recursive_for<vector_func, dims-1>(args[i]...);
         }, vectorized_views);
-    }
+    }, vec_batch_size);
+    /*for (std::size_t i = 0; i < vec_batch_size; ++i) {
+        std::apply([i](auto&&... args) {
+            recursive_for<vector_func, dims-1>(args[i]...);
+        }, vectorized_views);
+    }*/
     for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
         std::apply([i](auto&&... args) {
             recursive_for<scalar_func, dims-1>(args[i]...);

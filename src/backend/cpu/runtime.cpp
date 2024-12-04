@@ -13,7 +13,6 @@ using namespace madevent::cpu;
 
 namespace {
 
-
 // call function(i) with argument i=0...N-1 and return the results as a tuple
 template<std::size_t N, typename F, std::size_t... i>
 constexpr auto range_to_array_impl(F&& function, std::index_sequence<i...>) {

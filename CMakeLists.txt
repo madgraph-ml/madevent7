@@ -38,6 +38,7 @@ add_library(
     src/backend/common/rambo.h
     src/backend/tensor.cpp
     src/backend/cpu/runtime.cpp
+    src/backend/cpu/thread_pool.cpp
     src/backend/cpu/kernels.h
     src/backend/cpu/runtime_mixin.h
     src/backend/cpu/tensor.h
@@ -58,6 +59,7 @@ add_library(
     src/phasespace/rambo.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
+    include/madevent/backend/cpu/thread_pool.h
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
