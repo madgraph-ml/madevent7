@@ -13,43 +13,22 @@ using namespace madevent::cpu;
 
 namespace {
 
+#include "madevent/backend/cpu/tensor.h"
+
 // call function(i) with argument i=0...N-1 and return the results as a tuple
 template<std::size_t N, typename F, std::size_t... i>
-constexpr auto range_to_tuple_impl(F&& function, std::index_sequence<i...>) {
-    return std::make_tuple(function(i)...);
+constexpr auto range_to_array_impl(F&& function, std::index_sequence<i...>) {
+    return std::array<Tensor, N>{function(i)...};
 }
 template<std::size_t N, typename F>
-constexpr auto range_to_tuple(F&& function) {
-    return range_to_tuple_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
+constexpr auto range_to_array(F&& function) {
+    return range_to_array_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
 }
 
-// return the tuple of TensorViews where the type is extracted from the signature of F
-template<typename F, bool flatten> struct get_views;
-template<typename... TParam, bool flatten>
-struct get_views<void(*)(TParam...), flatten> {
-    template <typename... TArg>
-    auto operator()(TArg&&... args) {
-        return std::make_tuple(
-            args.template view<typename TParam::DType, TParam::dim + 1>(flatten)...
-        );
-    }
-};
-
-template<typename F> struct get_vectorized_views;
-template<typename... TParam>
-struct get_vectorized_views<void(*)(TParam...)> {
-    template <typename... TArg>
-    auto operator()(TArg&&... args) {
-        return std::make_tuple(VectorizedTensorView<
-            typename TParam::VType, typename TParam::DType, TParam::dim + 1, true
-        >(args)...);
-    }
-};
-
-template<auto scalar_func, auto vector_func, int NIn, int NOut, bool flatten>
+template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 1;
-    auto inputs = range_to_tuple<NIn>([&](auto i) {
+    auto inputs = range_to_array<n_in>([&](auto i) {
         auto input = locals[instruction.input_indices[i]];
         auto input_size = input.size(0);
         if (input_size != 1) {
@@ -61,7 +40,7 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
         }
         return input;
     });
-    auto outputs = range_to_tuple<NOut>([&](auto i) {
+    auto outputs = range_to_array<n_out>([&](auto i) {
         auto& output = locals[instruction.output_indices[i]];
         auto& output_shape = instruction.output_shapes[i];
         SizeVec shape {batch_size};
@@ -70,85 +49,16 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
         return output;
     });
 
-    // get views to the tensors with the correct types based on the signature of scalar_func
-    auto views = std::apply(
-        get_views<decltype(scalar_func), flatten>(), std::tuple_cat(inputs, outputs)
-    );
-    auto vectorized_views = std::apply(
-        get_vectorized_views<decltype(vector_func)>(), views
-    );
-
-    std::size_t vec_batch_size = batch_size / simd_vec_size;
-    //#pragma omp parallel for
-    for (std::size_t i = 0; i < vec_batch_size; ++i) {
-        std::apply([i](auto&&... args) { vector_func(args[i]...); }, vectorized_views);
-    }
-
-    for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) { scalar_func(args[i]...); }, views);
+    if constexpr (dims == 0) {
+        tensor_foreach_dynamic<scalar_func, vector_func, n_in, n_out>(inputs, outputs, batch_size);
+    } else {
+        tensor_foreach<scalar_func, vector_func, n_in, n_out, dims>(inputs, outputs, batch_size);
     }
 }
 
 // Some helper definitions to use with std::visit and std::variant
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
-void tensor_copy(Tensor source, Tensor target) {
-    uint8_t* source_ptr = source.bytes();
-    uint8_t* target_ptr = target.bytes();
-    std::size_t contiguous_dims = std::min(source.contiguous_dims(), target.contiguous_dims());
-    auto& shape = source.shape();
-    std::size_t dim_count = shape.size();
-    if (contiguous_dims == dim_count) {
-        std::memcpy(target_ptr, source_ptr, source.stride().back() * shape.back());
-        return;
-    }
-
-    std::size_t copy_size = contiguous_dims == 0 ?
-        source.dtype_size() :
-        source.stride()[contiguous_dims - 1] * shape[contiguous_dims - 1];
-    SizeVec indices(dim_count - contiguous_dims);
-    SizeVec source_step_sizes, target_step_sizes;
-    source_step_sizes.reserve(indices.size());
-    target_step_sizes.reserve(indices.size());
-    std::size_t prev_source_total_size = 0;
-    std::size_t prev_target_total_size = 0;
-    for (std::size_t i = contiguous_dims; i < dim_count; ++i) {
-        std::size_t source_step_size = source.stride()[i];
-        std::size_t target_step_size = target.stride()[i];
-        source_step_sizes.push_back(source_step_size - prev_source_total_size);
-        target_step_sizes.push_back(target_step_size - prev_target_total_size);
-        prev_source_total_size = source_step_size * shape[i];
-        prev_target_total_size = target_step_size * shape[i];
-    }
-
-    std::size_t max_dim = dim_count - contiguous_dims - 1;
-    std::size_t dim = max_dim;
-    while (true) {
-        auto& index = indices[dim];
-        if (index < shape[contiguous_dims + dim]) {
-            if (dim == 0) {
-                std::memcpy(target_ptr, source_ptr, copy_size);
-                source_ptr += source_step_sizes[dim];
-                target_ptr += target_step_sizes[dim];
-                ++index;
-            } else {
-                --dim;
-            }
-        } else {
-            if (dim == max_dim) {
-                break;
-            } else {
-                index = 0;
-                ++dim;
-                source_ptr += source_step_sizes[dim];
-                target_ptr += target_step_sizes[dim];
-                ++indices[dim];
-            }
-        }
-
-    }
-}
 
 void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size, index = 0;

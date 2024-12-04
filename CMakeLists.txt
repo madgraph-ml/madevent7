@@ -50,6 +50,7 @@ add_library(
     src/phasespace/rambo.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
+    include/madevent/backend/cpu/tensor.h
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h

@@ -76,7 +76,7 @@ add:
       type: all
       desc: sum of the two inputs
   desc: Computes the sum of the two inputs.
-  flatten: True
+  dims: 0
 
 sub:
   inputs:
@@ -91,7 +91,7 @@ sub:
       type: all
       desc: difference of the two inputs
   desc: Computes the difference of the two inputs.
-  flatten: True
+  dims: 0
 
 mul:
   inputs:
@@ -106,20 +106,6 @@ mul:
       type: scalar
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
-
-mul_scalar:
-  inputs:
-    - name: in1
-      type: all
-      desc:
-    - name: in2
-      type: scalar
-      desc:
-  outputs:
-    - name: out
-      type: all
-      desc:
-  flatten: True
 
 clip_min:
   inputs:

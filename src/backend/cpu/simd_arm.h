@@ -48,7 +48,7 @@ void vstore(int64_t* ptr, IVec values) {
     vst1q_s64(ptr, values);
 }
 
-void vstore(bool* ptr, int64x2_t values) {
+void vstore(bool* ptr, BVec values) {
     uint64_t buffer[2];
     vst1q_u64(&buffer[0], values);
     ptr[0] = buffer[0] != 0;
