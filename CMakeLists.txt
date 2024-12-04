@@ -7,7 +7,12 @@ project (
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
-#find_package(OpenMP)
+# Doesn't work for no apparent reason
+execute_process(
+    COMMAND python -c "import torch;print(torch.utils.cmake_prefix_path)"
+    OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
+)
+list(APPEND CMAKE_PREFIX_PATH ${TORCH_CMAKE_PREFIX_PATH})
 
 find_package(Torch CONFIG)
 find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
@@ -35,6 +40,9 @@ add_library(
     src/backend/cpu/runtime.cpp
     src/backend/cpu/kernels.h
     src/backend/cpu/runtime_mixin.h
+    src/backend/cpu/tensor.h
+    src/backend/cpu/simd.h
+    src/backend/cpu/simd_arm.h
     src/madcode/function.cpp
     src/madcode/instruction.cpp
     src/madcode/optimizer.cpp
@@ -50,7 +58,6 @@ add_library(
     src/phasespace/rambo.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
-    include/madevent/backend/cpu/tensor.h
     include/madevent/madcode.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
@@ -78,13 +85,8 @@ add_library(
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
 target_link_libraries(madevent PUBLIC sleef::sleef)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(madevent PUBLIC OpenMP::OpenMP_CXX)
-endif()
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 
-message("TORCH_PYTHON_LIBRARY=${TORCH_LIBRARIES}")
-message("TORCH_PYTHON_LIBRARY=${TORCH_PYTHON_LIBRARY}")
 pybind11_add_module(
     madevent_py
     src/python/madevent.cpp
@@ -95,7 +97,7 @@ pybind11_add_module(
 #target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
 if(TORCH_FOUND)
     target_compile_definitions(madevent_py PRIVATE TORCH_FOUND=1)
+    target_link_libraries(madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
 endif()
 
 target_link_libraries(madevent_py PUBLIC madevent)
-target_link_libraries(madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})

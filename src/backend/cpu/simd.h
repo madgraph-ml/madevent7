@@ -1,13 +1,6 @@
 #pragma once
 
-#include "madevent/backend/tensor.h"
-
-
-namespace madevent {
-
-struct Nothing;
-
-
-
-}
+#ifdef __aarch64__
+#include "simd_arm.h"
+#endif
 

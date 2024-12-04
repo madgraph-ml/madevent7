@@ -1,5 +1,80 @@
 #pragma once
 
+#include "madevent/backend/tensor.h"
+#include "simd.h"
+
+namespace {
+
+template<class V, class T, int _dim, bool is_batch>
+class VectorizedTensorView {
+public:
+    using VType = V;
+    using DType = T;
+    static const int dim = _dim;
+
+    VectorizedTensorView(const madevent::TensorView<T, _dim>& view) :
+        _data(view.data()), _stride(view.stride()), _shape(view.shape()),
+        _batch_stride(view.stride()[0]) {}
+
+    VectorizedTensorView(
+        uint8_t* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride
+    ) : _data(data), _stride(stride), _shape(shape), _batch_stride(batch_stride) {}
+
+    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
+        if (is_batch) {
+            return {_data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride};
+        } else {
+            return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
+        }
+    }
+
+    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
+        if (is_batch) {
+            return {_data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride};
+        } else {
+            return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
+        }
+    }
+
+    operator typename std::conditional_t<_dim == 0, V, madevent::Nothing>() const {
+        T buffer[simd_vec_size];
+        for (int i = 0; i < simd_vec_size; ++i) {
+            buffer[i] = *reinterpret_cast<T*>(_data + i * _batch_stride);
+        }
+        return vload(&buffer[0]);
+    }
+
+    template<int d = _dim, typename = std::enable_if_t<d == 0>>
+    V operator=(V value) {
+        T buffer[simd_vec_size];
+        vstore(&buffer[0], value);
+        for (int i = 0; i < simd_vec_size; ++i) {
+            *reinterpret_cast<T*>(_data + i * _batch_stride) = buffer[i];
+        }
+        return value;
+    }
+
+    VectorizedTensorView<V, T, _dim, is_batch>& operator=(
+        VectorizedTensorView<V, T, _dim, is_batch>& value
+    ) = delete;
+
+    std::size_t size() const {
+        if (is_batch) {
+            return _shape[0] / simd_vec_size;
+        } else {
+            return _shape[0];
+        }
+    }
+
+private:
+    uint8_t* _data;
+    std::size_t* _stride;
+    std::size_t* _shape;
+    std::size_t _batch_stride;
+};
+
 // return the tuple of TensorViews where the type is extracted from the signature of F
 template<typename F, int dims> struct get_views;
 template<typename... TParam, int dims>
@@ -44,7 +119,9 @@ void recursive_for(V... views) {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
-    std::array<Tensor, n_in> inputs, std::array<Tensor, n_out> outputs, std::size_t batch_size
+    std::array<madevent::Tensor, n_in> inputs,
+    std::array<madevent::Tensor, n_out> outputs,
+    std::size_t batch_size
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
     auto views = std::apply(
@@ -68,7 +145,9 @@ void tensor_foreach(
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out>
 void tensor_foreach_dynamic(
-    std::array<Tensor, n_in> inputs, std::array<Tensor, n_out> outputs, std::size_t batch_size
+    std::array<madevent::Tensor, n_in> inputs,
+    std::array<madevent::Tensor, n_out> outputs,
+    std::size_t batch_size
 ) {
     switch (std::get<0>(inputs).shape().size() - first_param<decltype(scalar_func)>::dim) {
         case 1:
@@ -88,8 +167,4 @@ void tensor_foreach_dynamic(
     }
 }
 
-void tensor_copy(Tensor source, Tensor target) {
-    tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
-        {source}, {target}, target.size(0)
-    );
 }

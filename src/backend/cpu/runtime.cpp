@@ -13,7 +13,6 @@ using namespace madevent::cpu;
 
 namespace {
 
-#include "madevent/backend/cpu/tensor.h"
 
 // call function(i) with argument i=0...N-1 and return the results as a tuple
 template<std::size_t N, typename F, std::size_t... i>
@@ -59,6 +58,12 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
 // Some helper definitions to use with std::visit and std::variant
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+void tensor_copy(Tensor source, Tensor target) {
+    tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
+        {source}, {target}, target.size(0)
+    );
+}
 
 void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size, index = 0;
