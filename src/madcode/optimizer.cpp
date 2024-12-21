@@ -6,6 +6,17 @@
 
 using namespace madevent;
 
+namespace {
+
+std::vector<int> find_permutation(std::vector<int>& from, std::vector<int>& to) {
+    auto indices = std::views::iota(from.size());
+    std::unordered_map<int, int> from_location(std::from_range, std::views::zip(from, indices));
+    return indices | std::views::transform([&](int i) { return from_location[to[i]]; })
+                   | std::ranges::to<std::vector<int>>();
+}
+
+}
+
 Function madevent::optimize_constants(const Function& function) {
     // add, sub, mul, clip_min, sqrt, square
     FunctionBuilder fb(function);
@@ -130,7 +141,7 @@ LastUseOfLocals::LastUseOfLocals(const Function& function) :
     std::reverse(last_used.begin(), last_used.end());
 }
 
-MergeOptimizer::MergeOptimizer(const Function& function) {
+MergeOptimizer::MergeOptimizer(const Function& _function) : function(_function) {
     InstructionDependencies dependencies(function);
     auto size = function.instructions.size();
     std::vector<std::size_t> perm(size);
@@ -177,14 +188,91 @@ Function MergeOptimizer::optimize() {
             std::cout << "}\n";
         }
     }
-    return {};
+    return build_function();
+}
+
+Function MergeOptimizer::build_function() {
+    struct SourceIndices {
+        int instr;
+        int output;
+        int sub_instr;
+    };
+    FunctionBuilder fb(function);
+    std::vector<SourceIndices> local_source_indices(function.locals.size());
+    std::vector<std::vector<SourceIndices>> input_source_instr;
+    std::vector<std::vector<int>> input_local_indices;
+    std::vector<int> permutation, arg_source_locals, arg_locals;
+    int instr_index = -1;
+    for (auto& instr : instructions) {
+        ++instr_index;
+        if (!instr.active) continue;
+        auto input_count = instr.instructions[0].inputs.size();
+        input_source_instr.assign(input_count, {});
+        input_local_indices.assign(input_count, {});
+        int sub_instr_index = 0;
+        for (auto& sub_instr : instr.instructions) {
+            for (auto&& [input, isrc, iloc] : std::views::zip(
+                sub_instr.inputs, input_source_instr, input_local_indices
+            )) {
+                isrc.push_back(local_source_indices[input.local_index]);
+                iloc.push_back(input.local_index);
+            }
+            int output_index = 0;
+            for (auto& output : sub_instr.outputs) {
+                local_source_indices[output.local_index] = {
+                    instr_index, output_index, sub_instr_index
+                };
+                ++output_index;
+            }
+            ++sub_instr_index;
+        }
+
+        permutation.clear();
+        arg_source_locals.clear();
+        arg_locals.clear();
+        for (auto&& [isrc, iloc] : std::views::zip(input_source_instr, input_local_indices)) {
+            if (std::adjacent_find(isrc.begin(), isrc.end(), [](auto& a, auto& b) {
+                return a.instr != b.instr || a.output != b.output;
+            }) == isrc.end()) {
+                // all have the same source
+                for (auto& source_instr : instructions[isrc[0].instr].instructions) {
+                    arg_source_locals.push_back(source_instr.outputs[isrc[0].output].local_index);
+                }
+
+                if (permutation.size() > 0) {
+                    auto next_permutation = find_permutation(iloc, arg_source_locals);
+                    if (std::equal(permutation.begin(), permutation.end(), next_permutation.begin())) {
+
+                    } else {
+                        permutation = next_permutation;
+                    }
+                } else {
+                    permutation = find_permutation(iloc, arg_source_locals);
+                }
+
+                // determine permutation
+                // if permutation exists
+                //     if permutation is the same
+                //         use value before split
+                //     else
+                //         use cat instruction
+                // else
+                //     set permutation
+                //     use value before split
+            } else {
+                // use cat instruction
+            }
+            // emit cat instructions with permutation
+        }
+        // emit instruction
+        // for each output
+        //     emit split instruction with permutation
+    }
+    return fb.function();
 }
 
 void MergeOptimizer::merge_if_compatible(
-    std::size_t idx1,
-    MergedInstruction& instr1,
-    std::size_t idx2,
-    MergedInstruction& instr2
+    std::size_t idx1, MergedInstruction& instr1, std::size_t idx2, MergedInstruction& instr2
 ) {
     //return;
     // Check if instructions can be merged, otherwise return

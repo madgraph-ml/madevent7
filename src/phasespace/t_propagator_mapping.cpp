@@ -42,16 +42,21 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     auto [p1, p2] = fb.com_p_in(e_cm);
 
     // sample s-invariants from the t-channel part of the diagram
-    auto sqrt_s_max = e_cm;
+    auto sqs_max = e_cm;
+    ValueList sqrt_s_max;
+    for (int i = n_particles - 1; i > 1; --i) {
+        auto sqrt_s = inputs[m_out_offset + i];
+        sqs_max = fb.sub(sqs_max, sqrt_s);
+        sqrt_s_max.push_back(sqs_max);
+    }
     ValueList cumulated_m_out {inputs[m_out_offset]};
     for (int i = 0; i < n_particles - 2; ++i) {
         auto invariant = s_pseudo_invariants[i];
         auto r = inputs[i];
         auto sqrt_s = inputs[m_out_offset + 1 + i];
-        auto sqrt_s_rev = inputs[m_out_offset + n_invariants - i];
+        auto sqrt_s_rev = sqrt_s_max[n_particles - 3 - i];
 
-        sqrt_s_max = fb.sub(sqrt_s_max, sqrt_s_rev);
-        auto s_max = fb.square(sqrt_s_max);
+        auto s_max = fb.square(sqrt_s_rev);
         auto s_min = fb.square(fb.add(cumulated_m_out[i], sqrt_s));
         auto [s_vec, det] = invariant.build_forward(fb, {r}, {s_min, s_max});
         cumulated_m_out.push_back(fb.sqrt(s_vec[0]));

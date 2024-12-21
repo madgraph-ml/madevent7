@@ -7,6 +7,7 @@
 #include <array>
 #include <functional>
 #include <algorithm>
+#include <ranges>
 
 using namespace madevent;
 using namespace madevent::cpu;
@@ -98,10 +99,15 @@ void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
 void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
+    Tensor output_sizes(DT_INT, {1, instruction.input_indices.size()});
+    auto output_size_view = output_sizes.view<long long, 2>()[0];
+    std::size_t i = 0;
     for (auto input_index : instruction.input_indices) {
         auto size = locals[input_index].size(0);
+        output_size_view[i] = size;
         sizes.push_back(size);
         batch_size += size;
+        ++i;
     }
     auto shape = locals[instruction.input_indices.front()].shape();
     shape[0] = batch_size;
@@ -113,15 +119,25 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
         tensor_copy(input, output.slice(0, offset, next_offset));
         offset = next_offset;
     }
+
+    locals[instruction.output_indices[0]] = output;
+    locals[instruction.output_indices[1]] = output_sizes;
 }
 
 void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     SizeVec sizes;
-    auto tensors = locals[0].split(0, sizes);
+    auto size_tensor = locals[instruction.input_indices[1]];
+    if (size_tensor.size(0) != 1) {
+        throw std::runtime_error("invalid input shape");
+    }
+    auto size_view = size_tensor.view<long long, 2>()[0];
+    for (std::size_t i = 0; i < size_view.size(); ++i) {
+        sizes.push_back(size_view[i]);
+    }
+    auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     auto output_index = instruction.output_indices.begin();
-    for (auto& tensor : tensors) {
-        locals[*output_index] = tensor;
-        ++output_index;
+    for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
+        locals[output_index] = tensor;
     }
 }
 

@@ -39,6 +39,8 @@ using std::tan;
 using std::atan;
 using std::exp;
 
+using std::isnan;
+
 struct SimdTypes {
     template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
     template<int dim> using IIn = const VectorizedTensorView<IVec, long long, dim, false>;

@@ -36,7 +36,7 @@ private:
 
 class MergeOptimizer {
 public:
-    MergeOptimizer(const Function& function);
+    MergeOptimizer(const Function& _function);
     Function optimize();
 private:
     struct MergedInstruction {
@@ -46,10 +46,12 @@ private:
         bool active = true;
     };
     std::vector<MergedInstruction> instructions;
+    const Function& function;
 
     void merge_if_compatible(
         std::size_t idx1, MergedInstruction& instr1, std::size_t idx2, MergedInstruction& instr2
     );
+    Function build_function();
 };
 
 }

@@ -51,14 +51,16 @@ KERNELSPEC void kernel_decay_momentum(
     FIn<T,0> s, FIn<T,0> sqrt_s, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p, FOut<T,0> gs
 ) {
+    FVal<T> _s = s, _sqrt_s = sqrt_s;
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
-    auto sqrt_kaellen = sqrt(_kaellen<T>(s, m1_2, m2_2));
-    p[0] = (s + m1_2 - m2_2) / (2 * sqrt_s);
-    p[1] = 0;
-    p[2] = 0;
-    p[3] = sqrt_kaellen / (2 * sqrt_s);
-    gs = PI * sqrt_kaellen / (2 * s);
+    auto sqrt_kaellen = sqrt(_kaellen<T>(_s, m1_2, m2_2));
+    auto sqs_clip = where(_sqrt_s > EPS, _sqrt_s, EPS);
+    p[0] = (s + m1_2 - m2_2) / (2. * sqs_clip);
+    p[1] = 0.;
+    p[2] = 0.;
+    p[3] = sqrt_kaellen / (2. * sqs_clip);
+    gs = PI * sqrt_kaellen / (2. * where(_s > EPS, _s, EPS));
 }
 
 template<typename T>

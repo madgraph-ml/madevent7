@@ -148,20 +148,11 @@ public:
         return impl != nullptr;
     }
 
-    template<class T, int dim> TensorView<T, dim> view(bool flatten = false) {
+    template<class T, int dim> TensorView<T, dim> view() {
         return TensorView<T, dim>(
-            bytes(), impl->stride.data(), flatten ? impl->flat_shape.data() : impl->shape.data()
+            bytes(), impl->stride.data(), impl->shape.data()
         );
     }
-
-    /*template<class T, int dim> VectorizedTensorView<T, dim> vectorized_view(bool flatten = false) {
-        return VectorizedTensorView<T, dim, true>(
-            bytes(),
-            impl->stride.data(),
-            flatten ? impl->flat_shape.data() : impl->shape.data(),
-            impl->stride[0]
-        );
-    }*/
 
     void* data() {
         return impl->data;
@@ -183,10 +174,14 @@ public:
         return impl->shape[i];
     }
 
+    DataType dtype() const {
+        return impl->dtype;
+    }
+
     std::size_t dtype_size() const {
         switch (impl->dtype) {
             case DT_BOOL: return sizeof(bool);
-            case DT_INT: return sizeof(int);
+            case DT_INT: return sizeof(long long);
             case DT_FLOAT: return sizeof(double);
         }
     }
@@ -219,7 +214,6 @@ private:
         TensorImpl* data_owner;
         int ref_count = 1;
         SizeVec stride;
-        std::array<std::size_t, 2> flat_shape;
         std::size_t offset;
 
         void reset(std::function<void(void*)> deleter) {

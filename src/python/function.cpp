@@ -76,9 +76,20 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         for (int k = n_dims-1; k >= 0; --k) {
             permutation.push_back(k);
         }
+        auto arg_dtype = args[i].scalar_type();
+        torch::Dtype target_dtype;
+        if (arg_dtype == torch::kFloat64 || arg_dtype == torch::kFloat32) {
+            target_dtype = torch::kFloat64;
+        } else if (arg_dtype == torch::kInt64 || arg_dtype == torch::kInt32) {
+            target_dtype = torch::kInt64;
+        } else if (arg_dtype == torch::kBool) {
+            target_dtype = torch::kBool;
+        } else {
+            throw std::invalid_argument(std::format("Argument {}: dtype not accepted", i));
+        }
         auto tensor = args[i]
             .permute(permutation)
-            .to(torch::kFloat64)
+            .to(target_dtype)
             .contiguous()
             .permute(permutation);
         if (i == 0) {
@@ -111,7 +122,15 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             }
             shape.push_back(tensor_size);
         }
-        inputs.emplace_back(DT_FLOAT, shape, device, tensor.data_ptr<double>());
+        void* data_ptr;
+        if (target_dtype == torch::kFloat64) {
+            data_ptr = tensor.data_ptr<double>();
+        } else if (target_dtype == torch::kInt64) {
+            data_ptr = tensor.data_ptr<long long>();
+        } else {
+            data_ptr = tensor.data_ptr<bool>();
+        }
+        inputs.emplace_back(DT_FLOAT, shape, device, data_ptr);
         tensors.push_back(tensor);
     }
 
@@ -133,8 +152,15 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     for (auto& output : outputs) {
         std::vector<int64_t> shape {output.shape().begin(), output.shape().end()};
         std::vector<int64_t> stride;
+        auto dtype_size = output.dtype_size();
         for (auto s : output.stride()) {
-            stride.push_back(s / sizeof(double));
+            stride.push_back(s / dtype_size);
+        }
+        torch::Dtype dtype;
+        switch(output.dtype()) {
+            case DT_FLOAT: dtype = torch::kFloat64; break;
+            case DT_INT: dtype = torch::kInt64; break;
+            case DT_BOOL: dtype = torch::kBool; break;
         }
         output_tensors.push_back(torch::from_blob(
             output.data(),
@@ -142,7 +168,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             stride,
             [output] (void* data) mutable { output.reset(); },
             torch::TensorOptions()
-                .dtype(torch::kFloat64)
+                .dtype(dtype)
                 .device(is_cuda ? torch::kCUDA : torch::kCPU)
         ));
     }

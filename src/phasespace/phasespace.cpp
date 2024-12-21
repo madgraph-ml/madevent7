@@ -29,16 +29,19 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     inverse_permutation(topology.inverse_permutation)
 {
     // Initialize s invariants and decay mappings
-    std::vector<double> sqrt_s_min(topology.outgoing_masses);
+    std::vector<double> sqrt_s_min;
+    for (auto index : inverse_permutation) {
+        sqrt_s_min.push_back(outgoing_masses.at(index));
+    }
     for (auto& layer : topology.decays) {
         if (!has_t_channel && &layer == &topology.decays.back()) {
             auto& decay_mappings = s_decays.emplace_back().emplace_back();
-            auto child_count = layer[0].child_count;
+            auto child_count = layer.at(0).child_count;
             decay_mappings.count = child_count;
             if (child_count == 2) {
-                decay_mappings.decay = TwoParticle(false);
+                decay_mappings.decay = TwoParticle(true);
             } else {
-                decay_mappings.decay = FastRamboMapping(child_count, false, false);
+                decay_mappings.decay = FastRamboMapping(child_count, false, true);
             }
             break;
         }
@@ -50,11 +53,19 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             decay_mappings.count = decay.child_count;
             double sqs_min_sum = 0;
             for (int i = 0; i < decay.child_count; ++i, ++sqs_iter) sqs_min_sum += *sqs_iter;
-            double sqs_min = std::max(sqrt_s_epsilon, sqs_min_sum);
+            double sqs_min = std::max(decay.child_count > 1 ? sqrt_s_epsilon : 0., sqs_min_sum);
             sqrt_s_min_new.push_back(sqs_min);
             if (decay.child_count == 1) continue;
-            double mass = decay.propagator.mass < sqs_min ? 0. : decay.propagator.mass;
-            decay_mappings.invariant.emplace(nu, mass, decay.propagator.width);
+            double mass, width;
+            if (decay.propagator.mass < sqs_min) {
+                mass = 0;
+                //mass = decay.propagator.mass;
+                width = 0;
+            } else {
+                mass = decay.propagator.mass;
+                width = decay.propagator.width;
+            }
+            decay_mappings.invariant.emplace(nu, mass, width);
             if (decay.child_count == 2) {
                 decay_mappings.decay = TwoParticle(false);
             } else {
@@ -65,7 +76,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     }
 
     // Initialize luminosity and t-channel mapping
-    double sqs_min_sum = std::accumulate(sqrt_s_min.begin(), sqrt_s_min.end(), 0);
+    double sqs_min_sum = std::accumulate(sqrt_s_min.begin(), sqrt_s_min.end(), 0.);
     s_hat_min = std::max(sqs_min_sum * sqs_min_sum, s_hat_min);
     if (has_t_channel) {
         if (!leptonic) {
@@ -78,7 +89,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             t_mapping = FastRamboMapping(topology.t_propagators.size() + 1, false);
         }
     } else if (!leptonic) {
-        auto& s_line = topology.decays.back()[0].propagator;
+        auto& s_line = topology.decays.back().at(0).propagator;
         if (s_line.mass >= std::sqrt(s_hat_min)) {
             luminosity = Luminosity(s_lab, s_hat_min, s_lab, 0., s_line.mass, s_line.width);
         } else {
@@ -91,16 +102,16 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto random_numbers = fb.unstack(inputs[0]);
+    auto random_numbers = fb.unstack(inputs.at(0));
     auto r = random_numbers.begin();
     ValueList dets{pi_factors};
     Value x1, x2, s_hat;
     if (luminosity) {
         auto [x12s, det_lumi] = luminosity->build_forward(fb, {*(r++), *(r++)}, {});
         dets.push_back(det_lumi);
-        x1 = x12s[0];
-        x2 = x12s[1];
-        s_hat = x12s[2];
+        x1 = x12s.at(0);
+        x2 = x12s.at(1);
+        s_hat = x12s.at(2);
     } else {
         x1 = 1.0;
         x2 = 1.0;
@@ -111,7 +122,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     // sample s-invariants from decays, starting from the final state particles
     ValueList sqrt_s;
     for (auto index : inverse_permutation) {
-        sqrt_s.push_back(outgoing_masses[index]);
+        sqrt_s.push_back(outgoing_masses.at(index));
     }
     struct DecayData {
         const DecayMappings& mappings;
@@ -166,12 +177,12 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto [s_vec, det] = data.mappings.invariant->build_forward(
                 fb, {*(r++)}, {s_min, s_max}
             );
-            auto sqs = fb.sqrt(s_vec[0]);
+            auto sqs = fb.sqrt(s_vec.at(0));
             if (&data != &layer_data.back()) {
                 sqs_sum = fb.sub(sqs_sum, sqs);
             }
             sqrt_s.push_back(sqs);
-            data.s = s_vec[0];
+            data.s = s_vec.at(0);
             data.sqrt_s = sqs;
             dets.push_back(det);
         }
@@ -187,7 +198,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             t_args.push_back(sqrt_s_hat);
             std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
             auto [ps, det] = t_map->build_forward(fb, t_args, {});
-            p_ext = {ps[0], ps[1]};
+            p_ext = {ps.at(0), ps.at(1)};
             std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
             dets.push_back(det);
         } else if (auto t_map = std::get_if<FastRamboMapping>(&t_mapping)) {

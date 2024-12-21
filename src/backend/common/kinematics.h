@@ -110,7 +110,8 @@ KERNELSPEC void kernel_com_p_in(FIn<T,0> e_cm, FOut<T,1> p1, FOut<T,1> p2) {
 template<typename T>
 KERNELSPEC void kernel_com_angles(FIn<T,1> p, FOut<T,0> phi, FOut<T,0> cos_theta) {
     phi = atan2(p[2], p[1]);
-    cos_theta = p[3] / sqrt(p[1] * p[1] + p[2] * p[2] + p[3] * p[3]);
+    auto p_mag = sqrt(p[1] * p[1] + p[2] * p[2] + p[3] * p[3]);
+    cos_theta = p[3] / where(p_mag > EPS, p_mag, EPS);
 }
 
 template<typename T>

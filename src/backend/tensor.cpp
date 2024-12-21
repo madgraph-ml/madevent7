@@ -2,23 +2,6 @@
 
 using namespace madevent;
 
-namespace {
-
-std::array<std::size_t, 2> compute_flat_shape(SizeVec& shape) {
-    bool first = true;
-    std::size_t size_prod = 1;
-    for (auto size : shape) {
-        if (first) {
-            first = false;
-        } else {
-            size_prod *= size;
-        }
-    }
-    return {shape[0], size_prod};
-}
-
-}
-
 Tensor Tensor::select(std::size_t axis, std::size_t index) {
     auto new_shape = impl->shape;
     auto new_stride = impl->stride;
@@ -33,7 +16,6 @@ Tensor Tensor::select(std::size_t axis, std::size_t index) {
         impl,
         1,
         new_stride,
-        compute_flat_shape(new_shape),
         impl->offset + index * impl->stride[axis]
     });
 }
@@ -50,7 +32,6 @@ Tensor Tensor::slice(std::size_t axis, std::size_t start, std::size_t stop) {
         impl,
         1,
         impl->stride,
-        compute_flat_shape(new_shape),
         impl->offset + start * impl->stride[axis]
     });
 }
@@ -108,6 +89,5 @@ std::size_t Tensor::init_stride() {
         }
         stride_prod *= size;
     }
-    impl->flat_shape = {impl->shape[0], size_prod};
     return stride_prod;
 }

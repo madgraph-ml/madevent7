@@ -1,13 +1,14 @@
 #include "madevent/phasespace/topology.h"
 
 #include <numeric>
+#include <iostream>
 
 using namespace madevent;
 
 namespace {
 
 std::size_t next_vertex(const IndexList& vertices, std::size_t index) {
-    return vertices[0] == index ? vertices[1] : vertices[0];
+    return vertices.at(0) == index ? vertices.at(1) : vertices.at(0);
 }
 
 }
@@ -59,26 +60,26 @@ Diagram::Diagram(
         for (auto& line_ref : vertex) {
             switch (line_ref.type) {
             case Diagram::incoming:
-                incoming_vertices[line_ref.index] = index;
+                incoming_vertices.at(line_ref.index) = index;
                 break;
             case Diagram::outgoing:
-                outgoing_vertices[line_ref.index] = index;
+                outgoing_vertices.at(line_ref.index) = index;
                 break;
             case Diagram::propagator:
-                propagator_vertices[line_ref.index].push_back(index);
+                propagator_vertices.at(line_ref.index).push_back(index);
                 break;
             }
         }
         ++index;
     }
 
-    find_s_and_t(incoming_vertices[1], -1);
+    find_s_and_t(incoming_vertices.at(1), -1);
 }
 
 bool Diagram::find_s_and_t(std::size_t current_index, int source_propagator) {
     bool is_t_vertex = false;
     std::vector<Diagram::LineRef> out_lines;
-    for (auto& line_ref : vertices[current_index]) {
+    for (auto& line_ref : vertices.at(current_index)) {
         switch(line_ref.type) {
         case Diagram::incoming:
             if (line_ref.index == 0) {
@@ -92,7 +93,7 @@ bool Diagram::find_s_and_t(std::size_t current_index, int source_propagator) {
         case Diagram::propagator:
             if (line_ref.index != source_propagator) {
                 if (find_s_and_t(
-                    next_vertex(propagator_vertices[line_ref.index], current_index), line_ref.index
+                    next_vertex(propagator_vertices.at(line_ref.index), current_index), line_ref.index
                 )) {
                     t_propagators.push_back(line_ref.index);
                     t_vertices.push_back(current_index);
@@ -107,7 +108,7 @@ bool Diagram::find_s_and_t(std::size_t current_index, int source_propagator) {
     if (is_t_vertex) {
         lines_after_t.push_back(out_lines);
     } else {
-        decays[source_propagator] = out_lines;
+        decays.at(source_propagator) = out_lines;
     }
     return is_t_vertex;
 }
@@ -134,10 +135,10 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
         for (auto& line : lines) {
             auto [depth, count] = build_decays(diagram, decay_mode, line);
             for (; max_depth < depth; ++max_depth) {
-                decays[max_depth].insert(decays[max_depth].begin(), count_before, Decay());
+                decays.at(max_depth).insert(decays.at(max_depth).begin(), count_before, Decay());
             }
             for (; depth < max_depth; ++depth) {
-                decays[depth].insert(decays[depth].end(), count, Decay());
+                decays.at(depth).insert(decays.at(depth).end(), count, Decay());
             }
             for (int i = 0; i < count - 1; ++i) {
                 t_propagators.emplace_back();
@@ -145,7 +146,7 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
             count_before += count;
         }
         if (prop_iter != diagram.t_propagators.end()) {
-            t_propagators.push_back(diagram.propagators[*prop_iter]);
+            t_propagators.push_back(diagram.propagators.at(*prop_iter));
             ++prop_iter;
         }
     }
@@ -154,7 +155,7 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
     std::sort(
         permutation.begin(),
         permutation.end(),
-        [this](auto i, auto j) { return inverse_permutation[i] < inverse_permutation[j]; }
+        [this](auto i, auto j) { return inverse_permutation.at(i) < inverse_permutation.at(j); }
     );
 }
 
@@ -166,23 +167,16 @@ std::tuple<std::size_t, std::size_t> Topology::build_decays(
         return {0, 1};
     }
 
-    auto& propagator = diagram.propagators[line_in.index];
+    auto& propagator = diagram.propagators.at(line_in.index);
     std::size_t max_depth = 0;
     std::size_t count_before = 0;
-    std::vector<std::vector<Decay>::iterator> decay_layer_begin;
-    for (auto& decay_layer : decays) {
-        decay_layer_begin.push_back(decay_layer.begin());
-    }
-    for (auto& line : diagram.decays[line_in.index]) {
+    for (auto& line : diagram.decays.at(line_in.index)) {
         auto [depth, count] = build_decays(diagram, decay_mode, line);
         for (; max_depth < depth; ++max_depth) {
-            if (decay_layer_begin.size() == max_depth) {
-                decay_layer_begin.push_back(decays[max_depth].begin());
-            }
-            decays[max_depth].insert(decay_layer_begin[max_depth], count_before, Decay());
+            decays.at(max_depth).insert(decays.at(max_depth).begin(), count_before, Decay());
         }
         for (; depth < max_depth; ++depth) {
-            decays[depth].insert(decays[depth].end(), count, Decay());
+            decays.at(depth).insert(decays.at(depth).end(), count, Decay());
         }
         count_before += count;
     }
@@ -194,7 +188,7 @@ std::tuple<std::size_t, std::size_t> Topology::build_decays(
         if (decays.size() == max_depth) {
             decays.emplace_back();
         }
-        decays[max_depth].push_back({propagator, count_before});
+        decays.at(max_depth).push_back({propagator, count_before});
         ++max_depth;
         count_before = 1;
     }

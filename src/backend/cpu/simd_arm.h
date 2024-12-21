@@ -88,3 +88,5 @@ FVec log(FVec arg1) { return Sleef_logd2_u10(arg1); }
 FVec tan(FVec arg1) { return Sleef_tand2_u10(arg1); }
 FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
 FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
+
+bool isnan(FVec arg) { return false; }

@@ -27,6 +27,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(pybind11)
 
 find_package(sleef CONFIG REQUIRED)
+find_package(OpenBLAS REQUIRED)
 
 add_library(
     madevent SHARED
@@ -87,6 +88,8 @@ add_library(
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
 target_link_libraries(madevent PUBLIC sleef::sleef)
+target_link_libraries(madevent PUBLIC ${OpenBLAS_LIBRARIES})
+target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 
 pybind11_add_module(

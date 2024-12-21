@@ -8,9 +8,9 @@ using namespace madevent;
 Mapping::Result TwoParticle::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto r1 = inputs[0], r2 = inputs[1];
-    auto s = inputs[2], sqrt_s = inputs[3], m1 = inputs[4], m2 = inputs[5];
-    auto p0 = com ? fb.com_momentum(sqrt_s) : inputs[6];
+    auto r1 = inputs.at(0), r2 = inputs.at(1);
+    auto s = inputs.at(2), sqrt_s = inputs.at(3), m1 = inputs.at(4), m2 = inputs.at(5);
+    auto p0 = com ? fb.com_momentum(sqrt_s) : inputs.at(6);
     auto phi = fb.uniform_phi(r1);
     auto costheta = fb.uniform_costheta(r2);
     auto [p1, gs] = fb.decay_momentum(s, sqrt_s, m1, m2);
@@ -23,7 +23,7 @@ Mapping::Result TwoParticle::build_forward_impl(
 Mapping::Result TwoParticle::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto p1 = inputs[0], p2 = inputs[1];
+    auto p1 = inputs.at(0), p2 = inputs.at(1);
     auto p0 = fb.add(p1, p2);
     auto [s, sqrt_s] = fb.s_and_sqrt_s(p0);
     auto m1 = fb.sqrt_s(p1);
@@ -43,8 +43,8 @@ Mapping::Result TwoParticle::build_inverse_impl(
 Mapping::Result TInvariantTwoParticle::build_forward_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto r1 = inputs[0], r2 = inputs[1], m1 = inputs[2], m2 = inputs[3];
-    auto p_in1 = conditions[0], p_in2 = conditions[1];
+    auto r1 = inputs.at(0), r2 = inputs.at(1), m1 = inputs.at(2), m2 = inputs.at(3);
+    auto p_in1 = conditions.at(0), p_in2 = conditions.at(1);
     auto p_tot = fb.add(p_in1, p_in2);
     auto [s, sqrt_s] = fb.s_and_sqrt_s(p_tot);
     auto s_in1 = fb.s(p_in1);
@@ -53,7 +53,7 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
     auto [t_min, t_max] = fb.invt_min_max(s, s_in1, s_in2, m1, m2);
     auto [t_vec, det_t] = invariant.build_forward(fb, {r2}, {t_min, t_max});
     auto phi = fb.uniform_phi(r1);
-    auto costheta = fb.invt_to_costheta(s, s_in1, s_in2, m1, m2, t_vec[0]);
+    auto costheta = fb.invt_to_costheta(s, s_in1, s_in2, m1, m2, t_vec.at(0));
     auto [p1, _] = fb.decay_momentum(s, sqrt_s, m1, m2);
     p1 = fb.rotate_zy(p1, phi, costheta);
     if (!com) {
@@ -69,8 +69,8 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
 Mapping::Result TInvariantTwoParticle::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-    auto p1 = inputs[0], p2 = inputs[1];
-    auto p_in1 = conditions[0], p_in2 = conditions[1];
+    auto p1 = inputs.at(0), p2 = inputs.at(1);
+    auto p_in1 = conditions.at(0), p_in2 = conditions.at(1);
     auto p_tot = fb.add(p_in1, p_in2);
     auto s = fb.s(p_tot);
     auto m1 = fb.sqrt_s(p1);
@@ -89,5 +89,5 @@ Mapping::Result TInvariantTwoParticle::build_inverse_impl(
     auto [r2_vec, det_t] = invariant.build_inverse(fb, {t}, {t_min, t_max});
     auto r1 = fb.uniform_phi_inverse(phi);
     auto det = fb.tinv_two_particle_density_inverse(det_t, s, s_in1, s_in2);
-    return {{r1, r2_vec[0], m1, m2}, det};
+    return {{r1, r2_vec.at(0), m1, m2}, det};
 }
