@@ -22,10 +22,6 @@ KERNELSPEC void kernel_cut_pt(
         auto min_max_i = min_max[i];
         auto min_i = min_max_i[0], max_i = min_max_i[1];
         w = where((pt2 < min_i * min_i) | (pt2 > max_i * max_i), 0., w);
-        /*if constexpr (std::is_same_v<decltype(w), double>) {
-            std::cout << "pt " << ((pt2 < min_i * min_i) | (pt2 > max_i * max_i))
-                << " " << pt2 << " " << (min_i * min_i) << " " << (max_i * max_i) << "\n";
-        }*/
     }
     w_out = w;
 }
@@ -39,10 +35,6 @@ KERNELSPEC void kernel_cut_eta(
         auto eta = fabs(_eta<T>(p[i + 2]));
         auto min_max_i = min_max[i];
         w = where((eta < min_max_i[0]) | (eta > min_max_i[1]), 0., w);
-        /*if constexpr (std::is_same_v<decltype(w), double>) {
-            std::cout << "eta " << ((eta < min_max_i[0]) | (eta > min_max_i[1]))
-                << " " << eta << " " << min_max_i[0] << " " << min_max_i[1] << "\n";
-        }*/
     }
     w_out = w;
 }
@@ -85,7 +77,7 @@ KERNELSPEC void kernel_cut_m_inv(
             py_tot = py_tot + p_j[2];
             pz_tot = pz_tot + p_j[3];
         }
-        auto m2_inv = e_tot * e_tot + px_tot * px_tot + py_tot * py_tot;
+        auto m2_inv = e_tot * e_tot - px_tot * px_tot - py_tot * py_tot - pz_tot * pz_tot;
         auto m_inv = sqrt(where(m2_inv < 0., 0., m2_inv));
         auto min_max_i = min_max[i];
         w = where((m_inv < min_max_i[0]) | (m_inv > min_max_i[1]), 0., w);
@@ -98,9 +90,5 @@ KERNELSPEC void kernel_cut_sqrt_s(
     FIn<T,0> sqrt_s, FIn<T,0> w_in, FIn<T,1> min_max, FOut<T,0> w_out
 ) {
     FVal<T> w(w_in);
-    /*if constexpr (std::is_same_v<decltype(w), double>) {
-        std::cout << "sqrt_s " << ((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]))
-            << " " << sqrt_s << " " << min_max[0] << " " << min_max[1] << "\n";
-    }*/
     w_out = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), 0., w);
 }

@@ -160,3 +160,6 @@ case 51:
 case 52:
     batch_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 3, 1, 1>(instr, locals);
     break;
+case 53:
+    batch_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1>(instr, locals);
+    break;

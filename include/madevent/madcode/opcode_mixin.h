@@ -50,4 +50,5 @@ cut_pt = 48,
 cut_eta = 49,
 cut_dr = 50,
 cut_m_inv = 51,
-cut_sqrt_s = 52
+cut_sqrt_s = 52,
+chili_forward = 53

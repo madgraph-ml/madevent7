@@ -232,3 +232,8 @@ Value cut_sqrt_s(Value p, Value w_in, Value min_max) {
     return instruction("cut_sqrt_s", {p, w_in, min_max})[0];
 }
 
+std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_min, Value y_max) {
+    auto output_vector = instruction("chili_forward", {r, e_cm, m_out, pt_min, y_max});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
+}
+

@@ -8,6 +8,9 @@ types:
   array:
     dtype: float
     shape: [n]
+  array_m:
+    dtype: float
+    shape: [m]
   array_plus:
     dtype: float
     shape: ["n+"]
@@ -23,6 +26,9 @@ types:
   four_vector_array_plus:
     dtype: float
     shape: ["n+", 4]
+  four_vector_array_plus_2:
+    dtype: float
+    shape: ["n++", 4]
   limits:
     dtype: float
     shape: [2]
@@ -929,5 +935,39 @@ cut_sqrt_s:
       desc:
   outputs:
     - name: w_out
+      type: scalar
+      desc:
+
+---
+title: Chili
+
+chili_forward:
+  inputs:
+    - name: r
+      type: array_m #TODO: not safe
+      desc:
+    - name: e_cm
+      type: scalar
+      desc:
+    - name: m_out
+      type: array
+      desc:
+    - name: pt_min
+      type: array
+      desc:
+    - name: y_max
+      type: array
+      desc:
+  outputs:
+    - name: p_ext
+      type: four_vector_array_plus_2
+      desc:
+    - name: x1
+      type: scalar
+      desc:
+    - name: x2
+      type: scalar
+      desc:
+    - name: det
       type: scalar
       desc:

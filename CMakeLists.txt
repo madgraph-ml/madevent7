@@ -61,6 +61,7 @@ add_library(
     src/phasespace/multichannel.cpp
     src/phasespace/rambo.cpp
     src/phasespace/cuts.cpp
+    src/phasespace/chili.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
@@ -81,6 +82,7 @@ add_library(
     include/madevent/phasespace/multichannel.h
     include/madevent/phasespace/rambo.h
     include/madevent/phasespace/cuts.h
+    include/madevent/phasespace/chili.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu

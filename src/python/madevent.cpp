@@ -225,6 +225,7 @@ PYBIND11_MODULE(madevent_py, m) {
     py::enum_<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode")
         .value("propagator", PhaseSpaceMapping::propagator)
         .value("rambo", PhaseSpaceMapping::rambo)
+        .value("chili", PhaseSpaceMapping::chili)
         .export_values();
     psmap.def(py::init<Topology&, double, /*double,*/ bool, double, double,
                        PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),

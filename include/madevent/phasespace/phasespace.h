@@ -11,12 +11,13 @@
 #include "madevent/phasespace/t_propagator_mapping.h"
 #include "madevent/phasespace/rambo.h"
 #include "madevent/phasespace/cuts.h"
+#include "madevent/phasespace/chili.h"
 
 namespace madevent {
 
 class PhaseSpaceMapping : public Mapping {
 public:
-    enum TChannelMode { propagator, rambo };
+    enum TChannelMode { propagator, rambo, chili };
 
     PhaseSpaceMapping(
         const Topology& topology,
@@ -49,7 +50,7 @@ private:
     double sqrt_s_epsilon;
     Cuts cuts;
     std::vector<std::vector<DecayMappings>> s_decays;
-    std::variant<TPropagatorMapping, FastRamboMapping, std::monostate> t_mapping;
+    std::variant<TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate> t_mapping;
     std::optional<Luminosity> luminosity;
     std::vector<double> outgoing_masses;
     std::vector<std::size_t> permutation;

@@ -31,9 +31,13 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     cuts(_cuts.value_or(Cuts(std::vector<int>(topology.outgoing_masses.size(), 0), {})))
 {
     // Initialize s invariants and decay mappings
-    std::vector<double> sqrt_s_min;
+    auto pt_min_perm = cuts.get_pt_min();
+    auto eta_max_perm = cuts.get_eta_max();
+    std::vector<double> sqrt_s_min, pt_min, eta_max;
     for (auto index : inverse_permutation) {
         sqrt_s_min.push_back(outgoing_masses.at(index));
+        pt_min.push_back(pt_min_perm.at(index));
+        eta_max.push_back(eta_max_perm.at(index));
     }
     for (auto& layer : topology.decays) {
         if (!has_t_channel && &layer == &topology.decays.back()) {
@@ -48,7 +52,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             break;
         }
         auto sqs_iter = sqrt_s_min.begin();
-        std::vector<double> sqrt_s_min_new;
+        auto pt_iter = pt_min.begin();
+        auto eta_iter = eta_max.begin();
+        std::vector<double> sqrt_s_min_new, pt_min_new, eta_max_new;
         auto& layer_decays = s_decays.emplace_back();
         for (auto& decay : layer) {
             auto& decay_mappings = layer_decays.emplace_back();
@@ -57,7 +63,15 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             for (int i = 0; i < decay.child_count; ++i, ++sqs_iter) sqs_min_sum += *sqs_iter;
             double sqs_min = std::max(decay.child_count > 1 ? sqrt_s_epsilon : 0., sqs_min_sum);
             sqrt_s_min_new.push_back(sqs_min);
-            if (decay.child_count == 1) continue;
+            if (decay.child_count == 1) {
+                pt_min_new.push_back(*(pt_iter++));
+                eta_max_new.push_back(*(eta_iter++));
+                continue;
+            }
+            pt_min_new.push_back(0.);
+            eta_max_new.push_back(std::numeric_limits<double>::infinity());
+            pt_iter += decay.child_count;
+            eta_iter += decay.child_count;
             double mass, width;
             if (decay.propagator.mass <= sqs_min) {
                 mass = 0;
@@ -76,6 +90,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             }
         }
         sqrt_s_min = sqrt_s_min_new;
+        pt_min = pt_min_new;
+        eta_max = eta_max_new;
     }
 
     // Initialize luminosity and t-channel mapping
@@ -84,10 +100,15 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     double sqrt_s_hat_min = cuts.get_sqrt_s_min();
     double s_hat_min = std::max(sqs_min_sum * sqs_min_sum, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
-        if (!leptonic) {
+        if (!leptonic && t_channel_mode != PhaseSpaceMapping::chili) {
             luminosity = Luminosity(s_lab, s_hat_min);
         }
-        if (t_channel_mode == PhaseSpaceMapping::propagator || topology.t_propagators.size() < 2) {
+        if (t_channel_mode == PhaseSpaceMapping::chili) {
+            // |y| <= |eta|, so we can pass y_max = eta_max
+            t_mapping = ChiliMapping(topology.t_propagators.size() + 1, eta_max, pt_min);
+        } else if (
+            t_channel_mode == PhaseSpaceMapping::propagator || topology.t_propagators.size() < 2
+        ) {
             t_mapping = TPropagatorMapping(topology.t_propagators);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
@@ -216,6 +237,21 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
             p_ext = {p1, p2};
             dets.push_back(det);
+        } else if (auto t_map = std::get_if<ChiliMapping>(&t_mapping)) {
+            std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
+            r += t_map->random_dim();
+            t_args.push_back(sqrt_s_hat);
+            std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
+            Value det;
+            ValueList chili_out;
+            std::tie(chili_out, det) = t_map->build_forward(fb, t_args, {});
+            p_ext = {chili_out.at(0), chili_out.at(1)};
+            p_out.insert(p_out.end(), chili_out.begin() + 2, chili_out.end() - 2);
+            auto out_size = chili_out.size();
+            x1 = chili_out.at(out_size - 2);
+            x2 = chili_out.at(out_size - 1);
+            dets.push_back(det);
+
         }
     } else {
         auto [p1, p2] = fb.com_p_in(sqrt_s_hat);

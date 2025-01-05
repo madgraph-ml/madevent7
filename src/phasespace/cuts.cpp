@@ -120,7 +120,10 @@ std::vector<double> Cuts::get_limits(
             for (auto [limit, pid] : std::views::zip(limits, pids)) {
                 if (
                     std::find(cut.pids.begin(), cut.pids.end(), pid) != cut.pids.end() &&
-                    limit > cut.value
+                    (
+                        (limit_type == Cuts::max && (limit > cut.value)) ||
+                        (limit_type == Cuts::min && (limit < cut.value))
+                    )
                 ) {
                     limit = cut.value;
                 }

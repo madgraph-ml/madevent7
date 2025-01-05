@@ -66,5 +66,6 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("cut_dr", &FunctionBuilder::cut_dr, py::arg("p"), py::arg("w_in"), py::arg("indices"), py::arg("min_max"));
     fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("w_in"), py::arg("indices"), py::arg("min_max"));
     fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("w_in"), py::arg("min_max"));
+    fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
 }
 }

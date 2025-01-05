@@ -5,11 +5,13 @@ using SigType = SimpleInstruction::SigType;
 const SimpleInstruction::SigType all {DT_FLOAT, {"..."}};
 const SimpleInstruction::SigType scalar {DT_FLOAT, {}};
 const SimpleInstruction::SigType array {DT_FLOAT, {"n"}};
+const SimpleInstruction::SigType array_m {DT_FLOAT, {"m"}};
 const SimpleInstruction::SigType array_plus {DT_FLOAT, {"n+"}};
 const SimpleInstruction::SigType array_plus_2 {DT_FLOAT, {"n++"}};
 const SimpleInstruction::SigType four_vector {DT_FLOAT, {4}};
 const SimpleInstruction::SigType four_vector_array {DT_FLOAT, {"n", 4}};
 const SimpleInstruction::SigType four_vector_array_plus {DT_FLOAT, {"n+", 4}};
+const SimpleInstruction::SigType four_vector_array_plus_2 {DT_FLOAT, {"n++", 4}};
 const SimpleInstruction::SigType limits {DT_FLOAT, {2}};
 const SimpleInstruction::SigType limit_array {DT_FLOAT, {"n--", 2}};
 const SimpleInstruction::SigType limit_array_m {DT_FLOAT, {"m", 2}};
@@ -76,4 +78,5 @@ InstructionOwner instructions[] {
     mi("cut_dr", 50, {four_vector_array, scalar, index_array_2, limit_array_m}, {scalar}),
     mi("cut_m_inv", 51, {four_vector_array, scalar, index_array_k, limit_array_m}, {scalar}),
     mi("cut_sqrt_s", 52, {four_vector_array, scalar, limits}, {scalar}),
+    mi("chili_forward", 53, {array_m, scalar, array, array, array}, {four_vector_array_plus_2, scalar, scalar, scalar}),
 };
