@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <iostream>
+#include <print>
 
 using namespace madevent;
 
@@ -150,6 +151,7 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
             ++prop_iter;
         }
     }
+    standardize_order(decay_mode == DecayMode::all_decays);
 
     std::iota(permutation.begin(), permutation.end(), 0);
     std::sort(
@@ -157,6 +159,114 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
         permutation.end(),
         [this](auto i, auto j) { return inverse_permutation.at(i) < inverse_permutation.at(j); }
     );
+}
+
+Topology::ComparisonResult Topology::compare(const Topology& other, bool compare_t_propagators) {
+    if (
+        incoming_masses != other.incoming_masses ||
+        outgoing_masses != other.outgoing_masses ||
+        (
+            compare_t_propagators ?
+            t_propagators != other.t_propagators :
+            t_propagators.size() != other.t_propagators.size()
+        ) ||
+        decays != other.decays
+    ) {
+        return ComparisonResult::different;
+    }
+
+    if (permutation == other.permutation) {
+        return ComparisonResult::equal;
+    } else {
+        return ComparisonResult::permuted;
+    }
+}
+
+void Topology::standardize_order(bool preserve_t_order) {
+    struct DecayTree {
+        std::optional<Decay> decay;
+        std::size_t min_index;
+        std::vector<DecayTree*> nodes;
+
+        void sort() {
+            std::sort(
+                nodes.begin(),
+                nodes.end(),
+                [this](auto tree1, auto tree2) {
+                    if (!tree1->decay) {
+                        return tree1->min_index < tree2->min_index;
+                    }
+                    return std::tie(
+                        tree1->decay->child_count,
+                        tree1->decay->propagator.mass,
+                        tree1->decay->propagator.width,
+                        tree1->min_index
+                    ) < std::tie(
+                        tree2->decay->child_count,
+                        tree2->decay->propagator.mass,
+                        tree2->decay->propagator.width,
+                        tree2->min_index
+                    );
+                }
+            );
+        }
+
+        void write_decays(
+            std::vector<std::vector<Decay>>& decays,
+            IndexList& inverse_permutation,
+            int depth
+        ) {
+            if (depth == -1) {
+                inverse_permutation.push_back(min_index);
+                return;
+            }
+            for (auto tree : nodes) {
+                tree->write_decays(decays, inverse_permutation, depth - 1);
+            }
+            if (depth != decays.size()) {
+                decays.at(depth).push_back(*decay);
+            }
+        }
+    };
+
+    std::vector<DecayTree> tree;
+    std::size_t capacity = inverse_permutation.size() + 1;
+    for (auto& layer : decays) {
+        capacity += layer.size();
+    }
+    tree.reserve(capacity);
+    for (auto index : inverse_permutation) {
+        tree.push_back({std::nullopt, index, {}});
+    }
+    auto tree_iter = tree.begin();
+    auto max_index = inverse_permutation.size();
+    std::vector<DecayTree*> nodes;
+    for (auto& layer : decays) {
+        for (auto& decay : layer) {
+            auto min_index = max_index;
+            nodes.clear();
+            for (std::size_t i = 0; i < decay.child_count; ++i, ++tree_iter) {
+                if (tree_iter->min_index < min_index) {
+                    min_index = tree_iter->min_index;
+                }
+                nodes.push_back(&*tree_iter);
+            }
+            tree.push_back({decay, min_index, nodes});
+            tree.back().sort();
+        }
+        layer.clear();
+    }
+    nodes.clear();
+    for (; tree_iter != tree.end(); ++tree_iter) {
+        nodes.push_back(&*tree_iter);
+    }
+    tree.push_back({std::nullopt, 0, nodes});
+    if (!preserve_t_order) {
+        std::fill(t_propagators.begin(), t_propagators.end(), Propagator{});
+        tree.back().sort();
+    }
+    inverse_permutation.clear();
+    tree.back().write_decays(decays, inverse_permutation, decays.size());
 }
 
 std::tuple<std::size_t, std::size_t> Topology::build_decays(

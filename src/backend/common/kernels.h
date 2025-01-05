@@ -18,4 +18,6 @@ template<typename T> using BVal = typename T::BVal;
 #include "two_particle.h"
 #include "invariants.h"
 #include "rambo.h"
+#include "cuts.h"
+#include "chili.h"
 

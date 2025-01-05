@@ -37,6 +37,8 @@ add_library(
     src/backend/common/math.h
     src/backend/common/two_particle.h
     src/backend/common/rambo.h
+    src/backend/common/cuts.h
+    src/backend/common/chili.h
     src/backend/tensor.cpp
     src/backend/cpu/runtime.cpp
     src/backend/cpu/thread_pool.cpp
@@ -58,6 +60,7 @@ add_library(
     src/phasespace/phasespace.cpp
     src/phasespace/multichannel.cpp
     src/phasespace/rambo.cpp
+    src/phasespace/cuts.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
@@ -77,6 +80,7 @@ add_library(
     include/madevent/phasespace/phasespace.h
     include/madevent/phasespace/multichannel.h
     include/madevent/phasespace/rambo.h
+    include/madevent/phasespace/cuts.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu

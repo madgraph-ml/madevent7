@@ -23,6 +23,21 @@ types:
   four_vector_array_plus:
     dtype: float
     shape: ["n+", 4]
+  limits:
+    dtype: float
+    shape: [2]
+  limit_array:
+    dtype: float
+    shape: ["n--", 2]
+  limit_array_m:
+    dtype: float
+    shape: [m, 2]
+  index_array_2:
+    dtype: int
+    shape: [m, 2]
+  index_array_k:
+    dtype: int
+    shape: [m, k]
 
 ---
 title: Shapes, etc.
@@ -759,6 +774,9 @@ stable_invariant_nu_inverse:
       type: scalar
       desc:
 
+---
+title: Fast RAMBO on diet
+
 fast_rambo_r_to_u:
   inputs:
     - name: r
@@ -822,5 +840,94 @@ rambo_four_vectors_massive:
       type: scalar
       desc:
     - name: det
+      type: scalar
+      desc:
+
+---
+title: Cuts
+
+cut_pt:
+  inputs:
+    - name: p
+      type: four_vector_array
+      desc:
+    - name: w_in
+      type: scalar
+      desc:
+    - name: min_max
+      type: limit_array
+      desc:
+  outputs:
+    - name: w_out
+      type: scalar
+      desc:
+
+cut_eta:
+  inputs:
+    - name: p
+      type: four_vector_array
+      desc:
+    - name: w_in
+      type: scalar
+      desc:
+    - name: min_max
+      type: limit_array
+      desc:
+  outputs:
+    - name: w_out
+      type: scalar
+      desc:
+
+cut_dr:
+  inputs:
+    - name: p
+      type: four_vector_array
+      desc:
+    - name: w_in
+      type: scalar
+      desc:
+    - name: indices
+      type: index_array_2
+      desc:
+    - name: min_max
+      type: limit_array_m
+      desc:
+  outputs:
+    - name: w_out
+      type: scalar
+      desc:
+
+cut_m_inv:
+  inputs:
+    - name: p
+      type: four_vector_array
+      desc:
+    - name: w_in
+      type: scalar
+      desc:
+    - name: indices
+      type: index_array_k
+      desc:
+    - name: min_max
+      type: limit_array_m
+      desc:
+  outputs:
+    - name: w_out
+      type: scalar
+      desc:
+
+cut_sqrt_s:
+  inputs:
+    - name: p
+      type: four_vector_array
+      desc:
+    - name: w_in
+      type: scalar
+      desc:
+    - name: min_max
+      type: limits
+      desc:
+  outputs:
+    - name: w_out
       type: scalar
       desc:

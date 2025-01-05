@@ -9,7 +9,7 @@ KERNELSPEC FVal<T> _lsquare(FIn<T,1> p) {
 template<typename T>
 KERNELSPEC void _boost(FIn<T,1> k, FIn<T,1> p_boost, FVal<T> sign, FOut<T,1> p_out) {
     // Perform the boost
-    // This is in fact a numerical more stable implementation then often used
+    // This is in fact a numerical more stable implementation than often used
     auto p2_boost = _lsquare<T>(p_boost);
     auto rsq = sqrt(where(p2_boost < EPS2, EPS2, p2_boost));
     auto k_dot_p = k[1] * p_boost[1] + k[2] * p_boost[2] + k[3] * p_boost[3];

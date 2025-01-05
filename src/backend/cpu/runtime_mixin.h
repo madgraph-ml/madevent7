@@ -145,3 +145,18 @@ case 46:
 case 47:
     batch_foreach<kernel_rambo_four_vectors_massive<CpuTypes>, kernel_rambo_four_vectors_massive<SimdTypes>, 5, 4, 1>(instr, locals);
     break;
+case 48:
+    batch_foreach<kernel_cut_pt<CpuTypes>, kernel_cut_pt<SimdTypes>, 3, 1, 1>(instr, locals);
+    break;
+case 49:
+    batch_foreach<kernel_cut_eta<CpuTypes>, kernel_cut_eta<SimdTypes>, 3, 1, 1>(instr, locals);
+    break;
+case 50:
+    batch_foreach<kernel_cut_dr<CpuTypes>, kernel_cut_dr<SimdTypes>, 4, 1, 1>(instr, locals);
+    break;
+case 51:
+    batch_foreach<kernel_cut_m_inv<CpuTypes>, kernel_cut_m_inv<SimdTypes>, 4, 1, 1>(instr, locals);
+    break;
+case 52:
+    batch_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 3, 1, 1>(instr, locals);
+    break;

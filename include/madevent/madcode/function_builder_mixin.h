@@ -212,3 +212,23 @@ std::array<Value, 4> rambo_four_vectors_massive(Value u, Value e_cm, Value cos_t
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
+Value cut_pt(Value p, Value w_in, Value min_max) {
+    return instruction("cut_pt", {p, w_in, min_max})[0];
+}
+
+Value cut_eta(Value p, Value w_in, Value min_max) {
+    return instruction("cut_eta", {p, w_in, min_max})[0];
+}
+
+Value cut_dr(Value p, Value w_in, Value indices, Value min_max) {
+    return instruction("cut_dr", {p, w_in, indices, min_max})[0];
+}
+
+Value cut_m_inv(Value p, Value w_in, Value indices, Value min_max) {
+    return instruction("cut_m_inv", {p, w_in, indices, min_max})[0];
+}
+
+Value cut_sqrt_s(Value p, Value w_in, Value min_max) {
+    return instruction("cut_sqrt_s", {p, w_in, min_max})[0];
+}
+

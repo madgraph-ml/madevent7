@@ -13,7 +13,7 @@ namespace {
 std::tuple<int, std::string> get_offset_and_name(const std::string& shape_str) {
     int offset = std::ranges::count(shape_str, '+') - std::ranges::count(shape_str, '-');
     auto var_name = shape_str
-                  | std::views::filter([](char c) { return c == '+' || c == '-'; })
+                  | std::views::filter([](char c) { return c != '+' && c != '-'; })
                   | std::ranges::to<std::string>();
     return {offset, var_name};
 }

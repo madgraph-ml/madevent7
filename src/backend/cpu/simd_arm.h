@@ -58,6 +58,9 @@ void vstore(bool* ptr, BVec values) {
 FVec where(BVec arg1, FVec arg2, FVec arg3) {
     return vbslq_f64(arg1, arg2, arg3);
 }
+std::size_t single_index(IVec arg) {
+    return vgetq_lane_s64(arg, 0);
+}
 BVec operator==(FVec arg1, FVec arg2) { return vceqq_f64(arg1, arg2); }
 BVec operator!=(FVec arg1, FVec arg2) { return vceqzq_u64(vceqq_f64(arg1, arg2)); }
 BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }

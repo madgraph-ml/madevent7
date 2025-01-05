@@ -10,6 +10,11 @@ const SimpleInstruction::SigType array_plus_2 {DT_FLOAT, {"n++"}};
 const SimpleInstruction::SigType four_vector {DT_FLOAT, {4}};
 const SimpleInstruction::SigType four_vector_array {DT_FLOAT, {"n", 4}};
 const SimpleInstruction::SigType four_vector_array_plus {DT_FLOAT, {"n+", 4}};
+const SimpleInstruction::SigType limits {DT_FLOAT, {2}};
+const SimpleInstruction::SigType limit_array {DT_FLOAT, {"n--", 2}};
+const SimpleInstruction::SigType limit_array_m {DT_FLOAT, {"m", 2}};
+const SimpleInstruction::SigType index_array_2 {DT_INT, {"m", 2}};
+const SimpleInstruction::SigType index_array_k {DT_INT, {"m", "k"}};
 const auto mi = [](
     std::string name,
     int opcode,
@@ -66,4 +71,9 @@ InstructionOwner instructions[] {
     mi("fast_rambo_r_to_u", 45, {array}, {array, scalar}),
     mi("rambo_four_vectors_massless", 46, {array, scalar, array_plus, array_plus}, {four_vector_array_plus, four_vector_array_plus}),
     mi("rambo_four_vectors_massive", 47, {array, scalar, array_plus, array_plus, array_plus_2}, {four_vector_array_plus, four_vector_array_plus, scalar, scalar}),
+    mi("cut_pt", 48, {four_vector_array, scalar, limit_array}, {scalar}),
+    mi("cut_eta", 49, {four_vector_array, scalar, limit_array}, {scalar}),
+    mi("cut_dr", 50, {four_vector_array, scalar, index_array_2, limit_array_m}, {scalar}),
+    mi("cut_m_inv", 51, {four_vector_array, scalar, index_array_k, limit_array_m}, {scalar}),
+    mi("cut_sqrt_s", 52, {four_vector_array, scalar, limits}, {scalar}),
 };

@@ -10,6 +10,9 @@ namespace madevent {
 struct Propagator {
     double mass;
     double width;
+    bool operator==(const Propagator& other) const {
+        return mass == other.mass && width == other.width;
+    }
 };
 
 using IndexList = std::vector<std::size_t>;
@@ -50,9 +53,13 @@ std::ostream& operator<<(std::ostream& out, const Diagram::LineRef& value);
 
 struct Topology {
     enum DecayMode { no_decays, massive_decays, all_decays };
+    enum ComparisonResult { equal, permuted, different};
     struct Decay {
         Propagator propagator;
         std::size_t child_count = 1;
+        bool operator==(const Decay& other) const {
+            return propagator == other.propagator && child_count == other.child_count;
+        }
     };
 
     std::vector<double> incoming_masses;
@@ -63,11 +70,13 @@ struct Topology {
     IndexList inverse_permutation;
 
     Topology(const Diagram& diagram, DecayMode decay_mode);
+    ComparisonResult compare(const Topology& other, bool compare_t_propagators);
 
 private:
     std::tuple<std::size_t, std::size_t> build_decays(
         const Diagram& diagram, DecayMode decay_mode, Diagram::LineRef line
     );
+    void standardize_order(bool preserve_t_order);
 };
 
 }

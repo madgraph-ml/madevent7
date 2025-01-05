@@ -25,6 +25,9 @@ template<typename T>
 T where(bool condition, T val_true, T val_false) {
     return condition ? val_true : val_false;
 }
+std::size_t single_index(long long arg) {
+    return arg;
+}
 
 using std::sqrt;
 using std::sin;

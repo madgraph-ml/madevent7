@@ -69,7 +69,7 @@ PYBIND11_MODULE(madevent_py, m) {
 
     py::class_<Value>(m, "Value")
         .def(py::init<bool>(), py::arg("value"))
-        .def(py::init<int>(), py::arg("value"))
+        .def(py::init<long long>(), py::arg("value"))
         .def(py::init<double>(), py::arg("value"))
         .def("__str__", &to_string<Value>)
         .def("__repr__", &to_string<Value>)
@@ -77,7 +77,7 @@ PYBIND11_MODULE(madevent_py, m) {
         .def_readonly("literal_value", &Value::literal_value)
         .def_readonly("local_index", &Value::local_index);
     py::implicitly_convertible<bool, Value>();
-    py::implicitly_convertible<int, Value>();
+    py::implicitly_convertible<long long, Value>();
     py::implicitly_convertible<double, Value>();
     py::implicitly_convertible<std::string, Value>();
 
@@ -146,6 +146,37 @@ PYBIND11_MODULE(madevent_py, m) {
     py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<Propagator>, double, bool>(),
              py::arg("propagators"), py::arg("nu")=0., py::arg("map_resonances")=false);
+    py::class_<Cuts::CutItem>(m, "CutItem")
+        .def(py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
+             py::arg("observable"), py::arg("limit_type"), py::arg("value"), py::arg("pids"))
+        .def_readonly("observable", &Cuts::CutItem::observable)
+        .def_readonly("limit_type", &Cuts::CutItem::limit_type)
+        .def_readonly("value", &Cuts::CutItem::value)
+        .def_readonly("pids", &Cuts::CutItem::pids);
+    auto cuts = py::class_<Cuts>(m, "Cuts")
+        .def(py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
+             py::arg("pids"), py::arg("cut_data"))
+        .def("build_function", &Cuts::build_function,
+             py::arg("builder"), py::arg("sqrt_s"), py::arg("momenta"), py::arg("weight"))
+        .def("get_sqrt_s_min", &Cuts::get_sqrt_s_min)
+        .def("get_eta_max", &Cuts::get_eta_max)
+        .def("get_pt_min", &Cuts::get_pt_min)
+        .def_readonly_static("jet_pids", &Cuts::jet_pids)
+        .def_readonly_static("bottom_pids", &Cuts::bottom_pids)
+        .def_readonly_static("lepton_pids", &Cuts::lepton_pids)
+        .def_readonly_static("missing_pids", &Cuts::missing_pids)
+        .def_readonly_static("photon_pids", &Cuts::photon_pids);
+    py::enum_<Cuts::CutObservable>(cuts, "CutObservable")
+        .value("obs_pt", Cuts::obs_pt)
+        .value("obs_eta", Cuts::obs_eta)
+        .value("obs_dr", Cuts::obs_dr)
+        .value("obs_mass", Cuts::obs_mass)
+        .value("obs_sqrt_s", Cuts::obs_sqrt_s)
+        .export_values();
+    py::enum_<Cuts::LimitType>(cuts, "LimitType")
+        .value("min", Cuts::min)
+        .value("max", Cuts::max)
+        .export_values();
 
     py::class_<Diagram::LineRef>(m, "LineRef")
         .def(py::init<std::string>(), py::arg("str"))
@@ -170,6 +201,7 @@ PYBIND11_MODULE(madevent_py, m) {
     auto& topology = py::class_<Topology>(m, "Topology")
         .def(py::init<Diagram&, Topology::DecayMode>(),
              py::arg("diagram"), py::arg("decay_mode"))
+        .def("compare", &Topology::compare, py::arg("other"), py::arg("compare_t_propagators"))
         .def_readonly("incoming_masses", &Topology::incoming_masses)
         .def_readonly("outgoing_masses", &Topology::outgoing_masses)
         .def_readonly("t_propagators", &Topology::t_propagators)
@@ -181,6 +213,11 @@ PYBIND11_MODULE(madevent_py, m) {
         .value("massive_decays", Topology::massive_decays)
         .value("all_decays", Topology::all_decays)
         .export_values();
+    py::enum_<Topology::ComparisonResult>(topology, "ComparisonResult")
+        .value("equal", Topology::equal)
+        .value("permuted", Topology::permuted)
+        .value("different", Topology::different)
+        .export_values();
     py::class_<Topology::Decay>(m, "Decay")
         .def_readonly("propagator", &Topology::Decay::propagator)
         .def_readonly("child_count", &Topology::Decay::child_count);
@@ -189,11 +226,12 @@ PYBIND11_MODULE(madevent_py, m) {
         .value("propagator", PhaseSpaceMapping::propagator)
         .value("rambo", PhaseSpaceMapping::rambo)
         .export_values();
-    psmap.def(py::init<Topology&, double, double, bool, double, double,
-                       PhaseSpaceMapping::TChannelMode>(),
-              py::arg("topology"), py::arg("s_lab"), py::arg("s_hat_min")=0.0,
+    psmap.def(py::init<Topology&, double, /*double,*/ bool, double, double,
+                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
+              py::arg("topology"), py::arg("s_lab"), //py::arg("s_hat_min")=0.0,
               py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
-              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator);
+              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
+              py::arg("cuts")=std::nullopt);
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
     py::class_<MergeOptimizer>(m, "MergeOptimizer")

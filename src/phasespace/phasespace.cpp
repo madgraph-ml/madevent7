@@ -3,14 +3,15 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <print>
 
 #include "madevent/constants.h"
 
 using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
-    const Topology& topology, double _s_lab, double s_hat_min, bool _leptonic,
-    double s_min_epsilon, double nu, TChannelMode t_channel_mode
+    const Topology& topology, double _s_lab, /*double s_hat_min,*/ bool _leptonic,
+    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> _cuts
 ) :
     Mapping(
         //TODO: replace with scalar array
@@ -26,7 +27,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     t_mapping(std::monostate{}),
     outgoing_masses(topology.outgoing_masses),
     permutation(topology.permutation),
-    inverse_permutation(topology.inverse_permutation)
+    inverse_permutation(topology.inverse_permutation),
+    cuts(_cuts.value_or(Cuts(std::vector<int>(topology.outgoing_masses.size(), 0), {})))
 {
     // Initialize s invariants and decay mappings
     std::vector<double> sqrt_s_min;
@@ -57,13 +59,14 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             sqrt_s_min_new.push_back(sqs_min);
             if (decay.child_count == 1) continue;
             double mass, width;
-            if (decay.propagator.mass < sqs_min) {
+            if (decay.propagator.mass <= sqs_min) {
                 mass = 0;
                 //mass = decay.propagator.mass;
                 width = 0;
             } else {
                 mass = decay.propagator.mass;
                 width = decay.propagator.width;
+                std::println("massive! {} {}", mass, width);
             }
             decay_mappings.invariant.emplace(nu, mass, width);
             if (decay.child_count == 2) {
@@ -77,7 +80,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 
     // Initialize luminosity and t-channel mapping
     double sqs_min_sum = std::accumulate(sqrt_s_min.begin(), sqrt_s_min.end(), 0.);
-    s_hat_min = std::max(sqs_min_sum * sqs_min_sum, s_hat_min);
+
+    double sqrt_s_hat_min = cuts.get_sqrt_s_min();
+    double s_hat_min = std::max(sqs_min_sum * sqs_min_sum, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
         if (!leptonic) {
             luminosity = Luminosity(s_lab, s_hat_min);
@@ -251,11 +256,12 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // permute and return momenta
     for (auto index : permutation) {
-        p_ext.push_back(p_out[index]);
+        p_ext.push_back(p_out.at(index));
     }
     auto p_ext_stack = fb.stack(p_ext);
     auto p_ext_lab = luminosity ? fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) : p_ext_stack;
     auto ps_weight = fb.product(dets);
+    ps_weight = cuts.build_function(fb, sqrt_s_hat, p_ext_lab, ps_weight);
     return {{p_ext_lab, x1, x2}, ps_weight};
 }
 

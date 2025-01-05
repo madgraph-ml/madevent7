@@ -11,8 +11,26 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 std::ostream& madevent::operator<<(std::ostream& out, const Value& value) {
     std::visit(overloaded{
-        [&out](auto val){ out << val; },
-        [&out, value](std::monostate val){ out << "%" << value.local_index; }
+        [&out](auto val) { out << val; },
+        [&out](TensorValue val) {
+            std::visit([&out](auto items) {
+                out << "{";
+                std::size_t i = 0;
+                for (auto item : items) {
+                    if (i == items.size() - 1) {
+                        out << item;
+                    } else if (i == 20) {
+                        out << "...";
+                        break;
+                    } else {
+                        out << item << ", ";
+                    }
+                    ++i;
+                }
+                out << "}";
+            }, std::get<1>(val));
+        },
+        [&out, value](std::monostate val) { out << "%" << value.local_index; }
     }, value.literal_value);
     return out;
 }

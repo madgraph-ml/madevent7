@@ -10,6 +10,7 @@
 #include "madevent/phasespace/luminosity.h"
 #include "madevent/phasespace/t_propagator_mapping.h"
 #include "madevent/phasespace/rambo.h"
+#include "madevent/phasespace/cuts.h"
 
 namespace madevent {
 
@@ -20,11 +21,12 @@ public:
     PhaseSpaceMapping(
         const Topology& topology,
         double s_lab,
-        double s_hat_min = 0.0,
+        //double s_hat_min = 0.0,
         bool leptonic = false,
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
-        TChannelMode t_channel_mode = propagator
+        TChannelMode t_channel_mode = propagator,
+        std::optional<Cuts> cuts = std::nullopt
     );
 private:
     Result build_forward_impl(
@@ -45,6 +47,7 @@ private:
     bool leptonic;
     bool has_t_channel;
     double sqrt_s_epsilon;
+    Cuts cuts;
     std::vector<std::vector<DecayMappings>> s_decays;
     std::variant<TPropagatorMapping, FastRamboMapping, std::monostate> t_mapping;
     std::optional<Luminosity> luminosity;

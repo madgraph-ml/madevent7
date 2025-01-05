@@ -9,3 +9,4 @@
 #include "phasespace/phasespace.h"
 #include "phasespace/multichannel.h"
 #include "phasespace/rambo.h"
+#include "phasespace/cuts.h"
