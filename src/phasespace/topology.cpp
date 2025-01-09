@@ -12,6 +12,20 @@ std::size_t next_vertex(const IndexList& vertices, std::size_t index) {
     return vertices.at(0) == index ? vertices.at(1) : vertices.at(0);
 }
 
+std::size_t xorshift(std::size_t n, int i){
+  return n^(n>>i);
+}
+
+template<class T>
+std::size_t hash_combine(std::size_t seed, const T& value) {
+    // combine hashes, based on https://stackoverflow.com/questions/35985960
+    return std::rotl(seed, std::numeric_limits<size_t>::digits / 3) ^ (
+        17316035218449499591ull * xorshift(
+            0x5555555555555555ull * xorshift(std::hash<T>{}(value), 32), 32
+        )
+    );
+}
+
 }
 
 Diagram::LineRef::LineRef(std::string str) {
@@ -159,18 +173,39 @@ Topology::Topology(const Diagram& diagram, Topology::DecayMode decay_mode) :
         permutation.end(),
         [this](auto i, auto j) { return inverse_permutation.at(i) < inverse_permutation.at(j); }
     );
+
+    std::size_t seed = 0;
+    seed = hash_combine(seed, incoming_masses.size());
+    for (double m : incoming_masses) seed = hash_combine(seed, m);
+    seed = hash_combine(seed, outgoing_masses.size());
+    for (double m : outgoing_masses) seed = hash_combine(seed, m);
+    seed = hash_combine(seed, t_propagators.size());
+    /*for (auto& prop : t_propagators) {
+        seed = hash_combine(seed, prop.mass);
+        seed = hash_combine(seed, prop.width);
+    }*/
+    seed = hash_combine(seed, decays.size());
+    for (auto& layer : decays) {
+        seed = hash_combine(seed, layer.size());
+        for (auto& decay : layer) {
+            seed = hash_combine(seed, decay.propagator.mass);
+            seed = hash_combine(seed, decay.propagator.width);
+            seed = hash_combine(seed, decay.child_count);
+        }
+    }
+    decay_hash = seed;
 }
 
-Topology::ComparisonResult Topology::compare(const Topology& other, bool compare_t_propagators) {
+Topology::ComparisonResult Topology::compare(const Topology& other, bool compare_t_propagators) const {
     if (
-        incoming_masses != other.incoming_masses ||
-        outgoing_masses != other.outgoing_masses ||
         (
             compare_t_propagators ?
             t_propagators != other.t_propagators :
             t_propagators.size() != other.t_propagators.size()
         ) ||
-        decays != other.decays
+        decays != other.decays ||
+        incoming_masses != other.incoming_masses ||
+        outgoing_masses != other.outgoing_masses
     ) {
         return ComparisonResult::different;
     }

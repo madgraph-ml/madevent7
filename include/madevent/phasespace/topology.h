@@ -68,9 +68,10 @@ struct Topology {
     std::vector<std::vector<Decay>> decays;
     IndexList permutation;
     IndexList inverse_permutation;
+    std::size_t decay_hash;
 
     Topology(const Diagram& diagram, DecayMode decay_mode);
-    ComparisonResult compare(const Topology& other, bool compare_t_propagators);
+    ComparisonResult compare(const Topology& other, bool compare_t_propagators) const;
 
 private:
     std::tuple<std::size_t, std::size_t> build_decays(

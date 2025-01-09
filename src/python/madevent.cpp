@@ -207,7 +207,8 @@ PYBIND11_MODULE(madevent_py, m) {
         .def_readonly("t_propagators", &Topology::t_propagators)
         .def_readonly("decays", &Topology::decays)
         .def_readonly("permutation", &Topology::permutation)
-        .def_readonly("inverse_permutation", &Topology::inverse_permutation);
+        .def_readonly("inverse_permutation", &Topology::inverse_permutation)
+        .def_readonly("decay_hash", &Topology::decay_hash);
     py::enum_<Topology::DecayMode>(topology, "DecayMode")
         .value("no_decays", Topology::no_decays)
         .value("massive_decays", Topology::massive_decays)
