@@ -44,6 +44,7 @@ using std::exp;
 
 using std::isnan;
 
+#ifdef USE_SIMD
 struct SimdTypes {
     template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
     template<int dim> using IIn = const VectorizedTensorView<IVec, long long, dim, false>;
@@ -55,6 +56,9 @@ struct SimdTypes {
     using IVal = IVec;
     using BVal = BVec;
 };
+#else // USE_SIMD
+using SimdTypes = CpuTypes;
+#endif // USE_SIMD
 
 #include "../common/kernels.h"
 

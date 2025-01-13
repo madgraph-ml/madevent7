@@ -128,24 +128,32 @@ void tensor_foreach(
     auto views = std::apply(
         get_views<decltype(scalar_func), dims>(), std::tuple_cat(inputs, outputs)
     );
-    auto vectorized_views = std::apply(
-        get_vectorized_views<decltype(vector_func), dims>(), views
-    );
-    std::size_t vec_batch_size = batch_size / simd_vec_size;
-    madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
-        std::apply([i](auto&&... args) {
-            recursive_for<vector_func, dims-1>(args[i]...);
-        }, vectorized_views);
-    }, vec_batch_size);
-    /*for (std::size_t i = 0; i < vec_batch_size; ++i) {
-        std::apply([i](auto&&... args) {
-            recursive_for<vector_func, dims-1>(args[i]...);
-        }, vectorized_views);
-    }*/
-    for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) {
-            recursive_for<scalar_func, dims-1>(args[i]...);
-        }, views);
+    if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
+        madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
+            std::apply([i](auto&&... args) {
+                recursive_for<scalar_func, dims-1>(args[i]...);
+            }, views);
+        }, batch_size);
+    } else {
+        auto vectorized_views = std::apply(
+            get_vectorized_views<decltype(vector_func), dims>(), views
+        );
+        std::size_t vec_batch_size = batch_size / simd_vec_size;
+        madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
+            std::apply([i](auto&&... args) {
+                recursive_for<vector_func, dims-1>(args[i]...);
+            }, vectorized_views);
+        }, vec_batch_size);
+        /*for (std::size_t i = 0; i < vec_batch_size; ++i) {
+            std::apply([i](auto&&... args) {
+                recursive_for<vector_func, dims-1>(args[i]...);
+            }, vectorized_views);
+        }*/
+        for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
+            std::apply([i](auto&&... args) {
+                recursive_for<scalar_func, dims-1>(args[i]...);
+            }, views);
+        }
     }
 }
 

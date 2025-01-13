@@ -45,7 +45,7 @@ public:
 
 }
 
-PYBIND11_MODULE(madevent_py, m) {
+PYBIND11_MODULE(_madevent_py, m) {
     py::enum_<DataType>(m, "DataType")
         .value("bool", DataType::DT_BOOL)
         .value("int", DataType::DT_INT)
