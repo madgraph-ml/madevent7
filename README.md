@@ -8,6 +8,13 @@ First install `scikit_build_core` with
 pip install scikit_build_core
 ```
 
+The pre-installed version of `cmake` under MacOS is outdated, so you might need to install a
+newer version, for example with
+
+```sh
+brew install cmake
+```
+
 Then check out the `madevent7` repository and build and install it with
 
 ```sh
