@@ -45,11 +45,6 @@ public:
     }
 
     operator typename std::conditional_t<_dim == 0, V, madevent::Nothing>() const {
-        /*T buffer[simd_vec_size];
-        for (int i = 0; i < simd_vec_size; ++i) {
-            buffer[i] = *reinterpret_cast<T*>(_data + i * _batch_stride);
-        }
-        return vload(&buffer[0]);*/
         if (_is_single) {
             return *reinterpret_cast<T*>(_data);
         } else {
@@ -59,12 +54,6 @@ public:
 
     template<int d = _dim, typename = std::enable_if_t<d == 0>>
     V operator=(V value) {
-        /*T buffer[simd_vec_size];
-        vstore(&buffer[0], value);
-        for (int i = 0; i < simd_vec_size; ++i) {
-            *reinterpret_cast<T*>(_data + i * _batch_stride) = buffer[i];
-        }
-        return value;*/
         if (_is_single) {
             *reinterpret_cast<T*>(_data) = vfirst(value);
         } else {

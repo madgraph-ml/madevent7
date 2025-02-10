@@ -70,7 +70,6 @@ KERNELSPEC void kernel_cut_m_inv(
         FVal<T> e_tot(0.), px_tot(0.), py_tot(0.), pz_tot(0.);
         auto indices_i = indices[i];
         for (std::size_t j = 0; j < indices_i.size(); ++j) {
-            //TODO: make sure batch dimension is always 1 for indices
             auto p_j = p[single_index(indices_i[j]) + 2];
             e_tot = e_tot + p_j[0];
             px_tot = px_tot + p_j[1];

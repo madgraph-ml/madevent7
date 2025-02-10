@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vector>
+#include <format>
 
 #include "madevent/phasespace/mapping.h"
 #include "madevent/phasespace/phasespace.h"
-
 
 namespace madevent {
 
@@ -18,7 +18,15 @@ public:
         ),
         mappings(_mappings)
     {
-        condition_types.push_back(single_int_array(_mappings.size()));
+        std::vector<BatchSize> batch_sizes;
+        BatchSize remaining = batch_size;
+        for (std::size_t i = 0; i < _mappings.size() - 1; ++i) {
+            BatchSize batch_size_i(std::format("channel_size_{}", i));
+            batch_sizes.push_back(batch_size_i);
+            remaining = remaining - batch_size_i;
+        }
+        batch_sizes.push_back(remaining);
+        condition_types.push_back(batch_sizes);
     }
 private:
     Result build_impl(

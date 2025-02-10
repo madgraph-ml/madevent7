@@ -6,6 +6,7 @@
 using namespace madevent_py;
 
 std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
+    // TODO: update numpy bindings
     auto n_args = function.inputs.size();
     if (args.size() != n_args) {
         throw std::invalid_argument(std::format(
@@ -60,6 +61,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
 
 #ifdef TORCH_FOUND
 std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor> args) {
+    //TODO: check batch sizes
     auto n_args = function.inputs.size();
     if (args.size() != n_args) {
         throw std::invalid_argument(std::format(

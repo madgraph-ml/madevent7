@@ -29,6 +29,9 @@ template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto inputs = range_to_array<n_in>([&](auto i) {
+        /*if (locals[instruction.input_indices[i]].size(0) > batch_size && batch_size != 0) {
+            std::cout << ":( " << instruction.opcode << " " << locals[instruction.input_indices[i]].size(0) << " " << batch_size << "\n";
+        }*/
         return locals[instruction.input_indices[i]];
     });
     auto outputs = range_to_array<n_out>([&](auto i) {
@@ -83,6 +86,7 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
         sizes.push_back(size);
         batch_size += size;
     }
+    //std::println("cat: {}", sizes);
     auto shape = locals[instruction.input_indices.front()].shape();
     shape[0] = batch_size;
     Tensor output(instruction.output_dtypes.front(), shape);
@@ -100,6 +104,7 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
 
 void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
+    //std::println("split: {}", sizes);
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     auto output_index = instruction.output_indices.begin();
     for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
@@ -114,10 +119,10 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
     LastUseOfLocals last_use(function);
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
-        std::size_t batch_size_index = 0;
+        std::size_t batch_size_index = instr.inputs[0].local_index;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
-            if (in.type.batch_size != BatchSize::one || in.type.shape.size() > 0) {
+            if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
         }

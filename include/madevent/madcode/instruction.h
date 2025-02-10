@@ -25,10 +25,10 @@ const Type batch_int{DataType::dt_int, batch_size, {}};
 const Type batch_bool{DataType::dt_bool, batch_size, {}};
 const Type batch_four_vec{DataType::dt_float, batch_size, {4}};
 inline Type batch_float_array(int count) {
-    return {DataType::dt_bool, batch_size, {count}};
+    return {DataType::dt_float, batch_size, {count}};
 }
 inline Type batch_four_vec_array(int count) {
-    return {DataType::dt_bool, batch_size, {count, 4}};
+    return {DataType::dt_float, batch_size, {count, 4}};
 }
 
 enum Opcode {

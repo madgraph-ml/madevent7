@@ -45,31 +45,35 @@ TypeList SimpleInstruction::signature(
         }
 
         if (input_dtype != arg_dtype) {
+            std::cout << input_dtype << " " << arg_dtype << "\n";
             throw std::invalid_argument(std::format(
                 "{}, argument {}: dtypes not matching", name, i + 1
             ));
         }
 
-        if (is_single && arg_batch_size != BatchSize::one) {
-            throw std::invalid_argument(std::format(
-                "{}, argument {}: cannot have batch dimension", name, i + 1
-            ));
-        }
-        if (batch_size) {
-            if (arg_shape.size() == 0 || broadcastable) {
-                batch_size = batch_size->broadcast(arg_batch_size);
-                broadcastable |= batch_size == BatchSize::one;
-            } else if (arg_batch_size != batch_size) {
-                batch_size = std::nullopt;
-            }
-            if (!batch_size) {
+        if (is_single) {
+            if (arg_batch_size != BatchSize::one) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: incompatible batch size", name, i + 1
+                    "{}, argument {}: cannot have batch dimension", name, i + 1
                 ));
             }
         } else {
-            batch_size = arg_batch_size;
-            broadcastable = arg_shape.size() == 0 && batch_size == BatchSize::one;
+            if (batch_size) {
+                if (arg_shape.size() == 0 || broadcastable) {
+                    batch_size = batch_size->broadcast(arg_batch_size);
+                    broadcastable |= batch_size == BatchSize::one;
+                } else if (arg_batch_size != batch_size) {
+                    batch_size = std::nullopt;
+                }
+                if (!batch_size) {
+                    throw std::invalid_argument(std::format(
+                        "{}, argument {}: incompatible batch size", name, i + 1
+                    ));
+                }
+            } else {
+                batch_size = arg_batch_size;
+                broadcastable = arg_shape.size() == 0 && batch_size == BatchSize::one;
+            }
         }
 
         auto wildcard_pos = std::find_if(
