@@ -2,21 +2,21 @@
 // Do not modify its content directly
 
 using SigType = SimpleInstruction::SigType;
-const SimpleInstruction::SigType all {DT_FLOAT, {"..."}};
-const SimpleInstruction::SigType scalar {DT_FLOAT, {}};
-const SimpleInstruction::SigType array {DT_FLOAT, {"n"}};
-const SimpleInstruction::SigType array_m {DT_FLOAT, {"m"}};
-const SimpleInstruction::SigType array_plus {DT_FLOAT, {"n+"}};
-const SimpleInstruction::SigType array_plus_2 {DT_FLOAT, {"n++"}};
-const SimpleInstruction::SigType four_vector {DT_FLOAT, {4}};
-const SimpleInstruction::SigType four_vector_array {DT_FLOAT, {"n", 4}};
-const SimpleInstruction::SigType four_vector_array_plus {DT_FLOAT, {"n+", 4}};
-const SimpleInstruction::SigType four_vector_array_plus_2 {DT_FLOAT, {"n++", 4}};
-const SimpleInstruction::SigType limits {DT_FLOAT, {2}};
-const SimpleInstruction::SigType limit_array {DT_FLOAT, {"n--", 2}};
-const SimpleInstruction::SigType limit_array_m {DT_FLOAT, {"m", 2}};
-const SimpleInstruction::SigType index_array_2 {DT_INT, {"m", 2}};
-const SimpleInstruction::SigType index_array_k {DT_INT, {"m", "k"}};
+const SimpleInstruction::SigType all {DataType::dt_float, false, {"..."}};
+const SimpleInstruction::SigType scalar {DataType::dt_float, false, {}};
+const SimpleInstruction::SigType array {DataType::dt_float, false, {"n"}};
+const SimpleInstruction::SigType array_m {DataType::dt_float, false, {"m"}};
+const SimpleInstruction::SigType array_plus {DataType::dt_float, false, {"n+"}};
+const SimpleInstruction::SigType array_plus_2 {DataType::dt_float, false, {"n++"}};
+const SimpleInstruction::SigType four_vector {DataType::dt_float, false, {4}};
+const SimpleInstruction::SigType four_vector_array {DataType::dt_float, false, {"n", 4}};
+const SimpleInstruction::SigType four_vector_array_plus {DataType::dt_float, false, {"n+", 4}};
+const SimpleInstruction::SigType four_vector_array_plus_2 {DataType::dt_float, false, {"n++", 4}};
+const SimpleInstruction::SigType limits {DataType::dt_float, true, {2}};
+const SimpleInstruction::SigType limit_array {DataType::dt_float, true, {"n--", 2}};
+const SimpleInstruction::SigType limit_array_m {DataType::dt_float, true, {"m", 2}};
+const SimpleInstruction::SigType index_array_2 {DataType::dt_int, true, {"m", 2}};
+const SimpleInstruction::SigType index_array_k {DataType::dt_int, true, {"m", "k"}};
 const auto mi = [](
     std::string name,
     int opcode,

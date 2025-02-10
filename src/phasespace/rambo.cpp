@@ -12,13 +12,13 @@ namespace ranges = std::ranges;
 FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
     Mapping(
         [&] {
-            TypeList input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), scalar);
+            TypeList input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float);
             if (!_com) {
-                input_types.push_back(four_vector);
+                input_types.push_back(batch_four_vec);
             }
             return input_types;
         }(),
-        TypeList(_n_particles, four_vector),
+        TypeList(_n_particles, batch_four_vec),
         {}
     ),
     n_particles(_n_particles),

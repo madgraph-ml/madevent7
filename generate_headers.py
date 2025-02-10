@@ -95,11 +95,12 @@ def instruction_set_mixin(types, commands):
         f.write("using SigType = SimpleInstruction::SigType;\n")
 
         for name, sig in types.items():
-            dtype = "DT_" + sig["dtype"].upper()
+            dtype = "DataType::dt_" + sig["dtype"]
+            single = "true" if sig.get("single", False) else "false"
             shape = ", ".join(
                 str(item) if isinstance(item, int) else f"\"{item}\"" for item in sig["shape"]
             )
-            f.write(f"const SimpleInstruction::SigType {name} {{{dtype}, {{{shape}}}}};\n")
+            f.write(f"const SimpleInstruction::SigType {name} {{{dtype}, {single}, {{{shape}}}}};\n")
 
         f.write(
             "const auto mi = [](\n"

@@ -15,8 +15,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 ) :
     Mapping(
         //TODO: replace with scalar array
-        {scalar_array(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2))},
-        {four_vector_array(topology.outgoing_masses.size() + 2), scalar, scalar},
+        {batch_float_array(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2))},
+        {batch_four_vec_array(topology.outgoing_masses.size() + 2), batch_float, batch_float},
         {}
     ),
     pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
@@ -101,7 +101,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     double s_hat_min = std::max(sqs_min_sum * sqs_min_sum, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
         if (!leptonic && t_channel_mode != PhaseSpaceMapping::chili) {
-            luminosity = Luminosity(s_lab, s_hat_min);
+            luminosity = Luminosity(s_lab, s_hat_min); //, s_lab, 0.);
         }
         if (t_channel_mode == PhaseSpaceMapping::chili) {
             // |y| <= |eta|, so we can pass y_max = eta_max
@@ -109,17 +109,17 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         } else if (
             t_channel_mode == PhaseSpaceMapping::propagator || topology.t_propagators.size() < 2
         ) {
-            t_mapping = TPropagatorMapping(topology.t_propagators);
+            t_mapping = TPropagatorMapping(topology.t_propagators, nu);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
             t_mapping = FastRamboMapping(topology.t_propagators.size() + 1, false);
         }
     } else if (!leptonic) {
         auto& s_line = topology.decays.back().at(0).propagator;
-        if (s_line.mass >= std::sqrt(s_hat_min)) {
+        if (s_line.mass > std::sqrt(s_hat_min)) {
             luminosity = Luminosity(s_lab, s_hat_min, s_lab, 0., s_line.mass, s_line.width);
         } else {
-            luminosity = Luminosity(s_lab, s_hat_min);
+            luminosity = Luminosity(s_lab, s_hat_min); //, s_lab, 0.);
         }
     }
 
@@ -196,10 +196,11 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 continue;
             }
             auto s_min = fb.square(sqs_min_item);
-            auto s_max =
+            /*auto s_max =
                 &data == &layer_data.back() ?
                 fb.square(sqs_sum) :
-                fb.square(fb.sub(sqs_sum, *(sqs_min_sums_iter++)));
+                fb.square(fb.sub(sqs_sum, *(sqs_min_sums_iter++)));*/
+            auto s_max = s_hat;
             auto [s_vec, det] = data.mappings.invariant->build_forward(
                 fb, {*(r++)}, {s_min, s_max}
             );

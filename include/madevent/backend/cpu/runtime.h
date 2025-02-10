@@ -14,6 +14,7 @@ public:
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
         std::vector<SizeVec> output_shapes;
+        std::size_t batch_size_index;
     };
 
     Runtime(const Function& function);

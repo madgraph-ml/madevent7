@@ -10,12 +10,18 @@
 namespace {
 
 struct CpuTypes {
-    template<int dim> using FIn = const madevent::TensorView<double, dim>;
-    template<int dim> using IIn = const madevent::TensorView<long long, dim>;
-    template<int dim> using BIn = const madevent::TensorView<bool, dim>;
-    template<int dim> using FOut = madevent::TensorView<double, dim>;
-    template<int dim> using IOut = madevent::TensorView<long long, dim>;
-    template<int dim> using BOut = madevent::TensorView<bool, dim>;
+    template<int dim, bool is_single=false>
+        using FIn = const madevent::TensorView<double, dim>;
+    template<int dim, bool is_single=false>
+        using IIn = const madevent::TensorView<long long, dim>;
+    template<int dim, bool is_single=false>
+        using BIn = const madevent::TensorView<bool, dim>;
+    template<int dim, bool is_single=false>
+        using FOut = madevent::TensorView<double, dim>;
+    template<int dim, bool is_single=false>
+        using IOut = madevent::TensorView<long long, dim>;
+    template<int dim, bool is_single=false>
+        using BOut = madevent::TensorView<bool, dim>;
     using FVal = double;
     using IVal = long long;
     using BVal = bool;
@@ -46,12 +52,18 @@ using std::isnan;
 
 #ifdef USE_SIMD
 struct SimdTypes {
-    template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IIn = const VectorizedTensorView<IVec, long long, dim, false>;
-    template<int dim> using BIn = const VectorizedTensorView<BVec, bool, dim, false>;
-    template<int dim> using FOut = VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IOut = VectorizedTensorView<IVec, long long, dim, false>;
-    template<int dim> using BOut = VectorizedTensorView<BVec, bool, dim, false>;
+    template<int dim, bool is_single=false>
+        using FIn = const VectorizedTensorView<FVec, double, dim, false, is_single>;
+    template<int dim, bool is_single=false>
+        using IIn = const VectorizedTensorView<IVec, long long, dim, false, is_single>;
+    template<int dim, bool is_single=false>
+        using BIn = const VectorizedTensorView<BVec, bool, dim, false, is_single>;
+    template<int dim, bool is_single=false>
+        using FOut = VectorizedTensorView<FVec, double, dim, false, is_single>;
+    template<int dim, bool is_single=false>
+        using IOut = VectorizedTensorView<IVec, long long, dim, false, is_single>;
+    template<int dim, bool is_single=false>
+        using BOut = VectorizedTensorView<BVec, bool, dim, false, is_single>;
     using FVal = FVec;
     using IVal = IVec;
     using BVal = BVec;

@@ -19,6 +19,7 @@ class TensorView {
 public:
     using DType = T;
     static const int dim = _dim;
+    static const bool is_single = false;
 
     TensorView(uint8_t* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
@@ -126,6 +127,31 @@ public:
         init_stride();
     }
 
+    Tensor(SizeVec batch_sizes) : impl(new TensorImpl{
+        DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr, 1, {}, 0, batch_sizes
+    }) {}
+
+    template<typename T, typename = std::enable_if_t<
+        std::is_same_v<T, bool> || std::is_same_v<T, long long> || std::is_same_v<T, double>
+    >>
+    Tensor(T value, Device& device) :
+        impl(new TensorImpl{
+            std::is_same_v<T, bool> ? DataType::dt_bool :
+            std::is_same_v<T, long long> ? DataType::dt_int :
+            DataType::dt_float,
+            {1},
+            device
+        })
+    {
+        auto size = init_stride();
+        impl->data = device.allocate(size);
+        auto count = size / dtype_size();
+        auto start_ptr = static_cast<T*>(impl->data);
+        for (auto ptr = start_ptr; ptr != start_ptr + count; ++ptr) {
+            *ptr = value;
+        }
+    }
+
     ~Tensor() {
         reset();
     }
@@ -180,10 +206,15 @@ public:
 
     std::size_t dtype_size() const {
         switch (impl->dtype) {
-            case DT_BOOL: return sizeof(bool);
-            case DT_INT: return sizeof(long long);
-            case DT_FLOAT: return sizeof(double);
+            case DataType::dt_bool: return sizeof(bool);
+            case DataType::dt_int: return sizeof(long long);
+            case DataType::dt_float: return sizeof(double);
+            case DataType::batch_sizes: return 0;
         }
+    }
+
+    const SizeVec& batch_sizes() const {
+        return impl->batch_sizes;
     }
 
     void reset() {
@@ -215,6 +246,7 @@ private:
         int ref_count = 1;
         SizeVec stride;
         std::size_t offset;
+        SizeVec batch_sizes;
 
         void reset(std::function<void(void*)> deleter) {
             if (ref_count > 1) {

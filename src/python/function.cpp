@@ -38,7 +38,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             }
             shape.push_back(arr_size);
         }
-        inputs.emplace_back(DT_FLOAT, shape, arr.mutable_data());
+        inputs.emplace_back(DataType::dt_float, shape, arr.mutable_data());
         arrays.push_back(arr);
     }
 
@@ -71,27 +71,36 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     bool is_cuda = false;
     Device& device = cpu_device();
     for (int i = 0; i < n_args; ++i) {
-        auto n_dims = args[i].dim();
+        auto& arg = args.at(i);
+        auto n_dims = arg.dim();
         std::vector<int64_t> permutation;
         for (int k = n_dims-1; k >= 0; --k) {
             permutation.push_back(k);
         }
-        auto arg_dtype = args[i].scalar_type();
+        auto arg_dtype = arg.scalar_type();
+        auto& input_type = function.inputs.at(i).type;
+        bool is_batch_sizes = input_type.dtype == DataType::batch_sizes;
         torch::Dtype target_dtype;
+        bool dtype_ok = false;
         if (arg_dtype == torch::kFloat64 || arg_dtype == torch::kFloat32) {
             target_dtype = torch::kFloat64;
+            dtype_ok = input_type.dtype == DataType::dt_float;
         } else if (arg_dtype == torch::kInt64 || arg_dtype == torch::kInt32) {
             target_dtype = torch::kInt64;
+            dtype_ok = input_type.dtype == DataType::dt_int || is_batch_sizes;
         } else if (arg_dtype == torch::kBool) {
             target_dtype = torch::kBool;
-        } else {
+            dtype_ok = input_type.dtype == DataType::dt_bool;
+        }
+        if (!dtype_ok) {
             throw std::invalid_argument(std::format("Argument {}: dtype not accepted", i));
         }
-        auto tensor = args[i]
+        auto tensor = arg
             .permute(permutation)
             .to(target_dtype)
             .contiguous()
             .permute(permutation);
+        tensors.push_back(tensor); // Important: prevents tensor from getting destroyed
         if (i == 0) {
             is_cuda = tensor.is_cuda();
             if (is_cuda) {
@@ -101,37 +110,71 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
                 throw std::runtime_error("madevent was compiled without cuda support");
 #endif
             }
-        } else if (is_cuda != tensor.is_cuda()) {
+        } else if (!is_batch_sizes && is_cuda != tensor.is_cuda()) {
             throw std::invalid_argument("All inputs have to be on the same device.");
         }
-        auto& input_type = function.inputs[i].type;
-        if (n_dims != input_type.shape.size() + 1) {
-            throw std::invalid_argument(std::format(
-                "Argument {}: wrong input dimension. Expected {}, got {}",
-                i, input_type.shape.size() + 1, n_dims
-            ));
-        }
-        std::vector<size_t> shape;
-        for (int j = 0; j < n_dims; ++j) {
-            auto tensor_size = tensor.size(j);
-            if (j != 0 && tensor_size != input_type.shape[j-1]) {
+        if (is_batch_sizes) {
+            if (n_dims != 1) {
                 throw std::invalid_argument(std::format(
-                    "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
-                    i, j, input_type.shape[j-1], tensor_size
+                    "Argument {}: wrong input dimension. Expected 1, got {}", i, n_dims
                 ));
             }
-            shape.push_back(tensor_size);
-        }
-        void* data_ptr;
-        if (target_dtype == torch::kFloat64) {
-            data_ptr = tensor.data_ptr<double>();
-        } else if (target_dtype == torch::kInt64) {
-            data_ptr = tensor.data_ptr<long long>();
+            if (tensor.size(0) != input_type.batch_size_list.size()) {
+                throw std::invalid_argument(std::format(
+                    "Argument {}, dimension 0: shape mismatch. Expected {}, got {}",
+                    i, input_type.batch_size_list.size(), tensor.size(0)
+                ));
+            }
+            std::vector<std::size_t> batch_sizes(
+                tensor.data_ptr<long long>(), tensor.data_ptr<long long>() + tensor.numel()
+            );
+            inputs.emplace_back(batch_sizes);
+        } else if (input_type.batch_size == BatchSize::one && input_type.shape.size() == 0) {
+            switch(input_type.dtype) {
+            case DataType::dt_float:
+                inputs.emplace_back(tensor.item<double>(), device);
+                break;
+            case DataType::dt_int:
+                inputs.emplace_back(tensor.item<long long>(), device);
+                break;
+            case DataType::dt_bool:
+                inputs.emplace_back(tensor.item<bool>(), device);
+                break;
+            default:
+                break;
+            }
         } else {
-            data_ptr = tensor.data_ptr<bool>();
+            bool is_batch = input_type.batch_size != BatchSize::one;
+            if (n_dims != input_type.shape.size() + is_batch) {
+                throw std::invalid_argument(std::format(
+                    "Argument {}: wrong input dimension. Expected {}, got {}",
+                    i, input_type.shape.size() + 1, n_dims
+                ));
+            }
+            std::vector<size_t> shape;
+            if (!is_batch) {
+                shape.push_back(1);
+            }
+            for (int j = 0; j < n_dims; ++j) {
+                auto tensor_size = tensor.size(j);
+                if (j != 0 && tensor_size != input_type.shape.at(j - is_batch)) {
+                    throw std::invalid_argument(std::format(
+                        "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
+                        i, j, input_type.shape.at(j - is_batch), tensor_size
+                    ));
+                }
+                shape.push_back(tensor_size);
+            }
+            void* data_ptr;
+            if (target_dtype == torch::kFloat64) {
+                data_ptr = tensor.data_ptr<double>();
+            } else if (target_dtype == torch::kInt64) {
+                data_ptr = tensor.data_ptr<long long>();
+            } else {
+                data_ptr = tensor.data_ptr<bool>();
+            }
+            inputs.emplace_back(input_type.dtype, shape, device, data_ptr);
         }
-        inputs.emplace_back(DT_FLOAT, shape, device, data_ptr);
-        tensors.push_back(tensor);
     }
 
     std::vector<Tensor> outputs;
@@ -156,21 +199,37 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         for (auto s : output.stride()) {
             stride.push_back(s / dtype_size);
         }
-        torch::Dtype dtype;
-        switch(output.dtype()) {
-            case DT_FLOAT: dtype = torch::kFloat64; break;
-            case DT_INT: dtype = torch::kInt64; break;
-            case DT_BOOL: dtype = torch::kBool; break;
+        if (output.dtype() == DataType::batch_sizes) {
+            auto& batch_sizes = output.batch_sizes();
+            torch::Tensor tensor = torch::zeros(
+                {static_cast<long long>(batch_sizes.size())},
+                torch::TensorOptions().dtype(torch::kInt64)
+            );
+            auto accessor = tensor.accessor<long long, 1>();
+            std::size_t i = 0;
+            for (auto size : batch_sizes) {
+                accessor[i] = size;
+                ++i;
+            }
+            output_tensors.push_back(tensor);
+        } else {
+            torch::Dtype dtype;
+            switch(output.dtype()) {
+                case DataType::dt_float: dtype = torch::kFloat64; break;
+                case DataType::dt_int: dtype = torch::kInt64; break;
+                case DataType::dt_bool: dtype = torch::kBool; break;
+                default: break;
+            }
+            output_tensors.push_back(torch::from_blob(
+                output.data(),
+                shape,
+                stride,
+                [output] (void* data) mutable { output.reset(); },
+                torch::TensorOptions()
+                    .dtype(dtype)
+                    .device(is_cuda ? torch::kCUDA : torch::kCPU)
+            ));
         }
-        output_tensors.push_back(torch::from_blob(
-            output.data(),
-            shape,
-            stride,
-            [output] (void* data) mutable { output.reset(); },
-            torch::TensorOptions()
-                .dtype(dtype)
-                .device(is_cuda ? torch::kCUDA : torch::kCPU)
-        ));
     }
     return output_tensors;
 }

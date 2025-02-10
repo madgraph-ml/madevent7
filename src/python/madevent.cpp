@@ -47,20 +47,33 @@ public:
 
 PYBIND11_MODULE(_madevent_py, m) {
     py::enum_<DataType>(m, "DataType")
-        .value("bool", DataType::DT_BOOL)
-        .value("int", DataType::DT_INT)
-        .value("float", DataType::DT_FLOAT)
+        .value("bool", DataType::dt_bool)
+        .value("int", DataType::dt_int)
+        .value("float", DataType::dt_float)
         .export_values();
 
-    py::class_<Type>(m, "Type")
-        .def(py::init<DataType, std::vector<int>>(), py::arg("dtype"), py::arg("shape"))
-        .def_readonly("dtype", &Type::dtype)
-        .def_readonly("shape", &Type::shape);
+    py::class_<BatchSize>(m, "BatchSize")
+        .def(py::init<>())
+        .def(py::init<std::string>(), py::arg("name"))
+        .def("__str__", &to_string<BatchSize>)
+        .def("__repr__", &to_string<BatchSize>);
+    m.attr("batch_size") = py::cast(batch_size);
 
-    m.attr("scalar") = py::cast(scalar);
-    m.attr("scalar_int") = py::cast(scalar_int);
-    m.attr("scalar_bool") = py::cast(scalar_bool);
-    m.attr("four_vector") = py::cast(four_vector);
+    py::class_<Type>(m, "Type")
+        .def(py::init<DataType, BatchSize, std::vector<int>>(),
+             py::arg("dtype"), py::arg("batch_size"), py::arg("shape"))
+        .def_readonly("dtype", &Type::dtype)
+        .def_readonly("batch_size", &Type::batch_size)
+        .def_readonly("shape", &Type::shape)
+        .def("__str__", &to_string<Type>)
+        .def("__repr__", &to_string<Type>);
+    m.attr("single_float") = py::cast(single_float);
+    m.attr("single_int") = py::cast(single_int);
+    m.attr("single_bool") = py::cast(single_bool);
+    m.attr("batch_float") = py::cast(batch_float);
+    m.attr("batch_int") = py::cast(batch_int);
+    m.attr("batch_bool") = py::cast(batch_bool);
+    m.attr("batch_four_vec") = py::cast(batch_four_vec);
 
     py::class_<InstrCopy>(m, "Instruction")
         .def("__str__", [](const InstrCopy& instr) { return instr.name; } )

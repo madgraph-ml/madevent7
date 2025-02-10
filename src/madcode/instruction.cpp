@@ -31,15 +31,45 @@ TypeList SimpleInstruction::signature(
     std::map<std::string, int> variables;
     std::vector<int> wildcard_shape;
     bool found_wildcard(false);
+    std::optional<BatchSize> batch_size;
+    bool broadcastable;
 
     for (size_t i = 0; i < inputs.size(); ++i) {
-        auto& [arg_dtype, arg_shape] = args[i];
-        auto& [input_dtype, input_shape] = inputs[i];
+        auto& [arg_dtype, arg_batch_size, arg_shape, _] = args.at(i);
+        auto& [input_dtype, is_single, input_shape] = inputs.at(i);
+
+        if (arg_dtype == DataType::batch_sizes) {
+            throw std::invalid_argument(std::format(
+                "{}, argument {}: batch size list not accepted as argument", name, i + 1
+            ));
+        }
 
         if (input_dtype != arg_dtype) {
             throw std::invalid_argument(std::format(
                 "{}, argument {}: dtypes not matching", name, i + 1
             ));
+        }
+
+        if (is_single && arg_batch_size != BatchSize::one) {
+            throw std::invalid_argument(std::format(
+                "{}, argument {}: cannot have batch dimension", name, i + 1
+            ));
+        }
+        if (batch_size) {
+            if (arg_shape.size() == 0 || broadcastable) {
+                batch_size = batch_size->broadcast(arg_batch_size);
+                broadcastable |= batch_size == BatchSize::one;
+            } else if (arg_batch_size != batch_size) {
+                batch_size = std::nullopt;
+            }
+            if (!batch_size) {
+                throw std::invalid_argument(std::format(
+                    "{}, argument {}: incompatible batch size", name, i + 1
+                ));
+            }
+        } else {
+            batch_size = arg_batch_size;
+            broadcastable = arg_shape.size() == 0 && batch_size == BatchSize::one;
         }
 
         auto wildcard_pos = std::find_if(
@@ -98,12 +128,11 @@ TypeList SimpleInstruction::signature(
                     variables[var_name] = arg_item - offset;
                 }
             }
-
         }
     }
 
     TypeList output_types;
-    for (auto& [out_dtype, out_dyn_shape] : outputs) {
+    for (auto& [out_dtype, _, out_dyn_shape] : outputs) {
         std::vector<int> out_shape;
         for (auto& shape_item : out_dyn_shape) {
             if (const auto shape_int = std::get_if<int>(&shape_item)) {
@@ -125,7 +154,7 @@ TypeList SimpleInstruction::signature(
                 }
             }
         }
-        output_types.push_back(Type{out_dtype, out_shape});
+        output_types.push_back(Type{out_dtype, *batch_size, out_shape});
     }
     return output_types;
 }
@@ -134,16 +163,22 @@ TypeList StackInstruction::signature(const TypeList& args) const {
     if (args.size() == 0) {
         throw std::invalid_argument("stack has to be called with at least one argument");
     }
-    auto type = args.front();
+    auto type = args.at(0);
     for (auto& arg : args) {
+        if (arg.dtype == DataType::batch_sizes) {
+            throw std::invalid_argument("Batch size list not accepted as argument");
+        }
+        if (arg.batch_size == BatchSize::one) {
+            throw std::invalid_argument("Argument must have batch dimension");
+        }
         if (arg != type) {
             throw std::invalid_argument("All arguments must have the same shape and dtype");
         }
     }
     int args_size = args.size();
     std::vector<int> out_shape{args_size};
-    std::copy(type.shape.begin(), type.shape.end(), std::back_inserter(out_shape));
-    return {{type.dtype, out_shape}};
+    out_shape.insert(out_shape.end(), type.shape.begin(), type.shape.end());
+    return {{type.dtype, type.batch_size, out_shape}};
 }
 
 TypeList UnstackInstruction::signature(const TypeList& args) const {
@@ -152,26 +187,42 @@ TypeList UnstackInstruction::signature(const TypeList& args) const {
             "unstack expects one argument, got {}", args.size()
         ));
     }
-    auto arg = args[0];
+    auto arg = args.at(0);
+    if (arg.dtype == DataType::batch_sizes) {
+        throw std::invalid_argument("Batch size list not accepted as argument");
+    }
+    if (arg.batch_size == BatchSize::one) {
+        throw std::invalid_argument("Argument must have batch dimension");
+    }
     if (arg.shape.size() == 0) {
         throw std::invalid_argument("Argument of unstack must be at least one-dimensional");
     }
     std::vector<int> out_shape(arg.shape.begin() + 1, arg.shape.end());
-    return std::vector<Type>(arg.shape[0], {arg.dtype, out_shape});
+    return TypeList(arg.shape[0], {arg.dtype, arg.batch_size, out_shape});
 }
 
 TypeList BatchCatInstruction::signature(const TypeList& args) const {
     if (args.size() == 0) {
         throw std::invalid_argument("batch_cat has to be called with at least one argument");
     }
-    auto type = args.front();
+    auto type = args.at(0);
+    auto batch_size = BatchSize::zero;
+    std::vector<BatchSize> arg_batch_sizes;
     for (auto& arg : args) {
-        if (arg != type) {
+        if (arg.dtype == DataType::batch_sizes) {
+            throw std::invalid_argument("Batch size list not accepted as argument");
+        }
+        if (arg.batch_size == BatchSize::one) {
+            throw std::invalid_argument("Argument must have batch dimension");
+        }
+        if (arg.dtype != type.dtype || arg.shape != type.shape) {
             throw std::invalid_argument("All arguments must have the same shape and dtype");
         }
+        arg_batch_sizes.push_back(arg.batch_size);
+        batch_size = batch_size + arg.batch_size;
     }
     int args_size = args.size();
-    return {type, {DT_INT, {args_size}}};
+    return {{type.dtype, batch_size, type.shape}, arg_batch_sizes};
 }
 
 TypeList BatchSplitInstruction::signature(const TypeList& args) const {
@@ -180,11 +231,25 @@ TypeList BatchSplitInstruction::signature(const TypeList& args) const {
             "batch_split expects two arguments, got {}", args.size()
         ));
     }
-    auto split_arg = args[0], count_arg = args[1];
-    if (count_arg.shape.size() != 1 || count_arg.dtype != DT_INT) {
-        throw std::invalid_argument("Second argument of batch_split must be one-dimensional int");
+    auto split_arg = args.at(0);
+    if (split_arg.batch_size == BatchSize::one) {
+        throw std::invalid_argument("First argument of batch_split must have batch dimension");
     }
-    return std::vector<Type>(count_arg.shape[0], split_arg);
+    auto count_arg = args.at(1);
+    if (count_arg.dtype != DataType::batch_sizes) {
+        throw std::invalid_argument("Second argument of batch_split must be batch size list");
+    }
+    TypeList out_types;
+    auto last_batch_size = split_arg.batch_size;
+    for (auto& batch_size : count_arg.batch_size_list) {
+        if (&batch_size == &count_arg.batch_size_list.back()) {
+            out_types.push_back({split_arg.dtype, last_batch_size, split_arg.shape});
+        } else {
+            out_types.push_back({split_arg.dtype, batch_size, split_arg.shape});
+            last_batch_size = last_batch_size - batch_size;
+        }
+    }
+    return out_types;
 }
 
 const std::unordered_map<std::string, InstructionOwner> madevent::build_instruction_set() {

@@ -1,16 +1,13 @@
 #include "madevent/madcode/function.h"
+#include "madevent/util.h"
 
 #include <stdexcept>
 #include <format>
 
-
 using namespace madevent;
 
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
 std::ostream& madevent::operator<<(std::ostream& out, const Value& value) {
-    std::visit(overloaded{
+    std::visit(Overloaded{
         [&out](auto val) { out << val; },
         [&out](TensorValue val) {
             std::visit([&out](auto items) {

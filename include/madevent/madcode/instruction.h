@@ -8,36 +8,28 @@
 #include <memory>
 #include <unordered_map>
 
+#include "type.h"
+
 namespace madevent {
 
-enum DataType {
-    DT_BOOL,
-    DT_INT,
-    DT_FLOAT
-};
-
-struct Type {
-    DataType dtype;
-    std::vector<int> shape;
-};
-
-using TypeList = std::vector<Type>;
-
-inline bool operator==(const Type& lhs, const Type& rhs) {
-    return lhs.dtype == rhs.dtype && lhs.shape == rhs.shape;
+const Type single_float{DataType::dt_float, BatchSize::One{}, {}};
+const Type single_int{DataType::dt_int, BatchSize::One{}, {}};
+const Type single_bool{DataType::dt_bool, BatchSize::One{}, {}};
+inline Type single_int_array(int count) {
+    return {DataType::dt_int, BatchSize::one, {count}};
 }
 
-inline bool operator!=(const Type& lhs, const Type& rhs) {
-    return lhs.dtype != rhs.dtype || lhs.shape != rhs.shape;
+const BatchSize batch_size = BatchSize("batch_size");
+const Type batch_float{DataType::dt_float, batch_size, {}};
+const Type batch_int{DataType::dt_int, batch_size, {}};
+const Type batch_bool{DataType::dt_bool, batch_size, {}};
+const Type batch_four_vec{DataType::dt_float, batch_size, {4}};
+inline Type batch_float_array(int count) {
+    return {DataType::dt_bool, batch_size, {count}};
 }
-
-const Type scalar{DT_FLOAT, {}};
-const Type scalar_int{DT_INT, {}};
-const Type scalar_bool{DT_BOOL, {}};
-const Type four_vector{DT_FLOAT, {4}};
-inline Type scalar_array(int count) { return {DT_FLOAT, {count}}; }
-inline Type scalar_int_array(int count) { return {DT_INT, {count}}; }
-inline Type four_vector_array(int count) { return {DT_FLOAT, {count, 4}}; }
+inline Type batch_four_vec_array(int count) {
+    return {DataType::dt_bool, batch_size, {count, 4}};
+}
 
 enum Opcode {
 #include "opcode_mixin.h"
@@ -56,7 +48,7 @@ public:
 class SimpleInstruction : public Instruction {
 public:
     using DynShape = std::vector<std::variant<int, std::string>>;
-    using SigType = std::tuple<DataType, DynShape>;
+    using SigType = std::tuple<DataType, bool, DynShape>;
 
     SimpleInstruction(
         std::string _name,

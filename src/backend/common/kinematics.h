@@ -137,9 +137,23 @@ KERNELSPEC void kernel_r_to_x1x2(
     FIn<T,0> r, FIn<T,0> s_hat, FIn<T,0> s_lab, FOut<T,0> x1, FOut<T,0> x2, FOut<T,0> det
 ) {
     auto tau = s_hat / s_lab;
+    //auto eta_min = 0.5 * log(tau);
+    //auto eta_range = -2.0 * eta_min;
+    //auto eta = eta_range * r + eta_min;
+    //auto sqrt_tau = sqrt(tau);
+    //auto exp_eta = exp(eta);
+    //x1 = sqrt_tau * exp_eta;
+    //x2 = sqrt_tau / exp_eta;
+    //det = eta_range / s_lab;
     x1 = pow(tau, r);
     x2 = pow(tau, (1 - r));
     det = fabs(log(tau)) / s_lab;
+      //ETAMIN = .5d0*LOG(TAU)
+      //ETAMAX = -ETAMIN
+      //ETA    = (ETAMAX-ETAMIN)*X(2)+ETAMIN
+      //SJACOBI = SJACOBI*(ETAMAX-ETAMIN)
+      //X1 = SQRT(TAU)*EXP(ETA)
+      //X2 = SQRT(TAU)*EXP(-ETA)
 }
 
 template<typename T>

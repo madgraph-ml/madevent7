@@ -73,7 +73,8 @@ std::size_t Tensor::contiguous_dims() {
 }
 
 std::size_t Tensor::init_stride() {
-    std::size_t stride_prod = dtype_size();
+    std::size_t dt_size = dtype_size();
+    std::size_t stride_prod = dt_size;
     bool first = true;
     std::size_t size_prod = 1;
     for (auto size : impl->shape) {
@@ -89,5 +90,5 @@ std::size_t Tensor::init_stride() {
         }
         stride_prod *= size;
     }
-    return stride_prod;
+    return std::max(stride_prod, 8 * dt_size);
 }

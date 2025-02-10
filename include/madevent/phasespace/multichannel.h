@@ -18,7 +18,7 @@ public:
         ),
         mappings(_mappings)
     {
-        condition_types.push_back(scalar_int_array(_mappings.size()));
+        condition_types.push_back(single_int_array(_mappings.size()));
     }
 private:
     Result build_impl(

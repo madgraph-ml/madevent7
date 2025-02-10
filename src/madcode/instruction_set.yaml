@@ -32,18 +32,23 @@ types:
   limits:
     dtype: float
     shape: [2]
+    single: True
   limit_array:
     dtype: float
     shape: ["n--", 2]
+    single: True
   limit_array_m:
     dtype: float
     shape: [m, 2]
+    single: True
   index_array_2:
     dtype: int
     shape: [m, 2]
+    single: True
   index_array_k:
     dtype: int
     shape: [m, k]
+    single: True
 
 ---
 title: Shapes, etc.

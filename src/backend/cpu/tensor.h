@@ -6,12 +6,13 @@
 
 namespace {
 
-template<class V, class T, int _dim, bool is_batch>
+template<class V, class T, int _dim, bool is_batch, bool _is_single>
 class VectorizedTensorView {
 public:
     using VType = V;
     using DType = T;
     static const int dim = _dim;
+    static const bool is_single = _is_single;
 
     VectorizedTensorView(const madevent::TensorView<T, _dim>& view) :
         _data(view.data()), _stride(view.stride()), _shape(view.shape()),
@@ -22,43 +23,58 @@ public:
     ) : _data(data), _stride(stride), _shape(shape), _batch_stride(batch_stride) {}
 
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
-    const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
+    const VectorizedTensorView<V, T, _dim-1, false, _is_single> operator[](std::size_t index) const {
         if (is_batch) {
-            return {_data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride};
+            return {
+                _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
+            };
         } else {
             return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
         }
     }
 
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
-    VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
+    VectorizedTensorView<V, T, _dim-1, false, _is_single> operator[](std::size_t index) {
         if (is_batch) {
-            return {_data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride};
+            return {
+                _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
+            };
         } else {
             return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
         }
     }
 
     operator typename std::conditional_t<_dim == 0, V, madevent::Nothing>() const {
-        T buffer[simd_vec_size];
+        /*T buffer[simd_vec_size];
         for (int i = 0; i < simd_vec_size; ++i) {
             buffer[i] = *reinterpret_cast<T*>(_data + i * _batch_stride);
         }
-        return vload(&buffer[0]);
+        return vload(&buffer[0]);*/
+        if (_is_single) {
+            return *reinterpret_cast<T*>(_data);
+        } else {
+            return vload(reinterpret_cast<T*>(_data));
+        }
     }
 
     template<int d = _dim, typename = std::enable_if_t<d == 0>>
     V operator=(V value) {
-        T buffer[simd_vec_size];
+        /*T buffer[simd_vec_size];
         vstore(&buffer[0], value);
         for (int i = 0; i < simd_vec_size; ++i) {
             *reinterpret_cast<T*>(_data + i * _batch_stride) = buffer[i];
         }
+        return value;*/
+        if (_is_single) {
+            *reinterpret_cast<T*>(_data) = vfirst(value);
+        } else {
+            vstore(reinterpret_cast<T*>(_data), value);
+        }
         return value;
     }
 
-    VectorizedTensorView<V, T, _dim, is_batch>& operator=(
-        VectorizedTensorView<V, T, _dim, is_batch>& value
+    VectorizedTensorView<V, T, _dim, is_batch, _is_single>& operator=(
+        VectorizedTensorView<V, T, _dim, is_batch, _is_single>& value
     ) = delete;
 
     std::size_t size() const {
@@ -95,7 +111,7 @@ struct get_vectorized_views<void(*)(TParam...), dims> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
         return std::make_tuple(VectorizedTensorView<
-            typename TParam::VType, typename TParam::DType, TParam::dim + dims, true
+            typename TParam::VType, typename TParam::DType, TParam::dim + dims, true, TParam::is_single
         >(args)...);
     }
 };

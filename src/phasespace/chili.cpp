@@ -9,11 +9,11 @@ ChiliMapping::ChiliMapping(
     std::size_t _n_particles, const std::vector<double>& _y_max, const std::vector<double>& _pt_min
 ) :
     Mapping(
-        TypeList(4 * _n_particles - 1, scalar),
+        TypeList(4 * _n_particles - 1, batch_float),
         [&] {
-            TypeList output_types(_n_particles + 2, four_vector);
-            output_types.push_back(scalar);
-            output_types.push_back(scalar);
+            TypeList output_types(_n_particles + 2, batch_four_vec);
+            output_types.push_back(batch_float);
+            output_types.push_back(batch_float);
             return output_types;
         }(),
         {}

@@ -25,18 +25,19 @@ struct Value {
     LiteralValue literal_value;
     int local_index = -1;
 
-    Value() : type(scalar), literal_value(std::monostate{}) {}
+    Value() : type(single_float), literal_value(std::monostate{}) {}
 
-    Value(bool value) : type(scalar_bool), literal_value(value) {}
-    Value(long long value) : type(scalar_int), literal_value(value) {}
-    Value(double value) : type(scalar), literal_value(value) {}
+    Value(bool value) : type(single_bool), literal_value(value) {}
+    Value(long long value) : type(single_int), literal_value(value) {}
+    Value(double value) : type(single_float), literal_value(value) {}
     Value(std::string key, Type _type) : type(_type), literal_value(key) {}
 
     template<typename T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
-            std::is_same_v<T, bool> ? DT_BOOL :
-            std::is_same_v<T, long long> ? DT_INT : DT_FLOAT,
+            std::is_same_v<T, bool> ? DataType::dt_bool :
+            std::is_same_v<T, long long> ? DataType::dt_int : DataType::dt_float,
+            BatchSize::one,
             shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())} : shape
         },
         literal_value(TensorValue(type.shape, values))

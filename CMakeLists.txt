@@ -62,6 +62,7 @@ add_library(
     src/backend/cpu/tensor.h
     src/backend/cpu/simd.h
     src/backend/cpu/simd_arm.h
+    src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
     src/madcode/optimizer.cpp
@@ -81,6 +82,7 @@ add_library(
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
     include/madevent/madcode.h
+    include/madevent/madcode/type.h
     include/madevent/madcode/function.h
     include/madevent/madcode/function_builder_mixin.h
     include/madevent/madcode/opcode_mixin.h

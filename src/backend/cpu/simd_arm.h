@@ -55,6 +55,16 @@ void vstore(bool* ptr, BVec values) {
     ptr[1] = buffer[1] != 0;
 }
 
+double vfirst(FVec arg) {
+    return vgetq_lane_f64(arg, 0);
+}
+int64_t vfirst(IVec arg) {
+    return vgetq_lane_s64(arg, 0);
+}
+bool vfirst(BVec arg) {
+    return vgetq_lane_s64(arg, 0);
+}
+
 FVec where(BVec arg1, FVec arg2, FVec arg3) {
     return vbslq_f64(arg1, arg2, arg3);
 }

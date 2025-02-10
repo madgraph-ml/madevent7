@@ -8,10 +8,14 @@ namespace madevent {
 class TwoParticle : public Mapping {
 public:
     TwoParticle(bool _com) : Mapping(
-        _com ?
-        TypeList{scalar, scalar, scalar, scalar, scalar, scalar} :
-        TypeList{scalar, scalar, scalar, scalar, scalar, scalar, four_vector},
-        {four_vector, four_vector},
+        [&] {
+            TypeList input_types(6, batch_float);
+            if (!_com) {
+                input_types.push_back(batch_four_vec);
+            }
+            return input_types;
+        }(),
+        {batch_four_vec, batch_four_vec},
         {}
     ), com(_com) {}
 
@@ -31,9 +35,9 @@ class TInvariantTwoParticle : public Mapping {
 public:
     TInvariantTwoParticle(bool _com, double nu = 0, double mass = 0, double width = 0) :
         Mapping(
-            {scalar, scalar, scalar, scalar},
-            {four_vector, four_vector},
-            {four_vector, four_vector}
+            {batch_float, batch_float, batch_float, batch_float},
+            {batch_four_vec, batch_four_vec},
+            {batch_four_vec, batch_four_vec}
         ), com(_com), invariant(nu, mass, width) {}
 
 private:

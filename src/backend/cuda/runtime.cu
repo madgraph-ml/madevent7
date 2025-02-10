@@ -1,6 +1,7 @@
 #include "madevent/backend/cuda/runtime.h"
 #include "madevent/backend/cuda/tensor.h"
 #include "madevent/backend/cuda/device.h"
+#include "madevent/util.h"
 
 #include "kernels.h"
 
@@ -70,10 +71,6 @@ __global__ void run_kernel(std::size_t batch_size, TArgs... args) {
         function(args[i]...);
     }
 }
-
-// Some helper definitions to use with std::visit and std::variant
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 //namespace madevent {
 //namespace cuda {
@@ -162,7 +159,7 @@ Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
     }
 
     for (auto& local : function.locals) {
-        std::visit(overloaded{
+        std::visit(Overloaded{
             [local, this](auto val) {
                 Tensor tensor(local.type.dtype, {1}, cuda_device());
                 cudaMemcpy(tensor.data(), &val, sizeof val, cudaMemcpyDefault);

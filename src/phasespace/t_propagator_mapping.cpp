@@ -6,8 +6,8 @@ TPropagatorMapping::TPropagatorMapping(
     const std::vector<Propagator>& propagators, double nu, bool map_resonances
 ) :
     Mapping(
-        TypeList(4 * propagators.size() + 1, scalar),
-        TypeList(propagators.size() + 3, four_vector),
+        TypeList(4 * propagators.size() + 1, batch_float),
+        TypeList(propagators.size() + 3, batch_four_vec),
         {}
     ),
     s_pseudo_invariants(propagators.size() - 1)
@@ -16,7 +16,7 @@ TPropagatorMapping::TPropagatorMapping(
 
     bool com = true;
     for (auto prop = propagators.rbegin(); prop != propagators.rend(); ++prop) {
-        t_invariants.emplace_back(com, nu, prop->mass, map_resonances ? prop->width : 0.);
+        t_invariants.emplace_back(com, nu); //, prop->mass, map_resonances ? prop->width : 0.);
         com = false;
     }
 }

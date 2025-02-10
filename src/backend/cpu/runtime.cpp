@@ -1,5 +1,6 @@
 #include "madevent/backend/cpu/runtime.h"
 #include "madevent/madcode/optimizer.h"
+#include "madevent/util.h"
 #include "kernels.h"
 
 #include <optional>
@@ -14,7 +15,7 @@ using namespace madevent::cpu;
 
 namespace {
 
-// call function(i) with argument i=0...N-1 and return the results as a tuple
+// call function(i) with argument i=0...N-1 and return the results as an array
 template<std::size_t N, typename F, std::size_t... i>
 constexpr auto range_to_array_impl(F&& function, std::index_sequence<i...>) {
     return std::array<Tensor, N>{function(i)...};
@@ -26,18 +27,9 @@ constexpr auto range_to_array(F&& function) {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-    std::size_t batch_size = 1;
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto inputs = range_to_array<n_in>([&](auto i) {
-        auto input = locals[instruction.input_indices[i]];
-        auto input_size = input.size(0);
-        if (input_size != 1) {
-            if (batch_size == 1) {
-                batch_size = input_size;
-            } else if (input_size != batch_size) {
-                throw std::runtime_error("incompatible input shapes");
-            }
-        }
-        return input;
+        return locals[instruction.input_indices[i]];
     });
     auto outputs = range_to_array<n_out>([&](auto i) {
         auto& output = locals[instruction.output_indices[i]];
@@ -55,10 +47,6 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
     }
 }
 
-// Some helper definitions to use with std::visit and std::variant
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
-
 void tensor_copy(Tensor source, Tensor target) {
     tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
         {source}, {target}, target.size(0)
@@ -66,22 +54,11 @@ void tensor_copy(Tensor source, Tensor target) {
 }
 
 void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-    std::size_t batch_size = 1;
-    std::size_t index = 0;
-    for (auto input_index : instruction.input_indices) {
-        auto input_size = locals[input_index].size(0);
-        if (input_size != 1) {
-            if (batch_size == 1) {
-                batch_size = input_size;
-            } else if (input_size != batch_size) {
-                throw std::runtime_error("incompatible input shapes");
-            }
-        }
-    }
-    auto shape = locals[instruction.input_indices.at(0)].shape();
-    shape.at(0) = batch_size;
+    auto shape = locals[instruction.input_indices[0]].shape();
+    shape[0] = locals[instruction.batch_size_index].size(0);
     shape.insert(shape.begin() + 1, instruction.input_indices.size());
     Tensor output(instruction.output_dtypes.front(), shape);
+    std::size_t index = 0;
     for (auto input_index : instruction.input_indices) {
         tensor_copy(locals[input_index], output.select(1, index));
         ++index;
@@ -101,15 +78,10 @@ void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
 void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
-    Tensor output_sizes(DT_INT, {1, instruction.input_indices.size()});
-    auto output_size_view = output_sizes.view<long long, 2>()[0];
-    std::size_t i = 0;
     for (auto input_index : instruction.input_indices) {
         auto size = locals[input_index].size(0);
-        output_size_view[i] = size;
         sizes.push_back(size);
         batch_size += size;
-        ++i;
     }
     auto shape = locals[instruction.input_indices.front()].shape();
     shape[0] = batch_size;
@@ -123,19 +95,11 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
     }
 
     locals[instruction.output_indices[0]] = output;
-    locals[instruction.output_indices[1]] = output_sizes;
+    locals[instruction.output_indices[1]] = Tensor(sizes);
 }
 
 void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
-    SizeVec sizes;
-    auto size_tensor = locals[instruction.input_indices[1]];
-    if (size_tensor.size(0) != 1) {
-        throw std::runtime_error("invalid input shape");
-    }
-    auto size_view = size_tensor.view<long long, 2>()[0];
-    for (std::size_t i = 0; i < size_view.size(); ++i) {
-        sizes.push_back(size_view[i]);
-    }
+    auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     auto output_index = instruction.output_indices.begin();
     for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
@@ -150,8 +114,12 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
     LastUseOfLocals last_use(function);
     for (auto& instr : function.instructions) {
         SizeVec input_indices;
+        std::size_t batch_size_index = 0;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
+            if (in.type.batch_size != BatchSize::one || in.type.shape.size() > 0) {
+                batch_size_index = in.local_index;
+            }
         }
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
@@ -166,7 +134,8 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             input_indices,
             output_indices,
             output_dtypes,
-            output_shapes
+            output_shapes,
+            batch_size_index
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({-1, {local_index}, {}, {}, {}});
@@ -175,10 +144,9 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
     }
 
     for (auto& local : function.locals) {
-        std::visit(overloaded{
+        std::visit(Overloaded{
             [&](auto val) {
-                Tensor tensor(local.type.dtype, {1});
-                tensor.template view<decltype(val), 0>() = val;
+                Tensor tensor(val, cpu_device());
                 locals_init[local.local_index] = tensor;
             },
             [&](TensorValue val) {
