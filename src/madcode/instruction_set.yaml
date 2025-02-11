@@ -862,14 +862,11 @@ cut_pt:
     - name: p
       type: four_vector_array
       desc:
-    - name: w_in
-      type: scalar
-      desc:
     - name: min_max
       type: limit_array
       desc:
   outputs:
-    - name: w_out
+    - name: w
       type: scalar
       desc:
 
@@ -878,14 +875,11 @@ cut_eta:
     - name: p
       type: four_vector_array
       desc:
-    - name: w_in
-      type: scalar
-      desc:
     - name: min_max
       type: limit_array
       desc:
   outputs:
-    - name: w_out
+    - name: w
       type: scalar
       desc:
 
@@ -894,9 +888,6 @@ cut_dr:
     - name: p
       type: four_vector_array
       desc:
-    - name: w_in
-      type: scalar
-      desc:
     - name: indices
       type: index_array_2
       desc:
@@ -904,7 +895,7 @@ cut_dr:
       type: limit_array_m
       desc:
   outputs:
-    - name: w_out
+    - name: w
       type: scalar
       desc:
 
@@ -913,9 +904,6 @@ cut_m_inv:
     - name: p
       type: four_vector_array
       desc:
-    - name: w_in
-      type: scalar
-      desc:
     - name: indices
       type: index_array_k
       desc:
@@ -923,7 +911,7 @@ cut_m_inv:
       type: limit_array_m
       desc:
   outputs:
-    - name: w_out
+    - name: w
       type: scalar
       desc:
 
@@ -932,14 +920,11 @@ cut_sqrt_s:
     - name: p
       type: four_vector_array
       desc:
-    - name: w_in
-      type: scalar
-      desc:
     - name: min_max
       type: limits
       desc:
   outputs:
-    - name: w_out
+    - name: w
       type: scalar
       desc:
 

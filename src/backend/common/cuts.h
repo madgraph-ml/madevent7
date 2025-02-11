@@ -12,38 +12,38 @@ KERNELSPEC FVal<T> _eta(FIn<T,1> p) {
 
 template<typename T>
 KERNELSPEC void kernel_cut_pt(
-    FIn<T,2> p, FIn<T,0> w_in, FIn<T,2> min_max, FOut<T,0> w_out
+    FIn<T,2> p, FIn<T,2> min_max, FOut<T,0> w
 ) {
-    FVal<T> w(w_in);
+    FVal<T> ret(1.);
     for (std::size_t i = 0; i < min_max.size(); ++i) {
         auto p_i = p[i + 2];
         auto px = p_i[1], py = p_i[2];
         auto pt2 = px * px + py * py;
         auto min_max_i = min_max[i];
         auto min_i = min_max_i[0], max_i = min_max_i[1];
-        w = where((pt2 < min_i * min_i) | (pt2 > max_i * max_i), 0., w);
+        ret = where((pt2 < min_i * min_i) | (pt2 > max_i * max_i), 0., ret);
     }
-    w_out = w;
+    w = ret;
 }
 
 template<typename T>
 KERNELSPEC void kernel_cut_eta(
-    FIn<T,2> p, FIn<T,0> w_in, FIn<T,2> min_max, FOut<T,0> w_out
+    FIn<T,2> p, FIn<T,2> min_max, FOut<T,0> w
 ) {
-    FVal<T> w(w_in);
+    FVal<T> ret(1.);
     for (std::size_t i = 0; i < min_max.size(); ++i) {
         auto eta = fabs(_eta<T>(p[i + 2]));
         auto min_max_i = min_max[i];
-        w = where((eta < min_max_i[0]) | (eta > min_max_i[1]), 0., w);
+        ret = where((eta < min_max_i[0]) | (eta > min_max_i[1]), 0., ret);
     }
-    w_out = w;
+    w = ret;
 }
 
 template<typename T>
 KERNELSPEC void kernel_cut_dr(
-    FIn<T,2> p, FIn<T,0> w_in, IIn<T,2> indices, FIn<T,2> min_max, FOut<T,0> w_out
+    FIn<T,2> p, IIn<T,2> indices, FIn<T,2> min_max, FOut<T,0> w
 ) {
-    FVal<T> w(w_in);
+    FVal<T> ret(1.);
     for (std::size_t i = 0; i < indices.size(); ++i) {
         auto indices_i = indices[i];
         auto p1 = p[single_index(indices_i[0]) + 2], p2 = p[single_index(indices_i[1]) + 2];
@@ -56,16 +56,16 @@ KERNELSPEC void kernel_cut_dr(
         auto dr2 = delta_eta * delta_eta + delta_phi * delta_phi;
         auto min_max_i = min_max[i];
         auto min_i = min_max_i[0], max_i = min_max_i[1];
-        w = where((dr2 < min_i * min_i) | (dr2 > max_i * max_i), 0., w);
+        ret = where((dr2 < min_i * min_i) | (dr2 > max_i * max_i), 0., ret);
     }
-    w_out = w;
+    w = ret;
 }
 
 template<typename T>
 KERNELSPEC void kernel_cut_m_inv(
-    FIn<T,2> p, FIn<T,0> w_in, IIn<T,2> indices, FIn<T,2> min_max, FOut<T,0> w_out
+    FIn<T,2> p, IIn<T,2> indices, FIn<T,2> min_max, FOut<T,0> w
 ) {
-    FVal<T> w(w_in);
+    FVal<T> ret(1.);
     for (std::size_t i = 0; i < indices.size(); ++i) {
         FVal<T> e_tot(0.), px_tot(0.), py_tot(0.), pz_tot(0.);
         auto indices_i = indices[i];
@@ -79,15 +79,14 @@ KERNELSPEC void kernel_cut_m_inv(
         auto m2_inv = e_tot * e_tot - px_tot * px_tot - py_tot * py_tot - pz_tot * pz_tot;
         auto m_inv = sqrt(where(m2_inv < 0., 0., m2_inv));
         auto min_max_i = min_max[i];
-        w = where((m_inv < min_max_i[0]) | (m_inv > min_max_i[1]), 0., w);
+        ret = where((m_inv < min_max_i[0]) | (m_inv > min_max_i[1]), 0., ret);
     }
-    w_out = w;
+    w = ret;
 }
 
 template<typename T>
 KERNELSPEC void kernel_cut_sqrt_s(
-    FIn<T,0> sqrt_s, FIn<T,0> w_in, FIn<T,1> min_max, FOut<T,0> w_out
+    FIn<T,0> sqrt_s, FIn<T,1> min_max, FOut<T,0> w
 ) {
-    FVal<T> w(w_in);
-    w_out = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), 0., w);
+    w = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), 0., 1.);
 }

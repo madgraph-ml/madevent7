@@ -115,9 +115,10 @@ void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& local
 }
 
 Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {
+    auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
-    LastUseOfLocals last_use(function);
-    for (auto& instr : function.instructions) {
+    LastUseOfLocals last_use(opt_function);
+    for (auto& instr : opt_function.instructions) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs[0].local_index;
         for (auto& in : instr.inputs) {
@@ -148,7 +149,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
         ++instr_index;
     }
 
-    for (auto& local : function.locals) {
+    for (auto& local : opt_function.locals) {
         std::visit(Overloaded{
             [&](auto val) {
                 Tensor tensor(val, cpu_device());
@@ -176,7 +177,7 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
         }, local.literal_value);
     }
 
-    for (auto& out : function.outputs) {
+    for (auto& out : opt_function.outputs) {
         output_indices.push_back(out.local_index);
     }
 }

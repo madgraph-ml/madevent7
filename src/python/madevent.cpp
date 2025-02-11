@@ -170,7 +170,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
              py::arg("pids"), py::arg("cut_data"))
         .def("build_function", &Cuts::build_function,
-             py::arg("builder"), py::arg("sqrt_s"), py::arg("momenta"), py::arg("weight"))
+             py::arg("builder"), py::arg("sqrt_s"), py::arg("momenta"))
         .def("get_sqrt_s_min", &Cuts::get_sqrt_s_min)
         .def("get_eta_max", &Cuts::get_eta_max)
         .def("get_pt_min", &Cuts::get_pt_min)

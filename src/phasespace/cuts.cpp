@@ -24,8 +24,8 @@ const Cuts::PidVec Cuts::lepton_pids {11, 13, 15, -11, -13, -15};
 const Cuts::PidVec Cuts::missing_pids {12, 14, 16, -12, -14, -16};
 const Cuts::PidVec Cuts::photon_pids {22};
 
-Value Cuts::build_function(
-    FunctionBuilder& fb, Value sqrt_s, Value momenta, Value weight
+ValueList Cuts::build_function(
+    FunctionBuilder& fb, Value sqrt_s, Value momenta
 ) const {
     bool has_pt_cuts(false), has_eta_cuts(false), has_dr_cuts(false);
     bool has_mass_cuts(false), has_sqrt_s_cuts(false);
@@ -61,32 +61,31 @@ Value Cuts::build_function(
         }
     }
 
+    ValueList weights;
     if (has_pt_cuts) {
-        weight = fb.cut_pt(momenta, weight, Value(pt_cuts, {n_out, 2}));
+        weights.push_back(fb.cut_pt(momenta, Value(pt_cuts, {n_out, 2})));
     }
     if (has_eta_cuts) {
-        weight = fb.cut_eta(momenta, weight, Value(eta_cuts, {n_out, 2}));
+        weights.push_back(fb.cut_eta(momenta, Value(eta_cuts, {n_out, 2})));
     }
     if (has_dr_cuts) {
-        weight = fb.cut_dr(
+        weights.push_back(fb.cut_dr(
             momenta,
-            weight,
             Value(dr_indices, {static_cast<int>(dr_indices.size()) / 2, 2}),
             Value(dr_cuts, {static_cast<int>(dr_cuts.size()) / 2, 2})
-        );
+        ));
     }
     if (has_mass_cuts) {
-        weight = fb.cut_m_inv(
+        weights.push_back(fb.cut_m_inv(
             momenta,
-            weight,
             Value(mass_indices, {static_cast<int>(mass_indices.size()) / 2, 2}),
             Value(mass_cuts, {static_cast<int>(mass_cuts.size()) / 2, 2})
-        );
+        ));
     }
     if (has_sqrt_s_cuts) {
-        weight = fb.cut_sqrt_s(momenta, weight, Value(sqrt_s_cuts, {2}));
+        weights.push_back(fb.cut_sqrt_s(momenta, Value(sqrt_s_cuts, {2})));
     }
-    return weight;
+    return weights;
 }
 
 double Cuts::get_sqrt_s_min() const {

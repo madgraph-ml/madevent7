@@ -61,11 +61,11 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("fast_rambo_r_to_u", &FunctionBuilder::fast_rambo_r_to_u, py::arg("r"));
     fb.def("rambo_four_vectors_massless", &FunctionBuilder::rambo_four_vectors_massless, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"));
     fb.def("rambo_four_vectors_massive", &FunctionBuilder::rambo_four_vectors_massive, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"), py::arg("masses"));
-    fb.def("cut_pt", &FunctionBuilder::cut_pt, py::arg("p"), py::arg("w_in"), py::arg("min_max"));
-    fb.def("cut_eta", &FunctionBuilder::cut_eta, py::arg("p"), py::arg("w_in"), py::arg("min_max"));
-    fb.def("cut_dr", &FunctionBuilder::cut_dr, py::arg("p"), py::arg("w_in"), py::arg("indices"), py::arg("min_max"));
-    fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("w_in"), py::arg("indices"), py::arg("min_max"));
-    fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("w_in"), py::arg("min_max"));
+    fb.def("cut_pt", &FunctionBuilder::cut_pt, py::arg("p"), py::arg("min_max"));
+    fb.def("cut_eta", &FunctionBuilder::cut_eta, py::arg("p"), py::arg("min_max"));
+    fb.def("cut_dr", &FunctionBuilder::cut_dr, py::arg("p"), py::arg("indices"), py::arg("min_max"));
+    fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("indices"), py::arg("min_max"));
+    fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("min_max"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
 }
 }
