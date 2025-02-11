@@ -55,6 +55,7 @@ add_library(
     src/backend/common/cuts.h
     src/backend/common/chili.h
     src/backend/tensor.cpp
+    src/backend/context.cpp
     src/backend/cpu/runtime.cpp
     src/backend/cpu/thread_pool.cpp
     src/backend/cpu/kernels.h
@@ -79,6 +80,7 @@ add_library(
     src/phasespace/cuts.cpp
     src/phasespace/chili.cpp
     include/madevent/backend/tensor.h
+    include/madevent/backend/context.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
     include/madevent/madcode.h

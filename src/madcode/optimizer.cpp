@@ -21,6 +21,9 @@ Function madevent::optimize_constants(const Function& function) {
     // add, sub, mul, clip_min, sqrt, square
     FunctionBuilder fb(function);
     ValueList new_locals(function.locals);
+    for (auto& [name, global] : function.globals) {
+        new_locals.at(global.local_index) = fb.global(name, global.type.dtype, global.type.shape);
+    }
     for (auto& instr : function.instructions) {
         bool const_opt = true;
         ValueList inputs;

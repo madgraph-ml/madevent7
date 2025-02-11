@@ -18,7 +18,7 @@ using TensorValue = std::tuple<
     std::vector<int>, std::variant<std::vector<bool>, std::vector<long long>, std::vector<double>>
 >;
 
-using LiteralValue = std::variant<bool, long long, double, TensorValue, std::string, std::monostate>;
+using LiteralValue = std::variant<bool, long long, double, TensorValue, std::monostate>;
 
 struct Value {
     Type type;
@@ -30,7 +30,6 @@ struct Value {
     Value(bool value) : type(single_bool), literal_value(value) {}
     Value(long long value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
-    Value(std::string key, Type _type) : type(_type), literal_value(key) {}
 
     template<typename T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
@@ -69,6 +68,7 @@ struct Function {
     ValueList inputs;
     ValueList outputs;
     ValueList locals;
+    std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
 };
 
@@ -85,6 +85,7 @@ public:
     ValueList input_range(int start_index, int end_index);
     void output(int index, Value value);
     void output_range(int start_index, const ValueList& values);
+    Value global(std::string name, DataType dtype, const std::vector<int>& shape);
     ValueList instruction(std::string name, ValueList args);
     ValueList instruction(InstructionPtr instruction, ValueList args);
     Function function();
@@ -100,6 +101,7 @@ private:
     std::vector<std::optional<Value>> outputs;
     std::map<LiteralValue, Value> literals;
     ValueList locals;
+    std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
 };
 

@@ -51,11 +51,24 @@ std::ostream& madevent::operator<<(std::ostream& out, const InstructionCall& cal
 }
 
 std::ostream& madevent::operator<<(std::ostream& out, const Function& func) {
-    out << "inputs " << func.inputs << "\n";
+    out << "inputs {\n";
+    for (auto& input : func.inputs) {
+        out << "  " << input << " : " << input.type << "\n";
+    }
+    out << "}\n";
+    out << "globals {\n";
+    for (auto& [name, global] : func.globals) {
+        out << "  " << global << " : " << global.type << " = " << name << "\n";
+    }
+    out << "}\n";
     for (auto& instr : func.instructions) {
         out << instr << "\n";
     }
-    out << "outputs " << func.outputs << "\n";
+    out << "outputs {\n";
+    for (auto& output : func.outputs) {
+        out << "  " << output << " : " << output.type << "\n";
+    }
+    out << "}\n";
     return out;
 }
 
@@ -151,7 +164,7 @@ Function FunctionBuilder::function() {
         }
         ++output_index;
     }
-    return Function{inputs, func_outputs, locals, instructions};
+    return Function{inputs, func_outputs, locals, globals, instructions};
 }
 
 Value FunctionBuilder::input(int index) {
@@ -201,6 +214,26 @@ void FunctionBuilder::output_range(int start_index, const ValueList& values) {
         ));
     }
     std::copy(values.begin(), values.end(), outputs.begin() + start_index);
+}
+
+Value FunctionBuilder::global(std::string name, DataType dtype, const std::vector<int>& shape) {
+    Type type(dtype, BatchSize::one, shape);
+
+    if (auto search = globals.find(name); search != globals.end()) {
+        auto& found_global = search->second;
+        if (type != found_global.type) {
+            throw std::invalid_argument(std::format(
+                "Conflicting types for global {}", name
+            ));
+        }
+        return found_global;
+    }
+
+    int local_index = locals.size();
+    Value new_global(type, local_index);
+    locals.push_back(new_global);
+    globals[name] = new_global;
+    return new_global;
 }
 
 Value FunctionBuilder::sum(const ValueList& values) {

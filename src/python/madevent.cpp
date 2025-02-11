@@ -127,6 +127,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("output", &FunctionBuilder::output, py::arg("index"), py::arg("value"))
         .def("output_range", &FunctionBuilder::output_range,
              py::arg("start_index"), py::arg("values"))
+        .def("get_global", &FunctionBuilder::global,
+             py::arg("name"), py::arg("dtype"), py::arg("shape"))
         //.def("instruction", &FunctionBuilder::instruction, py::arg("name"), py::arg("args"))
         .def("function", &FunctionBuilder::function);
     add_instructions(fb);
