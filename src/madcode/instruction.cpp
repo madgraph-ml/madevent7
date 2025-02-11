@@ -31,8 +31,7 @@ TypeList SimpleInstruction::signature(
     std::map<std::string, int> variables;
     std::vector<int> wildcard_shape;
     bool found_wildcard(false);
-    std::optional<BatchSize> batch_size;
-    bool broadcastable;
+    BatchSize batch_size = BatchSize::one;
 
     for (size_t i = 0; i < inputs.size(); ++i) {
         auto& [arg_dtype, arg_batch_size, arg_shape, _] = args.at(i);
@@ -58,21 +57,12 @@ TypeList SimpleInstruction::signature(
                 ));
             }
         } else {
-            if (batch_size) {
-                if (arg_shape.size() == 0 || broadcastable) {
-                    batch_size = batch_size->broadcast(arg_batch_size);
-                    broadcastable |= batch_size == BatchSize::one;
-                } else if (arg_batch_size != batch_size) {
-                    batch_size = std::nullopt;
-                }
-                if (!batch_size) {
-                    throw std::invalid_argument(std::format(
-                        "{}, argument {}: incompatible batch size", name, i + 1
-                    ));
-                }
-            } else {
+            if (batch_size == BatchSize::one) {
                 batch_size = arg_batch_size;
-                broadcastable = arg_shape.size() == 0 && batch_size == BatchSize::one;
+            } else if (arg_batch_size != BatchSize::one && batch_size != arg_batch_size) {
+                throw std::invalid_argument(std::format(
+                    "{}, argument {}: incompatible batch size", name, i + 1
+                ));
             }
         }
 
@@ -158,7 +148,7 @@ TypeList SimpleInstruction::signature(
                 }
             }
         }
-        output_types.push_back(Type{out_dtype, *batch_size, out_shape});
+        output_types.push_back(Type{out_dtype, batch_size, out_shape});
     }
     return output_types;
 }
@@ -168,21 +158,30 @@ TypeList StackInstruction::signature(const TypeList& args) const {
         throw std::invalid_argument("stack has to be called with at least one argument");
     }
     auto type = args.at(0);
+    BatchSize batch_size = BatchSize::one;
+    std::size_t i = 1;
     for (auto& arg : args) {
         if (arg.dtype == DataType::batch_sizes) {
-            throw std::invalid_argument("Batch size list not accepted as argument");
+            throw std::invalid_argument(std::format(
+                "stack, argument {}: Batch size list not accepted as argument", i
+            ));
         }
-        if (arg.batch_size == BatchSize::one) {
-            throw std::invalid_argument("Argument must have batch dimension");
+        if (batch_size == BatchSize::one) {
+            batch_size = arg.batch_size;
+        } else if (arg.batch_size != BatchSize::one && batch_size != arg.batch_size) {
+            throw std::invalid_argument(std::format(
+                "{}, argument {}: incompatible batch size", name, i
+            ));
         }
         if (arg != type) {
-            throw std::invalid_argument("All arguments must have the same shape and dtype");
+            throw std::invalid_argument("stack: all arguments must have the same shape and dtype");
         }
+        ++i;
     }
     int args_size = args.size();
     std::vector<int> out_shape{args_size};
     out_shape.insert(out_shape.end(), type.shape.begin(), type.shape.end());
-    return {{type.dtype, type.batch_size, out_shape}};
+    return {{type.dtype, batch_size, out_shape}};
 }
 
 TypeList UnstackInstruction::signature(const TypeList& args) const {

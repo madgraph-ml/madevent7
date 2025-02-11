@@ -42,7 +42,6 @@ public:
     BatchSize operator-(const BatchSize& other) const { return add(other, -1); }
     bool operator==(const BatchSize& other) const { return value == other.value; }
     bool operator!=(const BatchSize& other) const { return value != other.value; }
-    std::optional<BatchSize> broadcast(const BatchSize& other) const;
 
     friend std::ostream& operator<<(std::ostream& out, const BatchSize& batch_size);
 

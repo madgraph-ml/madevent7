@@ -145,11 +145,9 @@ public:
     {
         auto size = init_stride();
         impl->data = device.allocate(size);
-        auto count = size / dtype_size();
-        auto start_ptr = static_cast<T*>(impl->data);
-        for (auto ptr = start_ptr; ptr != start_ptr + count; ++ptr) {
-            *ptr = value;
-        }
+        auto ptr = static_cast<T*>(impl->data);
+        *ptr = value;
+        //TODO: change for GPU, probably best to define device.memcpy
     }
 
     ~Tensor() {

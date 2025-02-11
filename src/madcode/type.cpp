@@ -7,18 +7,6 @@ std::size_t BatchSize::UnnamedBody::counter = 0;
 const BatchSize BatchSize::zero = BatchSize(BatchSize::Compound{});
 const BatchSize BatchSize::one = BatchSize(BatchSize::One{});
 
-std::optional<BatchSize> BatchSize::broadcast(const BatchSize& other) const {
-    if (*this == BatchSize::one) {
-        return other;
-    } else if (other == BatchSize::one) {
-        return *this;
-    } else if (*this == other) {
-        return *this;
-    } else {
-        return std::nullopt;
-    }
-}
-
 BatchSize BatchSize::add(const BatchSize& other, int factor) const {
     BatchSize::Compound compound;
     std::visit(Overloaded{

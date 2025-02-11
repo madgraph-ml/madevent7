@@ -6,13 +6,12 @@
 
 namespace {
 
-template<class V, class T, int _dim, bool is_batch, bool _is_single>
+template<class V, class T, int _dim, bool is_batch>
 class VectorizedTensorView {
 public:
     using VType = V;
     using DType = T;
     static const int dim = _dim;
-    static const bool is_single = _is_single;
 
     VectorizedTensorView(const madevent::TensorView<T, _dim>& view) :
         _data(view.data()), _stride(view.stride()), _shape(view.shape()),
@@ -23,8 +22,8 @@ public:
     ) : _data(data), _stride(stride), _shape(shape), _batch_stride(batch_stride) {}
 
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
-    const VectorizedTensorView<V, T, _dim-1, false, _is_single> operator[](std::size_t index) const {
-        if (is_batch) {
+    const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
+        if constexpr (is_batch) {
             return {
                 _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
             };
@@ -34,8 +33,8 @@ public:
     }
 
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
-    VectorizedTensorView<V, T, _dim-1, false, _is_single> operator[](std::size_t index) {
-        if (is_batch) {
+    VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
+        if constexpr (is_batch) {
             return {
                 _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
             };
@@ -45,29 +44,33 @@ public:
     }
 
     operator typename std::conditional_t<_dim == 0, V, madevent::Nothing>() const {
-        if (_is_single) {
-            return *reinterpret_cast<T*>(_data);
-        } else {
-            return vload(reinterpret_cast<T*>(_data));
+        // This is somewhat ugly but needs to be done such that broadcasting from
+        // batch size 1 -> n works. Maybe there is a better way
+        T buffer[simd_vec_size];
+        for (int i = 0; i < simd_vec_size; ++i) {
+            buffer[i] = *reinterpret_cast<T*>(_data + i * _batch_stride);
         }
+        return vload(&buffer[0]);
     }
 
     template<int d = _dim, typename = std::enable_if_t<d == 0>>
     V operator=(V value) {
-        if (_is_single) {
-            *reinterpret_cast<T*>(_data) = vfirst(value);
-        } else {
-            vstore(reinterpret_cast<T*>(_data), value);
+        // This is somewhat ugly but needs to be done such that broadcasting from
+        // batch size 1 -> n works. Maybe there is a better way
+        T buffer[simd_vec_size];
+        vstore(&buffer[0], value);
+        for (int i = 0; i < simd_vec_size; ++i) {
+            *reinterpret_cast<T*>(_data + i * _batch_stride) = buffer[i];
         }
         return value;
     }
 
-    VectorizedTensorView<V, T, _dim, is_batch, _is_single>& operator=(
-        VectorizedTensorView<V, T, _dim, is_batch, _is_single>& value
+    VectorizedTensorView<V, T, _dim, is_batch>& operator=(
+        VectorizedTensorView<V, T, _dim, is_batch>& value
     ) = delete;
 
     std::size_t size() const {
-        if (is_batch) {
+        if constexpr (is_batch) {
             return _shape[0] / simd_vec_size;
         } else {
             return _shape[0];
@@ -100,7 +103,7 @@ struct get_vectorized_views<void(*)(TParam...), dims> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
         return std::make_tuple(VectorizedTensorView<
-            typename TParam::VType, typename TParam::DType, TParam::dim + dims, true, TParam::is_single
+            typename TParam::VType, typename TParam::DType, TParam::dim + dims, true
         >(args)...);
     }
 };
@@ -133,6 +136,7 @@ void tensor_foreach(
     auto views = std::apply(
         get_views<decltype(scalar_func), dims>(), std::tuple_cat(inputs, outputs)
     );
+    // scalar func and vector func have the same type if cpu vectorization is turned off
     if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
         madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
             std::apply([i](auto&&... args) {
@@ -182,7 +186,7 @@ void tensor_foreach_dynamic(
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 4>(inputs, outputs, batch_size);
             break;
         default:
-            throw std::runtime_error("The number of tensor must be between 1 and 4");
+            throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }
 }
 
