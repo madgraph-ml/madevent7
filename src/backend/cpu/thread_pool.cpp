@@ -39,7 +39,7 @@ void ThreadPool::thread_loop(int index) {
         if (job) {
             std::size_t start_index = index * count_per_thread;
             std::size_t stop_index = std::min(total_count, start_index + count_per_thread);
-            (*job)(start_index, stop_index);
+            (*job)(start_index, stop_index, index);
         } else {
             return;
         }

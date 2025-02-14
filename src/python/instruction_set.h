@@ -67,5 +67,21 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("indices"), py::arg("min_max"));
     fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("min_max"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
+    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
+    fb.def("pdf", &FunctionBuilder::pdf, py::arg("x"), py::arg("q2"), py::arg("pid"));
+    fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
+    fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));
+    fb.def("rqs_activation", &FunctionBuilder::rqs_activation, py::arg("input"), py::arg("bin_count"));
+    fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"), py::arg("w_norms"), py::arg("h_norms"));
+    fb.def("rqs_inverse", &FunctionBuilder::rqs_inverse, py::arg("input"), py::arg("condition"), py::arg("w_norms"), py::arg("h_norms"));
+    fb.def("softmax", &FunctionBuilder::softmax, py::arg("input"));
+    fb.def("softmax_prior", &FunctionBuilder::softmax_prior, py::arg("input"), py::arg("prior"));
+    fb.def("sample_discrete", &FunctionBuilder::sample_discrete, py::arg("r"), py::arg("option_count"));
+    fb.def("sample_discrete_probs", &FunctionBuilder::sample_discrete_probs, py::arg("r"), py::arg("probs"));
+    fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
+    fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
+    fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
+    fb.def("vegas_forward", &FunctionBuilder::vegas_forward, py::arg("input"), py::arg("grid"));
+    fb.def("vegas_inverse", &FunctionBuilder::vegas_inverse, py::arg("input"), py::arg("grid"));
 }
 }

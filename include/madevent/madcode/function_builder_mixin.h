@@ -237,3 +237,75 @@ std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_mi
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
+std::array<Value, 2> matrix_element(Value momenta, Value amp2_remap, Value index, Value channel_count) {
+    auto output_vector = instruction("matrix_element", {momenta, amp2_remap, index, channel_count});
+    return {output_vector[0], output_vector[1]};
+}
+
+Value pdf(Value x, Value q2, Value pid) {
+    return instruction("pdf", {x, q2, pid})[0];
+}
+
+Value matmul(Value x, Value weight, Value bias) {
+    return instruction("matmul", {x, weight, bias})[0];
+}
+
+Value leaky_relu(Value in) {
+    return instruction("leaky_relu", {in})[0];
+}
+
+std::array<Value, 3> rqs_activation(Value input, Value bin_count) {
+    auto output_vector = instruction("rqs_activation", {input, bin_count});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 2> rqs_forward(Value input, Value condition, Value w_norms, Value h_norms) {
+    auto output_vector = instruction("rqs_forward", {input, condition, w_norms, h_norms});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> rqs_inverse(Value input, Value condition, Value w_norms, Value h_norms) {
+    auto output_vector = instruction("rqs_inverse", {input, condition, w_norms, h_norms});
+    return {output_vector[0], output_vector[1]};
+}
+
+Value softmax(Value input) {
+    return instruction("softmax", {input})[0];
+}
+
+Value softmax_prior(Value input, Value prior) {
+    return instruction("softmax_prior", {input, prior})[0];
+}
+
+std::array<Value, 2> sample_discrete(Value r, Value option_count) {
+    auto output_vector = instruction("sample_discrete", {r, option_count});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> sample_discrete_probs(Value r, Value probs) {
+    auto output_vector = instruction("sample_discrete_probs", {r, probs});
+    return {output_vector[0], output_vector[1]};
+}
+
+Value gather(Value index, Value choices) {
+    return instruction("gather", {index, choices})[0];
+}
+
+Value gather_int(Value index, Value choices) {
+    return instruction("gather_int", {index, choices})[0];
+}
+
+Value one_hot(Value index, Value option_count) {
+    return instruction("one_hot", {index, option_count})[0];
+}
+
+std::array<Value, 2> vegas_forward(Value input, Value grid) {
+    auto output_vector = instruction("vegas_forward", {input, grid});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> vegas_inverse(Value input, Value grid) {
+    auto output_vector = instruction("vegas_inverse", {input, grid});
+    return {output_vector[0], output_vector[1]};
+}
+

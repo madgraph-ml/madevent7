@@ -105,21 +105,22 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
 
 ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList args) {
     int arg_index = -1;
-    std::vector<Type> arg_types;
     for (auto& arg : args) {
         ++arg_index;
-        arg_types.push_back(arg.type);
 
         if (arg.local_index != -1) {
             if (arg.local_index < 0 || arg.local_index > locals.size()) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: inconsistent value (local index)", instruction->name, arg_index
+                    "{}, argument {}: inconsistent value (local index)",
+                    instruction->name, arg_index
                 ));
             }
             auto local_value = locals.at(arg.local_index);
-            if (local_value.type != arg.type || local_value.literal_value != arg.literal_value) {
+            if (local_value.type != arg.type ||
+                local_value.literal_value != arg.literal_value) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: inconsistent value (type or value)", instruction->name, arg_index
+                    "{}, argument {}: inconsistent value (type or value)",
+                    instruction->name, arg_index
                 ));
             }
             continue;
@@ -140,7 +141,7 @@ ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList arg
         }
     }
 
-    auto output_types = instruction->signature(arg_types);
+    auto output_types = instruction->signature(args);
     ValueList call_outputs;
     for (const auto& type : output_types) {
         Value value(type, locals.size());

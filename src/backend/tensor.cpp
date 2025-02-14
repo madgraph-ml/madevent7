@@ -59,19 +59,6 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) {
     return tensors;
 }
 
-std::size_t Tensor::contiguous_dims() {
-    auto dt_size = dtype_size();
-    std::size_t cont_dim = 0, size_prod = dtype_size();
-    auto shape_iter = impl->shape.begin();
-    for (auto stride : impl->stride) {
-        if (stride != size_prod) break;
-        size_prod *= *shape_iter;
-        ++shape_iter;
-        ++cont_dim;
-    }
-    return cont_dim;
-}
-
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = dtype_size();
     bool first = true;

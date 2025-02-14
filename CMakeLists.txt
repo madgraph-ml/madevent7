@@ -42,6 +42,28 @@ if(USE_SIMD)
 endif()
 #find_package(OpenBLAS REQUIRED)
 
+
+execute_process(
+    COMMAND "lhapdf-config" "--libdir"
+    OUTPUT_VARIABLE LHAPDF_LIBRARY_DIR
+    COMMAND_ECHO STDOUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
+execute_process(
+    COMMAND "lhapdf-config" "--incdir"
+    OUTPUT_VARIABLE LHAPDF_INCLUDE_DIRS
+    COMMAND_ECHO STDOUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY
+)
+find_library(
+    LHAPDF_LIBRARIES
+    REQUIRED
+    PATHS ${LHAPDF_LIBRARY_DIR}
+    NAMES LHAPDF
+)
+
 add_library(
     madevent
     #SHARED
@@ -54,6 +76,9 @@ add_library(
     src/backend/common/rambo.h
     src/backend/common/cuts.h
     src/backend/common/chili.h
+    src/backend/common/nn.h
+    src/backend/common/discrete.h
+    src/backend/common/vegas.h
     src/backend/tensor.cpp
     src/backend/context.cpp
     src/backend/cpu/runtime.cpp
@@ -116,6 +141,8 @@ if(USE_SIMD)
     target_link_libraries(madevent PUBLIC sleef::sleef)
     target_compile_definitions(madevent PRIVATE USE_SIMD=1)
 endif()
+target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
+target_link_libraries(madevent PUBLIC ${LHAPDF_LIBRARIES})
 #target_link_libraries(madevent PUBLIC ${OpenBLAS_LIBRARIES})
 #target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)

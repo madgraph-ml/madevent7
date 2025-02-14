@@ -60,6 +60,7 @@ class Device {
 public:
     virtual void* allocate(std::size_t size) const = 0;
     virtual void free(void* ptr) const = 0;
+    virtual void memcpy(void* to, void* from, std::size_t size) const = 0;
 };
 
 class CpuDevice : public Device {
@@ -70,6 +71,12 @@ public:
 
     void free(void* ptr) const override {
         delete[] static_cast<uint8_t*>(ptr);
+    }
+
+    void memcpy(void* to, void* from, std::size_t size) const override {
+        auto to_u8 = static_cast<uint8_t*>(to);
+        auto from_u8 = static_cast<uint8_t*>(from);
+        std::copy(from_u8, from_u8 + size, to_u8);
     }
 
     CpuDevice(const CpuDevice&) = delete;
@@ -111,7 +118,10 @@ public:
         Tensor(dtype, shape, cpu_device(), allocator) {}
 
     Tensor(
-        DataType dtype, SizeVec shape, Device& device, std::function<void*(std::size_t)> allocator
+        DataType dtype,
+        SizeVec shape,
+        Device& device,
+        std::function<void*(std::size_t)> allocator
     ) : impl(new TensorImpl{dtype, shape, device})
     {
         auto size = init_stride();
@@ -128,7 +138,8 @@ public:
     }
 
     Tensor(SizeVec batch_sizes) : impl(new TensorImpl{
-        DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr, 1, {}, 0, batch_sizes
+        DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr,
+        1, {}, 0, batch_sizes
     }) {}
 
     template<typename T, typename = std::enable_if_t<
@@ -145,9 +156,7 @@ public:
     {
         auto size = init_stride();
         impl->data = device.allocate(size);
-        auto ptr = static_cast<T*>(impl->data);
-        *ptr = value;
-        //TODO: change for GPU, probably best to define device.memcpy
+        device.memcpy(impl->data, &value, sizeof(value));
     }
 
     ~Tensor() {
@@ -215,6 +224,10 @@ public:
         return impl->batch_sizes;
     }
 
+    void copy_from(void* source) {
+        impl->device.memcpy(impl->data, source, impl->stride.back() * impl->shape.back());
+    }
+
     void reset() {
         if (impl == nullptr) return;
         impl->reset([this] (void* ptr) { impl->device.free(ptr); });
@@ -227,7 +240,6 @@ public:
         impl = nullptr;
     }
 
-    std::size_t contiguous_dims();
     Tensor select(std::size_t axis, std::size_t index);
     Tensor slice(std::size_t axis, std::size_t start, std::size_t stop);
     std::vector<Tensor> split(std::size_t axis, SizeVec sizes);

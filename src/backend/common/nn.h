@@ -1,6 +1,6 @@
 // Helper functions
 
-template<typename T>
+/*template<typename T>
 void _rational_quadratic_spline(
     FIn<T,1> input, FIn<T,2> condition, FOut<T,1> output, FOut<T,0> log_det
     FOut<T,1> tmp_exp_w, FOut<T,1> tmp_exp_h, bool inverse
@@ -110,23 +110,90 @@ void _rational_quadratic_spline(
         }
     }
     log_det = log_det_sum;
-}
+}*/
 
 
 // Kernels
 
 template<typename T>
-void kernel_rational_quadratic_spline_forward(
-    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> log_det
-    FOut<T,1> tmp_exp_w, FOut<T,1> tmp_exp_h
-) {
-    _rational_quadratic_spline(input, condition, output, log_det, tmp_exp_w, tmp_exp_h, false);
+KERNELSPEC void kernel_leaky_relu(FIn<T,1> input, FOut<T,1> output) {
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        FVal<T> x = input[i];
+        output[i] = where(x < 0, 0.01 * x, x);
+    }
 }
 
 template<typename T>
-void kernel_rational_quadratic_spline_inverse(
-    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> log_det
-    FOut<T,1> tmp_exp_w, FOut<T,1> tmp_exp_h
+KERNELSPEC void kernel_rqs_activation(
+    FIn<T,1> input, IIn<T,0> bin_count,
+    FOut<T,2> output, FOut<T,1> w_norms, FOut<T,1> h_norms
 ) {
-    _rational_quadratic_spline(input, condition, output, log_det, tmp_exp_w, tmp_exp_h, true);
+    std::size_t n_bins = single_index(bin_count);
+    std::size_t n_cond = 3 * n_bins + 1;
+    std::size_t n_dims = input.size() / n_cond;
+
+    for (std::size_t j = 0; j < n_bins; ++j) {
+        auto out_dim = output[j];
+        FVal<T> w_norm(0.);
+        FVal<T> h_norm(0.);
+        std::size_t offset = j * n_cond;
+        std::size_t i = 0;
+        for (; i < n_bins; ++i) {
+            auto w = exp(input[offset + i]);
+            w_norm = w_norm + w;
+            out_dim[i] = w;
+        }
+        for (; i < 2 * n_bins; ++i) {
+            auto h = exp(input[offset + i]);
+            h_norm = h_norm + h;
+            out_dim[i] = h;
+        }
+        for (; i < 3 * n_bins + 1; ++i) {
+            out_dim[i] = input[offset + i];
+        }
+        w_norms[j] = w_norm;
+        h_norms[j] = h_norm;
+    }
+}
+
+template<typename T>
+KERNELSPEC void kernel_rqs_forward(
+    FIn<T,1> input, FIn<T,2> condition, FIn<T,1> w_norms, FIn<T,1> h_norms,
+    FOut<T,1> output, FOut<T,0> det
+) {
+    //_rational_quadratic_spline(input, condition, output, log_det, tmp_exp_w, tmp_exp_h, false);
+}
+
+template<typename T>
+KERNELSPEC void kernel_rqs_inverse(
+    FIn<T,1> input, FIn<T,2> condition, FIn<T,1> w_norms, FIn<T,1> h_norms,
+    FOut<T,1> output, FOut<T,0> det
+) {
+    //_rational_quadratic_spline(input, condition, output, log_det, tmp_exp_w, tmp_exp_h, true);
+}
+
+template<typename T>
+KERNELSPEC void kernel_softmax(FIn<T,1> input, FOut<T,1> output) {
+    FVal<T> norm(0.);
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        auto exp_in = exp(input[i]);
+        norm = norm + exp_in;
+        output[i] = exp_in;
+    }
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        output[i] = output[i] / norm;
+    }
+}
+
+template<typename T>
+KERNELSPEC void kernel_softmax_prior(FIn<T,1> input, FIn<T,1> prior, FOut<T,1> output) {
+    FVal<T> norm(0.);
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        auto unnorm_prob = exp(input[i]) * prior[i];
+        norm = norm + unnorm_prob;
+        output[i] = unnorm_prob;
+    }
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        output[i] = output[i] / norm;
+    }
 }

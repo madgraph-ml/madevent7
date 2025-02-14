@@ -26,12 +26,9 @@ constexpr auto range_to_array(F&& function) {
 }
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
-void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void batch_foreach(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto inputs = range_to_array<n_in>([&](auto i) {
-        /*if (locals[instruction.input_indices[i]].size(0) > batch_size && batch_size != 0) {
-            std::cout << ":( " << instruction.opcode << " " << locals[instruction.input_indices[i]].size(0) << " " << batch_size << "\n";
-        }*/
         return locals[instruction.input_indices[i]];
     });
     auto outputs = range_to_array<n_out>([&](auto i) {
@@ -44,9 +41,13 @@ void batch_foreach(Runtime::Instruction instruction, std::vector<Tensor>& locals
     });
 
     if constexpr (dims == 0) {
-        tensor_foreach_dynamic<scalar_func, vector_func, n_in, n_out>(inputs, outputs, batch_size);
+        tensor_foreach_dynamic<scalar_func, vector_func, n_in, n_out>(
+            inputs, outputs, batch_size
+        );
     } else {
-        tensor_foreach<scalar_func, vector_func, n_in, n_out, dims>(inputs, outputs, batch_size);
+        tensor_foreach<scalar_func, vector_func, n_in, n_out, dims>(
+            inputs, outputs, batch_size
+        );
     }
 }
 
@@ -56,7 +57,7 @@ void tensor_copy(Tensor source, Tensor target) {
     );
 }
 
-void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void op_stack(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
     auto shape = locals[instruction.input_indices[0]].shape();
     shape[0] = locals[instruction.batch_size_index].size(0);
     shape.insert(shape.begin() + 1, instruction.input_indices.size());
@@ -69,7 +70,7 @@ void op_stack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     locals[instruction.output_indices[0]] = output;
 }
 
-void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void op_unstack(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
     auto output_index = instruction.output_indices.begin();
     for (auto& tensor : tensors) {
@@ -78,7 +79,7 @@ void op_unstack(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
     }
 }
 
-void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void op_batch_cat(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
     for (auto input_index : instruction.input_indices) {
@@ -86,7 +87,6 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
         sizes.push_back(size);
         batch_size += size;
     }
-    //std::println("cat: {}", sizes);
     auto shape = locals[instruction.input_indices.front()].shape();
     shape[0] = batch_size;
     Tensor output(instruction.output_dtypes.front(), shape);
@@ -102,9 +102,8 @@ void op_batch_cat(Runtime::Instruction instruction, std::vector<Tensor>& locals)
     locals[instruction.output_indices[1]] = Tensor(sizes);
 }
 
-void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& locals) {
+void op_batch_split(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
-    //std::println("split: {}", sizes);
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     auto output_index = instruction.output_indices.begin();
     for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
@@ -112,9 +111,40 @@ void op_batch_split(Runtime::Instruction instruction, std::vector<Tensor>& local
     }
 }
 
+void op_matrix_element(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    auto& me_out = locals[instruction.output_indices[0]];
+    me_out = Tensor(DataType::dt_float, {batch_size});
+    auto& chan_weights_out = locals[instruction.output_indices[1]];
+    chan_weights_out = Tensor(DataType::dt_float, {batch_size});
+    instruction.context.pdf_set().call(
+        locals[instruction.input_indices[0]],
+        locals[instruction.input_indices[1]],
+        me_out,
+        chan_weights_out
+    );
 }
 
-Runtime::Runtime(const Function& function) : locals_init(function.locals.size()) {
+void op_pdf(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    auto& output = locals[instruction.output_indices[0]];
+    output = Tensor(DataType::dt_float, {batch_size});
+    instruction.context.pdf_set().call(
+        locals[instruction.input_indices[0]],
+        locals[instruction.input_indices[1]],
+        locals[instruction.input_indices[2]],
+        output
+    );
+}
+
+void op_matmul(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+
+}
+
+}
+
+void Runtime::initialize(const Function& function, Context& context) {
+    locals_init.resize(function.locals.size());
     auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
     LastUseOfLocals last_use(opt_function);
@@ -141,12 +171,27 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
             output_indices,
             output_dtypes,
             output_shapes,
-            batch_size_index
+            batch_size_index,
+            context
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
-            instructions.push_back({-1, {local_index}, {}, {}, {}});
+            instructions.push_back({-1, {local_index}, {}, {}, {}, 0, context});
         }
         ++instr_index;
+    }
+
+    for (auto& [name, value] : opt_function.globals) {
+        Tensor global = context.global(name);
+        SizeVec full_shape {1};
+        full_shape.insert(
+            full_shape.begin(), value.type.shape.begin(), value.type.shape.end()
+        );
+        if (value.type.dtype != global.dtype() || full_shape != global.shape()) {
+            throw std::invalid_argument(std::format(
+                "Global {} has wrong dtype or shape", name
+            ));
+        }
+        locals_init[value.local_index] = global;
     }
 
     for (auto& local : opt_function.locals) {
@@ -163,7 +208,8 @@ Runtime::Runtime(const Function& function) : locals_init(function.locals.size())
                 }
                 Tensor tensor(local.type.dtype, full_shape);
                 std::visit([&](auto items) {
-                    auto tview = tensor.template view<typename decltype(items)::value_type, 2>()[0];
+                    auto tview = tensor.template view<
+                        typename decltype(items)::value_type, 2>()[0];
                     std::size_t i = 0;
                     for (auto item : items) {
                         tview[i] = item;

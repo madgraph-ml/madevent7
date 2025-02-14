@@ -163,3 +163,51 @@ case 52:
 case 53:
     batch_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1>(instr, locals);
     break;
+case 54:
+    op_matrix_element(instr, locals);
+    break;
+case 55:
+    op_pdf(instr, locals);
+    break;
+case 56:
+    op_matmul(instr, locals);
+    break;
+case 57:
+    batch_foreach<kernel_leaky_relu<CpuTypes>, kernel_leaky_relu<SimdTypes>, 1, 1, 1>(instr, locals);
+    break;
+case 58:
+    batch_foreach<kernel_rqs_activation<CpuTypes>, kernel_rqs_activation<SimdTypes>, 2, 3, 1>(instr, locals);
+    break;
+case 59:
+    batch_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 4, 2, 1>(instr, locals);
+    break;
+case 60:
+    batch_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 4, 2, 1>(instr, locals);
+    break;
+case 61:
+    batch_foreach<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, 1>(instr, locals);
+    break;
+case 62:
+    batch_foreach<kernel_softmax_prior<CpuTypes>, kernel_softmax_prior<SimdTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 63:
+    batch_foreach<kernel_sample_discrete<CpuTypes>, kernel_sample_discrete<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 64:
+    batch_foreach<kernel_sample_discrete_probs<CpuTypes>, kernel_sample_discrete_probs<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 65:
+    batch_foreach<kernel_gather<CpuTypes>, kernel_gather<SimdTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 66:
+    batch_foreach<kernel_gather_int<CpuTypes>, kernel_gather_int<SimdTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 67:
+    batch_foreach<kernel_one_hot<CpuTypes>, kernel_one_hot<SimdTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 68:
+    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 69:
+    batch_foreach<kernel_vegas_inverse<CpuTypes>, kernel_vegas_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;

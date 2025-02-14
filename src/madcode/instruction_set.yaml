@@ -1,55 +1,3 @@
-types:
-  all:
-    dtype: float
-    shape: ["..."]
-  scalar:
-    dtype: float
-    shape: []
-  array:
-    dtype: float
-    shape: [n]
-  array_m:
-    dtype: float
-    shape: [m]
-  array_plus:
-    dtype: float
-    shape: ["n+"]
-  array_plus_2:
-    dtype: float
-    shape: ["n++"]
-  four_vector:
-    dtype: float
-    shape: [4]
-  four_vector_array:
-    dtype: float
-    shape: [n, 4]
-  four_vector_array_plus:
-    dtype: float
-    shape: ["n+", 4]
-  four_vector_array_plus_2:
-    dtype: float
-    shape: ["n++", 4]
-  limits:
-    dtype: float
-    shape: [2]
-    single: True
-  limit_array:
-    dtype: float
-    shape: ["n--", 2]
-    single: True
-  limit_array_m:
-    dtype: float
-    shape: [m, 2]
-    single: True
-  index_array_2:
-    dtype: int
-    shape: [m, 2]
-    single: True
-  index_array_k:
-    dtype: int
-    shape: [m, k]
-    single: True
-
 ---
 title: Shapes, etc.
 
@@ -60,6 +8,7 @@ stack:
       desc: 
   desc: Combines input tensors
   class: StackInstruction
+  custom_op: True
 unstack:
   inputs:
     - name: in
@@ -67,6 +16,7 @@ unstack:
   outputs: any
   desc: 
   class: UnstackInstruction
+  custom_op: True
 batch_cat:
   inputs: any
   outputs:
@@ -76,6 +26,7 @@ batch_cat:
       desc:
   desc:
   class: BatchCatInstruction
+  custom_op: True
 batch_split:
   inputs:
     - name: in
@@ -85,6 +36,7 @@ batch_split:
   outputs: any
   desc:
   class: BatchSplitInstruction
+  custom_op: True
 
 ---
 title: Math
@@ -92,14 +44,14 @@ title: Math
 add:
   inputs:
     - name: in1
-      type: all
+      type: [float, ...]
       desc: first input to addition
     - name: in2
-      type: all
+      type: [float, ...]
       desc: second input to addition
   outputs:
     - name: out
-      type: all
+      type: [float, ...]
       desc: sum of the two inputs
   desc: Computes the sum of the two inputs.
   dims: 0
@@ -107,14 +59,14 @@ add:
 sub:
   inputs:
     - name: in1
-      type: all
+      type: [float, ...]
       desc: first input to subtraction
     - name: in2
-      type: all
+      type: [float, ...]
       desc: second input to subtraction
   outputs:
     - name: out
-      type: all
+      type: [float, ...]
       desc: difference of the two inputs
   desc: Computes the difference of the two inputs.
   dims: 0
@@ -122,101 +74,101 @@ sub:
 mul:
   inputs:
     - name: in1
-      type: scalar
+      type: [float]
       desc: first input to multiplication
     - name: in2
-      type: scalar
+      type: [float]
       desc: second input to multiplication
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
 
 clip_min:
   inputs:
     - name: x
-      type: scalar
+      type: [float]
       desc:
     - name: min
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 sqrt:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 square:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 pow:
   inputs:
     - name: in1
-      type: scalar
+      type: [float]
       desc:
     - name: in2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 uniform_phi:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 uniform_phi_inverse:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 uniform_costheta:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 uniform_costheta_inverse:
   inputs:
     - name: in
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: out
-      type: scalar
+      type: [float]
       desc:
 
 
@@ -226,208 +178,208 @@ title: Kinematics
 rotate_zy:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: phi
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: q
-      type: four_vector
+      type: [float, 4]
       desc:
 
 rotate_zy_inverse:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: phi
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: q
-      type: four_vector
+      type: [float, 4]
       desc:
 
 boost:
   inputs:
     - name: p1
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: p2
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: p_out
-      type: four_vector
+      type: [float, 4]
       desc:
 
 boost_inverse:
   inputs:
     - name: p1
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: p2
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: p_out
-      type: four_vector
+      type: [float, 4]
       desc:
 
 boost_beam:
   inputs:
     - name: p1
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: rap
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: p_out
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
 
 boost_beam_inverse:
   inputs:
     - name: p1
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: rap
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: p_out
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
 
 com_momentum:
   inputs:
     - name: sqrt_s
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
 
 com_p_in:
   inputs:
     - name: e_cm
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: p1
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: p2
-      type: four_vector
+      type: [float, 4]
       desc:
 
 com_angles:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: phi
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: scalar
+      type: [float]
       desc:
 
 s:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
 
 sqrt_s:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: sqrt_s
-      type: scalar
+      type: [float]
       desc:
 
 s_and_sqrt_s:
   inputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: sqrt_s
-      type: scalar
+      type: [float]
       desc:
 
 r_to_x1x2:
   inputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: s_hat
-      type: scalar
+      type: [float]
       desc:
     - name: s_lab
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: x1
-      type: scalar
+      type: [float]
       desc:
     - name: x2
-      type: scalar
+      type: [float]
       desc:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 x1x2_to_r:
   inputs:
     - name: x1
-      type: scalar
+      type: [float]
       desc:
     - name: x2
-      type: scalar
+      type: [float]
       desc:
     - name: s_lab
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 rapidity:
   inputs:
     - name: x1
-      type: scalar
+      type: [float]
       desc:
     - name: x2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: rap
-      type: scalar
+      type: [float]
       desc:
 
 ---
@@ -436,168 +388,168 @@ title: Two-body decays and scattering
 decay_momentum:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: sqrt_s
-      type: scalar
+      type: [float]
       desc:
     - name: m1
-      type: scalar
+      type: [float]
       desc:
     - name: m2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: p
-      type: four_vector
+      type: [float, 4]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 invt_min_max:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_in1
-      type: scalar
+      type: [float]
       desc:
     - name: s_in2
-      type: scalar
+      type: [float]
       desc:
     - name: m1
-      type: scalar
+      type: [float]
       desc:
     - name: m2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: t_min
-      type: scalar
+      type: [float]
       desc:
     - name: t_max
-      type: scalar
+      type: [float]
       desc:
 
 invt_to_costheta:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_in1
-      type: scalar
+      type: [float]
       desc:
     - name: s_in2
-      type: scalar
+      type: [float]
       desc:
     - name: m1
-      type: scalar
+      type: [float]
       desc:
     - name: m2
-      type: scalar
+      type: [float]
       desc:
     - name: t
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: cos_theta
-      type: scalar
+      type: [float]
       desc:
 
 costheta_to_invt:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_in1
-      type: scalar
+      type: [float]
       desc:
     - name: s_in2
-      type: scalar
+      type: [float]
       desc:
     - name: m1
-      type: scalar
+      type: [float]
       desc:
     - name: m2
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: t
-      type: scalar
+      type: [float]
       desc:
 
         #two_particle_density:
         #  inputs:
         #    - name: s
-        #      type: scalar
+        #      type: [float]
         #      desc:
         #    - name: m1
-        #      type: scalar
+        #      type: [float]
         #      desc:
         #    - name: m2
-        #      type: scalar
+        #      type: [float]
         #      desc:
         #  outputs:
         #    - name: gs
-        #      type: scalar
+        #      type: [float]
         #      desc:
 
 two_particle_density_inverse:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: m1
-      type: scalar
+      type: [float]
       desc:
     - name: m2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 tinv_two_particle_density:
   inputs:
     - name: det_t
-      type: scalar
+      type: [float]
       desc:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_in1
-      type: scalar
+      type: [float]
       desc:
     - name: s_in2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 tinv_two_particle_density_inverse:
   inputs:
     - name: det_t
-      type: scalar
+      type: [float]
       desc:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_in1
-      type: scalar
+      type: [float]
       desc:
     - name: s_in2
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 ---
@@ -606,183 +558,183 @@ title: Invariants
 uniform_invariant:
   inputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 uniform_invariant_inverse:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 breit_wigner_invariant:
   inputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: width
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 breit_wigner_invariant_inverse:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: width
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 stable_invariant:
   inputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 stable_invariant_inverse:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 stable_invariant_nu:
   inputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: nu
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 stable_invariant_nu_inverse:
   inputs:
     - name: s
-      type: scalar
+      type: [float]
       desc:
     - name: mass
-      type: scalar
+      type: [float]
       desc:
     - name: nu
-      type: scalar
+      type: [float]
       desc:
     - name: s_min
-      type: scalar
+      type: [float]
       desc:
     - name: s_max
-      type: scalar
+      type: [float]
       desc:
   outputs:
     - name: r
-      type: scalar
+      type: [float]
       desc:
     - name: gs
-      type: scalar
+      type: [float]
       desc:
 
 ---
@@ -791,67 +743,67 @@ title: Fast RAMBO on diet
 fast_rambo_r_to_u:
   inputs:
     - name: r
-      type: array
+      type: [float, n]
       desc:
   outputs:
     - name: u
-      type: array
+      type: [float, n]
       desc:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 rambo_four_vectors_massless:
   inputs:
     - name: u
-      type: array
+      type: [float, n]
       desc:
     - name: e_cm
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: array_plus
+      type: [float, n+1]
       desc:
     - name: phi
-      type: array_plus
+      type: [float, n+1]
       desc:
   outputs:
     - name: ps
-      type: four_vector_array_plus
+      type: [float, n+1, 4]
       desc:
     - name: qs
-      type: four_vector_array_plus
+      type: [float, n+1, 4]
       desc:
 
 rambo_four_vectors_massive:
   inputs:
     - name: u
-      type: array
+      type: [float, n]
       desc:
     - name: e_cm
-      type: scalar
+      type: [float]
       desc:
     - name: cos_theta
-      type: array_plus
+      type: [float, n+1]
       desc:
     - name: phi
-      type: array_plus
+      type: [float, n+1]
       desc:
     - name: masses
-      type: array_plus_2
+      type: [float, n+2]
       desc:
   outputs:
     - name: ps
-      type: four_vector_array_plus
+      type: [float, n+1, 4]
       desc:
     - name: qs
-      type: four_vector_array_plus
+      type: [float, n+1, 4]
       desc:
     - name: e_cm_massless
-      type: scalar
+      type: [float]
       desc:
     - name: det
-      type: scalar
+      type: [float]
       desc:
 
 ---
@@ -860,72 +812,72 @@ title: Cuts
 cut_pt:
   inputs:
     - name: p
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: min_max
-      type: limit_array
+      type: [float, single, n-2, 2]
       desc:
   outputs:
     - name: w
-      type: scalar
+      type: [float]
       desc:
 
 cut_eta:
   inputs:
     - name: p
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: min_max
-      type: limit_array
+      type: [float, single, n-2, 2]
       desc:
   outputs:
     - name: w
-      type: scalar
+      type: [float]
       desc:
 
 cut_dr:
   inputs:
     - name: p
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: indices
-      type: index_array_2
+      type: [int, single, m, 2]
       desc:
     - name: min_max
-      type: limit_array_m
+      type: [float, single, m, 2]
       desc:
   outputs:
     - name: w
-      type: scalar
+      type: [float]
       desc:
 
 cut_m_inv:
   inputs:
     - name: p
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: indices
-      type: index_array_k
+      type: [int, single, m, k]
       desc:
     - name: min_max
-      type: limit_array_m
+      type: [float, single, m, 2]
       desc:
   outputs:
     - name: w
-      type: scalar
+      type: [float]
       desc:
 
 cut_sqrt_s:
   inputs:
     - name: p
-      type: four_vector_array
+      type: [float, n, 4]
       desc:
     - name: min_max
-      type: limits
+      type: [float, single, 2]
       desc:
   outputs:
     - name: w
-      type: scalar
+      type: [float]
       desc:
 
 ---
@@ -934,30 +886,302 @@ title: Chili
 chili_forward:
   inputs:
     - name: r
-      type: array_m #TODO: not safe
+      type: [float, 3n-2]
       desc:
     - name: e_cm
-      type: scalar
+      type: [float]
       desc:
     - name: m_out
-      type: array
+      type: [float, n]
       desc:
     - name: pt_min
-      type: array
+      type: [float, n]
       desc:
     - name: y_max
-      type: array
+      type: [float, n]
       desc:
   outputs:
     - name: p_ext
-      type: four_vector_array_plus_2
+      type: [float, n+2]
       desc:
     - name: x1
-      type: scalar
+      type: [float]
       desc:
     - name: x2
-      type: scalar
+      type: [float]
       desc:
     - name: det
-      type: scalar
+      type: [float]
       desc:
+
+---
+title: Interface to ME and PDF
+
+matrix_element:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+    - name: amp2_remap
+      type: [int, single, m]
+      desc:
+    - name: index
+      type: [int, single]
+      desc:
+    - name: channel_count
+      type: [size, c]
+      desc:
+  outputs:
+    - name: matrix_element
+      type: [float]
+      desc:
+    - name: channel_weights
+      type: [float, c]
+      desc:
+  custom_op: True
+
+pdf:
+  inputs:
+    - name: x
+      type: [float]
+      desc:
+    - name: q2
+      type: [float]
+      desc:
+    - name: pid
+      type: [int]
+      desc:
+  outputs:
+    - name: pdf
+      type: [float]
+      desc:
+  custom_op: True
+
+---
+title: Normalizing flows and MLPs
+
+matmul:
+  inputs:
+    - name: x
+      type: [float, n]
+      desc:
+    - name: weight
+      type: [float, single, m, n]
+      desc:
+    - name: bias
+      type: [float, single, m]
+      desc:
+  outputs:
+    - name: y
+      type: [float, m]
+      desc:
+  custom_op: True
+  differentiable: True
+
+leaky_relu:
+  inputs:
+    - name: in
+      type: [float, n]
+      desc:
+  outputs:
+    - name: out
+      type: [float, n]
+      desc:
+  differentiable: True
+
+rqs_activation:
+  inputs:
+    - name: input
+      desc:
+    - name: bin_count
+      desc:
+  outputs:
+    - name: output
+      desc:
+    - name: w_norms
+      desc:
+    - name: h_norms
+      desc:
+  class: RqsActivationInstruction
+  differentiable: True
+
+rqs_forward:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: condition
+      type: [float, n, 3b+1]
+      desc:
+    - name: w_norms
+      type: [float, n]
+      desc:
+    - name: h_norms
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n, 3b+1]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+  differentiable: True
+
+rqs_inverse:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: condition
+      type: [float, n, 3b+1]
+      desc:
+    - name: w_norms
+      type: [float, n]
+      desc:
+    - name: h_norms
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n, 3b+1]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+  differentiable: True
+
+softmax:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n]
+      desc:
+  differentiable: True
+
+softmax_prior:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: prior
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n]
+      desc:
+  differentiable: True
+
+---
+title: Discrete sampling
+
+sample_discrete:
+  inputs:
+    - name: r
+      type: [float]
+      desc:
+    - name: option_count
+      type: [int, single]
+      desc:
+  outputs:
+    - name: output
+      type: [int]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+sample_discrete_probs:
+  inputs:
+    - name: r
+      type: [float]
+      desc:
+    - name: probs
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [int]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+gather:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float]
+      desc:
+
+gather_int:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [int, n]
+      desc:
+  outputs:
+    - name: output
+      type: [int]
+      desc:
+
+one_hot:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: option_count
+      type: [size, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n]
+      desc:
+
+---
+title: VEGAS
+
+vegas_forward:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: grid
+      type: [float, single, n, b]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+vegas_inverse:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: grid
+      type: [float, single, n, b]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+

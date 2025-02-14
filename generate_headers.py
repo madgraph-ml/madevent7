@@ -4,9 +4,8 @@ def main():
     with open("src/madcode/instruction_set.yaml") as f:
         data = list(yaml.safe_load_all(f))
 
-    types = data[0]["types"]
     commands = {}
-    for sec in data[1:]:
+    for sec in data:
         commands.update({key: value for key, value in sec.items() if key != "title"})
     for i, cmd in enumerate(commands.values()):
         cmd["opcode"] = i
@@ -16,7 +15,7 @@ def main():
 
     function_builder_mixin(commands)
     instruction_set_python(commands)
-    instruction_set_mixin(types, commands)
+    instruction_set_mixin(commands)
     cpu_runtime_mixin(commands)
 
 
@@ -86,21 +85,30 @@ def instruction_set_python(commands):
         f.write('}\n}\n')
 
 
-def instruction_set_mixin(types, commands):
+def format_type(data):
+    type = data["type"]
+    if type[0] == "size":
+        return f"{{DataType::dt_int, true, {{\"{type[1]}\"}}, true}}"
+
+    dtype = f"DataType::dt_{type[0]}"
+    single = len(type) > 1 and type[1] == "single"
+    single_str = "true" if single else "false"
+    shape = ", ".join(
+        str(item) if isinstance(item, int) else (
+            "std::monostate{}" if item == "..." else f"\"{item}\""
+        )
+        for item in type[single+1:]
+    )
+    return f"{{{dtype}, {single_str}, {{{shape}}}, false}}"
+
+
+def instruction_set_mixin(commands):
     with (
         open("src/madcode/instruction_set_mixin.h", "w") as f,
         open("include/madevent/madcode/opcode_mixin.h", "w") as f_op,
     ):
         write_autogen(f)
         f.write("using SigType = SimpleInstruction::SigType;\n")
-
-        for name, sig in types.items():
-            dtype = "DataType::dt_" + sig["dtype"]
-            single = "true" if sig.get("single", False) else "false"
-            shape = ", ".join(
-                str(item) if isinstance(item, int) else f"\"{item}\"" for item in sig["shape"]
-            )
-            f.write(f"const SimpleInstruction::SigType {name} {{{dtype}, {single}, {{{shape}}}}};\n")
 
         f.write(
             "const auto mi = [](\n"
@@ -118,9 +126,12 @@ def instruction_set_mixin(types, commands):
             if "class" in cmd:
                 f.write(f"    InstructionOwner(new {cmd['class']}({opcode})),\n")
             else:
-                input_types = ", ".join(arg["type"] for arg in cmd["inputs"])
-                output_types = ", ".join(ret["type"] for ret in cmd["outputs"])
-                f.write(f"    mi(\"{name}\", {opcode}, {{{input_types}}}, {{{output_types}}}),\n")
+                input_types = ", ".join(format_type(arg) for arg in cmd["inputs"])
+                output_types = ", ".join(format_type(ret) for ret in cmd["outputs"])
+                f.write(
+                    f"    mi(\"{name}\", {opcode}, "
+                    f"{{{input_types}}}, {{{output_types}}}),\n"
+                )
 
             if first:
                 first = False
@@ -137,7 +148,7 @@ def cpu_runtime_mixin(commands):
 
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
-            if "class" in cmd:
+            if cmd.get("custom_op", False):
                 func = f"op_{name}"
             else:
                 n_inputs = len(cmd["inputs"])
