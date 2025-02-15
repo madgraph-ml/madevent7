@@ -37,11 +37,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
+FetchContent_Declare(
+    json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+)
+FetchContent_MakeAvailable(json)
+
 if(USE_SIMD)
     find_package(sleef CONFIG REQUIRED)
 endif()
 #find_package(OpenBLAS REQUIRED)
-
+set(BLA_STATIC ON)
+set(BLA_SIZEOF_INTEGER 4)
+find_package(BLAS REQUIRED)
 
 execute_process(
     COMMAND "lhapdf-config" "--libdir"
@@ -66,8 +74,8 @@ find_library(
 
 add_library(
     madevent
-    #SHARED
-    STATIC
+    SHARED
+    #STATIC
     src/backend/common/invariants.h
     src/backend/common/kernels.h
     src/backend/common/kinematics.h
@@ -135,14 +143,17 @@ add_library(
     #include/madevent/backend/cuda/tensor.h
     #include/madevent/backend/cuda/device.h
 )
+
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
 if(USE_SIMD)
-    target_link_libraries(madevent PUBLIC sleef::sleef)
+    target_link_libraries(madevent PRIVATE sleef::sleef)
     target_compile_definitions(madevent PRIVATE USE_SIMD=1)
 endif()
 target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
-target_link_libraries(madevent PUBLIC ${LHAPDF_LIBRARIES})
+target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
+target_link_libraries(madevent PRIVATE BLAS::BLAS)
+target_link_libraries(madevent PRIVATE nlohmann_json::nlohmann_json)
 #target_link_libraries(madevent PUBLIC ${OpenBLAS_LIBRARIES})
 #target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
@@ -174,7 +185,19 @@ endif()
 target_link_libraries(_madevent_py PUBLIC madevent)
 set_target_properties(_madevent_py PROPERTIES INSTALL_RPATH "$ORIGIN")
 
-install(TARGETS _madevent_py DESTINATION madevent7)
+install(
+    TARGETS madevent
+    DESTINATION madevent7/lib
+)
+install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+    DESTINATION "madevent7/include"
+    FILES_MATCHING PATTERN "*.h*"
+)
+install(
+    TARGETS _madevent_py
+    DESTINATION madevent7
+)
 #install(TARGETS madevent DESTINATION madevent7/lib)
 
 #install(TARGETS _madevent_py DESTINATION madevent7)

@@ -85,7 +85,7 @@ public:
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int _opcode) : Instruction("rqs_activation", _opcode) {}
-    TypeList signature(const ValueList& args) const override { return {}; }; //TODO: implement
+    TypeList signature(const ValueList& args) const override;
 };
 
 using InstructionOwner = std::unique_ptr<const Instruction>;

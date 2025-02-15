@@ -7,6 +7,8 @@
 namespace madevent {
 namespace cpu {
 
+using TensorVec = std::vector<madevent::Tensor>;
+
 class Runtime {
 public:
     struct Instruction {
@@ -17,6 +19,7 @@ public:
         std::vector<SizeVec> output_shapes;
         std::size_t batch_size_index;
         Context& context;
+        bool eval_grad;
     };
 
     Runtime(const Function& function) {
@@ -25,14 +28,16 @@ public:
     Runtime(const Function& function, Context& context) {
         initialize(function, context);
     }
-    std::vector<madevent::Tensor> run(std::vector<madevent::Tensor>& inputs) const;
+    TensorVec run(TensorVec& inputs) const;
+    std::tuple<TensorVec, TensorVec> run_with_grad(TensorVec& inputs) const;
+    void run_backward(TensorVec& output_grads, TensorVec& locals);
 
 private:
     void initialize(const Function& function, Context& context);
 
     std::vector<Instruction> instructions;
     SizeVec output_indices;
-    std::vector<madevent::Tensor> locals_init;
+    TensorVec locals_init;
 };
 
 }

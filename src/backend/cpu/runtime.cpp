@@ -10,6 +10,16 @@
 #include <algorithm>
 #include <ranges>
 
+extern "C" void dgemm_(
+    char* transa, char* transb,
+    int* m, int* n, int* k,
+    double* alpha,
+    double* a, int* lda,
+    double* b, int* ldb,
+    double* beta,
+    double* c, int* ldc
+);
+
 using namespace madevent;
 using namespace madevent::cpu;
 
@@ -22,11 +32,13 @@ constexpr auto range_to_array_impl(F&& function, std::index_sequence<i...>) {
 }
 template<std::size_t N, typename F>
 constexpr auto range_to_array(F&& function) {
-    return range_to_array_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
+    return range_to_array_impl<N>(
+        std::forward<F>(function), std::make_index_sequence<N>{}
+    );
 }
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
-void batch_foreach(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto inputs = range_to_array<n_in>([&](auto i) {
         return locals[instruction.input_indices[i]];
@@ -51,13 +63,49 @@ void batch_foreach(const Runtime::Instruction& instruction, std::vector<Tensor>&
     }
 }
 
+template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
+void backward_batch_foreach(
+    const Runtime::Instruction& instruction,
+    TensorVec& locals,
+    TensorVec& local_grads
+) {
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    auto inputs = range_to_array<n_in>([&](auto i) {
+        return locals[instruction.input_indices[i]];
+    });
+    auto output_grads = range_to_array<n_out>([&](auto i) {
+        return local_grads[instruction.output_indices[i]];
+    });
+    auto input_grads = range_to_array<n_out>([&](auto i) {
+        auto& input_grad = locals[instruction.input_indices[i]];
+        if (!input_grad) {
+            auto& grad_shape = inputs[i].shape();
+            SizeVec shape {batch_size};
+            shape.insert(shape.end(), grad_shape.begin(), grad_shape.end());
+            input_grad = Tensor(inputs[i].dtype(), shape);
+            //TODO: zero init
+        }
+        return input_grad;
+    });
+
+    if constexpr (dims == 0) {
+        tensor_foreach_dynamic<scalar_func, vector_func, n_in, n_out>(
+            std::tuple_cat(inputs, output_grads), input_grads, batch_size
+        );
+    } else {
+        tensor_foreach<scalar_func, vector_func, n_in, n_out, dims>(
+            std::tuple_cat(inputs, output_grads), input_grads, batch_size
+        );
+    }
+}
+
 void tensor_copy(Tensor source, Tensor target) {
     tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
         {source}, {target}, target.size(0)
     );
 }
 
-void op_stack(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto shape = locals[instruction.input_indices[0]].shape();
     shape[0] = locals[instruction.batch_size_index].size(0);
     shape.insert(shape.begin() + 1, instruction.input_indices.size());
@@ -70,7 +118,7 @@ void op_stack(const Runtime::Instruction& instruction, std::vector<Tensor>& loca
     locals[instruction.output_indices[0]] = output;
 }
 
-void op_unstack(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_unstack(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
     auto output_index = instruction.output_indices.begin();
     for (auto& tensor : tensors) {
@@ -79,7 +127,7 @@ void op_unstack(const Runtime::Instruction& instruction, std::vector<Tensor>& lo
     }
 }
 
-void op_batch_cat(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
     for (auto input_index : instruction.input_indices) {
@@ -102,7 +150,7 @@ void op_batch_cat(const Runtime::Instruction& instruction, std::vector<Tensor>& 
     locals[instruction.output_indices[1]] = Tensor(sizes);
 }
 
-void op_batch_split(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_batch_split(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     auto output_index = instruction.output_indices.begin();
@@ -111,7 +159,7 @@ void op_batch_split(const Runtime::Instruction& instruction, std::vector<Tensor>
     }
 }
 
-void op_matrix_element(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size});
@@ -125,7 +173,7 @@ void op_matrix_element(const Runtime::Instruction& instruction, std::vector<Tens
     );
 }
 
-void op_pdf(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
+void op_pdf(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& output = locals[instruction.output_indices[0]];
     output = Tensor(DataType::dt_float, {batch_size});
@@ -137,8 +185,27 @@ void op_pdf(const Runtime::Instruction& instruction, std::vector<Tensor>& locals
     );
 }
 
-void op_matmul(const Runtime::Instruction& instruction, std::vector<Tensor>& locals) {
-
+void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
+    // TODO: ensure contiguous
+    auto& input = locals[instruction.input_indices[0]];
+    auto& weight = locals[instruction.input_indices[1]];
+    auto& bias = locals[instruction.input_indices[2]];
+    auto& output = locals[instruction.output_indices[0]];
+    std::size_t batch_size = input.size(0);
+    std::size_t dims_in = input.size(1);
+    std::size_t dims_out = weight.size(1);
+    output = Tensor(DataType::dt_float, {batch_size, dims_out});
+    tensor_copy(bias, output);
+    char transa = 'N', transb = 'T';
+    int m = batch_size, n = dims_in, k = dims_out;
+    double alpha = 1., beta = 1.;
+    int lda = batch_size, ldb = dims_out, ldc = batch_size;
+    double* a = static_cast<double*>(input.data());
+    double* b = static_cast<double*>(weight.data());
+    double* c = static_cast<double*>(output.data());
+    dgemm_(
+        &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+    );
 }
 
 }
@@ -148,14 +215,20 @@ void Runtime::initialize(const Function& function, Context& context) {
     auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
     LastUseOfLocals last_use(opt_function);
+    std::vector<bool> requires_grad(function.locals.size());
+
+    //TODO: initialize globals
+
     for (auto& instr : opt_function.instructions) {
         SizeVec input_indices;
-        std::size_t batch_size_index = instr.inputs[0].local_index;
+        std::size_t batch_size_index = instr.inputs.at(0).local_index;
+        bool eval_grad = false;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
+            eval_grad |= requires_grad.at(in.local_index);
         }
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
@@ -172,10 +245,13 @@ void Runtime::initialize(const Function& function, Context& context) {
             output_dtypes,
             output_shapes,
             batch_size_index,
-            context
+            context,
+            eval_grad
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
-            instructions.push_back({-1, {local_index}, {}, {}, {}, 0, context});
+            instructions.push_back({
+                -1, {local_index}, {}, {}, {}, 0, context, requires_grad.at(local_index)
+            });
         }
         ++instr_index;
     }
@@ -228,7 +304,7 @@ void Runtime::initialize(const Function& function, Context& context) {
     }
 }
 
-std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
+TensorVec Runtime::run(TensorVec& inputs) const {
     auto locals = locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
@@ -240,9 +316,43 @@ std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
 #include "runtime_mixin.h"
         }
     }
-    std::vector<Tensor> outputs;
+    TensorVec outputs;
     for (auto index : output_indices) {
         outputs.push_back(locals[index]);
     }
     return outputs;
 }
+
+std::tuple<TensorVec, TensorVec> Runtime::run_with_grad(TensorVec& inputs) const {
+    auto locals = locals_init;
+    std::copy(inputs.begin(), inputs.end(), locals.begin());
+
+    for (auto& instr : instructions) {
+        switch (instr.opcode) {
+            case -1: // free memory
+                if (!instr.eval_grad) {
+                    locals[instr.input_indices[0]].reset();
+                }
+                break;
+#include "runtime_mixin.h"
+        }
+    }
+    TensorVec outputs;
+    for (auto index : output_indices) {
+        outputs.push_back(locals[index]);
+    }
+    return {outputs, locals};
+}
+
+void Runtime::run_backward(TensorVec& output_grads, TensorVec& locals) {
+    TensorVec local_grads(locals.size());
+    for (auto [index, grad] : std::views::zip(output_indices, output_grads)) {
+        local_grads[index] = grad;
+    }
+    for (auto& instr : std::views::reverse(instructions)) {
+        switch (instr.opcode) {
+//#include "runtime_backward_mixin.h"
+        }
+    }
+}
+

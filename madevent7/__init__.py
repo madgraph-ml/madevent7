@@ -1,4 +1,20 @@
+import ctypes
+import os
+import platform
+
+# pre-load libmadevent
+ctypes.CDLL(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "lib",
+        "libmadevent.dylib" if platform.system() == "Darwin" else "libmadevent.so"
+    ),
+    mode=ctypes.RTLD_GLOBAL
+)
+
+# pre-load torch
 import torch
+
 from ._madevent_py import *
 
 def _init():
