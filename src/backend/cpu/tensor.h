@@ -91,7 +91,7 @@ struct get_views<void(*)(TParam...), dims> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
         return std::make_tuple(
-            args.template view<typename TParam::DType, TParam::dim + dims>()...
+            args->template view<typename TParam::DType, TParam::dim + dims>()...
         );
     }
 };
@@ -128,8 +128,8 @@ void recursive_for(V... views) {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
-    std::array<madevent::Tensor, n_in> inputs,
-    std::array<madevent::Tensor, n_out> outputs,
+    std::array<madevent::Tensor*, n_in>& inputs,
+    std::array<madevent::Tensor*, n_out>& outputs,
     std::size_t batch_size
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
@@ -153,26 +153,31 @@ void tensor_foreach(
                 recursive_for<vector_func, dims-1>(args[i]...);
             }, vectorized_views);
         }, vec_batch_size);
-        /*for (std::size_t i = 0; i < vec_batch_size; ++i) {
-            std::apply([i](auto&&... args) {
-                recursive_for<vector_func, dims-1>(args[i]...);
-            }, vectorized_views);
-        }*/
+        //for (std::size_t i = 0; i < vec_batch_size; ++i) {
+        //    std::apply([i](auto&&... args) {
+        //        recursive_for<vector_func, dims-1>(args[i]...);
+        //    }, vectorized_views);
+        //}
         for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
             std::apply([i](auto&&... args) {
                 recursive_for<scalar_func, dims-1>(args[i]...);
             }, views);
         }
     }
+    /*for (std::size_t i = 0; i < batch_size; ++i) {
+        std::apply([i](auto&&... args) {
+            recursive_for<scalar_func, dims-1>(args[i]...);
+        }, views);
+    }*/
 }
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out>
 void tensor_foreach_dynamic(
-    std::array<madevent::Tensor, n_in> inputs,
-    std::array<madevent::Tensor, n_out> outputs,
+    std::array<madevent::Tensor*, n_in> inputs,
+    std::array<madevent::Tensor*, n_out> outputs,
     std::size_t batch_size
 ) {
-    switch (std::get<0>(inputs).shape().size() - first_param<decltype(scalar_func)>::dim) {
+    switch (std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim) {
         case 1:
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 1>(inputs, outputs, batch_size);
             break;

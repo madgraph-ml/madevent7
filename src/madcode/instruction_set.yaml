@@ -965,9 +965,11 @@ matmul:
     - name: x
       type: [float, n]
       desc:
+      backward_arg: True
     - name: weight
       type: [float, single, m, n]
       desc:
+      backward_arg: True
     - name: bias
       type: [float, single, m]
       desc:
@@ -981,11 +983,12 @@ matmul:
 leaky_relu:
   inputs:
     - name: in
-      type: [float, n]
+      type: [float, ...]
       desc:
+      backward_arg: True
   outputs:
     - name: out
-      type: [float, n]
+      type: [float, ...]
       desc:
   differentiable: True
 
@@ -996,13 +999,35 @@ rqs_activation:
     - name: bin_count
       desc:
   outputs:
-    - name: output
+    - name: widths
       desc:
-    - name: w_norms
+      backward_arg: True
+    - name: heights
       desc:
-    - name: h_norms
+      backward_arg: True
+    - name: derivatives
       desc:
   class: RqsActivationInstruction
+  differentiable: True
+
+rqs_find_bin:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: in_sizes
+      type: [float, n, b]
+      desc:
+    - name: out_sizes
+      type: [float, n, b]
+      desc:
+    - name: derivatives
+      type: [float, n, b+1]
+      desc:
+  outputs:
+    - name: condition
+      type: [float, n, 6]
+      desc:
   differentiable: True
 
 rqs_forward:
@@ -1010,18 +1035,14 @@ rqs_forward:
     - name: input
       type: [float, n]
       desc:
+      backward_arg: True
     - name: condition
-      type: [float, n, 3b+1]
+      type: [float, n, 6]
       desc:
-    - name: w_norms
-      type: [float, n]
-      desc:
-    - name: h_norms
-      type: [float, n]
-      desc:
+      backward_arg: True
   outputs:
     - name: output
-      type: [float, n, 3b+1]
+      type: [float, n]
       desc:
     - name: det
       type: [float]
@@ -1033,18 +1054,14 @@ rqs_inverse:
     - name: input
       type: [float, n]
       desc:
+      backward_arg: True
     - name: condition
-      type: [float, n, 3b+1]
+      type: [float, n, 6]
       desc:
-    - name: w_norms
-      type: [float, n]
-      desc:
-    - name: h_norms
-      type: [float, n]
-      desc:
+      backward_arg: True
   outputs:
     - name: output
-      type: [float, n, 3b+1]
+      type: [float, n]
       desc:
     - name: det
       type: [float]
@@ -1060,6 +1077,7 @@ softmax:
     - name: output
       type: [float, n]
       desc:
+      backward_arg: True
   differentiable: True
 
 softmax_prior:
@@ -1070,10 +1088,12 @@ softmax_prior:
     - name: prior
       type: [float, n]
       desc:
+      no_grad: True
   outputs:
     - name: output
       type: [float, n]
       desc:
+      backward_arg: True
   differentiable: True
 
 ---

@@ -259,13 +259,17 @@ std::array<Value, 3> rqs_activation(Value input, Value bin_count) {
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 2> rqs_forward(Value input, Value condition, Value w_norms, Value h_norms) {
-    auto output_vector = instruction("rqs_forward", {input, condition, w_norms, h_norms});
+Value rqs_find_bin(Value input, Value in_sizes, Value out_sizes, Value derivatives) {
+    return instruction("rqs_find_bin", {input, in_sizes, out_sizes, derivatives})[0];
+}
+
+std::array<Value, 2> rqs_forward(Value input, Value condition) {
+    auto output_vector = instruction("rqs_forward", {input, condition});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> rqs_inverse(Value input, Value condition, Value w_norms, Value h_norms) {
-    auto output_vector = instruction("rqs_inverse", {input, condition, w_norms, h_norms});
+std::array<Value, 2> rqs_inverse(Value input, Value condition) {
+    auto output_vector = instruction("rqs_inverse", {input, condition});
     return {output_vector[0], output_vector[1]};
 }
 

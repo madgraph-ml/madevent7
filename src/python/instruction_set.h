@@ -72,8 +72,9 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
     fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));
     fb.def("rqs_activation", &FunctionBuilder::rqs_activation, py::arg("input"), py::arg("bin_count"));
-    fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"), py::arg("w_norms"), py::arg("h_norms"));
-    fb.def("rqs_inverse", &FunctionBuilder::rqs_inverse, py::arg("input"), py::arg("condition"), py::arg("w_norms"), py::arg("h_norms"));
+    fb.def("rqs_find_bin", &FunctionBuilder::rqs_find_bin, py::arg("input"), py::arg("in_sizes"), py::arg("out_sizes"), py::arg("derivatives"));
+    fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"));
+    fb.def("rqs_inverse", &FunctionBuilder::rqs_inverse, py::arg("input"), py::arg("condition"));
     fb.def("softmax", &FunctionBuilder::softmax, py::arg("input"));
     fb.def("softmax_prior", &FunctionBuilder::softmax_prior, py::arg("input"), py::arg("prior"));
     fb.def("sample_discrete", &FunctionBuilder::sample_discrete, py::arg("r"), py::arg("option_count"));

@@ -13,6 +13,7 @@ namespace madevent {
 struct Nothing;
 
 using SizeVec = std::vector<std::size_t>;
+using Sizes = std::size_t[4];
 
 template<class T, int _dim>
 class TensorView {
@@ -104,22 +105,22 @@ public:
         other.impl = nullptr;
     }
 
-    Tensor(DataType dtype, SizeVec shape) :
+    Tensor(DataType dtype, const SizeVec& shape) :
         Tensor(dtype, shape, cpu_device()) {}
 
-    Tensor(DataType dtype, SizeVec shape, Device& device) :
+    Tensor(DataType dtype, const SizeVec& shape, Device& device) :
         impl(new TensorImpl{dtype, shape, device})
     {
         auto size = init_stride();
         impl->data = device.allocate(size);
     }
 
-    Tensor(DataType dtype, SizeVec shape, std::function<void*(std::size_t)> allocator) :
+    Tensor(DataType dtype, const SizeVec& shape, std::function<void*(std::size_t)> allocator) :
         Tensor(dtype, shape, cpu_device(), allocator) {}
 
     Tensor(
         DataType dtype,
-        SizeVec shape,
+        const SizeVec& shape,
         Device& device,
         std::function<void*(std::size_t)> allocator
     ) : impl(new TensorImpl{dtype, shape, device})
@@ -128,16 +129,16 @@ public:
         impl->data = allocator(size);
     }
 
-    Tensor(DataType dtype, SizeVec shape, void* data) :
+    Tensor(DataType dtype, const SizeVec& shape, void* data) :
         Tensor(dtype, shape, cpu_device(), data) {}
 
-    Tensor(DataType dtype, SizeVec shape, Device& device, void* data) :
+    Tensor(DataType dtype, const SizeVec& shape, Device& device, void* data) :
         impl(new TensorImpl{dtype, shape, device, data, false})
     {
         init_stride();
     }
 
-    Tensor(SizeVec batch_sizes) : impl(new TensorImpl{
+    Tensor(const SizeVec& batch_sizes) : impl(new TensorImpl{
         DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr,
         1, {}, 0, batch_sizes
     }) {}
@@ -220,6 +221,14 @@ public:
         }
     }
 
+    std::size_t byte_size() const {
+        std::size_t size = dtype_size();
+        for (auto dim_size : impl->shape) {
+            size *= dim_size;
+        }
+        return size;
+    }
+
     const SizeVec& batch_sizes() const {
         return impl->batch_sizes;
     }
@@ -230,7 +239,7 @@ public:
 
     void reset() {
         if (impl == nullptr) return;
-        impl->reset([this] (void* ptr) { impl->device.free(ptr); });
+        impl->reset();
         impl = nullptr;
     }
 
@@ -244,6 +253,8 @@ public:
     Tensor slice(std::size_t axis, std::size_t start, std::size_t stop);
     std::vector<Tensor> split(std::size_t axis, SizeVec sizes);
     std::vector<Tensor> unstack(std::size_t axis);
+    Tensor cpu() { return *this; } //TODO: implement
+    Tensor contiguous() { return *this; } //TODO: implement
 
 private:
     struct TensorImpl {
@@ -257,6 +268,19 @@ private:
         SizeVec stride;
         std::size_t offset;
         SizeVec batch_sizes;
+
+        void reset() {
+            if (ref_count > 1) {
+                --ref_count;
+                return;
+            }
+            if (owns_data) {
+                device.free(data);
+            } else if (data_owner != nullptr) {
+                data_owner->reset();
+            }
+            delete this;
+        }
 
         void reset(std::function<void(void*)> deleter) {
             if (ref_count > 1) {

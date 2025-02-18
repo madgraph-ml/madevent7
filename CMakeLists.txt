@@ -96,6 +96,7 @@ add_library(
     src/backend/cpu/tensor.h
     src/backend/cpu/simd.h
     src/backend/cpu/simd_arm.h
+    src/driver/io.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
@@ -116,6 +117,7 @@ add_library(
     include/madevent/backend/context.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
+    include/madevent/driver/io.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h

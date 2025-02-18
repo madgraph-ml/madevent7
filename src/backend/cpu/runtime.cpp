@@ -28,7 +28,7 @@ namespace {
 // call function(i) with argument i=0...N-1 and return the results as an array
 template<std::size_t N, typename F, std::size_t... i>
 constexpr auto range_to_array_impl(F&& function, std::index_sequence<i...>) {
-    return std::array<Tensor, N>{function(i)...};
+    return std::array<Tensor*, N>{function(i)...};
 }
 template<std::size_t N, typename F>
 constexpr auto range_to_array(F&& function) {
@@ -41,15 +41,18 @@ template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto inputs = range_to_array<n_in>([&](auto i) {
-        return locals[instruction.input_indices[i]];
+        return &locals[instruction.input_indices[i]];
     });
     auto outputs = range_to_array<n_out>([&](auto i) {
         auto& output = locals[instruction.output_indices[i]];
         auto& output_shape = instruction.output_shapes[i];
-        SizeVec shape {batch_size};
-        shape.insert(shape.end(), output_shape.begin(), output_shape.end());
+        SizeVec shape(output_shape.size() + 1);
+        shape[0] = batch_size;
+        std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
+        //SizeVec shape {batch_size};
+        //shape.insert(shape.end(), output_shape.begin(), output_shape.end());
         output = Tensor(instruction.output_dtypes[i], shape);
-        return output;
+        return &output;
     });
 
     if constexpr (dims == 0) {
@@ -101,7 +104,7 @@ void backward_batch_foreach(
 
 void tensor_copy(Tensor source, Tensor target) {
     tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
-        {source}, {target}, target.size(0)
+        {&source}, {&target}, target.size(0)
     );
 }
 

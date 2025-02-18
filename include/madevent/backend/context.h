@@ -44,7 +44,9 @@ class Context {
      */
 public:
     Context(Device& device) : device(device) {}
-    void load_matrix_element(std::string file, std::string param_card, std::size_t process_index);
+    void load_matrix_element(
+        std::string file, std::string param_card, std::size_t process_index
+    );
     void load_pdf(std::string name, int index=0);
     void define_global(std::string name, DataType dtype, const SizeVec& shape);
     Tensor global(std::string name);

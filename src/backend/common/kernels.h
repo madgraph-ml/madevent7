@@ -13,6 +13,7 @@ template<typename T> using FVal = typename T::FVal;
 template<typename T> using IVal = typename T::IVal;
 template<typename T> using BVal = typename T::BVal;
 
+#include "autograd.h"
 #include "math.h"
 #include "kinematics.h"
 #include "two_particle.h"

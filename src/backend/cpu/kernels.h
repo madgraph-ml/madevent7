@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-#define KERNELSPEC
+#define KERNELSPEC constexpr
 
 namespace {
 
@@ -38,6 +38,7 @@ using std::atan2;
 using std::pow;
 using std::fabs;
 using std::log;
+using std::log1p;
 using std::tan;
 using std::atan;
 using std::exp;
