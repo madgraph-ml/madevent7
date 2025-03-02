@@ -30,6 +30,10 @@ Value mul(Value in1, Value in2) {
     return instruction("mul", {in1, in2})[0];
 }
 
+Value product(Value in) {
+    return instruction("product", {in})[0];
+}
+
 Value clip_min(Value x, Value min) {
     return instruction("clip_min", {x, min})[0];
 }

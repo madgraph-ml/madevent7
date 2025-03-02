@@ -20,6 +20,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
+    fb.def("product", &FunctionBuilder::product, py::arg("in"));
     fb.def("clip_min", &FunctionBuilder::clip_min, py::arg("x"), py::arg("min"));
     fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in"));
     fb.def("square", &FunctionBuilder::square, py::arg("in"));

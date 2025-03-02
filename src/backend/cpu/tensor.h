@@ -21,11 +21,20 @@ public:
         uint8_t* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride
     ) : _data(data), _stride(stride), _shape(shape), _batch_stride(batch_stride) {}
 
+    VectorizedTensorView(V& value) :
+        _data(reinterpret_cast<uint8_t*>(&value)),
+        _stride(nullptr),
+        _shape(nullptr),
+        _batch_stride(0) {}
+
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
     const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
         if constexpr (is_batch) {
             return {
-                _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
+                _data + index * _stride[0] * simd_vec_size,
+                _stride + 1,
+                _shape + 1,
+                _batch_stride
             };
         } else {
             return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
@@ -36,7 +45,10 @@ public:
     VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
         if constexpr (is_batch) {
             return {
-                _data + index * _stride[0] * simd_vec_size, _stride + 1, _shape + 1, _batch_stride
+                _data + index * _stride[0] * simd_vec_size,
+                _stride + 1,
+                _shape + 1,
+                _batch_stride
             };
         } else {
             return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};

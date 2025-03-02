@@ -2,6 +2,7 @@
 #include "madevent/util.h"
 
 using namespace madevent;
+using json = nlohmann::json;
 
 std::size_t BatchSize::UnnamedBody::counter = 0;
 const BatchSize BatchSize::zero = BatchSize(BatchSize::Compound{});
@@ -105,3 +106,124 @@ std::ostream& madevent::operator<<(std::ostream& out, const Type& type) {
     }
     return out;
 }
+
+void madevent::to_json(json& j, const BatchSize& batch_size) {
+    std::visit(Overloaded {
+        [&](BatchSize::Named value) { j = value; },
+        [&](BatchSize::Unnamed value) { j = nullptr; },
+        [&](BatchSize::One value) { j = 1; },
+        [&](BatchSize::Compound value) {
+            j = json(json::value_t::array);
+            for (auto& [key, factor] : value) {
+                j.push_back(json{
+                    {
+                        "batch_size",
+                        std::visit([&](auto& k) { return json{BatchSize(k)}; }, key)
+                    },
+                    {"factor", factor}
+                });
+            }
+        }
+    }, batch_size.value);
+}
+
+void madevent::to_json(json& j, const Value& value) {
+    std::visit(Overloaded{
+        [&](auto val) {
+            j = json{
+                {"dtype", value.type.dtype},
+                {"shape", json(json::value_t::array)},
+                {"data", val}
+            };
+        },
+        [&](TensorValue val) {
+            j = json{
+                {"dtype", value.type.dtype},
+                {"shape", std::get<0>(val)},
+                {"data", std::visit(
+                    [](auto data) { return json{data}; }, std::get<1>(val)
+                )}
+            };
+        },
+        [&](std::monostate val) {
+            j = value.local_index;
+        }
+    }, value.literal_value);
+}
+
+void madevent::to_json(json& j, const DataType& dtype) {
+    switch (dtype) {
+        case DataType::dt_bool: j = "bool"; break;
+        case DataType::dt_int: j = "int"; break;
+        case DataType::dt_float: j = "float"; break;
+        case DataType::batch_sizes: j = "batch_sizes"; break;
+    }
+}
+
+void madevent::from_json(const json& j, BatchSize& batch_size) {
+    if (j.is_string()) {
+        batch_size = j.get<std::string>();
+    } else if (j.is_number_integer() && j.get<int>() == 1) {
+        batch_size = BatchSize::one;
+    } else if (j.is_array()) {
+        BatchSize::Compound compound;
+        for (auto& j_item : j) {
+            std::visit(Overloaded {
+                [&](auto value) {
+                    compound[value] = j_item.at("factor").get<int>();
+                },
+                [&](BatchSize::Compound value) {
+                    throw std::invalid_argument("invalid batch size");
+                }
+            }, j_item.at("batch_size").get<BatchSize>().value);
+        }
+        batch_size = compound;
+    } else {
+        throw std::invalid_argument("invalid batch size");
+    }
+}
+
+void madevent::from_json(const json& j, Value& value) {
+    auto dtype = j.at("dtype").get<DataType>();
+    auto shape = j.at("shape").get<std::vector<int>>();
+    auto j_data = j.at("data");
+    switch(dtype) {
+    case DataType::dt_bool:
+        if (shape.size() == 0) {
+            value = j_data.get<bool>();
+        } else {
+            value = Value(j_data.get<std::vector<bool>>(), shape);
+        }
+    case DataType::dt_int:
+        if (shape.size() == 0) {
+            value = j_data.get<long long>();
+        } else {
+            value = Value(j_data.get<std::vector<long long>>(), shape);
+        }
+    case DataType::dt_float:
+        if (shape.size() == 0) {
+            value = j_data.get<double>();
+        } else {
+            value = Value(j_data.get<std::vector<double>>(), shape);
+        }
+        break;
+    case DataType::batch_sizes:
+        throw std::invalid_argument("invalid data type");
+    }
+}
+
+void madevent::from_json(const json& j, DataType& dtype) {
+    auto str = j.get<std::string>();
+    if (str == "bool") {
+        dtype = DataType::dt_bool;
+    } else if (str == "int") {
+        dtype = DataType::dt_int;
+    } else if (str == "float") {
+        dtype = DataType::dt_float;
+    } else if (str == "batch_sizes") {
+        dtype = DataType::batch_sizes;
+    } else {
+        throw std::invalid_argument("invalid data type");
+    }
+}
+

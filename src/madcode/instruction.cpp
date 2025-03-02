@@ -297,7 +297,7 @@ TypeList StackInstruction::signature(const ValueList& args) const {
                 "{}, argument {}: incompatible batch size", name, i
             ));
         }
-        if (arg.type != type) {
+        if (arg.type.dtype != type.dtype || arg.type.shape != type.shape) {
             throw std::invalid_argument(
                 "stack: all arguments must have the same shape and dtype"
             );

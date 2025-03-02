@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <iostream>
 
+#include <nlohmann/json.hpp>
+
 namespace madevent {
 
 enum class DataType {
@@ -22,6 +24,7 @@ public:
     public:
         UnnamedBody() : id(counter++) {}
         friend std::ostream& operator<<(std::ostream& out, const BatchSize& batch_size);
+        friend void to_json(nlohmann::json& j, const BatchSize& batch_size);
         bool operator==(const UnnamedBody& other) const { return id == other.id; }
         bool operator!=(const UnnamedBody& other) const { return id != other.id; }
     private:
@@ -44,6 +47,8 @@ public:
     bool operator!=(const BatchSize& other) const { return value != other.value; }
 
     friend std::ostream& operator<<(std::ostream& out, const BatchSize& batch_size);
+    friend void to_json(nlohmann::json& j, const BatchSize& batch_size);
+    friend void from_json(const nlohmann::json& j, BatchSize& batch_size);
 
 private:
     BatchSize(Compound value) : value(value) {}
@@ -102,7 +107,8 @@ inline Type batch_four_vec_array(int count) {
 
 
 using TensorValue = std::tuple<
-    std::vector<int>, std::variant<std::vector<bool>, std::vector<long long>, std::vector<double>>
+    std::vector<int>,
+    std::variant<std::vector<bool>, std::vector<long long>, std::vector<double>>
 >;
 
 using LiteralValue = std::variant<bool, long long, double, TensorValue, std::monostate>;
@@ -133,7 +139,9 @@ struct Value {
             prod *= size;
         }
         if (prod != values.size()) {
-            throw std::invalid_argument("size of value vector not compatible with given shape");
+            throw std::invalid_argument(
+                "size of value vector not compatible with given shape"
+            );
         }
     }
 
@@ -144,5 +152,10 @@ struct Value {
 };
 
 using ValueList = std::vector<Value>;
+
+void to_json(nlohmann::json& j, const DataType& dtype);
+void to_json(nlohmann::json& j, const Value& value);
+void from_json(const nlohmann::json& j, DataType& dtype);
+void from_json(const nlohmann::json& j, Value& dtype);
 
 }

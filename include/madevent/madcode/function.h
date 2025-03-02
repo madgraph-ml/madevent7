@@ -3,12 +3,10 @@
 #include <map>
 #include <vector>
 #include <iostream>
-#include <variant>
 #include <string>
-#include <type_traits>
-#include <algorithm>
 #include <optional>
-#include <array>
+
+#include <nlohmann/json.hpp>
 
 #include "instruction.h"
 
@@ -26,6 +24,9 @@ struct Function {
     ValueList locals;
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
+
+    void store(std::string file);
+    static Function load(std::string file);
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& value);
@@ -33,9 +34,15 @@ std::ostream& operator<<(std::ostream& out, const ValueList& list);
 std::ostream& operator<<(std::ostream& out, const InstructionCall& call);
 std::ostream& operator<<(std::ostream& out, const Function& func);
 
+void to_json(nlohmann::json& j, const InstructionCall& call);
+void to_json(nlohmann::json& j, const Function& call);
+void from_json(const nlohmann::json& j, Function& call);
+
 class FunctionBuilder {
 public:
-    FunctionBuilder(const std::vector<Type> _input_types, const std::vector<Type> _output_types);
+    FunctionBuilder(
+        const std::vector<Type> _input_types, const std::vector<Type> _output_types
+    );
     FunctionBuilder(const Function& function);
     Value input(int index);
     ValueList input_range(int start_index, int end_index);
@@ -47,7 +54,7 @@ public:
     Function function();
 
     Value sum(const ValueList& values);
-    Value product(const ValueList& values);
+    //Value product(const ValueList& values);
 
 #include "function_builder_mixin.h"
 

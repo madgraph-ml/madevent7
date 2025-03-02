@@ -108,6 +108,12 @@ void tensor_copy(Tensor source, Tensor target) {
     );
 }
 
+void tensor_zero(Tensor tensor) {
+    tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
+        {&tensor}, {&tensor}, tensor.size(0)
+    );
+}
+
 void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto shape = locals[instruction.input_indices[0]].shape();
     shape[0] = locals[instruction.batch_size_index].size(0);
@@ -189,10 +195,9 @@ void op_pdf(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
-    // TODO: ensure contiguous
-    auto& input = locals[instruction.input_indices[0]];
-    auto& weight = locals[instruction.input_indices[1]];
-    auto& bias = locals[instruction.input_indices[2]];
+    auto input = locals[instruction.input_indices[0]].contiguous();
+    auto weight = locals[instruction.input_indices[1]].contiguous();
+    auto bias = locals[instruction.input_indices[2]].contiguous();
     auto& output = locals[instruction.output_indices[0]];
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
@@ -200,7 +205,7 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
     output = Tensor(DataType::dt_float, {batch_size, dims_out});
     tensor_copy(bias, output);
     char transa = 'N', transb = 'T';
-    int m = batch_size, n = dims_in, k = dims_out;
+    int m = batch_size, n = dims_out, k = dims_in;
     double alpha = 1., beta = 1.;
     int lda = batch_size, ldb = dims_out, ldc = batch_size;
     double* a = static_cast<double*>(input.data());
@@ -209,6 +214,57 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
     dgemm_(
         &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
     );
+}
+
+void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
+    // input, weight
+    // output_grad
+    // input_grad, weight_grad, bias_grad
+    /*auto input = locals[instruction.input_indices[0]].contiguous();
+    auto weight = locals[instruction.input_indices[1]].contiguous();
+    auto output_grad = locals[instruction.input_indices[2]].contiguous();
+    auto& input_grad = locals[instruction.output_indices[0]];
+    auto& weight_grad = locals[instruction.output_indices[1]];
+    auto& bias_grad = locals[instruction.output_indices[2]];
+    std::size_t batch_size = input.size(0);
+    std::size_t dims_in = input.size(1);
+    std::size_t dims_out = weight.size(1);
+    input_grad = Tensor(DataType::dt_float, input.shape());
+    weight_grad = Tensor(DataType::dt_float, weight.shape());
+    bias_grad = Tensor(DataType::dt_float, {batch_size, dims_out});
+    tensor_zero(input_grad);
+    tensor_zero(weight_grad);
+    tensor_zero(bias_grad);
+
+    // compute grad_input = grad_output * weight
+    {
+        char transa = 'N', transb = 'N';
+        int m = batch_size, n = dims_out, k = dims_in;
+        double alpha = 1., beta = 1.;
+        int lda = batch_size, ldb = dims_out, ldc = batch_size;
+        double* a = static_cast<double*>(input.data());
+        double* b = static_cast<double*>(weight.data());
+        double* c = static_cast<double*>(output.data());
+        dgemm_(
+            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+        );
+    }
+
+    // compute grad_weight = grad_output.T * input
+    {
+        char transa = 'T', transb = 'N';
+        int m = dims_out, n = dims_in, k = batch_size;
+        double alpha = 1., beta = 1.;
+        int lda = batch_size, ldb = dims_out, ldc = batch_size;
+        double* a = static_cast<double*>(input.data());
+        double* b = static_cast<double*>(weight.data());
+        double* c = static_cast<double*>(output.data());
+        dgemm_(
+            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+        );
+    }*/
+
+    // compute grad_bias = sum_i grad_output_ij
 }
 
 }

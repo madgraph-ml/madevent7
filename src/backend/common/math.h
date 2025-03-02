@@ -4,6 +4,11 @@ KERNELSPEC void kernel_copy(FIn<T,0> in, FOut<T,0> out) {
 }
 
 template<typename T>
+KERNELSPEC void kernel_zero(FIn<T,0> in, FOut<T,0> out) {
+    out = 0.;
+}
+
+template<typename T>
 KERNELSPEC void kernel_add(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
     out = in1 + in2;
 }
@@ -16,6 +21,15 @@ KERNELSPEC void kernel_sub(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
 template<typename T>
 KERNELSPEC void kernel_mul(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
     out = in1 * in2;
+}
+
+template<typename T>
+KERNELSPEC void kernel_product(FIn<T,1> in, FOut<T,0> out) {
+    FVal<T> product(1.);
+    for (std::size_t i = 0; i < in.size(); ++i) {
+        product = product * in[i];
+    }
+    out = product;
 }
 
 template<typename T>

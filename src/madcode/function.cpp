@@ -3,8 +3,22 @@
 
 #include <stdexcept>
 #include <format>
+#include <fstream>
 
 using namespace madevent;
+using json = nlohmann::json;
+
+void Function::store(std::string file) {
+    std::ofstream f(file);
+    json j;
+    j = *this;
+    f << j.dump(2);
+}
+
+Function Function::load(std::string file) {
+    std::ifstream f(file);
+    return json::parse(f).get<Function>();
+}
 
 std::ostream& madevent::operator<<(std::ostream& out, const Value& value) {
     std::visit(Overloaded{
@@ -51,25 +65,131 @@ std::ostream& madevent::operator<<(std::ostream& out, const InstructionCall& cal
 }
 
 std::ostream& madevent::operator<<(std::ostream& out, const Function& func) {
-    out << "inputs {\n";
+    out << "Inputs:\n";
     for (auto& input : func.inputs) {
         out << "  " << input << " : " << input.type << "\n";
     }
-    out << "}\n";
-    out << "globals {\n";
+    out << "Globals:\n";
     for (auto& [name, global] : func.globals) {
         out << "  " << global << " : " << global.type << " = " << name << "\n";
     }
-    out << "}\n";
+    out << "Instructions:\n";
     for (auto& instr : func.instructions) {
-        out << instr << "\n";
+        out << "  " << instr << "\n";
     }
-    out << "outputs {\n";
+    out << "Outputs:\n";
     for (auto& output : func.outputs) {
         out << "  " << output << " : " << output.type << "\n";
     }
-    out << "}\n";
     return out;
+}
+
+void madevent::to_json(json& j, const InstructionCall& call) {
+    j = json{
+        {"name", call.instruction->name},
+        {"inputs", call.inputs},
+        {"outputs", call.outputs},
+    };
+}
+
+void madevent::to_json(json& j, const Function& func) {
+    json inputs(json::value_t::array);
+    json outputs(json::value_t::array);
+    json globals(json::value_t::array);
+    for (auto& input : func.inputs) {
+        inputs.push_back(json{
+            {"local", input},
+            {"dtype", input.type.dtype},
+            {"batch_size", input.type.batch_size},
+            {"shape", input.type.shape},
+        });
+    }
+    for (auto& output : func.outputs) {
+        outputs.push_back(json{
+            {"local", output},
+            {"dtype", output.type.dtype},
+            {"shape", output.type.shape},
+        });
+    }
+    for (auto& [name, global] : func.globals) {
+        globals.push_back(json{
+            {"local", global},
+            {"name", name},
+            {"dtype", global.type.dtype},
+            {"shape", global.type.shape},
+        });
+    }
+    j = json{
+        {"inputs", inputs},
+        {"outputs", outputs},
+        {"globals", globals},
+        {"instructions", func.instructions},
+    };
+}
+
+void madevent::from_json(const json& j, Function& func) {
+    TypeList input_types, output_types;
+    std::vector<std::size_t> input_locals, output_locals;
+    for (auto& j_input : j.at("inputs")) {
+        BatchSize batch_size = BatchSize::one;
+        j_input.at("batch_size").get_to<BatchSize>(batch_size);
+        input_types.emplace_back(
+            j_input.at("dtype").get<DataType>(),
+            batch_size,
+            j_input.at("shape").get<std::vector<int>>()
+        );
+        input_locals.push_back(j_input.at("local").get<std::size_t>());
+    }
+    for (auto& j_output : j.at("outputs")) {
+        output_types.emplace_back(
+            j_output.at("dtype").get<DataType>(),
+            BatchSize::one,
+            j_output.at("shape").get<std::vector<int>>()
+        );
+        output_locals.push_back(j_output.at("local").get<std::size_t>());
+    }
+
+    FunctionBuilder fb(input_types, output_types);
+    std::unordered_map<std::size_t, Value> locals;
+    std::size_t i = 0;
+    for (auto input_index : input_locals) {
+        locals[input_index] = fb.input(i);
+        ++i;
+    }
+
+    for (auto& j_global : j.at("globals")) {
+        locals[j_global.at("local").get<std::size_t>()] = fb.global(
+            j_global.at("name").get<std::string>(),
+            j_global.at("dtype").get<DataType>(),
+            j_global.at("shape").get<std::vector<int>>()
+        );
+    }
+
+    for (auto& j_instr : j.at("instructions")) {
+        ValueList instr_inputs;
+        for (auto& j_input : j_instr.at("inputs")) {
+            instr_inputs.push_back(
+                j_input.is_number_unsigned() ?
+                locals.at(j_input.get<std::size_t>()) :
+                j_input.get<Value>()
+            );
+        }
+        auto instr_outputs = fb.instruction(
+            j_instr.at("name").get<std::string>(), instr_inputs
+        );
+        for (auto [j_output, output] : std::views::zip(
+            j_instr.at("outputs"), instr_outputs
+        )) {
+            locals[j_output.get<std::size_t>()] = output;
+        }
+    }
+
+    i = 0;
+    for (auto output_index : output_locals) {
+        fb.output(i, locals[output_index]);
+        ++i;
+    }
+    func = fb.function();
 }
 
 FunctionBuilder::FunctionBuilder(
@@ -201,7 +321,8 @@ void FunctionBuilder::output(int index, Value value) {
             outputs.size() - 1, index
         ));
     }
-    if (output_types.at(index) != value.type) {
+    auto& out_type = output_types.at(index);
+    if (out_type.dtype != value.type.dtype || out_type.shape != value.type.shape) {
         throw std::invalid_argument(std::format("Wrong output type for output {}", index));
     }
     outputs.at(index) = value;
@@ -248,7 +369,7 @@ Value FunctionBuilder::sum(const ValueList& values) {
     return result;
 }
 
-Value FunctionBuilder::product(const ValueList& values) {
+/*Value FunctionBuilder::product(const ValueList& values) {
     if (values.size() == 0) {
         return 1.;
     }
@@ -257,4 +378,4 @@ Value FunctionBuilder::product(const ValueList& values) {
         result = mul(result, *value);
     }
     return result;
-}
+}*/

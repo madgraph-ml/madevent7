@@ -55,6 +55,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::class_<BatchSize>(m, "BatchSize")
         .def(py::init<>())
         .def(py::init<std::string>(), py::arg("name"))
+        .def_readonly_static("one", &BatchSize::one)
         .def("__str__", &to_string<BatchSize>)
         .def("__repr__", &to_string<BatchSize>);
     m.attr("batch_size") = py::cast(batch_size);
@@ -106,6 +107,8 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::class_<Function>(m, "Function", py::dynamic_attr())
         .def("__str__", &to_string<Function>)
         .def("__repr__", &to_string<Function>)
+        .def("store", &Function::store, py::arg("file"))
+        .def_static("load", &Function::load, py::arg("file"))
         .def_readonly("inputs", &Function::inputs)
         .def_readonly("outputs", &Function::outputs)
         .def_readonly("locals", &Function::locals)

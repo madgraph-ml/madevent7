@@ -85,6 +85,16 @@ mul:
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
 
+product:
+  inputs:
+    - name: in
+      type: [float, n]
+      desc:
+  outputs:
+    - name: out
+      type: [float]
+      desc:
+
 clip_min:
   inputs:
     - name: x
@@ -978,7 +988,7 @@ matmul:
       type: [float, m]
       desc:
   custom_op: True
-  differentiable: True
+  #differentiable: True
 
 leaky_relu:
   inputs:
@@ -990,6 +1000,7 @@ leaky_relu:
     - name: out
       type: [float, ...]
       desc:
+  dims: 2
   differentiable: True
 
 rqs_activation:
@@ -1008,7 +1019,7 @@ rqs_activation:
     - name: derivatives
       desc:
   class: RqsActivationInstruction
-  differentiable: True
+  #differentiable: True
 
 rqs_find_bin:
   inputs:
@@ -1028,7 +1039,7 @@ rqs_find_bin:
     - name: condition
       type: [float, n, 6]
       desc:
-  differentiable: True
+  #differentiable: True
 
 rqs_forward:
   inputs:
@@ -1045,9 +1056,9 @@ rqs_forward:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
-  differentiable: True
+  #differentiable: True
 
 rqs_inverse:
   inputs:
@@ -1064,9 +1075,9 @@ rqs_inverse:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
-  differentiable: True
+  #differentiable: True
 
 softmax:
   inputs:

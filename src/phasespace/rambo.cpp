@@ -72,7 +72,9 @@ Mapping::Result FastRamboMapping::build_forward_impl(
     }
     p_out.push_back(q);
 
-    auto det = fb.product({fb.pow(e_cm_massless, e_cm_power), massless_weight, det_u});
+    auto det = fb.product(fb.stack(
+        {fb.pow(e_cm_massless, e_cm_power), massless_weight, det_u}
+    ));
     if (!massless) {
         det = fb.mul(det, massive_det);
     }

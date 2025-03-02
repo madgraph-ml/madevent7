@@ -5,7 +5,7 @@ enum class AutogradOp {
     nop, load, store, where,
     eq, neq, gt, lt, ge, le, band, bor, bnot,
     neg, add, sub, mul, div,
-    sqrt, sin, cos, sinh, cosh, atan2, pow, fabs, log, tan, atan, exp
+    sqrt, sin, cos, sinh, cosh, atan2, pow, fabs, log, tan, atan, exp, log1p
 };
 
 union AutogradScalar {
@@ -49,7 +49,8 @@ struct Graph {
 
 template<typename T>
 struct AutogradInput {
-    constexpr AutogradInput(Graph& _graph, std::size_t _index) : graph(_graph), index(_index) {}
+    constexpr AutogradInput(Graph& _graph, std::size_t _index) :
+        graph(_graph), index(_index) {}
 
     Graph& graph;
     std::size_t index;
@@ -92,7 +93,9 @@ struct AutogradOutput {
     std::size_t index;
 };
 
-constexpr AutogradValue<double> where(AutogradValue<bool> arg1, AutogradValue<double> arg2, AutogradValue<double> arg3) {
+constexpr AutogradValue<double> where(
+    AutogradValue<bool> arg1, AutogradValue<double> arg2, AutogradValue<double> arg3
+) {
     return {AutogradOp::where, arg1, arg2, arg3};
 }
 
@@ -299,6 +302,9 @@ constexpr void eval_rec(
         case AutogradOp::exp:
             locals[instr_index].f = exp(locals[instr.arg1].f);
             break;
+        case AutogradOp::log1p:
+            locals[instr_index].f = log1p(locals[instr.arg1].f);
+            break;
         }
         eval_rec<T, graph, instr_index + 1, in_arg_count>(locals, in_args);
     }
@@ -335,20 +341,28 @@ constexpr void backward_rec(
         case AutogradOp::nop:
             break;
         case AutogradOp::load:
-            accumulate_grad(in_grads_init[instr.arg1], in_grads[instr.arg1], grad);
+            accumulate_grad(
+                in_grads_init[instr.arg1], in_grads[instr.arg1], grad
+            );
             break;
         case AutogradOp::store:
             accumulate_grad(
-                local_grads_init[instr.arg2], local_grads[instr.arg2].f, out_grads[instr.arg1]
+                local_grads_init[instr.arg2],
+                local_grads[instr.arg2].f,
+                out_grads[instr.arg1]
             );
             break;
         case AutogradOp::where: {
             auto cond = locals[instr.arg1].b;
             accumulate_grad(
-                local_grads_init[instr.arg2], local_grads[instr.arg2].f, where(cond, grad, 0.0)
+                local_grads_init[instr.arg2],
+                local_grads[instr.arg2].f,
+                where(cond, grad, 0.0)
             );
             accumulate_grad(
-                local_grads_init[instr.arg3], local_grads[instr.arg3].f, where(cond, 0.0, grad)
+                local_grads_init[instr.arg3],
+                local_grads[instr.arg3].f,
+                where(cond, 0.0, grad)
             );
             break;
         } case AutogradOp::eq:
@@ -386,10 +400,14 @@ constexpr void backward_rec(
             break;
         case AutogradOp::mul:
             accumulate_grad(
-                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad * locals[instr.arg2].f
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad * locals[instr.arg2].f
             );
             accumulate_grad(
-                local_grads_init[instr.arg2], local_grads[instr.arg2].f, grad * locals[instr.arg1].f
+                local_grads_init[instr.arg2],
+                local_grads[instr.arg2].f,
+                grad * locals[instr.arg1].f
             );
             break;
         case AutogradOp::div: {
@@ -455,7 +473,9 @@ constexpr void backward_rec(
         } case AutogradOp::pow: {
             auto x = locals[instr.arg1].f, y = locals[instr.arg2].f;
             accumulate_grad(
-                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad * y * pow(x, y - 1)
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad * y * pow(x, y - 1)
             );
             accumulate_grad(
                 local_grads_init[instr.arg2],
@@ -472,19 +492,25 @@ constexpr void backward_rec(
             break;
         case AutogradOp::log:
             accumulate_grad(
-                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad / locals[instr.arg1].f
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad / locals[instr.arg1].f
             );
             break;
         case AutogradOp::tan: {
             auto cos_x = cos(locals[instr.arg1].f);
             accumulate_grad(
-                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad / (cos_x * cos_x)
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad / (cos_x * cos_x)
             );
             break;
         } case AutogradOp::atan: {
             auto x = locals[instr.arg1].f;
             accumulate_grad(
-                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad / (x * x + 1)
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad / (x * x + 1)
             );
             break;
         } case AutogradOp::exp:
@@ -494,9 +520,17 @@ constexpr void backward_rec(
                 grad * exp(locals[instr.arg1].f)
             );
             break;
+        case AutogradOp::log1p:
+            accumulate_grad(
+                local_grads_init[instr.arg1],
+                local_grads[instr.arg1].f,
+                grad / (locals[instr.arg1].f + 1)
+            );
+            break;
         }
         backward_rec<T, graph, rev_instr_index + 1, in_arg_count, out_arg_count>(
-            locals, local_grads, local_grads_init, in_args, in_grads, out_grads, in_grads_init
+            locals, local_grads, local_grads_init,
+            in_args, in_grads, out_grads, in_grads_init
         );
     }
 }

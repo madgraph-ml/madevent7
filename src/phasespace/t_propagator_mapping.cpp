@@ -87,7 +87,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
 
     ValueList outputs {p1, p2};
     outputs.insert(outputs.end(), p_out.rbegin(), p_out.rend());
-    return {outputs, fb.product(dets)};
+    return {outputs, fb.product(fb.stack(dets))};
 }
 
 Mapping::Result TPropagatorMapping::build_inverse_impl(

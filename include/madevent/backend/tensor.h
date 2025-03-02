@@ -25,6 +25,11 @@ public:
     TensorView(uint8_t* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
 
+    TensorView(T& value) :
+        _data(reinterpret_cast<uint8_t*>(&value)),
+        _stride(nullptr),
+        _shape(nullptr) {}
+
     template<int d = _dim, typename = std::enable_if_t<d != 0>>
     const TensorView<T, _dim-1> operator[](std::size_t index) const {
         return {_data + index * _stride[0], _stride + 1, _shape + 1};

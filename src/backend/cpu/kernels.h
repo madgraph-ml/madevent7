@@ -21,8 +21,10 @@ struct CpuTypes {
     using BVal = bool;
 };
 
-template<typename T>
-T where(bool condition, T val_true, T val_false) {
+double where(bool condition, double val_true, double val_false) {
+    return condition ? val_true : val_false;
+}
+long long where(bool condition, long long val_true, long long val_false) {
     return condition ? val_true : val_false;
 }
 std::size_t single_index(long long arg) {

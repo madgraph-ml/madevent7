@@ -10,7 +10,9 @@ namespace {
 
 std::vector<int> find_permutation(std::vector<int>& from, std::vector<int>& to) {
     auto indices = std::views::iota(from.size());
-    std::unordered_map<int, int> from_location(std::from_range, std::views::zip(from, indices));
+    std::unordered_map<int, int> from_location(
+        std::from_range, std::views::zip(from, indices)
+    );
     return indices | std::views::transform([&](int i) { return from_location[to[i]]; })
                    | std::ranges::to<std::vector<int>>();
 }
@@ -22,7 +24,9 @@ Function madevent::optimize_constants(const Function& function) {
     FunctionBuilder fb(function);
     ValueList new_locals(function.locals);
     for (auto& [name, global] : function.globals) {
-        new_locals.at(global.local_index) = fb.global(name, global.type.dtype, global.type.shape);
+        new_locals.at(global.local_index) = fb.global(
+            name, global.type.dtype, global.type.shape
+        );
     }
     for (auto& instr : function.instructions) {
         bool const_opt = true;
