@@ -3,10 +3,16 @@
 using namespace madevent;
 
 Tensor Tensor::select(std::size_t axis, std::size_t index) {
-    auto new_shape = impl->shape;
+    /*auto new_shape = impl->shape;
     auto new_stride = impl->stride;
     new_shape.erase(new_shape.begin() + axis);
-    new_stride.erase(new_stride.begin() + axis);
+    new_stride.erase(new_stride.begin() + axis);*/
+    auto new_dim = impl->shape.size() - 1;
+    Sizes new_shape(new_dim), new_stride(new_dim);
+    std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
+    std::copy(impl->shape.begin() + axis + 1, impl->shape.end(), new_shape.begin() + axis);
+    std::copy(impl->stride.begin(), impl->stride.begin() + axis, new_stride.begin());
+    std::copy(impl->stride.begin() + axis + 1, impl->stride.end(), new_stride.begin() + axis);
     return Tensor(new Tensor::TensorImpl{
         impl->dtype,
         new_shape,

@@ -47,7 +47,7 @@ void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
     for (int i = 0; i < n_out; ++i) {
         auto& output = locals[instruction.output_indices[i]];
         auto& output_shape = instruction.output_shapes[i];
-        SizeVec shape(output_shape.size() + 1);
+        Sizes shape(output_shape.size() + 1);
         shape[0] = batch_size;
         std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
         //SizeVec shape {batch_size};
@@ -99,8 +99,9 @@ void backward_batch_foreach(
         if (!input_grad) {
             auto& input = locals[instruction.input_indices[i]];
             auto& grad_shape = input.shape();
-            SizeVec shape {batch_size};
-            shape.insert(shape.end(), grad_shape.begin(), grad_shape.end());
+            Sizes shape(grad_shape.size() + 1);
+            shape[0] = batch_size;
+            std::copy(grad_shape.begin(), grad_shape.end(), shape.begin() + 1);
             input_grad = Tensor(input.dtype(), shape);
             tensor_zero(input_grad);
         }
@@ -119,9 +120,11 @@ void backward_batch_foreach(
 }
 
 void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
-    auto shape = locals[instruction.input_indices[0]].shape();
+    auto& first_shape = locals[instruction.input_indices[0]].shape();
+    Sizes shape(first_shape.size() + 1);
     shape[0] = locals[instruction.batch_size_index].size(0);
-    shape.insert(shape.begin() + 1, instruction.input_indices.size());
+    shape[1] = instruction.input_indices.size();
+    std::copy(first_shape.begin() + 1, first_shape.end(), shape.begin() + 2);
     Tensor output(instruction.output_dtypes.front(), shape);
     std::size_t index = 0;
     for (auto input_index : instruction.input_indices) {
@@ -323,10 +326,10 @@ void Runtime::initialize(
 
     for (auto& [name, value] : opt_function.globals) {
         Tensor global = context.global(name);
-        SizeVec full_shape {1};
-        full_shape.insert(
-            full_shape.begin(), value.type.shape.begin(), value.type.shape.end()
-        );
+        auto& global_shape = value.type.shape;
+        Sizes full_shape(global_shape.size() + 1);
+        full_shape[0] = 1;
+        std::copy(global_shape.begin(), global_shape.end(), full_shape.begin() + 1);
         if (value.type.dtype != global.dtype() || full_shape != global.shape()) {
             throw std::invalid_argument(std::format(
                 "Global {} has wrong dtype or shape", name
@@ -349,10 +352,9 @@ void Runtime::initialize(
             },
             [&](TensorValue val) {
                 auto& [shape, items] = val;
-                SizeVec full_shape{1};
-                for (auto size : shape) {
-                    full_shape.push_back(size);
-                }
+                Sizes full_shape(shape.size() + 1);
+                full_shape[0] = 1;
+                std::copy(shape.begin(), shape.end(), full_shape.begin() + 1);
                 Tensor tensor(local.type.dtype, full_shape);
                 std::visit([&](auto items) {
                     auto tview = tensor.template view<

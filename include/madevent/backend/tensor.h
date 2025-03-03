@@ -1,19 +1,61 @@
 #pragma once
 
-#include "madevent/madcode/function.h"
+#include "madevent/madcode/type.h"
 
 #include <cstdint>
 #include <vector>
-#include <array>
 #include <functional>
 #include <type_traits>
+#include <initializer_list>
 
 namespace madevent {
 
 struct Nothing;
 
 using SizeVec = std::vector<std::size_t>;
-using Sizes = std::size_t[4];
+
+class Sizes {
+public:
+    static constexpr std::size_t max_size = 4;
+
+    Sizes() : _size(0) {};
+    Sizes(std::size_t size) : _size(size) {
+        std::fill(begin(), end(), 0);
+    };
+    Sizes(const SizeVec& values) : _size(values.size()) {
+        if (values.size() > max_size) {
+            throw std::invalid_argument("maximum dimension exceeded");
+        }
+        std::copy(values.begin(), values.end(), begin());
+    }
+    Sizes(std::initializer_list<std::size_t> values) : _size(values.size()) {
+        if (values.size() > max_size) {
+            throw std::invalid_argument("maximum dimension exceeded");
+        }
+        std::copy(values.begin(), values.end(), begin());
+    }
+    std::size_t& operator[](std::size_t index) { return _values[index]; }
+    const std::size_t& operator[](std::size_t index) const { return _values[index]; }
+    std::size_t size() const { return _size; }
+    std::size_t* begin() { return &_values[0]; }
+    std::size_t* end() { return &_values[_size]; }
+    const std::size_t* begin() const { return &_values[0]; }
+    const std::size_t* end() const { return &_values[_size]; }
+    void push_back(std::size_t item) { _values[_size] = item; ++_size; }
+    std::size_t* data() { return &_values[0]; }
+    const std::size_t* data() const { return &_values[0]; }
+    std::size_t& back() { return _values[_size - 1]; }
+    const std::size_t& back() const { return _values[_size - 1]; }
+
+private:
+    std::size_t _values[max_size];
+    std::size_t _size;
+};
+
+inline bool operator==(const Sizes& a, const Sizes& b) {
+    return std::equal(a.begin(), a.end(), b.begin(), b.end());
+}
+inline bool operator!=(const Sizes& a, const Sizes& b) { return !(a == b); }
 
 template<class T, int _dim>
 class TensorView {
@@ -110,22 +152,22 @@ public:
         other.impl = nullptr;
     }
 
-    Tensor(DataType dtype, const SizeVec& shape) :
+    Tensor(DataType dtype, const Sizes& shape) :
         Tensor(dtype, shape, cpu_device()) {}
 
-    Tensor(DataType dtype, const SizeVec& shape, Device& device) :
+    Tensor(DataType dtype, const Sizes& shape, Device& device) :
         impl(new TensorImpl{dtype, shape, device})
     {
         auto size = init_stride();
         impl->data = device.allocate(size);
     }
 
-    Tensor(DataType dtype, const SizeVec& shape, std::function<void*(std::size_t)> allocator) :
+    Tensor(DataType dtype, const Sizes& shape, std::function<void*(std::size_t)> allocator) :
         Tensor(dtype, shape, cpu_device(), allocator) {}
 
     Tensor(
         DataType dtype,
-        const SizeVec& shape,
+        const Sizes& shape,
         Device& device,
         std::function<void*(std::size_t)> allocator
     ) : impl(new TensorImpl{dtype, shape, device})
@@ -134,10 +176,10 @@ public:
         impl->data = allocator(size);
     }
 
-    Tensor(DataType dtype, const SizeVec& shape, void* data) :
+    Tensor(DataType dtype, const Sizes& shape, void* data) :
         Tensor(dtype, shape, cpu_device(), data) {}
 
-    Tensor(DataType dtype, const SizeVec& shape, Device& device, void* data) :
+    Tensor(DataType dtype, const Sizes& shape, Device& device, void* data) :
         impl(new TensorImpl{dtype, shape, device, data, false})
     {
         init_stride();
@@ -201,11 +243,11 @@ public:
         return static_cast<uint8_t*>(impl->data) + impl->offset;
     }
 
-    const SizeVec& shape() const {
+    const Sizes& shape() const {
         return impl->shape;
     }
 
-    const SizeVec& stride() const {
+    const Sizes& stride() const {
         return impl->stride;
     }
 
@@ -264,13 +306,13 @@ public:
 private:
     struct TensorImpl {
         DataType dtype;
-        SizeVec shape;
+        Sizes shape;
         Device& device;
         void* data;
         bool owns_data = true;
         TensorImpl* data_owner;
         int ref_count = 1;
-        SizeVec stride;
+        Sizes stride;
         std::size_t offset;
         SizeVec batch_sizes;
 
