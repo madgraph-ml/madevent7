@@ -17,6 +17,7 @@ def main():
     instruction_set_python(commands)
     instruction_set_mixin(commands)
     cpu_runtime_mixin(commands)
+    cpu_runtime_backward_mixin(commands)
 
 
 def write_autogen(f):
@@ -163,6 +164,50 @@ def cpu_runtime_mixin(commands):
                 f"    {func}(instr, locals);\n"
                 f"    break;\n"
             )
+
+
+def cpu_runtime_backward_mixin(commands):
+    with open("src/backend/cpu/runtime_backward_mixin.h", "w") as f:
+        write_autogen(f)
+
+        for name, cmd in commands.items():
+            if not cmd.get("differentiable", False):
+                continue
+            opcode = cmd["opcode"]
+            if cmd.get("custom_op", False):
+                f.write(
+                    f"case {opcode}:\n"
+                    f"    op_{name}(instr, locals);\n"
+                    f"    break;\n"
+                )
+            else:
+                n_inputs = len(cmd["inputs"])
+                n_outputs = len(cmd["outputs"])
+                in_stored = [
+                    i for i, arg in enumerate(cmd["inputs"])
+                    if arg.get("backward_arg", False)
+                ]
+                out_stored = [
+                    i for i, arg in enumerate(cmd["outputs"])
+                    if arg.get("backward_arg", False)
+                ]
+                if len(in_stored) + len(out_stored) == 0:
+                    in_stored = list(range(n_inputs))
+                in_stored_str = ",".join(str(i) for i in in_stored)
+                out_stored_str = ",".join(str(i) for i in out_stored)
+
+                dims = cmd.get("dims", 1)
+                func = (
+                    f"backward_batch_foreach<"
+                    f"backward_kernel_{name}<CpuTypes>, backward_kernel_{name}<SimdTypes>, "
+                    f"{n_inputs}, {n_outputs}, {len(in_stored)}, {len(out_stored)}, {dims}>"
+                )
+                f.write(
+                    f"case {opcode}:\n"
+                    f"    {func}(instr, locals, local_grads, "
+                    f"{{{in_stored_str}}}, {{{out_stored_str}}});\n"
+                    f"    break;\n"
+                )
 
 
 if __name__ == "__main__":

@@ -23,21 +23,35 @@ public:
     };
 
     Runtime(const Function& function) {
-        initialize(function, Context::default_context());
+        initialize(function, Context::default_context(), {});
     }
     Runtime(const Function& function, Context& context) {
-        initialize(function, context);
+        initialize(function, context, {});
+    }
+    Runtime(
+        const Function& function,
+        Context& context,
+        const std::vector<std::string>& grad_globals
+    ) {
+        initialize(function, context, grad_globals);
     }
     TensorVec run(TensorVec& inputs) const;
     std::tuple<TensorVec, TensorVec> run_with_grad(TensorVec& inputs) const;
-    void run_backward(TensorVec& output_grads, TensorVec& locals);
+    std::unordered_map<std::string, Tensor> run_backward(
+        TensorVec& output_grads, TensorVec& locals
+    );
 
 private:
-    void initialize(const Function& function, Context& context);
+    void initialize(
+        const Function& function,
+        Context& context,
+        const std::vector<std::string>& grad_globals
+    );
 
     std::vector<Instruction> instructions;
     SizeVec output_indices;
     TensorVec locals_init;
+    std::unordered_map<std::string, std::size_t> grad_global_indices;
 };
 
 }

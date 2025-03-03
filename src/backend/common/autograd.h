@@ -203,6 +203,10 @@ constexpr AutogradValue<double> exp(AutogradValue<double> arg1) {
     return {AutogradOp::exp, arg1};
 }
 
+constexpr AutogradValue<double> log1p(AutogradValue<double> arg1) {
+    return {AutogradOp::log1p, arg1};
+}
+
 template<typename T, const Graph& graph, std::size_t instr_index, std::size_t in_arg_count>
 constexpr void eval_rec(
     std::array<AutogradEvalScalar<T>, max_instr>& locals,
@@ -330,8 +334,7 @@ constexpr void backward_rec(
     std::array<bool, max_instr>& local_grads_init,
     std::array<FIn<T,0>, in_arg_count>& in_args,
     std::array<FOut<T,0>, in_arg_count>& in_grads,
-    std::array<FIn<T,0>, out_arg_count>& out_grads,
-    std::array<bool, in_arg_count>& in_grads_init
+    std::array<FIn<T,0>, out_arg_count>& out_grads
 ) {
     if constexpr (rev_instr_index < max_instr) {
         auto instr_index = max_instr - rev_instr_index - 1;
@@ -341,9 +344,7 @@ constexpr void backward_rec(
         case AutogradOp::nop:
             break;
         case AutogradOp::load:
-            accumulate_grad(
-                in_grads_init[instr.arg1], in_grads[instr.arg1], grad
-            );
+            in_grads[instr.arg1] = in_grads[instr.arg1] + grad;
             break;
         case AutogradOp::store:
             accumulate_grad(
@@ -529,8 +530,7 @@ constexpr void backward_rec(
             break;
         }
         backward_rec<T, graph, rev_instr_index + 1, in_arg_count, out_arg_count>(
-            locals, local_grads, local_grads_init,
-            in_args, in_grads, out_grads, in_grads_init
+            locals, local_grads, local_grads_init, in_args, in_grads, out_grads
         );
     }
 }
@@ -565,16 +565,13 @@ constexpr void backward(
     std::array<FOut<T,0>, in_arg_count> input_grads
 ) {
     static constexpr Graph graph = func_graph<func, in_arg_count, out_arg_count>();
-    //backward_impl<graph, in_arg_count, out_arg_count>(input_args, input_grads, output_grads);
     std::array<AutogradEvalScalar<T>, max_instr> locals;
     std::array<AutogradEvalScalar<T>, max_instr> local_grads;
     std::array<bool, max_instr> local_grads_init;
-    std::array<bool, in_arg_count> in_grads_init;
     local_grads_init.fill(false);
-    in_grads_init.fill(false);
     eval_rec<T, graph, 0, in_arg_count>(locals, input_args);
     backward_rec<T, graph, 0, in_arg_count, out_arg_count>(
-        locals, local_grads, local_grads_init, input_args, input_grads, output_grads, in_grads_init
+        locals, local_grads, local_grads_init, input_args, input_grads, output_grads
     );
 }
 

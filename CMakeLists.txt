@@ -149,6 +149,7 @@ add_library(
 
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
+#target_compile_options(madevent PRIVATE -ffast-math)
 if(USE_SIMD)
     target_link_libraries(madevent PRIVATE sleef::sleef)
     target_compile_definitions(madevent PRIVATE USE_SIMD=1)

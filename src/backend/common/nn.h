@@ -100,9 +100,9 @@ KERNELSPEC void kernel_leaky_relu(FIn<T,0> input, FOut<T,0> output) {
 
 template<typename T>
 KERNELSPEC void backward_kernel_leaky_relu(
-    FIn<T,1> input, FIn<T,1> output_grad, FOut<T,1> input_grad
+    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
 ) {
-    backward<kernel_leaky_relu<AutogradTypes>, 1, 1>(
+    backward<T, kernel_leaky_relu<AutogradTypes>, 1, 1>(
         {input}, {output_grad}, {input_grad}
     );
 }
@@ -232,82 +232,100 @@ KERNELSPEC void kernel_rqs_find_bin(
 
 template<typename T>
 KERNELSPEC void kernel_rqs_forward(
-    FIn<T,1> input, FIn<T,2> condition, FOut<T,1> output, FOut<T,1> det
+    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> det
 ) {
-    for (std::size_t i = 0; i < input.size(); ++i) {
-        auto condition_i = condition[i];
-        rqs_forward_body<T>(
-            input[i],
-            condition_i[0],
-            condition_i[1],
-            condition_i[2],
-            condition_i[3],
-            condition_i[4],
-            condition_i[5],
-            output[i], 
-            det[i]
-        );
-    }
+    rqs_forward_body<T>(
+        input,
+        condition[0],
+        condition[1],
+        condition[2],
+        condition[3],
+        condition[4],
+        condition[5],
+        output,
+        det
+    );
 }
 
-/*template<typename T>
+template<typename T>
 KERNELSPEC void backward_kernel_rqs_forward(
-    FIn<T,1> input, FIn<T,2> condition, FIn<T,1> det,
-    FIn<T,1> output_grad, FIn<T,0> det_grad,
-    FOut<T,1> input_grad, FOut<T,2> condition_grad
+    FIn<T,0> input, FIn<T,1> condition,
+    FIn<T,0> output_grad, FIn<T,0> det_grad,
+    FOut<T,0> input_grad, FOut<T,1> condition_grad
 ) {
-    FVal<T> det_product(1.);
-    for (std::size_t i = 0; i < input.size(); ++i) {
-        auto condition_i = condition[i];
-        auto condition_grad_i = condition_grad[i];
-        FVal<T> det_grad_i = ;
-        backward<rqs_forward_body<AutogradTypes>, 7, 2>(
-            {
-                input[i],
-                condition_i[0],
-                condition_i[1],
-                condition_i[2],
-                condition_i[3],
-                condition_i[4],
-                condition_i[5],
-            },
-            {
-                output_grad,
-                det_grad,
-            },
-            {
-                input_grad[i],
-                condition_grad_i[0],
-                condition_grad_i[1],
-                condition_grad_i[2],
-                condition_grad_i[3],
-                condition_grad_i[4],
-                condition_grad_i[5],
-            }
-        );
-        det_product = det_product * det_i;
-    }
-    det = det_product;
-}*/
+    backward<T, rqs_forward_body<AutogradTypes>, 7, 2>(
+        {
+            input,
+            condition[0],
+            condition[1],
+            condition[2],
+            condition[3],
+            condition[4],
+            condition[5],
+        },
+        {
+            output_grad,
+            det_grad,
+        },
+        {
+            input_grad,
+            condition_grad[0],
+            condition_grad[1],
+            condition_grad[2],
+            condition_grad[3],
+            condition_grad[4],
+            condition_grad[5],
+        }
+    );
+}
 
 template<typename T>
 KERNELSPEC void kernel_rqs_inverse(
-    FIn<T,1> input, FIn<T,2> condition, FOut<T,1> output, FOut<T,1> det
+    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> det
 ) {
-    for (std::size_t i = 0; i < input.size(); ++i) {
-        auto condition_i = condition[i];
-        rqs_inverse_body<T>(
-            input[i],
-            condition_i[0],
-            condition_i[1],
-            condition_i[2],
-            condition_i[3],
-            condition_i[4],
-            condition_i[5],
-            output[i], 
-            det[i]
-        );
-    }
+    rqs_inverse_body<T>(
+        input,
+        condition[0],
+        condition[1],
+        condition[2],
+        condition[3],
+        condition[4],
+        condition[5],
+        output,
+        det
+    );
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_rqs_inverse(
+    FIn<T,0> input, FIn<T,1> condition,
+    FIn<T,0> output_grad, FIn<T,0> det_grad,
+    FOut<T,0> input_grad, FOut<T,1> condition_grad
+) {
+    backward<T, rqs_inverse_body<AutogradTypes>, 7, 2>(
+        {
+            input,
+            condition[0],
+            condition[1],
+            condition[2],
+            condition[3],
+            condition[4],
+            condition[5],
+        },
+        {
+            output_grad,
+            det_grad,
+        },
+        {
+            input_grad,
+            condition_grad[0],
+            condition_grad[1],
+            condition_grad[2],
+            condition_grad[3],
+            condition_grad[4],
+            condition_grad[5],
+        }
+    );
 }
 
 template<typename T>
@@ -352,7 +370,7 @@ KERNELSPEC void kernel_softmax_prior(FIn<T,1> input, FIn<T,1> prior, FOut<T,1> o
 
 template<typename T>
 KERNELSPEC void backward_kernel_softmax_prior(
-    FIn<T,1> output, FIn<T,1> output_grad, FOut<T,1> input_grad
+    FIn<T,1> output, FIn<T,1> output_grad, FOut<T,1> input_grad, FOut<T,1> prior_grad
 ) {
     //TODO: also gradient for prior?
     std::size_t dim = output.size();

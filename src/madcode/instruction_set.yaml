@@ -988,14 +988,13 @@ matmul:
       type: [float, m]
       desc:
   custom_op: True
-  #differentiable: True
+  differentiable: True
 
 leaky_relu:
   inputs:
     - name: in
       type: [float, ...]
       desc:
-      backward_arg: True
   outputs:
     - name: out
       type: [float, ...]
@@ -1046,11 +1045,9 @@ rqs_forward:
     - name: input
       type: [float, n]
       desc:
-      backward_arg: True
     - name: condition
       type: [float, n, 6]
       desc:
-      backward_arg: True
   outputs:
     - name: output
       type: [float, n]
@@ -1058,18 +1055,17 @@ rqs_forward:
     - name: det
       type: [float, n]
       desc:
-  #differentiable: True
+  differentiable: True
+  dim: 2
 
 rqs_inverse:
   inputs:
     - name: input
       type: [float, n]
       desc:
-      backward_arg: True
     - name: condition
       type: [float, n, 6]
       desc:
-      backward_arg: True
   outputs:
     - name: output
       type: [float, n]
@@ -1077,7 +1073,8 @@ rqs_inverse:
     - name: det
       type: [float, n]
       desc:
-  #differentiable: True
+  differentiable: True
+  dim: 2
 
 softmax:
   inputs:
@@ -1099,7 +1096,6 @@ softmax_prior:
     - name: prior
       type: [float, n]
       desc:
-      no_grad: True
   outputs:
     - name: output
       type: [float, n]
