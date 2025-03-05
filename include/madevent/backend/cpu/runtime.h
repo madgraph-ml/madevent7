@@ -22,18 +22,11 @@ public:
         bool eval_grad;
     };
 
-    Runtime(const Function& function) {
-        initialize(function, Context::default_context(), {});
+    Runtime(const Function& function) : context(Context::default_context()) {
+        initialize(function);
     }
-    Runtime(const Function& function, Context& context) {
-        initialize(function, context, {});
-    }
-    Runtime(
-        const Function& function,
-        Context& context,
-        const std::vector<std::string>& grad_globals
-    ) {
-        initialize(function, context, grad_globals);
+    Runtime(const Function& function, ContextPtr context) : context(context) {
+        initialize(function);
     }
     TensorVec run(TensorVec& inputs) const;
     std::tuple<TensorVec, TensorVec> run_with_grad(TensorVec& inputs) const;
@@ -42,16 +35,13 @@ public:
     );
 
 private:
-    void initialize(
-        const Function& function,
-        Context& context,
-        const std::vector<std::string>& grad_globals
-    );
+    void initialize(const Function& function);
 
     std::vector<Instruction> instructions;
     SizeVec output_indices;
     TensorVec locals_init;
     std::unordered_map<std::string, std::size_t> grad_global_indices;
+    ContextPtr context;
 };
 
 }

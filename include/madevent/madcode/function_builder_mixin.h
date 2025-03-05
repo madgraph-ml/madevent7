@@ -303,6 +303,10 @@ Value gather_int(Value index, Value choices) {
     return instruction("gather_int", {index, choices})[0];
 }
 
+Value select(Value input, Value indices) {
+    return instruction("select", {input, indices})[0];
+}
+
 Value one_hot(Value index, Value option_count) {
     return instruction("one_hot", {index, option_count})[0];
 }

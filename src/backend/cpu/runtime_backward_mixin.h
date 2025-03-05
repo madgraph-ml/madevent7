@@ -7,6 +7,9 @@ case 57:
 case 58:
     backward_batch_foreach<backward_kernel_leaky_relu<CpuTypes>, backward_kernel_leaky_relu<SimdTypes>, 1, 1, 1, 0, 2>(instr, locals, local_grads, {0}, {});
     break;
+case 59:
+    backward_batch_foreach<backward_kernel_rqs_activation<CpuTypes>, backward_kernel_rqs_activation<SimdTypes>, 2, 3, 0, 2, 1>(instr, locals, local_grads, {}, {0,1});
+    break;
 case 61:
     backward_batch_foreach<backward_kernel_rqs_forward<CpuTypes>, backward_kernel_rqs_forward<SimdTypes>, 2, 2, 2, 0, 1>(instr, locals, local_grads, {0,1}, {});
     break;

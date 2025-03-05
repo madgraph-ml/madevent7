@@ -114,8 +114,29 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("locals", &Function::locals)
         .def_readonly("instructions", &Function::instructions);
 
+    py::class_<Device, DevicePtr> device(m, "Device");
+    m.def("cpu_device", &cpu_device);
+
+    py::class_<Context, ContextPtr>(m, "Context")
+        .def(py::init<>())
+        .def(py::init<DevicePtr>(), py::arg("device"))
+        .def("load_matrix_element", &Context::load_matrix_element,
+             py::arg("file"), py::arg("param_card"), py::arg("process_index"))
+        .def("load_pdf", &Context::load_pdf, py::arg("name"), py::arg("index")=0)
+        .def("define_global", &Context::define_global,
+             py::arg("name"), py::arg("dtype"), py::arg("shape"), py::arg("requires_grad")=false)
+        //.def("get_global", &Context::global, py::arg("name"))
+        .def("global_requires_grad", &Context::global_requires_grad, py::arg("name"))
+        //.def("matrix_element", &Context::matrix_element, py::arg("index"))
+        //.def("pdf_set", &Context::pdf_set)
+        .def("save", &Context::save, py::arg("file"))
+        .def("load", &Context::load, py::arg("file"))
+        .def("device", &Context::device)
+        .def_static("default_context", &Context::default_context);
+
     py::class_<FunctionRuntime>(m, "FunctionRuntime")
         .def(py::init<Function>(), py::arg("function"))
+        .def(py::init<Function, ContextPtr>(), py::arg("function"), py::arg("context"))
 #ifdef TORCH_FOUND
         .def("call", &FunctionRuntime::call_torch)
 #endif

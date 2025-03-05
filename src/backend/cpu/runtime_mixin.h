@@ -209,11 +209,14 @@ case 68:
     batch_foreach<kernel_gather_int<CpuTypes>, kernel_gather_int<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 69:
-    batch_foreach<kernel_one_hot<CpuTypes>, kernel_one_hot<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_select<CpuTypes>, kernel_select<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 70:
-    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_one_hot<CpuTypes>, kernel_one_hot<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 71:
+    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 72:
     batch_foreach<kernel_vegas_inverse<CpuTypes>, kernel_vegas_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
     break;

@@ -79,7 +79,8 @@ InstructionOwner instructions[] {
     mi("sample_discrete_probs", 66, {{DataType::dt_float, false, {}, false}, {DataType::dt_float, false, {"n"}, false}}, {{DataType::dt_int, false, {}, false}, {DataType::dt_float, false, {}, false}}),
     mi("gather", 67, {{DataType::dt_int, false, {}, false}, {DataType::dt_float, false, {"n"}, false}}, {{DataType::dt_float, false, {}, false}}),
     mi("gather_int", 68, {{DataType::dt_int, false, {}, false}, {DataType::dt_int, false, {"n"}, false}}, {{DataType::dt_int, false, {}, false}}),
-    mi("one_hot", 69, {{DataType::dt_int, false, {}, false}, {DataType::dt_int, true, {"n"}, true}}, {{DataType::dt_float, false, {"n"}, false}}),
-    mi("vegas_forward", 70, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
-    mi("vegas_inverse", 71, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
+    mi("select", 69, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_int, true, {"m"}, false}}, {{DataType::dt_float, false, {"m"}, false}}),
+    mi("one_hot", 70, {{DataType::dt_int, false, {}, false}, {DataType::dt_int, true, {"n"}, true}}, {{DataType::dt_float, false, {"n"}, false}}),
+    mi("vegas_forward", 71, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
+    mi("vegas_inverse", 72, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
 };

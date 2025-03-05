@@ -392,6 +392,34 @@ rapidity:
       type: [float]
       desc:
 
+diff_cross_section:
+  inputs:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+    - name: pdf1
+      type: [float]
+      desc:
+    - name: pdf2
+      type: [float]
+      desc:
+    - name: matrix_element
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+    - name: e_cm2
+      type: [float]
+      desc:
+  outputs:
+    - name: result
+      type: [float]
+      desc:
+
 ---
 title: Two-body decays and scattering
 
@@ -1018,7 +1046,7 @@ rqs_activation:
     - name: derivatives
       desc:
   class: RqsActivationInstruction
-  #differentiable: True
+  differentiable: True
 
 rqs_find_bin:
   inputs:
@@ -1038,7 +1066,8 @@ rqs_find_bin:
     - name: condition
       type: [float, n, 6]
       desc:
-  #differentiable: True
+  differentiable: True
+  dims: 2
 
 rqs_forward:
   inputs:
@@ -1162,6 +1191,19 @@ gather_int:
   outputs:
     - name: output
       type: [int]
+      desc:
+
+select:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: indices
+      type: [int, single, m]
+      desc:
+  outputs:
+    - name: output
+      type: [float, m]
       desc:
 
 one_hot:

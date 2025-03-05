@@ -106,10 +106,13 @@ private:
 
 class Device {
 public:
+    virtual ~Device() = default;
     virtual void* allocate(std::size_t size) const = 0;
     virtual void free(void* ptr) const = 0;
     virtual void memcpy(void* to, void* from, std::size_t size) const = 0;
 };
+
+using DevicePtr = std::shared_ptr<Device>;
 
 class CpuDevice : public Device {
 public:
@@ -129,15 +132,15 @@ public:
 
     CpuDevice(const CpuDevice&) = delete;
     CpuDevice& operator=(CpuDevice&) = delete;
-    friend inline CpuDevice& cpu_device();
+    friend inline DevicePtr cpu_device();
 
 private:
     CpuDevice() {}
 };
 
-inline CpuDevice& cpu_device() {
-    static CpuDevice inst;
-    return inst;
+inline DevicePtr cpu_device() {
+    static DevicePtr device = DevicePtr(new CpuDevice());
+    return device;
 }
 
 class Tensor {
@@ -155,11 +158,11 @@ public:
     Tensor(DataType dtype, const Sizes& shape) :
         Tensor(dtype, shape, cpu_device()) {}
 
-    Tensor(DataType dtype, const Sizes& shape, Device& device) :
+    Tensor(DataType dtype, const Sizes& shape, DevicePtr device) :
         impl(new TensorImpl{dtype, shape, device})
     {
         auto size = init_stride();
-        impl->data = device.allocate(size);
+        impl->data = device->allocate(size);
     }
 
     Tensor(DataType dtype, const Sizes& shape, std::function<void*(std::size_t)> allocator) :
@@ -168,7 +171,7 @@ public:
     Tensor(
         DataType dtype,
         const Sizes& shape,
-        Device& device,
+        DevicePtr device,
         std::function<void*(std::size_t)> allocator
     ) : impl(new TensorImpl{dtype, shape, device})
     {
@@ -179,7 +182,7 @@ public:
     Tensor(DataType dtype, const Sizes& shape, void* data) :
         Tensor(dtype, shape, cpu_device(), data) {}
 
-    Tensor(DataType dtype, const Sizes& shape, Device& device, void* data) :
+    Tensor(DataType dtype, const Sizes& shape, DevicePtr device, void* data) :
         impl(new TensorImpl{dtype, shape, device, data, false})
     {
         init_stride();
@@ -193,7 +196,7 @@ public:
     template<typename T, typename = std::enable_if_t<
         std::is_same_v<T, bool> || std::is_same_v<T, long long> || std::is_same_v<T, double>
     >>
-    Tensor(T value, Device& device) :
+    Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
             std::is_same_v<T, bool> ? DataType::dt_bool :
             std::is_same_v<T, long long> ? DataType::dt_int :
@@ -203,8 +206,8 @@ public:
         })
     {
         auto size = init_stride();
-        impl->data = device.allocate(size);
-        device.memcpy(impl->data, &value, sizeof(value));
+        impl->data = device->allocate(size);
+        device->memcpy(impl->data, &value, sizeof(value));
     }
 
     ~Tensor() {
@@ -281,7 +284,7 @@ public:
     }
 
     void copy_from(void* source) {
-        impl->device.memcpy(impl->data, source, impl->stride.back() * impl->shape.back());
+        impl->device->memcpy(impl->data, source, impl->stride.back() * impl->shape.back());
     }
 
     void reset() {
@@ -307,7 +310,7 @@ private:
     struct TensorImpl {
         DataType dtype;
         Sizes shape;
-        Device& device;
+        DevicePtr device;
         void* data;
         bool owns_data = true;
         TensorImpl* data_owner;
@@ -322,7 +325,7 @@ private:
                 return;
             }
             if (owns_data) {
-                device.free(data);
+                device->free(data);
             } else if (data_owner != nullptr) {
                 data_owner->reset();
             }

@@ -43,23 +43,33 @@ class Context {
      * Contains global variables, loaded PDF set and matrix elements
      */
 public:
-    Context(Device& device) : device(device) {}
+    Context() : _device(cpu_device()) {}
+    Context(DevicePtr device) : _device(device) {}
+    Context(const Context&) = delete;
+    Context& operator=(const Context&) = delete;
     void load_matrix_element(
         std::string file, std::string param_card, std::size_t process_index
     );
     void load_pdf(std::string name, int index=0);
-    void define_global(std::string name, DataType dtype, const SizeVec& shape);
+    void define_global(
+        std::string name, DataType dtype, const SizeVec& shape, bool requires_grad=false
+    );
     Tensor global(std::string name);
+    bool global_requires_grad(std::string name);
     const MatrixElement& matrix_element(std::size_t index) const;
     const PdfSet& pdf_set() const;
     void save(std::string file) const;
     void load(std::string file);
-    static Context& default_context();
+    DevicePtr device() { return _device; }
+    static std::shared_ptr<Context> default_context();
+
 private:
-    Device& device;
-    std::unordered_map<std::string, Tensor> globals;
+    DevicePtr _device;
+    std::unordered_map<std::string, std::tuple<Tensor, bool>> globals;
     std::vector<MatrixElement> matrix_elements;
     std::optional<PdfSet> _pdf_set;
 };
+
+using ContextPtr = std::shared_ptr<Context>;
 
 }

@@ -44,7 +44,14 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
     }
 
     if (!cpu_runtime) {
-        cpu_runtime.emplace(function);
+        if (context) {
+            if (context->device() != cpu_device()) {
+                throw std::invalid_argument("Given context does not have device CPU");
+            }
+            cpu_runtime.emplace(function, context);
+        } else {
+            cpu_runtime.emplace(function);
+        }
     }
     auto outputs = cpu_runtime->run(inputs);
     std::vector<py::array_t<double>> outputs_numpy;
@@ -71,7 +78,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     std::vector<torch::Tensor> tensors;
     std::vector<Tensor> inputs;
     bool is_cuda = false;
-    Device& device = cpu_device();
+    DevicePtr device = cpu_device();
     for (int i = 0; i < n_args; ++i) {
         auto& arg = args.at(i);
         auto n_dims = arg.dim();
@@ -182,6 +189,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
     std::vector<Tensor> outputs;
     if (is_cuda) {
 #ifdef CUDA_FOUND
+        //TODO: update for context
         if (!cuda_runtime) {
             cuda_runtime.emplace(function);
         }
@@ -189,7 +197,14 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
 #endif
     } else {
         if (!cpu_runtime) {
-            cpu_runtime.emplace(function);
+            if (context) {
+                if (context->device() != cpu_device()) {
+                    throw std::invalid_argument("Given context does not have device CPU");
+                }
+                cpu_runtime.emplace(function, context);
+            } else {
+                cpu_runtime.emplace(function);
+            }
         }
         outputs = cpu_runtime->run(inputs);
     }

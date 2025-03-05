@@ -276,11 +276,7 @@ void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& loca
 
 }
 
-void Runtime::initialize(
-    const Function& function,
-    Context& context,
-    const std::vector<std::string>& grad_globals
-) {
+void Runtime::initialize(const Function& function) {
     locals_init.resize(function.locals.size());
     auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
@@ -313,19 +309,19 @@ void Runtime::initialize(
             output_dtypes,
             output_shapes,
             batch_size_index,
-            context,
+            *context,
             eval_grad
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, context, requires_grad.at(local_index)
+                -1, {local_index}, {}, {}, {}, 0, *context, requires_grad.at(local_index)
             });
         }
         ++instr_index;
     }
 
     for (auto& [name, value] : opt_function.globals) {
-        Tensor global = context.global(name);
+        Tensor global = context->global(name);
         auto& global_shape = value.type.shape;
         Sizes full_shape(global_shape.size() + 1);
         full_shape[0] = 1;
@@ -336,9 +332,7 @@ void Runtime::initialize(
             ));
         }
         locals_init.at(value.local_index) = global;
-        if (std::find(
-            grad_globals.begin(), grad_globals.end(), name
-        ) != grad_globals.end()) {
+        if (context->global_requires_grad(name)) {
             requires_grad.at(value.local_index) = true;
             grad_global_indices[name] = value.local_index;
         }

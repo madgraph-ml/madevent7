@@ -111,7 +111,9 @@ void Context::load_pdf(std::string name, int index) {
     _pdf_set.emplace(name, index);
 }
 
-void Context::define_global(std::string name, DataType dtype, const SizeVec& shape) {
+void Context::define_global(
+    std::string name, DataType dtype, const SizeVec& shape, bool requires_grad
+) {
     SizeVec full_shape {1};
     full_shape.insert(full_shape.end(), shape.begin(), shape.end());
     if (globals.contains(name)) {
@@ -119,12 +121,22 @@ void Context::define_global(std::string name, DataType dtype, const SizeVec& sha
             "Context already contains a global named {}", name
         ));
     }
-    globals[name] = Tensor(dtype, shape, device);
+    globals[name] = {Tensor(dtype, shape, _device), requires_grad};
 }
 
 Tensor Context::global(std::string name) {
     if (auto search = globals.find(name); search != globals.end()) {
-        return search->second;
+        return std::get<0>(search->second);
+    } else {
+        throw std::invalid_argument(std::format(
+            "Context does not contain a global named {}", name
+        ));
+    }
+}
+
+bool Context::global_requires_grad(std::string name) {
+    if (auto search = globals.find(name); search != globals.end()) {
+        return std::get<1>(search->second);
     } else {
         throw std::invalid_argument(std::format(
             "Context does not contain a global named {}", name
@@ -154,7 +166,7 @@ void Context::load(std::string file) {
 
 }
 
-Context& Context::default_context() {
-    static Context context(cpu_device());
+ContextPtr Context::default_context() {
+    static ContextPtr context = std::make_shared<Context>(cpu_device());
     return context;
 }

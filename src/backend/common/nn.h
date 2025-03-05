@@ -153,7 +153,7 @@ template<typename T>
 KERNELSPEC void backward_kernel_rqs_activation(
     FIn<T,2> widths, FIn<T,2> heights,
     FIn<T,2> widths_grad, FIn<T,2> heights_grad, FIn<T,2> derivatives_grad,
-    FOut<T,1> input_grad
+    FOut<T,1> input_grad, FOut<T,0> bin_count_grad
 ) {
     std::size_t n_dims = widths.size();
     std::size_t n_bins = (input_grad.size() / n_dims - 1) / 3;
@@ -191,43 +191,89 @@ KERNELSPEC void backward_kernel_rqs_activation(
 
 template<typename T>
 KERNELSPEC void kernel_rqs_find_bin(
-    FIn<T,1> input, FIn<T,2> in_sizes, FIn<T,2> out_sizes, FIn<T,2> derivatives,
-    FOut<T,2> condition
+    FIn<T,0> input, FIn<T,1> in_sizes, FIn<T,1> out_sizes, FIn<T,1> derivatives,
+    FOut<T,1> condition
 ) {
-    /*FVal<T> det_product(1.);
-    for (std::size_t i = 0; i < input.size(); ++i) {
-        auto condition_i = condition[i];
-        auto n_bins = condition_i.size();
-        auto input_orig = input[0];
-        auto low_mask = input_orig < 0.;
-        auto high_mask = input_orig > 1.;
-        auto clamp = low_mask | high_mask;
-        auto input01 = where(high_mask, 1., where(low_mask, 0., input_orig));
+    auto n_bins = in_sizes.size();
+    auto low_mask = input < 0.;
+    auto high_mask = input > 1.;
+    auto clamp = low_mask | high_mask;
+    auto input01 = where(high_mask, 1., where(low_mask, 0., input));
+    auto bin_width_factor = 1. - MIN_BIN_WIDTH * n_bins;
+    auto bin_height_factor = 1. - MIN_BIN_HEIGHT * n_bins;
 
-        FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
-        FVal<T> width(0.), height(0.), cumwidth(0.), cumheight(0.);
-        FVal<T> derivative_unorm(0.), derivative_plus_one_unorm(0.);
-        for (std::size_t bin = 0; bin < n_bins; ++bin) {
-            auto w = min_bin_width + bin_width_factor * condition_i[bin];
-            auto h = min_bin_height + bin_height_factor * condition_i[n_bins + bin];
-            auto d = condition_i[2 * n_bins + bin];
-            auto dp1 = condition_i[2 * n_bins + bin + 1];
+    FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
+    FVal<T> width(0.), height(0.), cumwidth(0.), cumheight(0.);
+    FVal<T> derivative_unorm(0.), derivative_plus_one_unorm(0.);
+    for (std::size_t bin = 0; bin < n_bins; ++bin) {
+        auto w = MIN_BIN_WIDTH + bin_width_factor * in_sizes[bin];
+        auto h = MIN_BIN_HEIGHT + bin_height_factor * out_sizes[bin];
+        auto d = derivatives[bin];
+        auto dp1 = derivatives[bin + 1];
 
-            auto mask = input01 < (inverse ? loop_cumheight : loop_cumwidth);
-            width = where(mask, width, w);
-            height = where(mask, height, h);
-            derivative_unorm = where(mask, derivative_unorm, d);
-            derivative_plus_one_unorm = where(mask, derivative_plus_one_unorm, dp1);
-            cumwidth = where(mask, cumwidth, loop_cumwidth);
-            cumheight = where(mask, cumheight, loop_cumheight);
-            loop_cumwidth += w;
-            loop_cumheight += h;
-        }
-
-
-
+        auto mask = input01 < loop_cumwidth;
+        width = where(mask, width, w);
+        height = where(mask, height, h);
+        derivative_unorm = where(mask, derivative_unorm, d);
+        derivative_plus_one_unorm = where(mask, derivative_plus_one_unorm, dp1);
+        cumwidth = where(mask, cumwidth, loop_cumwidth);
+        cumheight = where(mask, cumheight, loop_cumheight);
+        loop_cumwidth = loop_cumwidth + w;
+        loop_cumheight = loop_cumheight + h;
     }
-    det = det_product;*/
+    condition[0] = width;
+    condition[1] = height;
+    condition[2] = cumwidth;
+    condition[3] = cumheight;
+    condition[4] = derivative_unorm;
+    condition[5] = derivative_plus_one_unorm;
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_rqs_find_bin(
+    FIn<T,0> input, FIn<T,1> in_sizes, FIn<T,1> out_sizes, FIn<T,1> derivatives,
+    FIn<T,1> condition_grad, FOut<T,0> input_grad, FOut<T,1> in_sizes_grad,
+    FOut<T,1> out_sizes_grad, FOut<T,1> derivatives_grad
+) {
+    FVal<T> width_grad = condition_grad[0];
+    FVal<T> height_grad = condition_grad[1];
+    FVal<T> cumwidth_grad = condition_grad[2];
+    FVal<T> cumheight_grad = condition_grad[3];
+    FVal<T> derivative_unorm_grad = condition_grad[4];
+    FVal<T> derivative_plus_one_unorm_grad = condition_grad[5];
+    auto n_bins = in_sizes.size();
+    auto low_mask = input < 0.;
+    auto high_mask = input > 1.;
+    auto clamp = low_mask | high_mask;
+    auto input01 = where(high_mask, 1., where(low_mask, 0., input));
+    auto bin_width_factor = 1. - MIN_BIN_WIDTH * n_bins;
+    auto bin_height_factor = 1. - MIN_BIN_HEIGHT * n_bins;
+
+    /*FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
+    FVal<T> width(0.), height(0.), cumwidth(0.), cumheight(0.);
+    FVal<T> derivative_unorm(0.), derivative_plus_one_unorm(0.);
+    for (std::size_t bin = 0; bin < n_bins; ++bin) {
+        auto w = MIN_BIN_WIDTH + bin_width_factor * in_sizes[bin];
+        auto h = MIN_BIN_HEIGHT + bin_height_factor * out_sizes[bin];
+        auto d = derivatives[bin];
+        auto dp1 = derivatives[bin + 1];
+
+        auto mask = input01 < loop_cumwidth;
+        width = where(mask, width, w);
+        height = where(mask, height, h);
+        derivative_unorm = where(mask, derivative_unorm, d);
+        derivative_plus_one_unorm = where(mask, derivative_plus_one_unorm, dp1);
+        cumwidth = where(mask, cumwidth, loop_cumwidth);
+        cumheight = where(mask, cumheight, loop_cumheight);
+        loop_cumwidth = loop_cumwidth + w;
+        loop_cumheight = loop_cumheight + h;
+    }
+    condition[0] = width;
+    condition[1] = height;
+    condition[2] = cumwidth;
+    condition[3] = cumheight;
+    condition[4] = derivative_unorm;
+    condition[5] = derivative_plus_one_unorm;*/
 }
 
 template<typename T>
@@ -380,5 +426,13 @@ KERNELSPEC void backward_kernel_softmax_prior(
             grad = grad - output[j] * output_grad[j];
         }
         input_grad[i] = output[i] * grad;
+    }
+}
+
+
+template<typename T>
+KERNELSPEC void kernel_select(FIn<T,1> input, IIn<T,1> indices, FOut<T,1> output) {
+    for (std::size_t i = 0; i < indices.size(); ++i) {
+        output[i] = input[single_index(indices[i])];
     }
 }
