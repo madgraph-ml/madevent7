@@ -307,5 +307,5 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 Mapping::Result PhaseSpaceMapping::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-
+    throw std::logic_error("inverse mapping not implemented");
 }

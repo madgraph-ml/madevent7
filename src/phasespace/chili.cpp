@@ -41,5 +41,5 @@ Mapping::Result ChiliMapping::build_forward_impl(
 Mapping::Result ChiliMapping::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
-
+    throw std::logic_error("inverse mapping not implemented");
 }

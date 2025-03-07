@@ -49,10 +49,10 @@ Diagram::LineRef::LineRef(std::string str) {
 }
 
 Diagram::Diagram(
-    std::vector<double>& _incoming_masses,
-    std::vector<double>& _outgoing_masses,
-    std::vector<Propagator>& _propagators,
-    std::vector<Vertex>& _vertices
+    const std::vector<double>& _incoming_masses,
+    const std::vector<double>& _outgoing_masses,
+    const std::vector<Propagator>& _propagators,
+    const std::vector<Vertex>& _vertices
 ) :
     incoming_masses(_incoming_masses),
     outgoing_masses(_outgoing_masses),

@@ -178,7 +178,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             if (target_dtype == torch::kFloat64) {
                 data_ptr = tensor.data_ptr<double>();
             } else if (target_dtype == torch::kInt64) {
-                data_ptr = tensor.data_ptr<long long>();
+                data_ptr = tensor.data_ptr<int64_t>();
             } else {
                 data_ptr = tensor.data_ptr<bool>();
             }
@@ -219,7 +219,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         if (output.dtype() == DataType::batch_sizes) {
             auto& batch_sizes = output.batch_sizes();
             torch::Tensor tensor = torch::zeros(
-                {static_cast<long long>(batch_sizes.size())},
+                {static_cast<int64_t>(batch_sizes.size())},
                 torch::TensorOptions().dtype(torch::kInt64)
             );
             auto accessor = tensor.accessor<long long, 1>();

@@ -162,9 +162,9 @@ KERNELSPEC void kernel_rapidity(FIn<T,0> x1, FIn<T,0> x2, FOut<T,0> rap) {
 template<typename T>
 KERNELSPEC void kernel_diff_cross_section(
     FIn<T,0> x1, FIn<T,0> x2, FIn<T,0> pdf1, FIn<T,0> pdf2,
-    FIn<T,0> matrix_element, FIn<T,0> det, FIn<T,0> e_cm2,
-    FOut<T,1> result
+    FIn<T,0> matrix_element, FIn<T,0> e_cm2,
+    FOut<T,0> result
 ) {
-    result = INV_GEV2_TO_PB * matrix_element * pdf1 * pdf2 * det
+    result = INV_GEV2_TO_PB * matrix_element * pdf1 * pdf2
         / (2. * e_cm2 * x1 * x1 * x2 * x2);
 }

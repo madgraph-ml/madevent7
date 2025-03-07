@@ -205,7 +205,7 @@ void EventWriter::write(const EventRecord& event) {
     }
     file_stream.write(
         reinterpret_cast<const char*>(&event.weight),
-        sizeof(long long)
+        sizeof(int64_t)
     );
     file_stream.write(
         reinterpret_cast<const char*>(event.particles.data()),

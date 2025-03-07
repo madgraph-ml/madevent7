@@ -95,128 +95,140 @@ case 30:
     batch_foreach<kernel_rapidity<CpuTypes>, kernel_rapidity<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 31:
-    batch_foreach<kernel_decay_momentum<CpuTypes>, kernel_decay_momentum<SimdTypes>, 4, 2, 1>(instr, locals);
+    batch_foreach<kernel_diff_cross_section<CpuTypes>, kernel_diff_cross_section<SimdTypes>, 6, 1, 1>(instr, locals);
     break;
 case 32:
-    batch_foreach<kernel_invt_min_max<CpuTypes>, kernel_invt_min_max<SimdTypes>, 5, 2, 1>(instr, locals);
+    batch_foreach<kernel_decay_momentum<CpuTypes>, kernel_decay_momentum<SimdTypes>, 4, 2, 1>(instr, locals);
     break;
 case 33:
-    batch_foreach<kernel_invt_to_costheta<CpuTypes>, kernel_invt_to_costheta<SimdTypes>, 6, 1, 1>(instr, locals);
+    batch_foreach<kernel_invt_min_max<CpuTypes>, kernel_invt_min_max<SimdTypes>, 5, 2, 1>(instr, locals);
     break;
 case 34:
-    batch_foreach<kernel_costheta_to_invt<CpuTypes>, kernel_costheta_to_invt<SimdTypes>, 6, 1, 1>(instr, locals);
+    batch_foreach<kernel_invt_to_costheta<CpuTypes>, kernel_invt_to_costheta<SimdTypes>, 6, 1, 1>(instr, locals);
     break;
 case 35:
-    batch_foreach<kernel_two_particle_density_inverse<CpuTypes>, kernel_two_particle_density_inverse<SimdTypes>, 3, 1, 1>(instr, locals);
+    batch_foreach<kernel_costheta_to_invt<CpuTypes>, kernel_costheta_to_invt<SimdTypes>, 6, 1, 1>(instr, locals);
     break;
 case 36:
-    batch_foreach<kernel_tinv_two_particle_density<CpuTypes>, kernel_tinv_two_particle_density<SimdTypes>, 4, 1, 1>(instr, locals);
+    batch_foreach<kernel_two_particle_density_inverse<CpuTypes>, kernel_two_particle_density_inverse<SimdTypes>, 3, 1, 1>(instr, locals);
     break;
 case 37:
-    batch_foreach<kernel_tinv_two_particle_density_inverse<CpuTypes>, kernel_tinv_two_particle_density_inverse<SimdTypes>, 4, 1, 1>(instr, locals);
+    batch_foreach<kernel_tinv_two_particle_density<CpuTypes>, kernel_tinv_two_particle_density<SimdTypes>, 4, 1, 1>(instr, locals);
     break;
 case 38:
-    batch_foreach<kernel_uniform_invariant<CpuTypes>, kernel_uniform_invariant<SimdTypes>, 3, 2, 1>(instr, locals);
+    batch_foreach<kernel_tinv_two_particle_density_inverse<CpuTypes>, kernel_tinv_two_particle_density_inverse<SimdTypes>, 4, 1, 1>(instr, locals);
     break;
 case 39:
-    batch_foreach<kernel_uniform_invariant_inverse<CpuTypes>, kernel_uniform_invariant_inverse<SimdTypes>, 3, 2, 1>(instr, locals);
+    batch_foreach<kernel_uniform_invariant<CpuTypes>, kernel_uniform_invariant<SimdTypes>, 3, 2, 1>(instr, locals);
     break;
 case 40:
-    batch_foreach<kernel_breit_wigner_invariant<CpuTypes>, kernel_breit_wigner_invariant<SimdTypes>, 5, 2, 1>(instr, locals);
+    batch_foreach<kernel_uniform_invariant_inverse<CpuTypes>, kernel_uniform_invariant_inverse<SimdTypes>, 3, 2, 1>(instr, locals);
     break;
 case 41:
-    batch_foreach<kernel_breit_wigner_invariant_inverse<CpuTypes>, kernel_breit_wigner_invariant_inverse<SimdTypes>, 5, 2, 1>(instr, locals);
+    batch_foreach<kernel_breit_wigner_invariant<CpuTypes>, kernel_breit_wigner_invariant<SimdTypes>, 5, 2, 1>(instr, locals);
     break;
 case 42:
-    batch_foreach<kernel_stable_invariant<CpuTypes>, kernel_stable_invariant<SimdTypes>, 4, 2, 1>(instr, locals);
+    batch_foreach<kernel_breit_wigner_invariant_inverse<CpuTypes>, kernel_breit_wigner_invariant_inverse<SimdTypes>, 5, 2, 1>(instr, locals);
     break;
 case 43:
-    batch_foreach<kernel_stable_invariant_inverse<CpuTypes>, kernel_stable_invariant_inverse<SimdTypes>, 4, 2, 1>(instr, locals);
+    batch_foreach<kernel_stable_invariant<CpuTypes>, kernel_stable_invariant<SimdTypes>, 4, 2, 1>(instr, locals);
     break;
 case 44:
-    batch_foreach<kernel_stable_invariant_nu<CpuTypes>, kernel_stable_invariant_nu<SimdTypes>, 5, 2, 1>(instr, locals);
+    batch_foreach<kernel_stable_invariant_inverse<CpuTypes>, kernel_stable_invariant_inverse<SimdTypes>, 4, 2, 1>(instr, locals);
     break;
 case 45:
-    batch_foreach<kernel_stable_invariant_nu_inverse<CpuTypes>, kernel_stable_invariant_nu_inverse<SimdTypes>, 5, 2, 1>(instr, locals);
+    batch_foreach<kernel_stable_invariant_nu<CpuTypes>, kernel_stable_invariant_nu<SimdTypes>, 5, 2, 1>(instr, locals);
     break;
 case 46:
-    batch_foreach<kernel_fast_rambo_r_to_u<CpuTypes>, kernel_fast_rambo_r_to_u<SimdTypes>, 1, 2, 1>(instr, locals);
+    batch_foreach<kernel_stable_invariant_nu_inverse<CpuTypes>, kernel_stable_invariant_nu_inverse<SimdTypes>, 5, 2, 1>(instr, locals);
     break;
 case 47:
-    batch_foreach<kernel_rambo_four_vectors_massless<CpuTypes>, kernel_rambo_four_vectors_massless<SimdTypes>, 4, 2, 1>(instr, locals);
+    batch_foreach<kernel_fast_rambo_r_to_u<CpuTypes>, kernel_fast_rambo_r_to_u<SimdTypes>, 1, 2, 1>(instr, locals);
     break;
 case 48:
-    batch_foreach<kernel_rambo_four_vectors_massive<CpuTypes>, kernel_rambo_four_vectors_massive<SimdTypes>, 5, 4, 1>(instr, locals);
+    batch_foreach<kernel_rambo_four_vectors_massless<CpuTypes>, kernel_rambo_four_vectors_massless<SimdTypes>, 4, 2, 1>(instr, locals);
     break;
 case 49:
-    batch_foreach<kernel_cut_pt<CpuTypes>, kernel_cut_pt<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_rambo_four_vectors_massive<CpuTypes>, kernel_rambo_four_vectors_massive<SimdTypes>, 5, 4, 1>(instr, locals);
     break;
 case 50:
-    batch_foreach<kernel_cut_eta<CpuTypes>, kernel_cut_eta<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_cut_pt<CpuTypes>, kernel_cut_pt<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 51:
-    batch_foreach<kernel_cut_dr<CpuTypes>, kernel_cut_dr<SimdTypes>, 3, 1, 1>(instr, locals);
+    batch_foreach<kernel_cut_eta<CpuTypes>, kernel_cut_eta<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 52:
-    batch_foreach<kernel_cut_m_inv<CpuTypes>, kernel_cut_m_inv<SimdTypes>, 3, 1, 1>(instr, locals);
+    batch_foreach<kernel_cut_dr<CpuTypes>, kernel_cut_dr<SimdTypes>, 3, 1, 1>(instr, locals);
     break;
 case 53:
-    batch_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_cut_m_inv<CpuTypes>, kernel_cut_m_inv<SimdTypes>, 3, 1, 1>(instr, locals);
     break;
 case 54:
-    batch_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1>(instr, locals);
+    batch_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 55:
-    op_matrix_element(instr, locals);
+    batch_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1>(instr, locals);
     break;
 case 56:
-    op_pdf(instr, locals);
+    op_matrix_element(instr, locals);
     break;
 case 57:
-    op_matmul(instr, locals);
+    op_matrix_element_multichannel(instr, locals);
     break;
 case 58:
-    batch_foreach<kernel_leaky_relu<CpuTypes>, kernel_leaky_relu<SimdTypes>, 1, 1, 2>(instr, locals);
+    op_pdf(instr, locals);
     break;
 case 59:
-    batch_foreach<kernel_rqs_activation<CpuTypes>, kernel_rqs_activation<SimdTypes>, 2, 3, 1>(instr, locals);
+    op_matmul(instr, locals);
     break;
 case 60:
-    batch_foreach<kernel_rqs_find_bin<CpuTypes>, kernel_rqs_find_bin<SimdTypes>, 4, 1, 1>(instr, locals);
+    batch_foreach<kernel_leaky_relu<CpuTypes>, kernel_leaky_relu<SimdTypes>, 1, 1, 2>(instr, locals);
     break;
 case 61:
-    batch_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_rqs_activation<CpuTypes>, kernel_rqs_activation<SimdTypes>, 2, 3, 1>(instr, locals);
     break;
 case 62:
-    batch_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_rqs_find_bin<CpuTypes>, kernel_rqs_find_bin<SimdTypes>, 4, 1, 2>(instr, locals);
     break;
 case 63:
-    batch_foreach<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, 1>(instr, locals);
+    batch_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 2, 2, 1>(instr, locals);
     break;
 case 64:
-    batch_foreach<kernel_softmax_prior<CpuTypes>, kernel_softmax_prior<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
     break;
 case 65:
-    batch_foreach<kernel_sample_discrete<CpuTypes>, kernel_sample_discrete<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, 1>(instr, locals);
     break;
 case 66:
-    batch_foreach<kernel_sample_discrete_probs<CpuTypes>, kernel_sample_discrete_probs<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_softmax_prior<CpuTypes>, kernel_softmax_prior<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
 case 67:
-    batch_foreach<kernel_gather<CpuTypes>, kernel_gather<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_sample_discrete<CpuTypes>, kernel_sample_discrete<SimdTypes>, 2, 2, 1>(instr, locals);
     break;
 case 68:
-    batch_foreach<kernel_gather_int<CpuTypes>, kernel_gather_int<SimdTypes>, 2, 1, 1>(instr, locals);
+    batch_foreach<kernel_sample_discrete_probs<CpuTypes>, kernel_sample_discrete_probs<SimdTypes>, 2, 2, 1>(instr, locals);
     break;
 case 69:
-    batch_foreach<kernel_select<CpuTypes>, kernel_select<SimdTypes>, 2, 1, 1>(instr, locals);
-    break;
-case 70:
     batch_foreach<kernel_one_hot<CpuTypes>, kernel_one_hot<SimdTypes>, 2, 1, 1>(instr, locals);
     break;
+case 70:
+    op_nonzero(instr, locals);
+    break;
 case 71:
-    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    op_gather(instr, locals);
     break;
 case 72:
+    op_scatter(instr, locals);
+    break;
+case 73:
+    op_random(instr, locals);
+    break;
+case 74:
+    op_unweight(instr, locals);
+    break;
+case 75:
+    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 76:
     batch_foreach<kernel_vegas_inverse<CpuTypes>, kernel_vegas_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
     break;

@@ -11,11 +11,11 @@ enum class AutogradOp {
 union AutogradScalar {
     double f;
     bool b;
-    long long i;
+    int64_t i;
     constexpr AutogradScalar() = default;
     constexpr AutogradScalar(double val) : f(val) {}
     constexpr AutogradScalar(bool val) : b(val) {}
-    constexpr AutogradScalar(long long val) : i(val) {}
+    constexpr AutogradScalar(int64_t val) : i(val) {}
 };
 
 template<typename T>
@@ -26,7 +26,7 @@ union AutogradEvalScalar {
     constexpr AutogradEvalScalar() = default;
     constexpr AutogradEvalScalar(double val) : f(val) {}
     constexpr AutogradEvalScalar(bool val) : b(val) {}
-    constexpr AutogradEvalScalar(long long val) : i(val) {}
+    constexpr AutogradEvalScalar(int64_t val) : i(val) {}
 };
 
 struct AutogradInstruction {
@@ -577,12 +577,12 @@ constexpr void backward(
 
 struct AutogradTypes {
     template<int dim> using FIn = AutogradInput<double>;
-    //template<int dim> using IIn = const VectorizedTensorView<IVec, long long, dim, false>;
+    //template<int dim> using IIn = const VectorizedTensorView<IVec, int64_t, dim, false>;
     //template<int dim> using BIn = const VectorizedTensorView<BVec, bool, dim, false>;
     template<int dim> using FOut = AutogradOutput<double>;
-    //template<int dim> using IOut = VectorizedTensorView<IVec, long long, dim, false>;
+    //template<int dim> using IOut = VectorizedTensorView<IVec, int64_t, dim, false>;
     //template<int dim> using BOut = VectorizedTensorView<BVec, bool, dim, false>;
     using FVal = AutogradValue<double>;
-    using IVal = AutogradValue<long long>;
+    using IVal = AutogradValue<int64_t>;
     using BVal = AutogradValue<bool>;
 };

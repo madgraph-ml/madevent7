@@ -108,10 +108,10 @@ inline Type batch_four_vec_array(int count) {
 
 using TensorValue = std::tuple<
     std::vector<int>,
-    std::variant<std::vector<bool>, std::vector<long long>, std::vector<double>>
+    std::variant<std::vector<bool>, std::vector<int64_t>, std::vector<double>>
 >;
 
-using LiteralValue = std::variant<bool, long long, double, TensorValue, std::monostate>;
+using LiteralValue = std::variant<bool, int64_t, double, TensorValue, std::monostate>;
 
 struct Value {
     Type type;
@@ -121,14 +121,14 @@ struct Value {
     Value() : type(single_float), literal_value(std::monostate{}) {}
 
     Value(bool value) : type(single_bool), literal_value(value) {}
-    Value(long long value) : type(single_int), literal_value(value) {}
+    Value(int64_t value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
 
     template<typename T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
             std::is_same_v<T, bool> ? DataType::dt_bool :
-            std::is_same_v<T, long long> ? DataType::dt_int : DataType::dt_float,
+            std::is_same_v<T, int64_t> ? DataType::dt_int : DataType::dt_float,
             BatchSize::one,
             shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())} : shape
         },

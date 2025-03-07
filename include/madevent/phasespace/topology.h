@@ -22,6 +22,7 @@ struct Diagram {
     struct LineRef {
         LineType type;
         std::size_t index;
+        LineRef(LineType type, std::size_t index) : type(type), index(index) {}
         LineRef(std::string str);
     };
     using Vertex = std::vector<LineRef>;
@@ -39,10 +40,10 @@ struct Diagram {
     std::vector<std::vector<LineRef>> decays;
 
     Diagram(
-        std::vector<double>& _incoming_masses,
-        std::vector<double>& _outgoing_masses,
-        std::vector<Propagator>& _propagators,
-        std::vector<Vertex>& _vertices
+        const std::vector<double>& _incoming_masses,
+        const std::vector<double>& _outgoing_masses,
+        const std::vector<Propagator>& _propagators,
+        const std::vector<Vertex>& _vertices
     );
 
 private:

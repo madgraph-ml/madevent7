@@ -23,7 +23,8 @@ namespace madevent_py {
 class FunctionRuntime {
 public:
     FunctionRuntime(Function function) : function(function), context(nullptr) {}
-    FunctionRuntime(Function function, ContextPtr context) : function(function), context(context) {}
+    FunctionRuntime(Function function, ContextPtr context) :
+        function(function), context(context) {}
     std::vector<py::array_t<double>> call_numpy(std::vector<py::array> args);
 #ifdef TORCH_FOUND
     std::vector<torch::Tensor> call_torch(std::vector<torch::Tensor> args);

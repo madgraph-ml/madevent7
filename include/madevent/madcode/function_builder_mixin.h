@@ -131,6 +131,10 @@ Value rapidity(Value x1, Value x2) {
     return instruction("rapidity", {x1, x2})[0];
 }
 
+Value diff_cross_section(Value x1, Value x2, Value pdf1, Value pdf2, Value matrix_element, Value e_cm2) {
+    return instruction("diff_cross_section", {x1, x2, pdf1, pdf2, matrix_element, e_cm2})[0];
+}
+
 std::array<Value, 2> decay_momentum(Value s, Value sqrt_s, Value m1, Value m2) {
     auto output_vector = instruction("decay_momentum", {s, sqrt_s, m1, m2});
     return {output_vector[0], output_vector[1]};
@@ -241,8 +245,12 @@ std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_mi
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-std::array<Value, 2> matrix_element(Value momenta, Value amp2_remap, Value index, Value channel_count) {
-    auto output_vector = instruction("matrix_element", {momenta, amp2_remap, index, channel_count});
+Value matrix_element(Value momenta, Value index) {
+    return instruction("matrix_element", {momenta, index})[0];
+}
+
+std::array<Value, 2> matrix_element_multichannel(Value momenta, Value amp2_remap, Value index, Value channel_count) {
+    auto output_vector = instruction("matrix_element_multichannel", {momenta, amp2_remap, index, channel_count});
     return {output_vector[0], output_vector[1]};
 }
 
@@ -295,20 +303,29 @@ std::array<Value, 2> sample_discrete_probs(Value r, Value probs) {
     return {output_vector[0], output_vector[1]};
 }
 
-Value gather(Value index, Value choices) {
-    return instruction("gather", {index, choices})[0];
-}
-
-Value gather_int(Value index, Value choices) {
-    return instruction("gather_int", {index, choices})[0];
-}
-
-Value select(Value input, Value indices) {
-    return instruction("select", {input, indices})[0];
-}
-
 Value one_hot(Value index, Value option_count) {
     return instruction("one_hot", {index, option_count})[0];
+}
+
+Value nonzero(Value input) {
+    return instruction("nonzero", {input})[0];
+}
+
+Value gather(Value indices, Value values) {
+    return instruction("gather", {indices, values})[0];
+}
+
+Value scatter(Value indices, Value target, Value source) {
+    return instruction("scatter", {indices, target, source})[0];
+}
+
+Value random(Value batch_size, Value count) {
+    return instruction("random", {batch_size, count})[0];
+}
+
+std::array<Value, 2> unweight(Value weights, Value max_weight) {
+    auto output_vector = instruction("unweight", {weights, max_weight});
+    return {output_vector[0], output_vector[1]};
 }
 
 std::array<Value, 2> vegas_forward(Value input, Value grid) {

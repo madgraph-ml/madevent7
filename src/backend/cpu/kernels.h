@@ -11,23 +11,23 @@ namespace {
 
 struct CpuTypes {
     template<int dim> using FIn = const madevent::TensorView<double, dim>;
-    template<int dim> using IIn = const madevent::TensorView<long long, dim>;
+    template<int dim> using IIn = const madevent::TensorView<int64_t, dim>;
     template<int dim> using BIn = const madevent::TensorView<bool, dim>;
     template<int dim> using FOut = madevent::TensorView<double, dim>;
-    template<int dim> using IOut = madevent::TensorView<long long, dim>;
+    template<int dim> using IOut = madevent::TensorView<int64_t, dim>;
     template<int dim> using BOut = madevent::TensorView<bool, dim>;
     using FVal = double;
-    using IVal = long long;
+    using IVal = int64_t;
     using BVal = bool;
 };
 
 double where(bool condition, double val_true, double val_false) {
     return condition ? val_true : val_false;
 }
-long long where(bool condition, long long val_true, long long val_false) {
+int64_t where(bool condition, int64_t val_true, int64_t val_false) {
     return condition ? val_true : val_false;
 }
-std::size_t single_index(long long arg) {
+std::size_t single_index(int64_t arg) {
     return arg;
 }
 
@@ -50,10 +50,10 @@ using std::isnan;
 #ifdef USE_SIMD
 struct SimdTypes {
     template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IIn = const VectorizedTensorView<IVec, long long, dim, false>;
+    template<int dim> using IIn = const VectorizedTensorView<IVec, int64_t, dim, false>;
     template<int dim> using BIn = const VectorizedTensorView<BVec, bool, dim, false>;
     template<int dim> using FOut = VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IOut = VectorizedTensorView<IVec, long long, dim, false>;
+    template<int dim> using IOut = VectorizedTensorView<IVec, int64_t, dim, false>;
     template<int dim> using BOut = VectorizedTensorView<BVec, bool, dim, false>;
     using FVal = FVec;
     using IVal = IVec;

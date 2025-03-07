@@ -155,9 +155,14 @@ def cpu_runtime_mixin(commands):
                 n_inputs = len(cmd["inputs"])
                 n_outputs = len(cmd["outputs"])
                 dims = cmd.get("dims", 1)
+                cpu_kernel = f"kernel_{name}<CpuTypes>"
+                simd_kernel = (
+                    f"kernel_{name}<SimdTypes>"
+                    if cmd.get("vectorized", True)
+                    else cpu_kernel
+                )
                 func = (
-                    f"batch_foreach<kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>, "
-                    f"{n_inputs}, {n_outputs}, {dims}>"
+                    f"batch_foreach<{cpu_kernel}, {simd_kernel}, {n_inputs}, {n_outputs}, {dims}>"
                 )
             f.write(
                 f"case {opcode}:\n"

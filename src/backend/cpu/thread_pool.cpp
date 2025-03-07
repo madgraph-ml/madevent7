@@ -1,4 +1,5 @@
 #include "madevent/backend/cpu/thread_pool.h"
+#include <iostream>
 
 using namespace madevent::cpu;
 
@@ -20,8 +21,9 @@ ThreadPool::ThreadPool() {
         thread_count = std::thread::hardware_concurrency();
     }
     for (int i = 0; i < thread_count; ++i) {
-        threads.emplace_back(&ThreadPool::thread_loop, this, i);
         thread_done.push_back(true);
+        thread_rand_gens.emplace_back(rand_device());
+        threads.emplace_back(&ThreadPool::thread_loop, this, i);
     }
 }
 
@@ -33,7 +35,12 @@ ThreadPool::~ThreadPool() {
 void ThreadPool::thread_loop(int index) {
     std::unique_lock<std::mutex> lock(mutex);
     while (true) {
-        cv_run.wait(lock, [&]{ return !thread_done[index]; });
+        cv_run.wait(lock, [&]{
+            if (index < 0 || index >= thread_done.size()) {
+                std::cout << "thread error index=" << index << " len=" << thread_done.size() << "\n";
+            }
+            return !thread_done.at(index);
+        });
         lock.unlock();
 
         if (job) {
@@ -52,10 +59,13 @@ void ThreadPool::thread_loop(int index) {
 }
 
 void ThreadPool::adjust_thread_count() {
+    while (thread_rand_gens.size() < std::max(thread_count, 1)) {
+        thread_rand_gens.emplace_back(rand_device());
+    }
     if (threads.size() < thread_count) {
         for (int i = threads.size(); i < thread_count; ++i) {
-            threads.emplace_back(&ThreadPool::thread_loop, this, i);
             thread_done.push_back(true);
+            threads.emplace_back(&ThreadPool::thread_loop, this, i);
         }
     } else if (threads.size() > thread_count) {
         {

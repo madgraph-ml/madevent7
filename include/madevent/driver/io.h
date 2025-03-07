@@ -11,7 +11,7 @@ Tensor load_tensor(const std::string& file);
 void save_tensor(const std::string& file, Tensor tensor);
 
 struct ParticleRecord {
-    long long pid;
+    int64_t pid;
     double e;
     double px;
     double py;

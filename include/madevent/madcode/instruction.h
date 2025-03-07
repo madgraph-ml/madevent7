@@ -25,6 +25,9 @@ public:
     Instruction(std::string _name, int _opcode) : name(_name), opcode(_opcode) {}
     virtual ~Instruction() = default;
     virtual TypeList signature(const ValueList& args) const = 0;
+
+protected:
+    void check_arg_count(const ValueList& args, std::size_t count) const;
 };
 
 class ShapeExpr {
@@ -85,6 +88,36 @@ public:
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int _opcode) : Instruction("rqs_activation", _opcode) {}
+    TypeList signature(const ValueList& args) const override;
+};
+
+class NonzeroInstruction : public Instruction {
+public:
+    NonzeroInstruction(int _opcode) : Instruction("nonzero", _opcode) {}
+    TypeList signature(const ValueList& args) const override;
+};
+
+class GatherInstruction : public Instruction {
+public:
+    GatherInstruction(int _opcode) : Instruction("gather", _opcode) {}
+    TypeList signature(const ValueList& args) const override;
+};
+
+class ScatterInstruction : public Instruction {
+public:
+    ScatterInstruction(int _opcode) : Instruction("scatter", _opcode) {}
+    TypeList signature(const ValueList& args) const override;
+};
+
+class RandomInstruction : public Instruction {
+public:
+    RandomInstruction(int _opcode) : Instruction("random", _opcode) {}
+    TypeList signature(const ValueList& args) const override;
+};
+
+class UnweightInstruction : public Instruction {
+public:
+    UnweightInstruction(int _opcode) : Instruction("unweight", _opcode) {}
     TypeList signature(const ValueList& args) const override;
 };
 

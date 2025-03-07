@@ -123,12 +123,16 @@ std::optional<int> ShapeExpr::evaluate(const std::map<char, int>& variables) con
     return value;
 }
 
-TypeList SimpleInstruction::signature(const ValueList& args) const {
-    if (inputs.size() != args.size()) {
+void Instruction::check_arg_count(const ValueList& args, std::size_t count) const {
+    if (args.size() != count) {
         throw std::invalid_argument(std::format(
-            "Expected {} arguments, got {}", inputs.size(), args.size()
+            "{}: expected {} arguments, got {}", name, count, args.size()
         ));
     }
+}
+
+TypeList SimpleInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, inputs.size());
     std::map<char, int> variables;
     std::vector<int> wildcard_shape;
     bool found_wildcard(false);
@@ -144,7 +148,7 @@ TypeList SimpleInstruction::signature(const ValueList& args) const {
                 arg_dtype != DataType::dt_int ||
                 arg_batch_size != BatchSize::one ||
                 arg_shape.size() != 0 ||
-                std::holds_alternative<long long>(arg.literal_value)
+                !std::holds_alternative<int64_t>(arg.literal_value)
             ) {
                 throw std::invalid_argument(std::format(
                     "{}, argument {}: expected integer constant", name, i + 1
@@ -156,7 +160,7 @@ TypeList SimpleInstruction::signature(const ValueList& args) const {
                     "{}, argument {}: size already defined", name, i + 1
                 ));
             }
-            variables[var_name] = std::get<long long>(arg.literal_value);
+            variables[var_name] = std::get<int64_t>(arg.literal_value);
             continue;
         }
 
@@ -391,6 +395,114 @@ TypeList BatchSplitInstruction::signature(const ValueList& args) const {
 
 TypeList RqsActivationInstruction::signature(const ValueList& args) const {
     return {}; //TODO: implement
+}
+
+TypeList NonzeroInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, 1);
+    auto& input_type = args.at(0).type;
+    if (input_type.dtype != DataType::dt_float || input_type.shape.size() != 0) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected batch of floats", name
+        ));
+    }
+    return {{DataType::dt_int, BatchSize(), {}}};
+}
+
+TypeList GatherInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, 2);
+    auto& indices_type = args.at(0).type;
+    auto& values_type = args.at(1).type;
+    if (indices_type.dtype != DataType::dt_int || indices_type.shape.size() != 0) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected batch of integers", name
+        ));
+    }
+    if (values_type.dtype != DataType::dt_float) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 2: expected data type float", name
+        ));
+    }
+    return {{DataType::dt_float, indices_type.batch_size, values_type.shape}};
+}
+
+TypeList ScatterInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, 3);
+    auto& indices_type = args.at(0).type;
+    auto& target_type = args.at(1).type;
+    auto& source_type = args.at(2).type;
+    if (indices_type.dtype != DataType::dt_int || indices_type.shape.size() != 0) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected batch of integers", name
+        ));
+    }
+    if (target_type.dtype != DataType::dt_float) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 2: expected data type float", name
+        ));
+    }
+    if (
+        source_type.dtype != DataType::dt_float ||
+        source_type.batch_size != indices_type.batch_size ||
+        source_type.shape != target_type.shape
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 3: incompatible source type", name
+        ));
+    }
+    return {target_type};
+}
+
+TypeList RandomInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, 2);
+    auto& batch_size_type = args.at(0).type;
+    auto& count_arg = args.at(1);
+    auto& count_type = count_arg.type;
+    if (
+        batch_size_type.dtype != DataType::batch_sizes ||
+        batch_size_type.batch_size_list.size() != 1
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected single batch size", name
+        ));
+    }
+    if (
+        count_type.dtype != DataType::dt_int ||
+        count_type.batch_size != BatchSize::one ||
+        count_type.shape.size() != 0 ||
+        !std::holds_alternative<int64_t>(count_arg.literal_value)
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 2: expected integer constant", name
+        ));
+    }
+    int count = std::get<int64_t>(count_arg.literal_value);
+    return {{DataType::dt_float, batch_size_type.batch_size_list.at(0), {count}}};
+}
+
+TypeList UnweightInstruction::signature(const ValueList& args) const {
+    check_arg_count(args, 2);
+    auto& weights_type = args.at(0).type;
+    auto& max_weight_type = args.at(1).type;
+    if (weights_type.dtype != DataType::dt_float || weights_type.shape.size() != 0) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected batch of floats", name
+        ));
+    }
+    if (
+        max_weight_type.dtype != DataType::dt_float ||
+        max_weight_type.batch_size != BatchSize::one ||
+        max_weight_type.shape.size() != 0
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 2: expected single float", name
+        ));
+    }
+
+    BatchSize out_batch_size;
+    return {
+        {DataType::dt_int, out_batch_size, {}},
+        {DataType::dt_float, out_batch_size, {}}
+    };
 }
 
 const std::unordered_map<std::string, InstructionOwner> madevent::build_instruction_set() {

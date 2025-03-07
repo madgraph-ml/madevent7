@@ -93,6 +93,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
 Mapping::Result TPropagatorMapping::build_inverse_impl(
     FunctionBuilder& fb, ValueList inputs, ValueList conditions
 ) const {
+    throw std::logic_error("inverse mapping not implemented");
     /*auto p_in1 = inputs[0];
     auto p_in2 = inputs[1];
     ValueList outputs;

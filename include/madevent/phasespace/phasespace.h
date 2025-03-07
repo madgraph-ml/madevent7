@@ -29,6 +29,52 @@ public:
         TChannelMode t_channel_mode = propagator,
         std::optional<Cuts> cuts = std::nullopt
     );
+    PhaseSpaceMapping(
+        const std::vector<double>& external_masses,
+        double s_lab,
+        bool leptonic = false,
+        double s_min_epsilon = 1e-2,
+        double nu = 1.4,
+        TChannelMode mode = rambo,
+        std::optional<Cuts> cuts = std::nullopt
+    ) : PhaseSpaceMapping(
+        Topology(
+            [&] {
+                std::vector<Diagram::Vertex> vertices;
+                auto n_out = external_masses.size() - 2;
+                vertices.push_back({
+                    {Diagram::incoming, 0},
+                    {Diagram::propagator, 0},
+                    {Diagram::outgoing, 0},
+                });
+                for (std::size_t i = 1; i < n_out - 1; ++i) {
+                    vertices.push_back({
+                        {Diagram::propagator, i - 1},
+                        {Diagram::propagator, i},
+                        {Diagram::outgoing, i},
+                    });
+                }
+                vertices.push_back({
+                    {Diagram::incoming, 1},
+                    {Diagram::propagator, n_out - 2},
+                    {Diagram::outgoing, n_out - 1},
+                });
+                return Diagram(
+                    {external_masses.at(0), external_masses.at(1)},
+                    {external_masses.begin() + 2, external_masses.end()},
+                    std::vector<Propagator>(n_out - 1),
+                    vertices
+                );
+            }(),
+            Topology::no_decays
+        ), s_lab, leptonic, s_min_epsilon, nu, mode, cuts
+    ) {}
+    std::size_t random_dim() const {
+        return 3 * outgoing_masses.size() - (leptonic ? 4 : 2);
+    }
+    std::size_t particle_count() const {
+        return outgoing_masses.size() + 2;
+    }
 private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions

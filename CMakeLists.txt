@@ -114,6 +114,7 @@ add_library(
     src/phasespace/rambo.cpp
     src/phasespace/cuts.cpp
     src/phasespace/chili.cpp
+    src/phasespace/integrand.cpp
     include/madevent/backend/tensor.h
     include/madevent/backend/context.h
     include/madevent/backend/cpu/runtime.h
@@ -138,6 +139,7 @@ add_library(
     include/madevent/phasespace/rambo.h
     include/madevent/phasespace/cuts.h
     include/madevent/phasespace/chili.h
+    include/madevent/phasespace/integrand.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu

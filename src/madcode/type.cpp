@@ -196,9 +196,9 @@ void madevent::from_json(const json& j, Value& value) {
         }
     case DataType::dt_int:
         if (shape.size() == 0) {
-            value = j_data.get<long long>();
+            value = j_data.get<int64_t>();
         } else {
-            value = Value(j_data.get<std::vector<long long>>(), shape);
+            value = Value(j_data.get<std::vector<int64_t>>(), shape);
         }
     case DataType::dt_float:
         if (shape.size() == 0) {

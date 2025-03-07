@@ -44,6 +44,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("r_to_x1x2", &FunctionBuilder::r_to_x1x2, py::arg("r"), py::arg("s_hat"), py::arg("s_lab"));
     fb.def("x1x2_to_r", &FunctionBuilder::x1x2_to_r, py::arg("x1"), py::arg("x2"), py::arg("s_lab"));
     fb.def("rapidity", &FunctionBuilder::rapidity, py::arg("x1"), py::arg("x2"));
+    fb.def("diff_cross_section", &FunctionBuilder::diff_cross_section, py::arg("x1"), py::arg("x2"), py::arg("pdf1"), py::arg("pdf2"), py::arg("matrix_element"), py::arg("e_cm2"));
     fb.def("decay_momentum", &FunctionBuilder::decay_momentum, py::arg("s"), py::arg("sqrt_s"), py::arg("m1"), py::arg("m2"));
     fb.def("invt_min_max", &FunctionBuilder::invt_min_max, py::arg("s"), py::arg("s_in1"), py::arg("s_in2"), py::arg("m1"), py::arg("m2"));
     fb.def("invt_to_costheta", &FunctionBuilder::invt_to_costheta, py::arg("s"), py::arg("s_in1"), py::arg("s_in2"), py::arg("m1"), py::arg("m2"), py::arg("t"));
@@ -68,7 +69,8 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("indices"), py::arg("min_max"));
     fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("min_max"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
-    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
+    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("index"));
+    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
     fb.def("pdf", &FunctionBuilder::pdf, py::arg("x"), py::arg("q2"), py::arg("pid"));
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
     fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));
@@ -80,10 +82,12 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("softmax_prior", &FunctionBuilder::softmax_prior, py::arg("input"), py::arg("prior"));
     fb.def("sample_discrete", &FunctionBuilder::sample_discrete, py::arg("r"), py::arg("option_count"));
     fb.def("sample_discrete_probs", &FunctionBuilder::sample_discrete_probs, py::arg("r"), py::arg("probs"));
-    fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
-    fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
-    fb.def("select", &FunctionBuilder::select, py::arg("input"), py::arg("indices"));
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
+    fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
+    fb.def("gather", &FunctionBuilder::gather, py::arg("indices"), py::arg("values"));
+    fb.def("scatter", &FunctionBuilder::scatter, py::arg("indices"), py::arg("target"), py::arg("source"));
+    fb.def("random", &FunctionBuilder::random, py::arg("batch_size"), py::arg("count"));
+    fb.def("unweight", &FunctionBuilder::unweight, py::arg("weights"), py::arg("max_weight"));
     fb.def("vegas_forward", &FunctionBuilder::vegas_forward, py::arg("input"), py::arg("grid"));
     fb.def("vegas_inverse", &FunctionBuilder::vegas_inverse, py::arg("input"), py::arg("grid"));
 }

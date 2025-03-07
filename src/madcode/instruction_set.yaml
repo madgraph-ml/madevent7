@@ -409,9 +409,6 @@ diff_cross_section:
     - name: matrix_element
       type: [float]
       desc:
-    - name: det
-      type: [float]
-      desc:
     - name: e_cm2
       type: [float]
       desc:
@@ -960,6 +957,20 @@ matrix_element:
     - name: momenta
       type: [float, n, 4]
       desc:
+    - name: index
+      type: [int, single]
+      desc:
+  outputs:
+    - name: matrix_element
+      type: [float]
+      desc:
+  custom_op: True
+
+matrix_element_multichannel:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
     - name: amp2_remap
       type: [int, single, m]
       desc:
@@ -1167,44 +1178,44 @@ sample_discrete_probs:
       type: [float]
       desc:
 
-gather:
-  inputs:
-    - name: index
-      type: [int]
-      desc:
-    - name: choices
-      type: [float, n]
-      desc:
-  outputs:
-    - name: output
-      type: [float]
-      desc:
-
-gather_int:
-  inputs:
-    - name: index
-      type: [int]
-      desc:
-    - name: choices
-      type: [int, n]
-      desc:
-  outputs:
-    - name: output
-      type: [int]
-      desc:
-
-select:
-  inputs:
-    - name: input
-      type: [float, n]
-      desc:
-    - name: indices
-      type: [int, single, m]
-      desc:
-  outputs:
-    - name: output
-      type: [float, m]
-      desc:
+#gather:
+#  inputs:
+#    - name: index
+#      type: [int]
+#      desc:
+#    - name: choices
+#      type: [float, n]
+#      desc:
+#  outputs:
+#    - name: output
+#      type: [float]
+#      desc:
+#
+#gather_int:
+#  inputs:
+#    - name: index
+#      type: [int]
+#      desc:
+#    - name: choices
+#      type: [int, n]
+#      desc:
+#  outputs:
+#    - name: output
+#      type: [int]
+#      desc:
+#
+#select:
+#  inputs:
+#    - name: input
+#      type: [float, n]
+#      desc:
+#    - name: indices
+#      type: [int, single, m]
+#      desc:
+#  outputs:
+#    - name: output
+#      type: [float, m]
+#      desc:
 
 one_hot:
   inputs:
@@ -1218,6 +1229,74 @@ one_hot:
     - name: output
       type: [float, n]
       desc:
+
+---
+title: Indexing
+
+nonzero:
+  inputs:
+    - name: input
+      desc:
+  outputs:
+    - name: indices
+      desc:
+  class: NonzeroInstruction
+  custom_op: True
+
+gather:
+  inputs:
+    - name: indices
+      desc:
+    - name: values
+      desc:
+  outputs:
+    - name: selection
+      desc:
+  class: GatherInstruction
+  custom_op: True
+
+scatter:
+  inputs:
+    - name: indices
+      desc:
+    - name: target
+      desc:
+    - name: source
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: ScatterInstruction
+  custom_op: True
+
+---
+title: Random numbers
+
+random:
+  inputs:
+    - name: batch_size
+      desc:
+    - name: count
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: RandomInstruction
+  custom_op: True
+
+unweight:
+  inputs:
+    - name: weights
+      desc:
+    - name: max_weight
+      desc:
+  outputs:
+    - name: indices
+      desc:
+    - name: uw_weights
+      desc:
+  class: UnweightInstruction
+  custom_op: True
 
 ---
 title: VEGAS

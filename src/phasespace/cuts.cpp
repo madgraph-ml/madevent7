@@ -33,7 +33,7 @@ ValueList Cuts::build_function(
     int n_out = pids.size();
     std::vector<double> pt_cuts(2 * n_out, 0.), eta_cuts(2 * n_out, 0.);
     std::vector<double> dr_cuts, mass_cuts, sqrt_s_cuts{0., inf};
-    std::vector<long long> dr_indices, mass_indices;
+    std::vector<int64_t> dr_indices, mass_indices;
     for (std::size_t i = n_out; i < 2 * n_out; ++i) {
         pt_cuts.at(i) = inf;
         eta_cuts.at(i) = inf;
@@ -133,11 +133,11 @@ std::vector<double> Cuts::get_limits(
 }
 
 void Cuts::process_pair_cuts(
-    CutItem cut, std::vector<long long>& indices, std::vector<double>& limits, bool& has_cuts
+    CutItem cut, std::vector<int64_t>& indices, std::vector<double>& limits, bool& has_cuts
 ) const {
     double inf = std::numeric_limits<double>::infinity();
     std::size_t i = 0;
-    std::vector<long long> indices2;
+    std::vector<int64_t> indices2;
     std::vector<double> limits2;
     for (auto pid_i : pids) {
         std::size_t j = i + 1;

@@ -179,9 +179,23 @@ void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& local
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size});
+    std::size_t me_index = locals[instruction.input_indices[1]].view<int64_t, 0>();
+    instruction.context.matrix_element(me_index).call(
+        locals[instruction.input_indices[0]], me_out
+    );
+}
+
+void op_matrix_element_multichannel(
+    const Runtime::Instruction& instruction, TensorVec& locals
+) {
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    auto& me_out = locals[instruction.output_indices[0]];
+    me_out = Tensor(DataType::dt_float, {batch_size});
     auto& chan_weights_out = locals[instruction.output_indices[1]];
-    chan_weights_out = Tensor(DataType::dt_float, {batch_size});
-    instruction.context.pdf_set().call(
+    std::size_t me_index = locals[instruction.input_indices[2]].view<int64_t, 0>();
+    std::size_t channel_count = locals[instruction.input_indices[3]].view<int64_t, 0>();
+    chan_weights_out = Tensor(DataType::dt_float, {batch_size, channel_count});
+    instruction.context.matrix_element(me_index).call_multichannel(
         locals[instruction.input_indices[0]],
         locals[instruction.input_indices[1]],
         me_out,
@@ -272,6 +286,130 @@ void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& loca
     }*/
 
     // compute grad_bias = sum_i grad_output_ij
+}
+
+void op_nonzero(const Runtime::Instruction& instruction, TensorVec& locals) {
+    // TODO: not parallelized for now
+    auto& input = locals[instruction.input_indices[0]];
+    auto batch_size = input.size(0);
+    auto& output = locals[instruction.output_indices[0]];
+    Tensor output_tmp(DataType::dt_int, {batch_size});
+    auto input_view = input.view<double, 1>();
+    auto output_view = output_tmp.view<int64_t, 1>();
+    std::size_t count = 0;
+    for (std::size_t i = 0; i < batch_size; ++i) {
+        if (input_view[i] != 0.) {
+            output_view[count] = i;
+            ++count;
+        }
+    }
+    output = output_tmp.slice(0, 0, count);
+}
+
+template<int dim>
+void gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
+    auto batch_size = indices.size(0);
+    Sizes out_shape = values.shape();
+    out_shape[0] = batch_size;
+    selection = Tensor(DataType::dt_float, out_shape);
+    auto indices_view = indices.view<int64_t, 1>();
+    auto values_view = values.view<double, dim>();
+    auto selection_view = selection.view<double, dim>();
+    ThreadPool::instance().parallel_for([&](std::size_t i) {
+        recursive_for<kernel_copy<CpuTypes>, dim-1>(
+            values_view[indices_view[i]], selection_view[i]
+        );
+    }, batch_size);
+}
+
+void op_gather(const Runtime::Instruction& instruction, TensorVec& locals) {
+    auto& indices = locals[instruction.input_indices[0]];
+    auto& values = locals[instruction.input_indices[1]];
+    auto& selection = locals[instruction.output_indices[0]];
+    switch (values.shape().size()) {
+        case 1: gather_impl<1>(indices, values, selection); break;
+        case 2: gather_impl<2>(indices, values, selection); break;
+        case 3: gather_impl<3>(indices, values, selection); break;
+        case 4: gather_impl<4>(indices, values, selection); break;
+        default:
+            throw std::runtime_error("The number of dimensions must be between 1 and 4");
+    }
+}
+
+template<int dim>
+void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
+    auto batch_size = indices.size(0);
+    auto indices_view = indices.view<int64_t, 1>();
+    auto source_view = source.view<double, dim>();
+    auto output_view = output.view<double, dim>();
+    ThreadPool::instance().parallel_for([&](std::size_t i) {
+        recursive_for<kernel_copy<CpuTypes>, dim-1>(
+            source_view[i], output_view[indices_view[i]]
+        );
+    }, batch_size);
+}
+
+void op_scatter(const Runtime::Instruction& instruction, TensorVec& locals) {
+    auto& indices = locals[instruction.input_indices[0]];
+    auto& target = locals[instruction.input_indices[1]];
+    auto& source = locals[instruction.input_indices[2]];
+
+    auto& output = locals[instruction.output_indices[0]];
+    output = Tensor(DataType::dt_float, target.shape());
+    tensor_copy(target, output);
+    switch (target.shape().size()) {
+        case 1: scatter_impl<1>(indices, source, output); break;
+        case 2: scatter_impl<2>(indices, source, output); break;
+        case 3: scatter_impl<3>(indices, source, output); break;
+        case 4: scatter_impl<4>(indices, source, output); break;
+        default:
+            throw std::runtime_error("The number of dimensions must be between 1 and 4");
+    }
+}
+
+void op_random(const Runtime::Instruction& instruction, TensorVec& locals) {
+    auto batch_size = locals[instruction.input_indices[0]].batch_sizes()[0];
+    auto& output = locals[instruction.output_indices[0]];
+    auto dim = instruction.output_shapes[0][0];
+    output = Tensor(DataType::dt_float, {batch_size, dim});
+    auto output_view = output.view<double, 1>();
+    auto& pool = ThreadPool::instance();
+    pool.parallel_for<ThreadPool::pass_thread_id>(
+        [&](std::size_t i, std::size_t thread_id
+    ) {
+        output_view[i] = pool.random(thread_id);
+    }, batch_size * dim);
+}
+
+void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
+    // TODO: not parallelized for now
+    auto& weights = locals[instruction.input_indices[0]];
+    auto& max_weight = locals[instruction.input_indices[1]];
+    auto& indices = locals[instruction.output_indices[0]];
+    auto& uw_weights = locals[instruction.output_indices[1]];
+
+    auto batch_size = weights.size(0);
+    Tensor indices_tmp(DataType::dt_int, {batch_size});
+    Tensor uw_weights_tmp(DataType::dt_float, {batch_size});
+
+    auto weights_view = weights.view<double, 1>();
+    double max_weight_val = max_weight.view<double, 0>();
+    auto indices_view = indices_tmp.view<int64_t, 1>();
+    auto uw_weights_view = uw_weights_tmp.view<double, 1>();
+    auto& pool = ThreadPool::instance();
+
+    std::size_t count = 0;
+    for (std::size_t i = 0; i < batch_size; ++i) {
+        double w = weights_view[i];
+        if (w != 0. && w / max_weight_val > pool.random(0)) {
+            indices_view[count] = i;
+            uw_weights_view[count] = w > max_weight_val ? w : max_weight_val;
+            ++count;
+        }
+    }
+
+    indices = indices_tmp.slice(0, 0, count);
+    uw_weights = uw_weights_tmp.slice(0, 0, count);
 }
 
 }

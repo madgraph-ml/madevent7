@@ -24,4 +24,5 @@ template<typename T> using BVal = typename T::BVal;
 #include "nn.h"
 #include "discrete.h"
 #include "vegas.h"
+#include "indexing.h"
 

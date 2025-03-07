@@ -194,12 +194,12 @@ public:
     }) {}
 
     template<typename T, typename = std::enable_if_t<
-        std::is_same_v<T, bool> || std::is_same_v<T, long long> || std::is_same_v<T, double>
+        std::is_same_v<T, bool> || std::is_same_v<T, int64_t> || std::is_same_v<T, double>
     >>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
             std::is_same_v<T, bool> ? DataType::dt_bool :
-            std::is_same_v<T, long long> ? DataType::dt_int :
+            std::is_same_v<T, int64_t> ? DataType::dt_int :
             DataType::dt_float,
             {1},
             device
@@ -265,7 +265,7 @@ public:
     std::size_t dtype_size() const {
         switch (impl->dtype) {
             case DataType::dt_bool: return sizeof(bool);
-            case DataType::dt_int: return sizeof(long long);
+            case DataType::dt_int: return sizeof(int64_t);
             case DataType::dt_float: return sizeof(double);
             case DataType::batch_sizes: return 0;
         }

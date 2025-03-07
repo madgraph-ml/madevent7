@@ -13,7 +13,7 @@ KERNELSPEC void kernel_sample_discrete_probs(
 
 }
 
-template<typename T>
+/*template<typename T>
 KERNELSPEC void kernel_gather(
     IIn<T,0> index, FIn<T,1> choices, FOut<T,0> output
 ) {
@@ -25,7 +25,7 @@ KERNELSPEC void kernel_gather_int(
     IIn<T,0> index, IIn<T,1> choices, IOut<T,0> output
 ) {
 
-}
+}*/
 
 template<typename T>
 KERNELSPEC void kernel_one_hot(

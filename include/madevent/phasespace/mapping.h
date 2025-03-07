@@ -42,4 +42,22 @@ protected:
     void check_types(ValueList values, TypeList types, std::string prefix) const;
 };
 
+class FunctionGenerator {
+public:
+    FunctionGenerator(const TypeList& arg_types, const TypeList& return_types) :
+        _arg_types(arg_types), _return_types(return_types) {}
+    virtual ~FunctionGenerator() = default;
+    ValueList build_function(FunctionBuilder& fb, const ValueList& args) const;
+    Function function() const;
+
+protected:
+    TypeList _arg_types;
+    TypeList _return_types;
+
+    virtual ValueList build_function_impl(FunctionBuilder& fb, const ValueList& args) const = 0;
+    void check_types(
+        const ValueList& values, const TypeList& types, const std::string& prefix
+    ) const;
+};
+
 }

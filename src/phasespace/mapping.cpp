@@ -57,5 +57,27 @@ Function Mapping::inverse_function() const {
 }
 
 void Mapping::check_types(ValueList values, TypeList types, std::string prefix) const {
-    
+    //TODO: implement this
+}
+
+ValueList FunctionGenerator::build_function(
+    FunctionBuilder& fb, const ValueList& args
+) const {
+    check_types(args, _arg_types, "Argument");
+    auto outputs = build_function_impl(fb, args);
+    check_types(outputs, _return_types, "Output");
+    return outputs;
+}
+
+Function FunctionGenerator::function() const {
+    FunctionBuilder fb(_arg_types, _return_types);
+    auto outputs = build_function_impl(fb, fb.input_range(0, _arg_types.size()));
+    fb.output_range(0, outputs);
+    return fb.function();
+}
+
+void FunctionGenerator::check_types(
+    const ValueList& values, const TypeList& types, const std::string& prefix
+) const {
+    //TODO: implement this
 }

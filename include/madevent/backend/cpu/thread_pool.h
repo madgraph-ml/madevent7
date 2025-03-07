@@ -6,6 +6,7 @@
 #include <thread>
 #include <condition_variable>
 #include <functional>
+#include <random>
 
 namespace madevent {
 namespace cpu {
@@ -21,6 +22,22 @@ public:
     }
 
     ~ThreadPool();
+
+    template<typename F>
+    void parallel(F func) {
+        std::unique_lock<std::mutex> lock(mutex);
+        count_per_thread = 1;
+        total_count = thread_count;
+        busy_threads = thread_count;
+        std::fill(thread_done.begin(), thread_done.end(), false);
+        job = [&](std::size_t start_index, std::size_t stop_index, int thread_id) {
+            func(start_index);
+        };
+        lock.unlock();
+        cv_run.notify_all();
+        lock.lock();
+        cv_done.wait(lock, [&]{ return busy_threads == 0; });
+    }
 
     template<bool _pass_thread_id=false, typename F>
     void parallel_for(F func, std::size_t count) {
@@ -56,7 +73,10 @@ public:
 
     ThreadPool(ThreadPool const&) = delete;
     void operator=(ThreadPool const&) = delete;
-    std::size_t get_thread_count() { return threads.size(); }
+    std::size_t get_thread_count() const { return threads.size(); }
+    double random(int thread_index) {
+        return rand_dist(thread_rand_gens[thread_index]);
+    }
 
 private:
     static inline int thread_count = -1;
@@ -70,6 +90,9 @@ private:
     std::optional<std::function<void(std::size_t, std::size_t, int)>> job;
     std::vector<bool> thread_done;
     std::size_t total_count, count_per_thread, busy_threads;
+    std::random_device rand_device;
+    std::uniform_real_distribution<double> rand_dist;
+    std::vector<std::mt19937> thread_rand_gens;
 };
 
 }

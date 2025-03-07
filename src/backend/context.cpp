@@ -7,78 +7,150 @@
 using namespace madevent;
 
 MatrixElement::MatrixElement(
-    std::string file, std::string param_card, std::size_t process_index
-) :
-    process_index(process_index)
-{
-    shared_lib = dlopen(file.c_str(), RTLD_NOW);
-    if (shared_lib == nullptr) {
+    const std::string& file, const std::string& param_card, std::size_t process_index
+) {
+    _shared_lib = dlopen(file.c_str(), RTLD_NOW);
+    if (_shared_lib == nullptr) {
         throw std::runtime_error(std::format(
             "Could not load shared object {}", file
         ));
     }
-    process_init = reinterpret_cast<decltype(process_init)>(
-        dlsym(shared_lib, "process_init")
+
+    SubProcessInfo* (*subprocess_info)() = reinterpret_cast<decltype(subprocess_info)>(
+        dlsym(_shared_lib, "subprocess_info")
     );
-    if (process_init == nullptr) {
+    if (subprocess_info == nullptr) {
         throw std::runtime_error(std::format(
-            "Did not find symbol process_init in shared object {}", file
+            "Did not find symbol subprocess_info in shared object {}", file
         ));
     }
-    compute_me2 = reinterpret_cast<decltype(compute_me2)>(
-        dlsym(shared_lib, "compute_me2_single")
+    const SubProcessInfo* info = subprocess_info();
+    if (process_index >= info->matrix_element_count) {
+        throw std::invalid_argument("Process index out of range");
+    }
+    _on_gpu = info->on_gpu;
+    _particle_count = info->particle_count;
+    _diagram_count = info->diagram_counts[process_index];
+
+    _init_subprocess = reinterpret_cast<decltype(_init_subprocess)>(
+        dlsym(_shared_lib, "init_subprocess")
     );
-    if (compute_me2 == nullptr) {
+    if (_init_subprocess == nullptr) {
         throw std::runtime_error(std::format(
-            "Did not find symbol compute_me2_single in shared object {}", file
+            "Did not find symbol init_subprocess in shared object {}", file
         ));
     }
-    process_free = reinterpret_cast<decltype(process_free)>(
-        dlsym(shared_lib, "process_free")
+
+    _compute_matrix_element = reinterpret_cast<decltype(_compute_matrix_element)>(
+        dlsym(_shared_lib, "compute_matrix_element")
     );
-    if (process_free == nullptr) {
+    if (_compute_matrix_element == nullptr) {
         throw std::runtime_error(std::format(
-            "Did not find symbol process_free in shared object {}", file
+            "Did not find symbol compute_matrix_element in shared object {}", file
         ));
     }
+
+    _compute_matrix_element_multichannel = reinterpret_cast<
+        decltype(_compute_matrix_element_multichannel)
+    >(dlsym(_shared_lib, "compute_matrix_element_multichannel"));
+    if (_compute_matrix_element_multichannel == nullptr) {
+        throw std::runtime_error(std::format(
+            "Did not find symbol compute_matrix_element_multichannel in shared object {}", file
+        ));
+    }
+
+    _free_subprocess = reinterpret_cast<decltype(_free_subprocess)>(
+        dlsym(_shared_lib, "free_subprocess")
+    );
+    if (_free_subprocess == nullptr) {
+        throw std::runtime_error(std::format(
+            "Did not find symbol free_subprocess in shared object {}", file
+        ));
+    }
+
     std::size_t thread_count = cpu::ThreadPool::instance().get_thread_count();
     for (int i = 0; i == 0 || i < thread_count; ++i) {
-        process_instances.push_back(process_init(param_card.c_str()));
+        _process_instances.push_back(_init_subprocess(process_index, param_card.c_str()));
     }
 }
 
 MatrixElement::~MatrixElement() {
-    for (auto inst : process_instances) {
-        process_free(inst);
+    for (auto inst : _process_instances) {
+        _free_subprocess(inst);
     }
-    dlclose(shared_lib);
+    dlclose(_shared_lib);
 }
 
-void MatrixElement::call(
+void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
+    // TODO: very hacky - only works for contiguous tensor
+    // TODO: move to backend
+    auto batch_size = momenta_in.size(0);
+    auto input_particle_count = momenta_in.size(1);
+    if (input_particle_count != _particle_count) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    auto& pool = cpu::ThreadPool::instance();
+    auto thread_count = pool.get_thread_count();
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto me_ptr = static_cast<double*>(matrix_element_out.data());
+    if (thread_count == 0 || batch_size < thread_count * 100) {
+        _compute_matrix_element(
+            _process_instances[0], batch_size, batch_size, mom_ptr, me_ptr
+        );
+    } else {
+        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
+        pool.parallel([&](std::size_t thread_id) {
+            _compute_matrix_element(
+                _process_instances[thread_id],
+                std::min(batch_size - thread_id * count_per_thread, count_per_thread),
+                batch_size, mom_ptr, me_ptr
+            );
+        });
+    }
+}
+
+void MatrixElement::call_multichannel(
     Tensor momenta_in,
     Tensor amp2_remap_in,
     Tensor matrix_element_out,
     Tensor channel_weights_out
 ) const {
     // TODO: very hacky - only works for contiguous tensor
-    std::size_t batch_size = momenta_in.size(0);
-    cpu::ThreadPool::instance().parallel_for<cpu::ThreadPool::pass_thread_id>(
-        [&](std::size_t index, int thread_id) {
-            compute_me2(
-                process_instances[thread_id],
-                static_cast<double*>(momenta_in.data()),
-                static_cast<long long*>(amp2_remap_in.data()),
-                static_cast<double*>(matrix_element_out.data()),
-                static_cast<double*>(channel_weights_out.data()),
-                batch_size,
-                index
+    // TODO: move to backend
+    auto batch_size = momenta_in.size(0);
+    auto input_particle_count = momenta_in.size(1);
+    auto input_diagram_count = amp2_remap_in.size(1);
+    auto channel_count = channel_weights_out.size(1);
+    if (input_particle_count != _particle_count) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    if (input_diagram_count != _diagram_count) {
+        throw std::runtime_error("Incompatible diagram count");
+    }
+    auto& pool = cpu::ThreadPool::instance();
+    auto thread_count = pool.get_thread_count();
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto remap_ptr = static_cast<int64_t*>(amp2_remap_in.data());
+    auto me_ptr = static_cast<double*>(matrix_element_out.data());
+    auto cw_ptr = static_cast<double*>(channel_weights_out.data());
+    if (thread_count == 0 || batch_size < thread_count * 100) {
+        _compute_matrix_element_multichannel(
+            _process_instances[0], batch_size, batch_size, channel_count,
+            mom_ptr, remap_ptr, me_ptr, cw_ptr
+        );
+    } else {
+        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
+        pool.parallel([&](std::size_t thread_id) {
+            _compute_matrix_element_multichannel(
+                _process_instances[thread_id],
+                std::min(batch_size - thread_id * count_per_thread, count_per_thread),
+                batch_size, channel_count, mom_ptr, remap_ptr, me_ptr, cw_ptr
             );
-        },
-        batch_size
-    );
+        });
+    }
 }
 
-PdfSet::PdfSet(std::string name, int index) {
+PdfSet::PdfSet(const std::string& name, int index) {
     pdf = LHAPDF::mkPDF(name, index);
     if (pdf == nullptr) {
         throw std::invalid_argument(std::format(
@@ -94,7 +166,7 @@ PdfSet::~PdfSet() {
 void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const {
     auto x_view = x_in.view<double, 1>();
     auto q2_view = q2_in.view<double, 1>();
-    auto pid_view = pid_in.view<long long, 1>();
+    auto pid_view = pid_in.view<int64_t, 1>();
     auto pdf_view = pdf_out.view<double, 1>();
     madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
         pdf_view[i] = pdf->xfxQ2(pid_view[i], x_view[i], q2_view[i]);
@@ -102,17 +174,17 @@ void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) cons
 }
 
 void Context::load_matrix_element(
-    std::string file, std::string param_card, std::size_t process_index
+    const std::string& file, const std::string& param_card, std::size_t process_index
 ) {
     matrix_elements.emplace_back(file, param_card, process_index);
 }
 
-void Context::load_pdf(std::string name, int index) {
+void Context::load_pdf(const std::string& name, int index) {
     _pdf_set.emplace(name, index);
 }
 
 void Context::define_global(
-    std::string name, DataType dtype, const SizeVec& shape, bool requires_grad
+    const std::string& name, DataType dtype, const SizeVec& shape, bool requires_grad
 ) {
     SizeVec full_shape {1};
     full_shape.insert(full_shape.end(), shape.begin(), shape.end());
@@ -124,7 +196,7 @@ void Context::define_global(
     globals[name] = {Tensor(dtype, shape, _device), requires_grad};
 }
 
-Tensor Context::global(std::string name) {
+Tensor Context::global(const std::string& name) {
     if (auto search = globals.find(name); search != globals.end()) {
         return std::get<0>(search->second);
     } else {
@@ -134,7 +206,7 @@ Tensor Context::global(std::string name) {
     }
 }
 
-bool Context::global_requires_grad(std::string name) {
+bool Context::global_requires_grad(const std::string& name) {
     if (auto search = globals.find(name); search != globals.end()) {
         return std::get<1>(search->second);
     } else {
@@ -158,11 +230,11 @@ const PdfSet& Context::pdf_set() const {
     return *_pdf_set;
 }
 
-void Context::save(std::string file) const {
+void Context::save(const std::string& file) const {
 
 }
 
-void Context::load(std::string file) {
+void Context::load(const std::string& file) {
 
 }
 

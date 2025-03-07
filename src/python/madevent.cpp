@@ -33,13 +33,30 @@ public:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override {
-        PYBIND11_OVERRIDE_PURE(Result, Mapping, build_forward_impl, &fb, inputs, conditions);
+        PYBIND11_OVERRIDE_PURE(
+            Result, Mapping, build_forward_impl, &fb, inputs, conditions
+        );
     }
 
     Result build_inverse_impl(
         FunctionBuilder& fb, ValueList inputs, ValueList conditions
     ) const override {
-        PYBIND11_OVERRIDE_PURE(Result, Mapping, build_inverse_impl, &fb, inputs, conditions);
+        PYBIND11_OVERRIDE_PURE(
+            Result, Mapping, build_inverse_impl, &fb, inputs, conditions
+        );
+    }
+};
+
+class PyFunctionGenerator : public FunctionGenerator {
+public:
+    using FunctionGenerator::FunctionGenerator;
+
+    ValueList build_function_impl(
+        FunctionBuilder& fb, const ValueList& args
+    ) const override {
+        PYBIND11_OVERRIDE_PURE(
+            ValueList, FunctionGenerator, build_function_impl, &fb, &args
+        );
     }
 };
 
@@ -50,6 +67,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .value("bool", DataType::dt_bool)
         .value("int", DataType::dt_int)
         .value("float", DataType::dt_float)
+        .value("batch_sizes", DataType::batch_sizes)
         .export_values();
 
     py::class_<BatchSize>(m, "BatchSize")
@@ -63,6 +81,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::class_<Type>(m, "Type")
         .def(py::init<DataType, BatchSize, std::vector<int>>(),
              py::arg("dtype"), py::arg("batch_size"), py::arg("shape"))
+        .def(py::init<std::vector<BatchSize>>(), py::arg("batch_size_list"))
         .def_readonly("dtype", &Type::dtype)
         .def_readonly("batch_size", &Type::batch_size)
         .def_readonly("shape", &Type::shape)
@@ -83,7 +102,7 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::class_<Value>(m, "Value")
         .def(py::init<bool>(), py::arg("value"))
-        .def(py::init<long long>(), py::arg("value"))
+        .def(py::init<int64_t>(), py::arg("value"))
         .def(py::init<double>(), py::arg("value"))
         .def("__str__", &to_string<Value>)
         .def("__repr__", &to_string<Value>)
@@ -91,7 +110,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("literal_value", &Value::literal_value)
         .def_readonly("local_index", &Value::local_index);
     py::implicitly_convertible<bool, Value>();
-    py::implicitly_convertible<long long, Value>();
+    py::implicitly_convertible<int64_t, Value>();
     py::implicitly_convertible<double, Value>();
     py::implicitly_convertible<std::string, Value>();
 
@@ -117,6 +136,15 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::class_<Device, DevicePtr> device(m, "Device");
     m.def("cpu_device", &cpu_device);
 
+    py::class_<MatrixElement>(m, "MatrixElement")
+        .def(py::init<const std::string&, const std::string&, std::size_t>(),
+             py::arg("file"), py::arg("param_card"), py::arg("process_index"))
+        .def("on_gpu", &MatrixElement::on_gpu)
+        .def("particle_count", &MatrixElement::particle_count)
+        .def("diagram_count", &MatrixElement::diagram_count);
+
+    py::class_<PdfSet> pdf_set(m, "PdfSet");
+
     py::class_<Context, ContextPtr>(m, "Context")
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
@@ -124,11 +152,14 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("file"), py::arg("param_card"), py::arg("process_index"))
         .def("load_pdf", &Context::load_pdf, py::arg("name"), py::arg("index")=0)
         .def("define_global", &Context::define_global,
-             py::arg("name"), py::arg("dtype"), py::arg("shape"), py::arg("requires_grad")=false)
+             py::arg("name"), py::arg("dtype"), py::arg("shape"),
+             py::arg("requires_grad")=false)
         //.def("get_global", &Context::global, py::arg("name"))
         .def("global_requires_grad", &Context::global_requires_grad, py::arg("name"))
-        //.def("matrix_element", &Context::matrix_element, py::arg("index"))
-        //.def("pdf_set", &Context::pdf_set)
+        .def("matrix_element", &Context::matrix_element,
+             py::arg("index"), py::return_value_policy::reference_internal)
+        .def("pdf_set", &Context::pdf_set,
+             py::return_value_policy::reference_internal)
         .def("save", &Context::save, py::arg("file"))
         .def("load", &Context::load, py::arg("file"))
         .def("device", &Context::device)
@@ -187,7 +218,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("propagators"), py::arg("nu")=0., py::arg("map_resonances")=false);
     py::class_<Cuts::CutItem>(m, "CutItem")
         .def(py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
-             py::arg("observable"), py::arg("limit_type"), py::arg("value"), py::arg("pids"))
+             py::arg("observable"), py::arg("limit_type"),
+             py::arg("value"), py::arg("pids"))
         .def_readonly("observable", &Cuts::CutItem::observable)
         .def_readonly("limit_type", &Cuts::CutItem::limit_type)
         .def_readonly("value", &Cuts::CutItem::value)
@@ -240,7 +272,8 @@ PYBIND11_MODULE(_madevent_py, m) {
     auto& topology = py::class_<Topology>(m, "Topology")
         .def(py::init<Diagram&, Topology::DecayMode>(),
              py::arg("diagram"), py::arg("decay_mode"))
-        .def("compare", &Topology::compare, py::arg("other"), py::arg("compare_t_propagators"))
+        .def("compare", &Topology::compare,
+             py::arg("other"), py::arg("compare_t_propagators"))
         .def_readonly("incoming_masses", &Topology::incoming_masses)
         .def_readonly("outgoing_masses", &Topology::outgoing_masses)
         .def_readonly("t_propagators", &Topology::t_propagators)
@@ -267,12 +300,22 @@ PYBIND11_MODULE(_madevent_py, m) {
         .value("rambo", PhaseSpaceMapping::rambo)
         .value("chili", PhaseSpaceMapping::chili)
         .export_values();
-    psmap.def(py::init<Topology&, double, /*double,*/ bool, double, double,
-                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
-              py::arg("topology"), py::arg("s_lab"), //py::arg("s_hat_min")=0.0,
-              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
-              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
-              py::arg("cuts")=std::nullopt);
+    psmap
+        .def(py::init<Topology&, double, bool, double, double,
+                      PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
+             py::arg("topology"), py::arg("s_lab"),
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
+             py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
+             py::arg("cuts")=std::nullopt)
+        .def(py::init<const std::vector<double>&, double, bool, double, double,
+                      PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
+             py::arg("topology"), py::arg("s_lab"),
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
+             py::arg("mode")=PhaseSpaceMapping::rambo,
+             py::arg("cuts")=std::nullopt)
+        .def("random_dim", &PhaseSpaceMapping::random_dim)
+        .def("particle_count", &PhaseSpaceMapping::particle_count);
+
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
     py::class_<MergeOptimizer>(m, "MergeOptimizer")
@@ -280,6 +323,22 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("optimize", &MergeOptimizer::optimize);
     py::class_<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
+
+    py::class_<FunctionGenerator, PyFunctionGenerator>(m, "FunctionGenerator")
+        .def(py::init<TypeList, TypeList>(),
+             py::arg("arg_types"), py::arg("return_types"))
+        .def("function", &FunctionGenerator::function)
+        .def("build_function", &FunctionGenerator::build_function,
+             py::arg("builder"), py::arg("args"));
+    py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
+        .def(py::init<const std::vector<DifferentialCrossSection::PidOptions>&,
+                      double,double>(),
+             py::arg("pid_options"), py::arg("e_cm2"), py::arg("q2"));
+    py::class_<Integrand, FunctionGenerator>(m, "Integrand")
+        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
+                      bool, bool>(),
+             py::arg("mapping"), py::arg("diff_xs"),
+             py::arg("sample"), py::arg("unweight"));
 
     m.def("optimize_constants", &optimize_constants);
 }

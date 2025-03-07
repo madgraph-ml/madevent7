@@ -14,7 +14,7 @@ struct FVec {
 struct IVec {
     IVec() = default;
     IVec(int64x2_t _v) : v(_v) {};
-    IVec(long long _v) : v(vdupq_n_s64(_v)) {};
+    IVec(int64_t _v) : v(vdupq_n_s64(_v)) {};
     operator int64x2_t() { return v; }
     int64x2_t v;
 };
