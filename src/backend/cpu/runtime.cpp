@@ -24,6 +24,7 @@ using namespace madevent::cpu;
 namespace {
 
 void tensor_copy(Tensor source, Tensor target) {
+    //TODO: maybe remove in favor of CpuDevice::tensor_copy
     tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
         {&source}, {&target}, target.size(0)
     );
@@ -412,6 +413,11 @@ void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
     uw_weights = uw_weights_tmp.slice(0, 0, count);
 }
 
+}
+
+void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
+    //TODO: this function is in the wrong place. need some restructuring
+    tensor_copy(source, target);
 }
 
 void Runtime::initialize(const Function& function) {

@@ -27,6 +27,11 @@ def _init():
             self.runtime = FunctionRuntime(self)
         return self.runtime.call(args)
 
+    def function_generator_call(self, *args):
+        if not hasattr(self, "runtime"):
+            self.runtime = FunctionRuntime(self.function())
+        return self.runtime.call(args)
+
     def map_forward(self, inputs, conditions=[]):
         if not hasattr(self, "forward_runtime"):
             self.forward_runtime = FunctionRuntime(self.forward_function())
@@ -40,6 +45,7 @@ def _init():
         return outputs[:-1], outputs[-1]
 
     Function.__call__ = function_call
+    FunctionGenerator.__call__ = function_generator_call
     Mapping.map_forward = map_forward
     Mapping.map_inverse = map_inverse
 

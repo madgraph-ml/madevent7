@@ -82,7 +82,8 @@ MatrixElement::~MatrixElement() {
 }
 
 void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
-    // TODO: very hacky - only works for contiguous tensor
+    // TODO: maybe copy can be avoided sometimes
+    momenta_in = momenta_in.contiguous();
     // TODO: move to backend
     auto batch_size = momenta_in.size(0);
     auto input_particle_count = momenta_in.size(1);
@@ -100,10 +101,11 @@ void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
     } else {
         auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
         pool.parallel([&](std::size_t thread_id) {
+            std::size_t offset = thread_id * count_per_thread;
             _compute_matrix_element(
                 _process_instances[thread_id],
-                std::min(batch_size - thread_id * count_per_thread, count_per_thread),
-                batch_size, mom_ptr, me_ptr
+                std::min(batch_size - offset, count_per_thread),
+                batch_size, mom_ptr + offset, me_ptr + offset
             );
         });
     }
@@ -115,7 +117,8 @@ void MatrixElement::call_multichannel(
     Tensor matrix_element_out,
     Tensor channel_weights_out
 ) const {
-    // TODO: very hacky - only works for contiguous tensor
+    // TODO: maybe copy can be avoided sometimes
+    momenta_in = momenta_in.contiguous();
     // TODO: move to backend
     auto batch_size = momenta_in.size(0);
     auto input_particle_count = momenta_in.size(1);
@@ -141,16 +144,19 @@ void MatrixElement::call_multichannel(
     } else {
         auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
         pool.parallel([&](std::size_t thread_id) {
+            std::size_t offset = thread_id * count_per_thread;
             _compute_matrix_element_multichannel(
                 _process_instances[thread_id],
-                std::min(batch_size - thread_id * count_per_thread, count_per_thread),
-                batch_size, channel_count, mom_ptr, remap_ptr, me_ptr, cw_ptr
+                std::min(batch_size - offset, count_per_thread),
+                batch_size, channel_count,
+                mom_ptr + offset, remap_ptr, me_ptr + offset, cw_ptr + offset
             );
         });
     }
 }
 
 PdfSet::PdfSet(const std::string& name, int index) {
+    LHAPDF::setVerbosity(0);
     pdf = LHAPDF::mkPDF(name, index);
     if (pdf == nullptr) {
         throw std::invalid_argument(std::format(

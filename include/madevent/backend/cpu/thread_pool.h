@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <functional>
 #include <random>
+#include <iostream>
 
 namespace madevent {
 namespace cpu {

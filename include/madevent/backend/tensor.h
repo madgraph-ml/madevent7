@@ -7,6 +7,7 @@
 #include <functional>
 #include <type_traits>
 #include <initializer_list>
+#include <algorithm>
 
 namespace madevent {
 
@@ -104,12 +105,15 @@ private:
     std::size_t* _shape;
 };
 
+class Tensor;
+
 class Device {
 public:
     virtual ~Device() = default;
     virtual void* allocate(std::size_t size) const = 0;
     virtual void free(void* ptr) const = 0;
     virtual void memcpy(void* to, void* from, std::size_t size) const = 0;
+    virtual void tensor_copy(const Tensor& source, Tensor& target) const = 0;
 };
 
 using DevicePtr = std::shared_ptr<Device>;
@@ -129,6 +133,8 @@ public:
         auto from_u8 = static_cast<uint8_t*>(from);
         std::copy(from_u8, from_u8 + size, to_u8);
     }
+
+    void tensor_copy(const Tensor& source, Tensor& target) const override;
 
     CpuDevice(const CpuDevice&) = delete;
     CpuDevice& operator=(CpuDevice&) = delete;
@@ -190,7 +196,7 @@ public:
 
     Tensor(const SizeVec& batch_sizes) : impl(new TensorImpl{
         DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr,
-        1, {}, 0, batch_sizes
+        1, {}, 0, 0, batch_sizes
     }) {}
 
     template<typename T, typename = std::enable_if_t<
@@ -304,7 +310,8 @@ public:
     std::vector<Tensor> split(std::size_t axis, SizeVec sizes);
     std::vector<Tensor> unstack(std::size_t axis);
     Tensor cpu() { return *this; } //TODO: implement
-    Tensor contiguous() { return *this; } //TODO: implement
+    Tensor copy();
+    Tensor contiguous();
 
 private:
     struct TensorImpl {
@@ -317,6 +324,7 @@ private:
         int ref_count = 1;
         Sizes stride;
         std::size_t offset;
+        std::size_t contiguous_dims;
         SizeVec batch_sizes;
 
         void reset() {

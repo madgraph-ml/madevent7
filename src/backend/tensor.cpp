@@ -3,10 +3,6 @@
 using namespace madevent;
 
 Tensor Tensor::select(std::size_t axis, std::size_t index) {
-    /*auto new_shape = impl->shape;
-    auto new_stride = impl->stride;
-    new_shape.erase(new_shape.begin() + axis);
-    new_stride.erase(new_stride.begin() + axis);*/
     auto new_dim = impl->shape.size() - 1;
     Sizes new_shape(new_dim), new_stride(new_dim);
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
@@ -22,7 +18,8 @@ Tensor Tensor::select(std::size_t axis, std::size_t index) {
         impl,
         1,
         new_stride,
-        impl->offset + index * impl->stride[axis]
+        impl->offset + index * impl->stride[axis],
+        std::min(impl->contiguous_dims, axis)
     });
 }
 
@@ -38,7 +35,8 @@ Tensor Tensor::slice(std::size_t axis, std::size_t start, std::size_t stop) {
         impl,
         1,
         impl->stride,
-        impl->offset + start * impl->stride[axis]
+        impl->offset + start * impl->stride[axis],
+        std::min(impl->contiguous_dims, axis)
     });
 }
 
@@ -65,6 +63,20 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) {
     return tensors;
 }
 
+Tensor Tensor::copy() {
+    Tensor tensor(impl->dtype, impl->shape, impl->device);
+    impl->device->tensor_copy(*this, tensor);
+    return tensor;
+}
+
+Tensor Tensor::contiguous() {
+    if (impl->contiguous_dims < impl->shape.size()) {
+        return copy();
+    } else {
+        return *this;
+    }
+}
+
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = dtype_size();
     bool first = true;
@@ -82,5 +94,6 @@ std::size_t Tensor::init_stride() {
         }
         stride_prod *= size;
     }
+    impl->contiguous_dims = impl->shape.size();
     return stride_prod;
 }

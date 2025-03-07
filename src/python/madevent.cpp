@@ -324,7 +324,8 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::class_<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
 
-    py::class_<FunctionGenerator, PyFunctionGenerator>(m, "FunctionGenerator")
+    py::class_<FunctionGenerator, PyFunctionGenerator>(
+             m, "FunctionGenerator", py::dynamic_attr())
         .def(py::init<TypeList, TypeList>(),
              py::arg("arg_types"), py::arg("return_types"))
         .def("function", &FunctionGenerator::function)
@@ -338,7 +339,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
                       bool, bool>(),
              py::arg("mapping"), py::arg("diff_xs"),
-             py::arg("sample"), py::arg("unweight"));
+             py::arg("sample")=false, py::arg("unweight")=false);
 
     m.def("optimize_constants", &optimize_constants);
 }

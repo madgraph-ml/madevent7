@@ -35,7 +35,7 @@ ValueList Integrand::build_function_impl(
     auto dxs = _diff_xs.build_function(
         fb, {fb.gather(indices, momenta), fb.gather(indices, x1), fb.gather(indices, x2)}
     );
-    auto weights = fb.scatter(indices, det, dxs.at(0));
+    auto weights = fb.mul(fb.scatter(indices, det, dxs.at(0)), det);
     if (!_unweight) return {momenta, x1, x2, weights};
 
     auto [uw_indices, uw_weights] = fb.unweight(weights, args.at(1));
