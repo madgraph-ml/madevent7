@@ -30,15 +30,15 @@ public:
     }
 private:
     Result build_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions, bool inverse
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions, bool inverse
     ) const;
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override {
         return build_impl(fb, inputs, conditions, false);
     }
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override {
         return build_impl(fb, inputs, conditions, true);
     }

@@ -9,7 +9,7 @@ class TwoParticle : public Mapping {
 public:
     TwoParticle(bool _com) : Mapping(
         [&] {
-            TypeList input_types(6, batch_float);
+            TypeVec input_types(6, batch_float);
             if (!_com) {
                 input_types.push_back(batch_four_vec);
             }
@@ -21,10 +21,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
     bool com;
@@ -42,10 +42,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
     bool com;

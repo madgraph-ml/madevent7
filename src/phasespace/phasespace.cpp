@@ -125,11 +125,11 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 }
 
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto random_numbers = fb.unstack(inputs.at(0));
     auto r = random_numbers.begin();
-    ValueList dets{pi_factors};
+    ValueVec dets{pi_factors};
     Value x1, x2, s_hat;
     if (luminosity) {
         auto [x12s, det_lumi] = luminosity->build_forward(fb, {*(r++), *(r++)}, {});
@@ -145,19 +145,19 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto sqrt_s_hat = fb.sqrt(s_hat);
 
     // sample s-invariants from decays, starting from the final state particles
-    ValueList sqrt_s;
+    ValueVec sqrt_s;
     for (auto index : inverse_permutation) {
         sqrt_s.push_back(outgoing_masses.at(index));
     }
     struct DecayData {
         const DecayMappings& mappings;
-        ValueList masses;
+        ValueVec masses;
         std::optional<Value> s;
         std::optional<Value> sqrt_s;
     };
     std::vector<std::vector<DecayData>> decay_data;
     for (auto& layer_decays : s_decays) {
-        ValueList sqrt_s_min;
+        ValueVec sqrt_s_min;
         auto sqrt_s_iter = sqrt_s.begin();
         auto& layer_data = decay_data.emplace_back();
         bool skip_layer = false;
@@ -176,7 +176,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         }
         if (skip_layer) continue;
 
-        ValueList sqs_min_sums;
+        ValueVec sqs_min_sums;
         std::partial_sum(
             sqrt_s_min.rbegin(), sqrt_s_min.rend() - 1, std::back_inserter(sqs_min_sums),
             [&fb](Value a, Value b) { return fb.add(a, b); }
@@ -214,10 +214,10 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         }
     }
 
-    ValueList p_ext;
-    ValueList p_out;
+    ValueVec p_ext;
+    ValueVec p_out;
     if (has_t_channel) {
-        ValueList t_args;
+        ValueVec t_args;
         if (auto t_map = std::get_if<TPropagatorMapping>(&t_mapping)) {
             std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
             r += t_map->random_dim();
@@ -243,7 +243,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             t_args.push_back(sqrt_s_hat);
             std::copy(sqrt_s.begin(), sqrt_s.end(), std::back_inserter(t_args));
             Value det;
-            ValueList chili_out;
+            ValueVec chili_out;
             std::tie(chili_out, det) = t_map->build_forward(fb, t_args, {});
             p_ext = {chili_out.at(0), chili_out.at(1)};
             p_out.insert(p_out.end(), chili_out.begin() + 2, chili_out.end() - 2);
@@ -270,14 +270,14 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 continue;
             }
             if (auto decay_map = std::get_if<TwoParticle>(&data.mappings.decay)) {
-                ValueList decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
+                ValueVec decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
                 std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
                 if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
                 auto [k_out, det] = decay_map->build_forward(fb, decay_args, {});
                 std::copy(k_out.begin(), k_out.end(), std::back_inserter(p_out));
                 dets.push_back(det);
             } else if (auto decay_map = std::get_if<FastRamboMapping>(&data.mappings.decay)) {
-                ValueList decay_args;
+                ValueVec decay_args;
                 std::copy_n(r, decay_map->random_dim(), std::back_inserter(decay_args));
                 r += decay_map->random_dim();
                 decay_args.push_back(*data.sqrt_s);
@@ -305,7 +305,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 }
 
 Mapping::Result PhaseSpaceMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }

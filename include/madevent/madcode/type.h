@@ -84,7 +84,7 @@ inline bool operator!=(const Type& lhs, const Type& rhs) {
     return lhs.dtype != rhs.dtype || lhs.batch_size != rhs.batch_size || lhs.shape != rhs.shape;
 }
 
-using TypeList = std::vector<Type>;
+using TypeVec = std::vector<Type>;
 
 const Type single_float{DataType::dt_float, BatchSize::One{}, {}};
 const Type single_int{DataType::dt_int, BatchSize::One{}, {}};
@@ -151,7 +151,7 @@ struct Value {
         : type(_type), literal_value(_literal_value), local_index(_local_index) {}
 };
 
-using ValueList = std::vector<Value>;
+using ValueVec = std::vector<Value>;
 
 void to_json(nlohmann::json& j, const DataType& dtype);
 void to_json(nlohmann::json& j, const Value& value);

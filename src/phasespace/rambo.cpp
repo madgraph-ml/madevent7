@@ -12,13 +12,13 @@ namespace ranges = std::ranges;
 FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
     Mapping(
         [&] {
-            TypeList input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float);
+            TypeVec input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float);
             if (!_com) {
                 input_types.push_back(batch_four_vec);
             }
             return input_types;
         }(),
-        TypeList(_n_particles, batch_four_vec),
+        TypeVec(_n_particles, batch_four_vec),
         {}
     ),
     n_particles(_n_particles),
@@ -33,22 +33,22 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
 }
 
 Mapping::Result FastRamboMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r_u = inputs | views::take(n_particles - 2)
-                      | ranges::to<ValueList>();
+                      | ranges::to<ValueVec>();
     auto cos_theta = inputs | views::drop(n_particles - 2)
                             | views::take(n_particles - 1)
                             | views::transform([&fb](auto r) { return fb.uniform_costheta(r); })
-                            | ranges::to<ValueList>();
+                            | ranges::to<ValueVec>();
     auto phi = inputs | views::drop(2 * n_particles - 3)
                       | views::take(n_particles - 1)
                       | views::transform([&fb](auto r) { return fb.uniform_phi(r); })
-                      | ranges::to<ValueList>();
+                      | ranges::to<ValueVec>();
     auto e_cm = inputs.at(3 * n_particles - 4);
     auto m_out = inputs | views::drop(3 * n_particles - 3)
                         | views::take(n_particles)
-                        | ranges::to<ValueList>();
+                        | ranges::to<ValueVec>();
 
     auto [u, det_u] = fb.fast_rambo_r_to_u(fb.stack(r_u));
 
@@ -65,7 +65,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
     }
 
     auto q = com ? fb.com_momentum(e_cm) : inputs.back();
-    ValueList p_out;
+    ValueVec p_out;
     for (auto [p_i, q_i] : views::zip(fb.unstack(ps), fb.unstack(qs))) {
         p_out.push_back(fb.boost(p_i, q));
         q = fb.boost(q_i, q);
@@ -83,7 +83,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
 }
 
 Mapping::Result FastRamboMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }

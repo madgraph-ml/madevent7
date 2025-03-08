@@ -26,7 +26,7 @@ public:
 
     const std::vector<PidOptions>& pid_options() const { return _pid_options; }
 private:
-    ValueList build_function_impl(FunctionBuilder& fb, const ValueList& args) const override;
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<PidOptions> _pid_options;
     double _e_cm2;
@@ -43,7 +43,7 @@ public:
     ) :
         FunctionGenerator(
             [&] {
-                TypeList arg_types;
+                TypeVec arg_types;
                 if (sample) {
                     arg_types.push_back(Type({batch_size}));
                 } else {
@@ -68,7 +68,7 @@ public:
     {}
 
 private:
-    ValueList build_function_impl(FunctionBuilder& fb, const ValueList& args) const override;
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;

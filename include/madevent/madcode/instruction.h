@@ -24,10 +24,10 @@ public:
 
     Instruction(std::string _name, int _opcode) : name(_name), opcode(_opcode) {}
     virtual ~Instruction() = default;
-    virtual TypeList signature(const ValueList& args) const = 0;
+    virtual TypeVec signature(const ValueVec& args) const = 0;
 
 protected:
-    void check_arg_count(const ValueList& args, std::size_t count) const;
+    void check_arg_count(const ValueVec& args, std::size_t count) const;
 };
 
 class ShapeExpr {
@@ -54,7 +54,7 @@ public:
         std::initializer_list<SigType> _outputs
     ) : Instruction(_name, _opcode), inputs(_inputs), outputs(_outputs) {}
 
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 
 private:
     const std::vector<SigType> inputs;
@@ -64,61 +64,61 @@ private:
 class StackInstruction : public Instruction {
 public:
     StackInstruction(int _opcode) : Instruction("stack", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class UnstackInstruction : public Instruction {
 public:
     UnstackInstruction(int _opcode) : Instruction("unstack", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class BatchCatInstruction : public Instruction {
 public:
     BatchCatInstruction(int _opcode) : Instruction("batch_cat", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class BatchSplitInstruction : public Instruction {
 public:
     BatchSplitInstruction(int _opcode) : Instruction("batch_split", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int _opcode) : Instruction("rqs_activation", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class NonzeroInstruction : public Instruction {
 public:
     NonzeroInstruction(int _opcode) : Instruction("nonzero", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class GatherInstruction : public Instruction {
 public:
     GatherInstruction(int _opcode) : Instruction("gather", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class ScatterInstruction : public Instruction {
 public:
     ScatterInstruction(int _opcode) : Instruction("scatter", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class RandomInstruction : public Instruction {
 public:
     RandomInstruction(int _opcode) : Instruction("random", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 class UnweightInstruction : public Instruction {
 public:
     UnweightInstruction(int _opcode) : Instruction("unweight", _opcode) {}
-    TypeList signature(const ValueList& args) const override;
+    TypeVec signature(const ValueVec& args) const override;
 };
 
 using InstructionOwner = std::unique_ptr<const Instruction>;

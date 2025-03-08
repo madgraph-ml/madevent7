@@ -123,7 +123,7 @@ std::optional<int> ShapeExpr::evaluate(const std::map<char, int>& variables) con
     return value;
 }
 
-void Instruction::check_arg_count(const ValueList& args, std::size_t count) const {
+void Instruction::check_arg_count(const ValueVec& args, std::size_t count) const {
     if (args.size() != count) {
         throw std::invalid_argument(std::format(
             "{}: expected {} arguments, got {}", name, count, args.size()
@@ -131,7 +131,7 @@ void Instruction::check_arg_count(const ValueList& args, std::size_t count) cons
     }
 }
 
-TypeList SimpleInstruction::signature(const ValueList& args) const {
+TypeVec SimpleInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, inputs.size());
     std::map<char, int> variables;
     std::vector<int> wildcard_shape;
@@ -249,7 +249,7 @@ TypeList SimpleInstruction::signature(const ValueList& args) const {
         }
     }
 
-    TypeList output_types;
+    TypeVec output_types;
     for (auto& [out_dtype, is_single, out_dyn_shape, is_size] : outputs) {
         std::vector<int> out_shape;
         for (auto& shape_item : out_dyn_shape) {
@@ -279,7 +279,7 @@ TypeList SimpleInstruction::signature(const ValueList& args) const {
     return output_types;
 }
 
-TypeList StackInstruction::signature(const ValueList& args) const {
+TypeVec StackInstruction::signature(const ValueVec& args) const {
     if (args.size() == 0) {
         throw std::invalid_argument("stack has to be called with at least one argument");
     }
@@ -314,7 +314,7 @@ TypeList StackInstruction::signature(const ValueList& args) const {
     return {{type.dtype, batch_size, out_shape}};
 }
 
-TypeList UnstackInstruction::signature(const ValueList& args) const {
+TypeVec UnstackInstruction::signature(const ValueVec& args) const {
     if (args.size() != 1) {
         throw std::invalid_argument(std::format(
             "unstack expects one argument, got {}", args.size()
@@ -331,10 +331,10 @@ TypeList UnstackInstruction::signature(const ValueList& args) const {
         throw std::invalid_argument("Argument of unstack must be at least one-dimensional");
     }
     std::vector<int> out_shape(arg.type.shape.begin() + 1, arg.type.shape.end());
-    return TypeList(arg.type.shape[0], {arg.type.dtype, arg.type.batch_size, out_shape});
+    return TypeVec(arg.type.shape[0], {arg.type.dtype, arg.type.batch_size, out_shape});
 }
 
-TypeList BatchCatInstruction::signature(const ValueList& args) const {
+TypeVec BatchCatInstruction::signature(const ValueVec& args) const {
     if (args.size() == 0) {
         throw std::invalid_argument("batch_cat has to be called with at least one argument");
     }
@@ -358,7 +358,7 @@ TypeList BatchCatInstruction::signature(const ValueList& args) const {
     return {{type.dtype, batch_size, type.shape}, arg_batch_sizes};
 }
 
-TypeList BatchSplitInstruction::signature(const ValueList& args) const {
+TypeVec BatchSplitInstruction::signature(const ValueVec& args) const {
     if (args.size() != 2) {
         throw std::invalid_argument(std::format(
             "batch_split expects two arguments, got {}", args.size()
@@ -376,7 +376,7 @@ TypeList BatchSplitInstruction::signature(const ValueList& args) const {
             "Second argument of batch_split must be batch size list"
         );
     }
-    TypeList out_types;
+    TypeVec out_types;
     auto last_batch_size = split_arg.type.batch_size;
     for (auto& batch_size : count_arg.type.batch_size_list) {
         if (&batch_size == &count_arg.type.batch_size_list.back()) {
@@ -393,11 +393,11 @@ TypeList BatchSplitInstruction::signature(const ValueList& args) const {
     return out_types;
 }
 
-TypeList RqsActivationInstruction::signature(const ValueList& args) const {
+TypeVec RqsActivationInstruction::signature(const ValueVec& args) const {
     return {}; //TODO: implement
 }
 
-TypeList NonzeroInstruction::signature(const ValueList& args) const {
+TypeVec NonzeroInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 1);
     auto& input_type = args.at(0).type;
     if (input_type.dtype != DataType::dt_float || input_type.shape.size() != 0) {
@@ -408,7 +408,7 @@ TypeList NonzeroInstruction::signature(const ValueList& args) const {
     return {{DataType::dt_int, BatchSize(), {}}};
 }
 
-TypeList GatherInstruction::signature(const ValueList& args) const {
+TypeVec GatherInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& indices_type = args.at(0).type;
     auto& values_type = args.at(1).type;
@@ -425,7 +425,7 @@ TypeList GatherInstruction::signature(const ValueList& args) const {
     return {{DataType::dt_float, indices_type.batch_size, values_type.shape}};
 }
 
-TypeList ScatterInstruction::signature(const ValueList& args) const {
+TypeVec ScatterInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 3);
     auto& indices_type = args.at(0).type;
     auto& target_type = args.at(1).type;
@@ -452,7 +452,7 @@ TypeList ScatterInstruction::signature(const ValueList& args) const {
     return {target_type};
 }
 
-TypeList RandomInstruction::signature(const ValueList& args) const {
+TypeVec RandomInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& batch_size_type = args.at(0).type;
     auto& count_arg = args.at(1);
@@ -479,7 +479,7 @@ TypeList RandomInstruction::signature(const ValueList& args) const {
     return {{DataType::dt_float, batch_size_type.batch_size_list.at(0), {count}}};
 }
 
-TypeList UnweightInstruction::signature(const ValueList& args) const {
+TypeVec UnweightInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& weights_type = args.at(0).type;
     auto& max_weight_type = args.at(1).type;

@@ -8,7 +8,7 @@ using namespace madevent;
 
 namespace {
 
-std::size_t next_vertex(const IndexList& vertices, std::size_t index) {
+std::size_t next_vertex(const IndexVec& vertices, std::size_t index) {
     return vertices.at(0) == index ? vertices.at(1) : vertices.at(0);
 }
 
@@ -248,7 +248,7 @@ void Topology::standardize_order(bool preserve_t_order) {
 
         void write_decays(
             std::vector<std::vector<Decay>>& decays,
-            IndexList& inverse_permutation,
+            IndexVec& inverse_permutation,
             int depth
         ) {
             if (depth == -1) {

@@ -22,7 +22,7 @@ std::vector<int> find_permutation(std::vector<int>& from, std::vector<int>& to) 
 Function madevent::optimize_constants(const Function& function) {
     // add, sub, mul, clip_min, sqrt, square
     FunctionBuilder fb(function);
-    ValueList new_locals(function.locals);
+    ValueVec new_locals(function.locals);
     for (auto& [name, global] : function.globals) {
         new_locals.at(global.local_index) = fb.global(
             name, global.type.dtype, global.type.shape
@@ -30,7 +30,7 @@ Function madevent::optimize_constants(const Function& function) {
     }
     for (auto& instr : function.instructions) {
         bool const_opt = true;
-        ValueList inputs;
+        ValueVec inputs;
         for (auto& input : instr.inputs) {
             Value new_input = std::holds_alternative<std::monostate>(input.literal_value) ?
                 new_locals.at(input.local_index) : Value(input.type, input.literal_value);
@@ -90,7 +90,7 @@ Function madevent::optimize_constants(const Function& function) {
         }
     }
 
-    ValueList outputs;
+    ValueVec outputs;
     for (auto& output : function.outputs) {
         outputs.push_back(new_locals.at(output.local_index));
     }

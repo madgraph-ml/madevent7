@@ -3,7 +3,7 @@
 using namespace madevent;
 
 Mapping::Result Invariant::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r = inputs[0], s_min = conditions[0], s_max = conditions[1];
     auto [s, det] =
@@ -15,7 +15,7 @@ Mapping::Result Invariant::build_forward_impl(
 }
 
 Mapping::Result Invariant::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto s = inputs[0], s_min = conditions[0], s_max = conditions[1];
     auto [r, det] =

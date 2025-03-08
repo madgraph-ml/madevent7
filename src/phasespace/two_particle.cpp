@@ -6,7 +6,7 @@ using namespace madevent;
 
 
 Mapping::Result TwoParticle::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r1 = inputs.at(0), r2 = inputs.at(1);
     auto s = inputs.at(2), sqrt_s = inputs.at(3), m1 = inputs.at(4), m2 = inputs.at(5);
@@ -21,7 +21,7 @@ Mapping::Result TwoParticle::build_forward_impl(
 }
 
 Mapping::Result TwoParticle::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto p1 = inputs.at(0), p2 = inputs.at(1);
     auto p0 = fb.add(p1, p2);
@@ -41,7 +41,7 @@ Mapping::Result TwoParticle::build_inverse_impl(
 }
 
 Mapping::Result TInvariantTwoParticle::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r1 = inputs.at(0), r2 = inputs.at(1), m1 = inputs.at(2), m2 = inputs.at(3);
     auto p_in1 = conditions.at(0), p_in2 = conditions.at(1);
@@ -67,7 +67,7 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
 }
 
 Mapping::Result TInvariantTwoParticle::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto p1 = inputs.at(0), p2 = inputs.at(1);
     auto p_in1 = conditions.at(0), p_in2 = conditions.at(1);

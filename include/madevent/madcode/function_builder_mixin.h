@@ -1,20 +1,20 @@
 // This file was automatically generated based on instruction_set.yaml
 // Do not modify its content directly
 
-Value stack(ValueList args) {
+Value stack(ValueVec args) {
     return instruction("stack", args)[0];
 }
 
-ValueList unstack(Value in) {
+ValueVec unstack(Value in) {
     return instruction("unstack", {in});
 }
 
-std::array<Value, 2> batch_cat(ValueList args) {
+std::array<Value, 2> batch_cat(ValueVec args) {
     auto output_vector = instruction("batch_cat", args);
     return {output_vector[0], output_vector[1]};
 }
 
-ValueList batch_split(Value in, Value counts) {
+ValueVec batch_split(Value in, Value counts) {
     return instruction("batch_split", {in, counts});
 }
 

@@ -24,7 +24,7 @@ const Cuts::PidVec Cuts::lepton_pids {11, 13, 15, -11, -13, -15};
 const Cuts::PidVec Cuts::missing_pids {12, 14, 16, -12, -14, -16};
 const Cuts::PidVec Cuts::photon_pids {22};
 
-ValueList Cuts::build_function(
+ValueVec Cuts::build_function(
     FunctionBuilder& fb, Value sqrt_s, Value momenta
 ) const {
     bool has_pt_cuts(false), has_eta_cuts(false), has_dr_cuts(false);
@@ -61,7 +61,7 @@ ValueList Cuts::build_function(
         }
     }
 
-    ValueList weights;
+    ValueVec weights;
     if (has_pt_cuts) {
         weights.push_back(fb.cut_pt(momenta, Value(pt_cuts, {n_out, 2})));
     }

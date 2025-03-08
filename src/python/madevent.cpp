@@ -31,7 +31,7 @@ public:
     using Mapping::Mapping;
 
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override {
         PYBIND11_OVERRIDE_PURE(
             Result, Mapping, build_forward_impl, &fb, inputs, conditions
@@ -39,7 +39,7 @@ public:
     }
 
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override {
         PYBIND11_OVERRIDE_PURE(
             Result, Mapping, build_inverse_impl, &fb, inputs, conditions
@@ -51,11 +51,11 @@ class PyFunctionGenerator : public FunctionGenerator {
 public:
     using FunctionGenerator::FunctionGenerator;
 
-    ValueList build_function_impl(
-        FunctionBuilder& fb, const ValueList& args
+    ValueVec build_function_impl(
+        FunctionBuilder& fb, const ValueVec& args
     ) const override {
         PYBIND11_OVERRIDE_PURE(
-            ValueList, FunctionGenerator, build_function_impl, &fb, &args
+            ValueVec, FunctionGenerator, build_function_impl, &fb, &args
         );
     }
 };
@@ -189,7 +189,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     add_instructions(fb);
 
     py::class_<Mapping, PyMapping>(m, "Mapping", py::dynamic_attr())
-        .def(py::init<TypeList, TypeList, TypeList>(),
+        .def(py::init<TypeVec, TypeVec, TypeVec>(),
              py::arg("input_types"), py::arg("output_types"), py::arg("condition_types"))
         .def("forward_function", &Mapping::forward_function)
         .def("inverse_function", &Mapping::inverse_function)
@@ -326,7 +326,7 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::class_<FunctionGenerator, PyFunctionGenerator>(
              m, "FunctionGenerator", py::dynamic_attr())
-        .def(py::init<TypeList, TypeList>(),
+        .def(py::init<TypeVec, TypeVec>(),
              py::arg("arg_types"), py::arg("return_types"))
         .def("function", &FunctionGenerator::function)
         .def("build_function", &FunctionGenerator::build_function,

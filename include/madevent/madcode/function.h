@@ -14,14 +14,14 @@ namespace madevent {
 
 struct InstructionCall {
     InstructionPtr instruction;
-    ValueList inputs;
-    ValueList outputs;
+    ValueVec inputs;
+    ValueVec outputs;
 };
 
 struct Function {
-    ValueList inputs;
-    ValueList outputs;
-    ValueList locals;
+    ValueVec inputs;
+    ValueVec outputs;
+    ValueVec locals;
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
 
@@ -30,7 +30,7 @@ struct Function {
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& value);
-std::ostream& operator<<(std::ostream& out, const ValueList& list);
+std::ostream& operator<<(std::ostream& out, const ValueVec& list);
 std::ostream& operator<<(std::ostream& out, const InstructionCall& call);
 std::ostream& operator<<(std::ostream& out, const Function& func);
 
@@ -45,25 +45,25 @@ public:
     );
     FunctionBuilder(const Function& function);
     Value input(int index);
-    ValueList input_range(int start_index, int end_index);
+    ValueVec input_range(int start_index, int end_index);
     void output(int index, Value value);
-    void output_range(int start_index, const ValueList& values);
+    void output_range(int start_index, const ValueVec& values);
     Value global(std::string name, DataType dtype, const std::vector<int>& shape);
-    ValueList instruction(std::string name, ValueList args);
-    ValueList instruction(InstructionPtr instruction, ValueList args);
+    ValueVec instruction(std::string name, ValueVec args);
+    ValueVec instruction(InstructionPtr instruction, ValueVec args);
     Function function();
 
-    Value sum(const ValueList& values);
-    //Value product(const ValueList& values);
+    Value sum(const ValueVec& values);
+    //Value product(const ValueVec& values);
 
 #include "function_builder_mixin.h"
 
 private:
     std::vector<Type> output_types;
-    ValueList inputs;
+    ValueVec inputs;
     std::vector<std::optional<Value>> outputs;
     std::map<LiteralValue, Value> literals;
-    ValueList locals;
+    ValueVec locals;
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
 };

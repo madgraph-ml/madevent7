@@ -2,8 +2,8 @@
 
 using namespace madevent;
 
-ValueList DifferentialCrossSection::build_function_impl(
-    FunctionBuilder& fb, const ValueList& args
+ValueVec DifferentialCrossSection::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
 ) const {
     auto momenta = args.at(0);
     auto x1 = args.at(1);
@@ -19,8 +19,8 @@ ValueList DifferentialCrossSection::build_function_impl(
     return {xs};
 }
 
-ValueList Integrand::build_function_impl(
-    FunctionBuilder& fb, const ValueList& args
+ValueVec Integrand::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
 ) const {
     auto r = _sample ?
         fb.random(args.at(0), static_cast<int64_t>(_mapping.random_dim())) :

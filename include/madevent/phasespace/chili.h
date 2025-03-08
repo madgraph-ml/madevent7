@@ -20,10 +20,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueList inputs, ValueList conditions
+        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
     std::size_t n_particles;

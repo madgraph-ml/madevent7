@@ -46,7 +46,7 @@ std::ostream& madevent::operator<<(std::ostream& out, const Value& value) {
     return out;
 }
 
-std::ostream& madevent::operator<<(std::ostream& out, const ValueList& list) {
+std::ostream& madevent::operator<<(std::ostream& out, const ValueVec& list) {
     bool first = true;
     for (auto value : list) {
         if (first) {
@@ -128,7 +128,7 @@ void madevent::to_json(json& j, const Function& func) {
 }
 
 void madevent::from_json(const json& j, Function& func) {
-    TypeList input_types, output_types;
+    TypeVec input_types, output_types;
     std::vector<std::size_t> input_locals, output_locals;
     for (auto& j_input : j.at("inputs")) {
         BatchSize batch_size = BatchSize::one;
@@ -166,7 +166,7 @@ void madevent::from_json(const json& j, Function& func) {
     }
 
     for (auto& j_instr : j.at("instructions")) {
-        ValueList instr_inputs;
+        ValueVec instr_inputs;
         for (auto& j_input : j_instr.at("inputs")) {
             instr_inputs.push_back(
                 j_input.is_number_unsigned() ?
@@ -208,14 +208,14 @@ FunctionBuilder::FunctionBuilder(
 FunctionBuilder::FunctionBuilder(const Function& function) :
     inputs(function.inputs), locals(function.inputs)
 {
-    TypeList output_types;
+    TypeVec output_types;
     for (auto& output : function.outputs) {
         output_types.push_back(output.type);
         outputs.push_back(std::nullopt);
     }
 }
 
-ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
+ValueVec FunctionBuilder::instruction(std::string name, ValueVec args) {
     auto find_instr = instruction_set.find(name);
     if (find_instr == instruction_set.end()) {
         throw std::invalid_argument(std::format("Unknown instruction '{}'", name));
@@ -223,7 +223,7 @@ ValueList FunctionBuilder::instruction(std::string name, ValueList args) {
     return instruction(find_instr->second.get(), args);
 }
 
-ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList args) {
+ValueVec FunctionBuilder::instruction(InstructionPtr instruction, ValueVec args) {
     int arg_index = -1;
     for (auto& arg : args) {
         ++arg_index;
@@ -262,7 +262,7 @@ ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList arg
     }
 
     auto output_types = instruction->signature(args);
-    ValueList call_outputs;
+    ValueVec call_outputs;
     for (const auto& type : output_types) {
         Value value(type, locals.size());
         locals.push_back(value);
@@ -273,7 +273,7 @@ ValueList FunctionBuilder::instruction(InstructionPtr instruction, ValueList arg
 }
 
 Function FunctionBuilder::function() {
-    ValueList func_outputs;
+    ValueVec func_outputs;
     int output_index = 0;
     for (auto output : outputs) {
         if (output) {
@@ -298,7 +298,7 @@ Value FunctionBuilder::input(int index) {
     return inputs.at(index);
 }
 
-ValueList FunctionBuilder::input_range(int start_index, int end_index) {
+ValueVec FunctionBuilder::input_range(int start_index, int end_index) {
     if (start_index < 0 || start_index > inputs.size()) {
         throw std::out_of_range(std::format(
             "Start index expected to be in range 0 to {}, got {}",
@@ -311,7 +311,7 @@ ValueList FunctionBuilder::input_range(int start_index, int end_index) {
             start_index, inputs.size() - 1, end_index
         ));
     }
-    return ValueList(inputs.begin() + start_index, inputs.begin() + end_index);
+    return ValueVec(inputs.begin() + start_index, inputs.begin() + end_index);
 }
 
 void FunctionBuilder::output(int index, Value value) {
@@ -328,7 +328,7 @@ void FunctionBuilder::output(int index, Value value) {
     outputs.at(index) = value;
 }
 
-void FunctionBuilder::output_range(int start_index, const ValueList& values) {
+void FunctionBuilder::output_range(int start_index, const ValueVec& values) {
     if (start_index < 0 || start_index > outputs.size() - values.size()) {
         throw std::out_of_range(std::format(
             "Start index expected to be in range 0 to {}, got {}",
@@ -358,7 +358,7 @@ Value FunctionBuilder::global(std::string name, DataType dtype, const std::vecto
     return new_global;
 }
 
-Value FunctionBuilder::sum(const ValueList& values) {
+Value FunctionBuilder::sum(const ValueVec& values) {
     if (values.size() == 0) {
         return 0.0;
     }
@@ -369,7 +369,7 @@ Value FunctionBuilder::sum(const ValueList& values) {
     return result;
 }
 
-/*Value FunctionBuilder::product(const ValueList& values) {
+/*Value FunctionBuilder::product(const ValueVec& values) {
     if (values.size() == 0) {
         return 1.;
     }

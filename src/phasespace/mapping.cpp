@@ -3,7 +3,7 @@
 using namespace madevent;
 
 Mapping::Result Mapping::build_forward(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     check_types(inputs, input_types, "Input");
     check_types(conditions, condition_types, "Condition");
@@ -14,7 +14,7 @@ Mapping::Result Mapping::build_forward(
 }
 
 Mapping::Result Mapping::build_inverse(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     check_types(inputs, output_types, "Input");
     check_types(conditions, condition_types, "Condition");
@@ -56,12 +56,12 @@ Function Mapping::inverse_function() const {
     return fb.function();
 }
 
-void Mapping::check_types(ValueList values, TypeList types, std::string prefix) const {
+void Mapping::check_types(ValueVec values, TypeVec types, std::string prefix) const {
     //TODO: implement this
 }
 
-ValueList FunctionGenerator::build_function(
-    FunctionBuilder& fb, const ValueList& args
+ValueVec FunctionGenerator::build_function(
+    FunctionBuilder& fb, const ValueVec& args
 ) const {
     check_types(args, _arg_types, "Argument");
     auto outputs = build_function_impl(fb, args);
@@ -77,7 +77,7 @@ Function FunctionGenerator::function() const {
 }
 
 void FunctionGenerator::check_types(
-    const ValueList& values, const TypeList& types, const std::string& prefix
+    const ValueVec& values, const TypeVec& types, const std::string& prefix
 ) const {
     //TODO: implement this
 }

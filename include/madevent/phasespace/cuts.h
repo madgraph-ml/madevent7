@@ -25,7 +25,7 @@ public:
 
     Cuts(std::vector<int> _pids, std::vector<CutItem> _cut_data) :
         pids(_pids), cut_data(_cut_data) {}
-    ValueList build_function(FunctionBuilder& fb, Value sqrt_s, Value momenta) const;
+    ValueVec build_function(FunctionBuilder& fb, Value sqrt_s, Value momenta) const;
     double get_sqrt_s_min() const;
     std::vector<double> get_eta_max() const;
     std::vector<double> get_pt_min() const;

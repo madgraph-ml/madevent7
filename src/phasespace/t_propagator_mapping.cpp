@@ -6,8 +6,8 @@ TPropagatorMapping::TPropagatorMapping(
     const std::vector<Propagator>& propagators, double nu, bool map_resonances
 ) :
     Mapping(
-        TypeList(4 * propagators.size() + 1, batch_float),
-        TypeList(propagators.size() + 3, batch_four_vec),
+        TypeVec(4 * propagators.size() + 1, batch_float),
+        TypeVec(propagators.size() + 3, batch_four_vec),
         {}
     ),
     s_pseudo_invariants(propagators.size() - 1)
@@ -22,7 +22,7 @@ TPropagatorMapping::TPropagatorMapping(
 }
 
 Mapping::Result TPropagatorMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     // TODO: document inputs somewhere
     // nti = len(t_invariants)
@@ -36,20 +36,20 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     auto t_inv_offset = n_invariants - 1;
     auto m_out_offset = 3 * n_invariants;
     auto e_cm = inputs[m_out_offset - 1];
-    ValueList dets;
+    ValueVec dets;
 
     // construct initial state momenta
     auto [p1, p2] = fb.com_p_in(e_cm);
 
     // sample s-invariants from the t-channel part of the diagram
     auto sqs_max = e_cm;
-    ValueList sqrt_s_max;
+    ValueVec sqrt_s_max;
     for (int i = n_particles - 1; i > 1; --i) {
         auto sqrt_s = inputs[m_out_offset + i];
         sqs_max = fb.sub(sqs_max, sqrt_s);
         sqrt_s_max.push_back(sqs_max);
     }
-    ValueList cumulated_m_out {inputs[m_out_offset]};
+    ValueVec cumulated_m_out {inputs[m_out_offset]};
     for (int i = 0; i < n_particles - 2; ++i) {
         auto invariant = s_pseudo_invariants[i];
         auto r = inputs[i];
@@ -64,7 +64,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     }
 
     // sample t-invariants and build momenta of t-channel part of the diagram
-    ValueList p_out;
+    ValueVec p_out;
     auto p2_rest = p2;
     Value k_rest;
     for (int i = 0; i < n_particles - 1; ++i) {
@@ -85,19 +85,19 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     }
     p_out.push_back(k_rest);
 
-    ValueList outputs {p1, p2};
+    ValueVec outputs {p1, p2};
     outputs.insert(outputs.end(), p_out.rbegin(), p_out.rend());
     return {outputs, fb.product(fb.stack(dets))};
 }
 
 Mapping::Result TPropagatorMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueList inputs, ValueList conditions
+    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
     /*auto p_in1 = inputs[0];
     auto p_in2 = inputs[1];
-    ValueList outputs;
-    ValueList masses;
+    ValueVec outputs;
+    ValueVec masses;
     auto e_cm = fb.sqrt_s(fb.add(p_in1, p_in2));
 
     auto n_invariants = t_invariants.size();
@@ -109,7 +109,7 @@ Mapping::Result TPropagatorMapping::build_inverse_impl(
 
     // sample s-invariants from the t-channel part of the diagram
     auto sqrt_s_max = e_cm;
-    ValueList cumulated_m_out {inputs[m_out_offset]};
+    ValueVec cumulated_m_out {inputs[m_out_offset]};
     for (int i = 0; i < n_particles - 2; ++i) {
         auto invariant = s_pseudo_invariants[i];
         auto r = inputs[i];
@@ -125,7 +125,7 @@ Mapping::Result TPropagatorMapping::build_inverse_impl(
     }
 
     // sample t-invariants and build momenta of t-channel part of the diagram
-    ValueList p_out;
+    ValueVec p_out;
     auto p2_rest = p2;
     Value k_rest;
     for (int i = 0; i < n_particles - 1; ++i) {
@@ -146,7 +146,7 @@ Mapping::Result TPropagatorMapping::build_inverse_impl(
     }
     p_out.push_back(k_rest);
 
-    ValueList outputs {p1, p2};
+    ValueVec outputs {p1, p2};
     outputs.insert(outputs.end(), p_out.rbegin(), p_out.rend());
     return {outputs, fb.product(dets)};
 

@@ -15,7 +15,7 @@ struct Propagator {
     }
 };
 
-using IndexList = std::vector<std::size_t>;
+using IndexVec = std::vector<std::size_t>;
 
 struct Diagram {
     enum LineType { incoming, outgoing, propagator };
@@ -33,9 +33,9 @@ struct Diagram {
     std::vector<Vertex> vertices;
     std::array<int, 2> incoming_vertices;
     std::vector<int> outgoing_vertices;
-    std::vector<IndexList> propagator_vertices;
-    IndexList t_propagators;
-    IndexList t_vertices;
+    std::vector<IndexVec> propagator_vertices;
+    IndexVec t_propagators;
+    IndexVec t_vertices;
     std::vector<std::vector<LineRef>> lines_after_t;
     std::vector<std::vector<LineRef>> decays;
 
@@ -67,8 +67,8 @@ struct Topology {
     std::vector<double> outgoing_masses;
     std::vector<Propagator> t_propagators;
     std::vector<std::vector<Decay>> decays;
-    IndexList permutation;
-    IndexList inverse_permutation;
+    IndexVec permutation;
+    IndexVec inverse_permutation;
     std::size_t decay_hash;
 
     Topology(const Diagram& diagram, DecayMode decay_mode);

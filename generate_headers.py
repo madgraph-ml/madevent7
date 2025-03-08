@@ -32,7 +32,7 @@ def function_builder_mixin(commands):
         write_autogen(f)
         for name, cmd in commands.items():
             if cmd["inputs"] == "any":
-                parameters = "ValueList args"
+                parameters = "ValueVec args"
                 instruction_call = f"instruction(\"{name}\", args)"
             else:
                 parameters = ", ".join(f"Value {arg['name']}" for arg in cmd["inputs"])
@@ -40,7 +40,7 @@ def function_builder_mixin(commands):
                 instruction_call = f"instruction(\"{name}\", {{{arguments}}})"
 
             if cmd["outputs"] == "any":
-                return_type = "ValueList"
+                return_type = "ValueVec"
                 func_body = f"    return {instruction_call};"
             else:
                 n_outputs = len(cmd["outputs"])
