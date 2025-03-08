@@ -30,8 +30,8 @@ public:
     const std::unordered_map<std::string, Value>& globals() const { return _globals; }
     const std::vector<InstructionCall>& instructions() const { return _instructions; }
 
-    void store(std::string file);
-    static Function load(std::string file);
+    void store(const std::string& file) const;
+    static Function load(const std::string& file);
 
 private:
     Function(
@@ -66,13 +66,13 @@ public:
         const std::vector<Type> _input_types, const std::vector<Type> _output_types
     );
     FunctionBuilder(const Function& function);
-    Value input(int index);
-    ValueVec input_range(int start_index, int end_index);
+    Value input(int index) const;
+    ValueVec input_range(int start_index, int end_index) const;
     void output(int index, Value value);
     void output_range(int start_index, const ValueVec& values);
-    Value global(std::string name, DataType dtype, const std::vector<int>& shape);
-    ValueVec instruction(std::string name, ValueVec args);
-    ValueVec instruction(InstructionPtr instruction, ValueVec args);
+    Value global(const std::string& name, DataType dtype, const std::vector<int>& shape);
+    ValueVec instruction(const std::string& name, const ValueVec& args);
+    ValueVec instruction(InstructionPtr instruction, const ValueVec& args);
     Function function();
 
     Value sum(const ValueVec& values);

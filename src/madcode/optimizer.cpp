@@ -41,7 +41,7 @@ Function madevent::optimize_constants(const Function& function) {
         }
         double result;
         if (const_opt) {
-            switch (instr.instruction->opcode) {
+            switch (instr.instruction->opcode()) {
             case Opcode::add: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);

@@ -23,7 +23,7 @@ auto to_string(const T& object) {
 struct InstrCopy {
     std::string name;
     int opcode;
-    InstrCopy(InstructionPtr instr) : name(instr->name), opcode(instr->opcode) {}
+    InstrCopy(InstructionPtr instr) : name(instr->name()), opcode(instr->opcode()) {}
 };
 
 class PyMapping : public Mapping {

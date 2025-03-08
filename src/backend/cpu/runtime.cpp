@@ -447,7 +447,7 @@ void Runtime::initialize(const Function& function) {
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
         }
         instructions.push_back({
-            instr.instruction->opcode,
+            instr.instruction->opcode(),
             input_indices,
             output_indices,
             output_dtypes,

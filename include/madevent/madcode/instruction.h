@@ -19,15 +19,18 @@ enum Opcode {
 
 class Instruction {
 public:
-    std::string name;
-    int opcode;
-
-    Instruction(std::string _name, int _opcode) : name(_name), opcode(_opcode) {}
+    Instruction(const std::string& name, int opcode) : _name(name), _opcode(opcode) {}
     virtual ~Instruction() = default;
     virtual TypeVec signature(const ValueVec& args) const = 0;
+    const std::string& name() const { return _name; }
+    int opcode() const { return _opcode; }
 
 protected:
     void check_arg_count(const ValueVec& args, std::size_t count) const;
+
+private:
+    std::string _name;
+    int _opcode;
 };
 
 class ShapeExpr {

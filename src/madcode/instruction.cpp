@@ -126,7 +126,7 @@ std::optional<int> ShapeExpr::evaluate(const std::map<char, int>& variables) con
 void Instruction::check_arg_count(const ValueVec& args, std::size_t count) const {
     if (args.size() != count) {
         throw std::invalid_argument(std::format(
-            "{}: expected {} arguments, got {}", name, count, args.size()
+            "{}: expected {} arguments, got {}", name(), count, args.size()
         ));
     }
 }
@@ -151,13 +151,13 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 !std::holds_alternative<int64_t>(arg.literal_value)
             ) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: expected integer constant", name, i + 1
+                    "{}, argument {}: expected integer constant", name(), i + 1
                 ));
             }
             char var_name = std::get<ShapeExpr>(input_shape.at(0)).first_var_name();
             if (variables.find(var_name) != variables.end()) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: size already defined", name, i + 1
+                    "{}, argument {}: size already defined", name(), i + 1
                 ));
             }
             variables[var_name] = std::get<int64_t>(arg.literal_value);
@@ -166,21 +166,21 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
 
         if (arg_dtype == DataType::batch_sizes) {
             throw std::invalid_argument(std::format(
-                "{}, argument {}: batch size list not accepted as argument", name, i + 1
+                "{}, argument {}: batch size list not accepted as argument", name(), i + 1
             ));
         }
 
         if (input_dtype != arg_dtype) {
             std::cout << input_dtype << " " << arg_dtype << "\n";
             throw std::invalid_argument(std::format(
-                "{}, argument {}: dtypes not matching", name, i + 1
+                "{}, argument {}: dtypes not matching", name(), i + 1
             ));
         }
 
         if (is_single) {
             if (arg_batch_size != BatchSize::one) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: cannot have batch dimension", name, i + 1
+                    "{}, argument {}: cannot have batch dimension", name(), i + 1
                 ));
             }
         } else {
@@ -188,7 +188,7 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 batch_size = arg_batch_size;
             } else if (arg_batch_size != BatchSize::one && batch_size != arg_batch_size) {
                 throw std::invalid_argument(std::format(
-                    "{}, argument {}: incompatible batch size", name, i + 1
+                    "{}, argument {}: incompatible batch size", name(), i + 1
                 ));
             }
         }
@@ -207,7 +207,7 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 if (arg_shape.size() < input_shape.size() - 1) {
                     throw std::invalid_argument(std::format(
                         "{}, argument {}: expected dimension of at least {}, got {}",
-                        name, i + 1, input_shape.size() - 1, arg_shape.size()
+                        name(), i + 1, input_shape.size() - 1, arg_shape.size()
                     ));
                 }
                 auto begin_pos = arg_shape.begin() + wildcard_index;
@@ -226,7 +226,7 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
         if (arg_shape.size() != mod_input_shape.size()) {
             throw std::invalid_argument(std::format(
                 "{}, argument {}: expected dimension {}, got {}",
-                name, i + 1, mod_input_shape.size(), arg_shape.size()
+                name(), i + 1, mod_input_shape.size(), arg_shape.size()
             ));
         }
         for (size_t j = 0; j < arg_shape.size(); ++j) {
@@ -236,13 +236,13 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 if (arg_item != *shape_int) {
                     throw std::invalid_argument(std::format(
                         "{}, argument {}, dimension {}: expected size {}, got {}",
-                        name, i + 1, j, *shape_int, arg_item
+                        name(), i + 1, j, *shape_int, arg_item
                     ));
                 }
             } else {
                 if (!std::get<ShapeExpr>(input_item).check_and_update(variables, arg_item)) {
                     throw std::invalid_argument(std::format(
-                        "{}, argument {}, dimension {}: incompatible size", name, i + 1, j
+                        "{}, argument {}, dimension {}: incompatible size", name(), i + 1, j
                     ));
                 }
             }
@@ -298,7 +298,7 @@ TypeVec StackInstruction::signature(const ValueVec& args) const {
             arg.type.batch_size != BatchSize::one && batch_size != arg.type.batch_size
         ) {
             throw std::invalid_argument(std::format(
-                "{}, argument {}: incompatible batch size", name, i
+                "{}, argument {}: incompatible batch size", name(), i
             ));
         }
         if (arg.type.dtype != type.dtype || arg.type.shape != type.shape) {
@@ -402,7 +402,7 @@ TypeVec NonzeroInstruction::signature(const ValueVec& args) const {
     auto& input_type = args.at(0).type;
     if (input_type.dtype != DataType::dt_float || input_type.shape.size() != 0) {
         throw std::invalid_argument(std::format(
-            "{}, argument 1: expected batch of floats", name
+            "{}, argument 1: expected batch of floats", name()
         ));
     }
     return {{DataType::dt_int, BatchSize(), {}}};
@@ -414,12 +414,12 @@ TypeVec GatherInstruction::signature(const ValueVec& args) const {
     auto& values_type = args.at(1).type;
     if (indices_type.dtype != DataType::dt_int || indices_type.shape.size() != 0) {
         throw std::invalid_argument(std::format(
-            "{}, argument 1: expected batch of integers", name
+            "{}, argument 1: expected batch of integers", name()
         ));
     }
     if (values_type.dtype != DataType::dt_float) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected data type float", name
+            "{}, argument 2: expected data type float", name()
         ));
     }
     return {{DataType::dt_float, indices_type.batch_size, values_type.shape}};
@@ -432,12 +432,12 @@ TypeVec ScatterInstruction::signature(const ValueVec& args) const {
     auto& source_type = args.at(2).type;
     if (indices_type.dtype != DataType::dt_int || indices_type.shape.size() != 0) {
         throw std::invalid_argument(std::format(
-            "{}, argument 1: expected batch of integers", name
+            "{}, argument 1: expected batch of integers", name()
         ));
     }
     if (target_type.dtype != DataType::dt_float) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected data type float", name
+            "{}, argument 2: expected data type float", name()
         ));
     }
     if (
@@ -446,7 +446,7 @@ TypeVec ScatterInstruction::signature(const ValueVec& args) const {
         source_type.shape != target_type.shape
     ) {
         throw std::invalid_argument(std::format(
-            "{}, argument 3: incompatible source type", name
+            "{}, argument 3: incompatible source type", name()
         ));
     }
     return {target_type};
@@ -462,7 +462,7 @@ TypeVec RandomInstruction::signature(const ValueVec& args) const {
         batch_size_type.batch_size_list.size() != 1
     ) {
         throw std::invalid_argument(std::format(
-            "{}, argument 1: expected single batch size", name
+            "{}, argument 1: expected single batch size", name()
         ));
     }
     if (
@@ -472,7 +472,7 @@ TypeVec RandomInstruction::signature(const ValueVec& args) const {
         !std::holds_alternative<int64_t>(count_arg.literal_value)
     ) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected integer constant", name
+            "{}, argument 2: expected integer constant", name()
         ));
     }
     int count = std::get<int64_t>(count_arg.literal_value);
@@ -485,7 +485,7 @@ TypeVec UnweightInstruction::signature(const ValueVec& args) const {
     auto& max_weight_type = args.at(1).type;
     if (weights_type.dtype != DataType::dt_float || weights_type.shape.size() != 0) {
         throw std::invalid_argument(std::format(
-            "{}, argument 1: expected batch of floats", name
+            "{}, argument 1: expected batch of floats", name()
         ));
     }
     if (
@@ -494,7 +494,7 @@ TypeVec UnweightInstruction::signature(const ValueVec& args) const {
         max_weight_type.shape.size() != 0
     ) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected single float", name
+            "{}, argument 2: expected single float", name()
         ));
     }
 
@@ -509,7 +509,7 @@ const std::unordered_map<std::string, InstructionOwner> madevent::build_instruct
 #include "instruction_set_mixin.h"
     std::unordered_map<std::string, InstructionOwner> instruction_set;
     for (auto& instruction : instructions) {
-        instruction_set[instruction->name] = std::move(instruction);
+        instruction_set[instruction->name()] = std::move(instruction);
     }
     return instruction_set;
 }

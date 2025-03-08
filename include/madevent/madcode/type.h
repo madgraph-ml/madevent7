@@ -38,7 +38,7 @@ public:
     static const BatchSize zero;
     static const BatchSize one;
 
-    BatchSize(std::string name) : value(name) {}
+    BatchSize(const std::string& name) : value(name) {}
     BatchSize(One value) : value(value) {}
     BatchSize() : value(std::make_shared<UnnamedBody>()) {}
     BatchSize operator+(const BatchSize& other) const { return add(other, 1); }
@@ -64,12 +64,12 @@ struct Type {
     std::vector<int> shape;
     std::vector<BatchSize> batch_size_list;
 
-    Type(DataType _dtype, BatchSize _batch_size, std::vector<int> _shape) :
-        dtype(_dtype), batch_size(_batch_size), shape(_shape) {}
-    Type(std::vector<BatchSize> _batch_size_list) :
+    Type(DataType dtype, BatchSize batch_size, const std::vector<int>& shape) :
+        dtype(dtype), batch_size(batch_size), shape(shape) {}
+    Type(const std::vector<BatchSize>& batch_size_list) :
         dtype(DataType::batch_sizes),
         batch_size(BatchSize::one),
-        batch_size_list(_batch_size_list)
+        batch_size_list(batch_size_list)
     {}
 };
 
@@ -109,7 +109,7 @@ inline Type batch_four_vec_array(int count) {
 using TensorValue = std::tuple<
     std::vector<int>,
     std::variant<std::vector<bool>, std::vector<int64_t>, std::vector<double>>
->;
+>; //TODO: make this a class
 
 using LiteralValue = std::variant<bool, int64_t, double, TensorValue, std::monostate>;
 

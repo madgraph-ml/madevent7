@@ -8,14 +8,14 @@
 using namespace madevent;
 using json = nlohmann::json;
 
-void Function::store(std::string file) {
+void Function::store(const std::string& file) const {
     std::ofstream f(file);
     json j;
     j = *this;
     f << j.dump(2);
 }
 
-Function Function::load(std::string file) {
+Function Function::load(const std::string& file) {
     std::ifstream f(file);
     return json::parse(f).get<Function>();
 }
@@ -60,7 +60,7 @@ std::ostream& madevent::operator<<(std::ostream& out, const ValueVec& list) {
 }
 
 std::ostream& madevent::operator<<(std::ostream& out, const InstructionCall& call) {
-    out << call.outputs << " = " << call.instruction->name << "(" << call.inputs << ")";
+    out << call.outputs << " = " << call.instruction->name() << "(" << call.inputs << ")";
     return out;
 }
 
@@ -86,7 +86,7 @@ std::ostream& madevent::operator<<(std::ostream& out, const Function& func) {
 
 void madevent::to_json(json& j, const InstructionCall& call) {
     j = json{
-        {"name", call.instruction->name},
+        {"name", call.instruction->name()},
         {"inputs", call.inputs},
         {"outputs", call.outputs},
     };
@@ -215,7 +215,7 @@ FunctionBuilder::FunctionBuilder(const Function& function) :
     }
 }
 
-ValueVec FunctionBuilder::instruction(std::string name, ValueVec args) {
+ValueVec FunctionBuilder::instruction(const std::string& name, const ValueVec& args) {
     auto find_instr = instruction_set.find(name);
     if (find_instr == instruction_set.end()) {
         throw std::invalid_argument(std::format("Unknown instruction '{}'", name));
@@ -223,16 +223,17 @@ ValueVec FunctionBuilder::instruction(std::string name, ValueVec args) {
     return instruction(find_instr->second.get(), args);
 }
 
-ValueVec FunctionBuilder::instruction(InstructionPtr instruction, ValueVec args) {
+ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec& args) {
+    auto params = args;
     int arg_index = -1;
-    for (auto& arg : args) {
+    for (auto& arg : params) {
         ++arg_index;
 
         if (arg.local_index != -1) {
             if (arg.local_index < 0 || arg.local_index > locals.size()) {
                 throw std::invalid_argument(std::format(
                     "{}, argument {}: inconsistent value (local index)",
-                    instruction->name, arg_index
+                    instruction->name(), arg_index
                 ));
             }
             auto local_value = locals.at(arg.local_index);
@@ -240,14 +241,14 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, ValueVec args)
                 local_value.literal_value != arg.literal_value) {
                 throw std::invalid_argument(std::format(
                     "{}, argument {}: inconsistent value (type or value)",
-                    instruction->name, arg_index
+                    instruction->name(), arg_index
                 ));
             }
             continue;
         }
         if (std::holds_alternative<std::monostate>(arg.literal_value)) {
             throw std::invalid_argument(std::format(
-                "{}, argument {}: undefined value", instruction->name, arg_index
+                "{}, argument {}: undefined value", instruction->name(), arg_index
             ));
         }
         auto find_literal = literals.find(arg.literal_value);
@@ -261,14 +262,14 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, ValueVec args)
         }
     }
 
-    auto output_types = instruction->signature(args);
+    auto output_types = instruction->signature(params);
     ValueVec call_outputs;
     for (const auto& type : output_types) {
         Value value(type, locals.size());
         locals.push_back(value);
         call_outputs.push_back(value);
     }
-    instructions.push_back(InstructionCall{instruction, args, call_outputs});
+    instructions.push_back(InstructionCall{instruction, params, call_outputs});
     return call_outputs;
 }
 
@@ -288,7 +289,7 @@ Function FunctionBuilder::function() {
     return Function(inputs, func_outputs, locals, globals, instructions);
 }
 
-Value FunctionBuilder::input(int index) {
+Value FunctionBuilder::input(int index) const {
     if (index < 0 || index >= inputs.size()) {
         throw std::out_of_range(std::format(
             "Input index expected to be in range 0 to {}, got {}",
@@ -298,7 +299,7 @@ Value FunctionBuilder::input(int index) {
     return inputs.at(index);
 }
 
-ValueVec FunctionBuilder::input_range(int start_index, int end_index) {
+ValueVec FunctionBuilder::input_range(int start_index, int end_index) const {
     if (start_index < 0 || start_index > inputs.size()) {
         throw std::out_of_range(std::format(
             "Start index expected to be in range 0 to {}, got {}",
@@ -338,7 +339,9 @@ void FunctionBuilder::output_range(int start_index, const ValueVec& values) {
     std::copy(values.begin(), values.end(), outputs.begin() + start_index);
 }
 
-Value FunctionBuilder::global(std::string name, DataType dtype, const std::vector<int>& shape) {
+Value FunctionBuilder::global(
+    const std::string& name, DataType dtype, const std::vector<int>& shape
+) {
     Type type(dtype, BatchSize::one, shape);
 
     if (auto search = globals.find(name); search != globals.end()) {
