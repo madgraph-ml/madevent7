@@ -66,19 +66,19 @@ std::ostream& madevent::operator<<(std::ostream& out, const InstructionCall& cal
 
 std::ostream& madevent::operator<<(std::ostream& out, const Function& func) {
     out << "Inputs:\n";
-    for (auto& input : func.inputs) {
+    for (auto& input : func.inputs()) {
         out << "  " << input << " : " << input.type << "\n";
     }
     out << "Globals:\n";
-    for (auto& [name, global] : func.globals) {
+    for (auto& [name, global] : func.globals()) {
         out << "  " << global << " : " << global.type << " = " << name << "\n";
     }
     out << "Instructions:\n";
-    for (auto& instr : func.instructions) {
+    for (auto& instr : func.instructions()) {
         out << "  " << instr << "\n";
     }
     out << "Outputs:\n";
-    for (auto& output : func.outputs) {
+    for (auto& output : func.outputs()) {
         out << "  " << output << " : " << output.type << "\n";
     }
     return out;
@@ -96,7 +96,7 @@ void madevent::to_json(json& j, const Function& func) {
     json inputs(json::value_t::array);
     json outputs(json::value_t::array);
     json globals(json::value_t::array);
-    for (auto& input : func.inputs) {
+    for (auto& input : func.inputs()) {
         inputs.push_back(json{
             {"local", input},
             {"dtype", input.type.dtype},
@@ -104,14 +104,14 @@ void madevent::to_json(json& j, const Function& func) {
             {"shape", input.type.shape},
         });
     }
-    for (auto& output : func.outputs) {
+    for (auto& output : func.outputs()) {
         outputs.push_back(json{
             {"local", output},
             {"dtype", output.type.dtype},
             {"shape", output.type.shape},
         });
     }
-    for (auto& [name, global] : func.globals) {
+    for (auto& [name, global] : func.globals()) {
         globals.push_back(json{
             {"local", global},
             {"name", name},
@@ -123,7 +123,7 @@ void madevent::to_json(json& j, const Function& func) {
         {"inputs", inputs},
         {"outputs", outputs},
         {"globals", globals},
-        {"instructions", func.instructions},
+        {"instructions", func.instructions()},
     };
 }
 
@@ -206,10 +206,10 @@ FunctionBuilder::FunctionBuilder(
 }
 
 FunctionBuilder::FunctionBuilder(const Function& function) :
-    inputs(function.inputs), locals(function.inputs)
+    inputs(function.inputs()), locals(function.inputs())
 {
     TypeVec output_types;
-    for (auto& output : function.outputs) {
+    for (auto& output : function.outputs()) {
         output_types.push_back(output.type);
         outputs.push_back(std::nullopt);
     }
@@ -285,7 +285,7 @@ Function FunctionBuilder::function() {
         }
         ++output_index;
     }
-    return Function{inputs, func_outputs, locals, globals, instructions};
+    return Function(inputs, func_outputs, locals, globals, instructions);
 }
 
 Value FunctionBuilder::input(int index) {

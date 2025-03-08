@@ -421,13 +421,13 @@ void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
 }
 
 void Runtime::initialize(const Function& function) {
-    locals_init.resize(function.locals.size());
+    locals_init.resize(function.locals().size());
     auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
     LastUseOfLocals last_use(opt_function);
-    std::vector<bool> requires_grad(function.locals.size());
+    std::vector<bool> requires_grad(function.locals().size());
 
-    for (auto& instr : opt_function.instructions) {
+    for (auto& instr : opt_function.instructions()) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
         bool eval_grad = false;
@@ -464,7 +464,7 @@ void Runtime::initialize(const Function& function) {
         ++instr_index;
     }
 
-    for (auto& [name, value] : opt_function.globals) {
+    for (auto& [name, value] : opt_function.globals()) {
         Tensor global = context->global(name);
         auto& global_shape = value.type.shape;
         Sizes full_shape(global_shape.size() + 1);
@@ -482,7 +482,7 @@ void Runtime::initialize(const Function& function) {
         }
     }
 
-    for (auto& local : opt_function.locals) {
+    for (auto& local : opt_function.locals()) {
         std::visit(Overloaded{
             [&](auto val) {
                 Tensor tensor(val, cpu_device());
@@ -510,7 +510,7 @@ void Runtime::initialize(const Function& function) {
         }, local.literal_value);
     }
 
-    for (auto& out : opt_function.outputs) {
+    for (auto& out : opt_function.outputs()) {
         output_indices.push_back(out.local_index);
     }
 }

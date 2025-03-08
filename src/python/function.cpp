@@ -7,7 +7,7 @@ using namespace madevent_py;
 
 std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
     // TODO: update numpy bindings
-    auto n_args = function.inputs.size();
+    auto n_args = function.inputs().size();
     if (args.size() != n_args) {
         throw std::invalid_argument(std::format(
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
@@ -17,11 +17,11 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
     std::vector<Arr> arrays;
     std::vector<Tensor> inputs;
     for (int i = 0; i < n_args; ++i) {
-        auto arr = Arr::ensure(args[i]);
+        auto arr = Arr::ensure(args.at(i));
         if (!arr) {
             throw std::invalid_argument(std::format("Argument {}: wrong dtype", i));
         }
-        auto& input_type = function.inputs[i].type;
+        auto& input_type = function.inputs().at(i).type;
         if (arr.ndim() != input_type.shape.size() + 1) {
             throw std::invalid_argument(std::format(
                 "Argument {}: wrong input dimension. Expected {}, got {}",
@@ -31,10 +31,10 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
         std::vector<size_t> shape;
         for (int j = 0; j < arr.ndim(); ++j) {
             auto arr_size = arr.shape(j);
-            if (j != 0 && arr_size != input_type.shape[j-1]) {
+            if (j != 0 && arr_size != input_type.shape.at(j - 1)) {
                 throw std::invalid_argument(std::format(
                     "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
-                    i, j, input_type.shape[j-1], arr_size
+                    i, j, input_type.shape.at(j - 1), arr_size
                 ));
             }
             shape.push_back(arr_size);
@@ -69,7 +69,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
 #ifdef TORCH_FOUND
 std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor> args) {
     //TODO: check batch sizes
-    auto n_args = function.inputs.size();
+    auto n_args = function.inputs().size();
     if (args.size() != n_args) {
         throw std::invalid_argument(std::format(
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
@@ -87,7 +87,7 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
             permutation.push_back(k);
         }
         auto arg_dtype = arg.scalar_type();
-        auto& input_type = function.inputs.at(i).type;
+        auto& input_type = function.inputs().at(i).type;
         bool is_batch_sizes = input_type.dtype == DataType::batch_sizes;
         torch::Dtype target_dtype;
         bool dtype_ok = false;

@@ -128,10 +128,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("__repr__", &to_string<Function>)
         .def("store", &Function::store, py::arg("file"))
         .def_static("load", &Function::load, py::arg("file"))
-        .def_readonly("inputs", &Function::inputs)
-        .def_readonly("outputs", &Function::outputs)
-        .def_readonly("locals", &Function::locals)
-        .def_readonly("instructions", &Function::instructions);
+        .def_property_readonly("inputs", &Function::inputs)
+        .def_property_readonly("outputs", &Function::outputs)
+        .def_property_readonly("locals", &Function::locals)
+        .def_property_readonly("globals", &Function::globals)
+        .def_property_readonly("instructions", &Function::instructions);
 
     py::class_<Device, DevicePtr> device(m, "Device");
     m.def("cpu_device", &cpu_device);
@@ -318,9 +319,9 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
-    py::class_<MergeOptimizer>(m, "MergeOptimizer")
+    /*py::class_<MergeOptimizer>(m, "MergeOptimizer")
         .def(py::init<Function&>(), py::arg("function"))
-        .def("optimize", &MergeOptimizer::optimize);
+        .def("optimize", &MergeOptimizer::optimize);*/
     py::class_<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
 

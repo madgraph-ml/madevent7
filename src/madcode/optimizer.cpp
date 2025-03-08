@@ -8,12 +8,12 @@ using namespace madevent;
 
 namespace {
 
-std::vector<int> find_permutation(std::vector<int>& from, std::vector<int>& to) {
+std::vector<int> find_permutation(const std::vector<int>& from, const std::vector<int>& to) {
     auto indices = std::views::iota(from.size());
     std::unordered_map<int, int> from_location(
         std::from_range, std::views::zip(from, indices)
     );
-    return indices | std::views::transform([&](int i) { return from_location[to[i]]; })
+    return indices | std::views::transform([&](int i) { return from_location[to.at(i)]; })
                    | std::ranges::to<std::vector<int>>();
 }
 
@@ -22,13 +22,13 @@ std::vector<int> find_permutation(std::vector<int>& from, std::vector<int>& to) 
 Function madevent::optimize_constants(const Function& function) {
     // add, sub, mul, clip_min, sqrt, square
     FunctionBuilder fb(function);
-    ValueVec new_locals(function.locals);
-    for (auto& [name, global] : function.globals) {
+    ValueVec new_locals(function.locals());
+    for (auto& [name, global] : function.globals()) {
         new_locals.at(global.local_index) = fb.global(
             name, global.type.dtype, global.type.shape
         );
     }
-    for (auto& instr : function.instructions) {
+    for (auto& instr : function.instructions()) {
         bool const_opt = true;
         ValueVec inputs;
         for (auto& input : instr.inputs) {
@@ -91,7 +91,7 @@ Function madevent::optimize_constants(const Function& function) {
     }
 
     ValueVec outputs;
-    for (auto& output : function.outputs) {
+    for (auto& output : function.outputs()) {
         outputs.push_back(new_locals.at(output.local_index));
     }
     fb.output_range(0, outputs);
@@ -99,25 +99,25 @@ Function madevent::optimize_constants(const Function& function) {
 }
 
 InstructionDependencies::InstructionDependencies(const Function& function) :
-    size(function.instructions.size()), matrix(size * size)
+    size(function.instructions().size()), matrix(size * size)
 {
-    std::vector<int> local_source(function.locals.size(), -1);
+    std::vector<int> local_source(function.locals().size(), -1);
     int index = 0;
-    for (auto& instr : function.instructions) {
+    for (auto& instr : function.instructions()) {
         int rank = 0;
         for (auto& input : instr.inputs) {
-            auto source_index = local_source[input.local_index];
+            auto source_index = local_source.at(input.local_index);
             if (source_index == -1) continue;
-            matrix[index * size + source_index] = true;
+            matrix.at(index * size + source_index) = true;
             for (int i = 0; i < size; ++i) {
-                matrix[index * size + i] =
-                    matrix[index * size + i] | matrix[source_index * size + i];
+                matrix.at(index * size + i) =
+                    matrix.at(index * size + i) | matrix.at(source_index * size + i);
             }
-            int source_rank = ranks[source_index];
+            int source_rank = ranks.at(source_index);
             if (rank < source_rank) rank = source_rank;
         }
         for (auto& output : instr.outputs) {
-            local_source[output.local_index] = index;
+            local_source.at(output.local_index) = index;
         }
         ranks.push_back(rank + 1);
         ++index;
@@ -125,39 +125,39 @@ InstructionDependencies::InstructionDependencies(const Function& function) :
 }
 
 LastUseOfLocals::LastUseOfLocals(const Function& function) :
-    last_used(function.instructions.size())
+    last_used(function.instructions().size())
 {
     std::vector<bool> seen_locals;
-    for (auto& local : function.locals) {
+    for (auto& local : function.locals()) {
         seen_locals.push_back(!std::holds_alternative<std::monostate>(local.literal_value));
     }
-    for (auto& output : function.outputs) {
-        seen_locals[output.local_index] = true;
+    for (auto& output : function.outputs()) {
+        seen_locals.at(output.local_index) = true;
     }
-    auto instr = function.instructions.rbegin();
+    auto instr = function.instructions().rbegin();
     auto indices = last_used.begin();
-    for (; instr != function.instructions.rend(); ++instr, ++indices) {
+    for (; instr != function.instructions().rend(); ++instr, ++indices) {
         for (auto& input : instr->inputs) {
             auto index = input.local_index;
-            if (!seen_locals[index]) {
+            if (!seen_locals.at(index)) {
                 indices->push_back(index);
-                seen_locals[index] = true;
+                seen_locals.at(index) = true;
             }
         }
     }
     std::reverse(last_used.begin(), last_used.end());
 }
 
-MergeOptimizer::MergeOptimizer(const Function& _function) : function(_function) {
+/*MergeOptimizer::MergeOptimizer(const Function& _function) : function(_function) {
     InstructionDependencies dependencies(function);
-    auto size = function.instructions.size();
+    auto size = function.instructions().size();
     std::vector<std::size_t> perm(size);
     std::iota(perm.begin(), perm.end(), 0);
     std::sort(perm.begin(), perm.end(), [&dependencies](auto i, auto j) {
         return dependencies.ranks[i] < dependencies.ranks[j];
     });
     for (auto i : perm) {
-        MergedInstruction instr{{function.instructions[i]}, dependencies.ranks[i]};
+        MergedInstruction instr{{function.instructions()[i]}, dependencies.ranks[i]};
         for (auto j : perm) {
             instr.dependencies.push_back(dependencies.matrix[i * size + j]);
         }
@@ -205,7 +205,7 @@ Function MergeOptimizer::build_function() {
         int sub_instr;
     };
     FunctionBuilder fb(function);
-    std::vector<SourceIndices> local_source_indices(function.locals.size());
+    std::vector<SourceIndices> local_source_indices(function.locals().size());
     std::vector<std::vector<SourceIndices>> input_source_instr;
     std::vector<std::vector<int>> input_local_indices;
     std::vector<int> permutation, arg_source_locals, arg_locals;
@@ -359,4 +359,4 @@ void MergeOptimizer::merge_if_compatible(
             std::transform(dep.begin(), dep.end(), dep1.begin(), dep.begin(), std::logical_or<>{});
         }
     }
-}
+}*/

@@ -34,7 +34,7 @@ private:
     std::vector<std::vector<int>> last_used;
 };
 
-class MergeOptimizer {
+/*class MergeOptimizer {
 public:
     MergeOptimizer(const Function& _function);
     Function optimize();
@@ -52,6 +52,6 @@ private:
         std::size_t idx1, MergedInstruction& instr1, std::size_t idx2, MergedInstruction& instr2
     );
     Function build_function();
-};
+};*/
 
 }

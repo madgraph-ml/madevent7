@@ -18,15 +18,37 @@ struct InstructionCall {
     ValueVec outputs;
 };
 
-struct Function {
-    ValueVec inputs;
-    ValueVec outputs;
-    ValueVec locals;
-    std::unordered_map<std::string, Value> globals;
-    std::vector<InstructionCall> instructions;
+class Function {
+public:
+    friend class FunctionBuilder;
+
+    Function() = default;
+
+    const ValueVec& inputs() const { return _inputs; }
+    const ValueVec& outputs() const { return _outputs; }
+    const ValueVec& locals() const { return _locals; }
+    const std::unordered_map<std::string, Value>& globals() const { return _globals; }
+    const std::vector<InstructionCall>& instructions() const { return _instructions; }
 
     void store(std::string file);
     static Function load(std::string file);
+
+private:
+    Function(
+        const ValueVec& inputs,
+        const ValueVec& outputs,
+        const ValueVec& locals,
+        const std::unordered_map<std::string, Value>& globals,
+        const std::vector<InstructionCall>& instructions
+    ) :
+        _inputs(inputs), _outputs(outputs), _locals(locals),
+        _globals(globals), _instructions(instructions) {}
+
+    ValueVec _inputs;
+    ValueVec _outputs;
+    ValueVec _locals;
+    std::unordered_map<std::string, Value> _globals;
+    std::vector<InstructionCall> _instructions;
 };
 
 std::ostream& operator<<(std::ostream& out, const Value& value);
