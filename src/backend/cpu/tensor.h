@@ -140,7 +140,7 @@ void recursive_for(V... views) {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
-    std::array<madevent::Tensor*, n_in>& inputs,
+    std::array<const madevent::Tensor*, n_in>& inputs,
     std::array<madevent::Tensor*, n_out>& outputs,
     std::size_t batch_size
 ) {
@@ -185,7 +185,7 @@ void tensor_foreach(
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out>
 void tensor_foreach_dynamic(
-    std::array<madevent::Tensor*, n_in> inputs,
+    std::array<const madevent::Tensor*, n_in> inputs,
     std::array<madevent::Tensor*, n_out> outputs,
     std::size_t batch_size
 ) {

@@ -63,20 +63,6 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) {
     return tensors;
 }
 
-Tensor Tensor::copy() {
-    Tensor tensor(impl->dtype, impl->shape, impl->device);
-    impl->device->tensor_copy(*this, tensor);
-    return tensor;
-}
-
-Tensor Tensor::contiguous() {
-    if (impl->contiguous_dims < impl->shape.size()) {
-        return copy();
-    } else {
-        return *this;
-    }
-}
-
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = dtype_size();
     bool first = true;

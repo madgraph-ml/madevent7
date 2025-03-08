@@ -23,23 +23,10 @@ using namespace madevent::cpu;
 
 namespace {
 
-void tensor_copy(Tensor source, Tensor target) {
-    //TODO: maybe remove in favor of CpuDevice::tensor_copy
-    tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0)
-    );
-}
-
-void tensor_zero(Tensor tensor) {
-    tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
-        {&tensor}, {&tensor}, tensor.size(0)
-    );
-}
-
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    std::array<Tensor*, n_in> inputs;
+    std::array<const Tensor*, n_in> inputs;
     for (int i = 0; i < n_in; ++i) {
         inputs[i] = &locals[instruction.input_indices[i]];
     }
@@ -83,7 +70,7 @@ void backward_batch_foreach(
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     constexpr int n_args = n_in_stored + n_out_stored + n_out;
-    std::array<Tensor*, n_args> args;
+    std::array<const Tensor*, n_args> args;
     std::array<Tensor*, n_in> input_grads;
     int i = 0;
     for (; i < n_in_stored; ++i) {
@@ -104,7 +91,7 @@ void backward_batch_foreach(
             shape[0] = batch_size;
             std::copy(grad_shape.begin(), grad_shape.end(), shape.begin() + 1);
             input_grad = Tensor(input.dtype(), shape);
-            tensor_zero(input_grad);
+            input_grad.zero();
         }
         input_grads[i] = &input_grad;
     }
@@ -129,7 +116,7 @@ void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
     Tensor output(instruction.output_dtypes.front(), shape);
     std::size_t index = 0;
     for (auto input_index : instruction.input_indices) {
-        tensor_copy(locals[input_index], output.select(1, index));
+        output.select(1, index).copy_from(locals[input_index]);
         ++index;
     }
     locals[instruction.output_indices[0]] = output;
@@ -159,7 +146,7 @@ void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
     for (auto input_index : instruction.input_indices) {
         auto& input = locals[input_index];
         auto next_offset = offset + input.size(0);
-        tensor_copy(input, output.slice(0, offset, next_offset));
+        output.slice(0, offset, next_offset).copy_from(input);
         offset = next_offset;
     }
 
@@ -224,8 +211,7 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
-    output = Tensor(DataType::dt_float, {batch_size, dims_out});
-    tensor_copy(bias, output);
+    output = bias.copy();
     char transa = 'N', transb = 'T';
     int m = batch_size, n = dims_out, k = dims_in;
     double alpha = 1., beta = 1.;
@@ -239,9 +225,6 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
-    // input, weight
-    // output_grad
-    // input_grad, weight_grad, bias_grad
     /*auto input = locals[instruction.input_indices[0]].contiguous();
     auto weight = locals[instruction.input_indices[1]].contiguous();
     auto output_grad = locals[instruction.input_indices[2]].contiguous();
@@ -251,14 +234,21 @@ void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& loca
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
-    input_grad = Tensor(DataType::dt_float, input.shape());
-    weight_grad = Tensor(DataType::dt_float, weight.shape());
-    bias_grad = Tensor(DataType::dt_float, {batch_size, dims_out});
-    tensor_zero(input_grad);
-    tensor_zero(weight_grad);
-    tensor_zero(bias_grad);
 
-    // compute grad_input = grad_output * weight
+    if (!input_grad) {
+        input_grad = Tensor(DataType::dt_float, input.shape());
+        input_grad.zero();
+    }
+    if (!weight_grad) {
+        weight_grad = Tensor(DataType::dt_float, weight.shape());
+        weight_grad.zero();
+    }
+    if (!bias_grad) {
+        bias_grad = Tensor(DataType::dt_float, {batch_size, dims_out});
+        bias_grad.zero();
+    }
+
+    // compute grad_input += grad_output * weight
     {
         char transa = 'N', transb = 'N';
         int m = batch_size, n = dims_out, k = dims_in;
@@ -272,7 +262,7 @@ void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& loca
         );
     }
 
-    // compute grad_weight = grad_output.T * input
+    // compute grad_weight += grad_output.T * input
     {
         char transa = 'T', transb = 'N';
         int m = dims_out, n = dims_in, k = batch_size;
@@ -284,9 +274,12 @@ void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& loca
         dgemm_(
             &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
         );
-    }*/
+    }
 
-    // compute grad_bias = sum_i grad_output_ij
+    // compute grad_bias += sum_i grad_output_ij
+    {
+
+    }*/
 }
 
 void op_nonzero(const Runtime::Instruction& instruction, TensorVec& locals) {
@@ -356,8 +349,7 @@ void op_scatter(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto& source = locals[instruction.input_indices[2]];
 
     auto& output = locals[instruction.output_indices[0]];
-    output = Tensor(DataType::dt_float, target.shape());
-    tensor_copy(target, output);
+    output = target.copy();
     switch (target.shape().size()) {
         case 1: scatter_impl<1>(indices, source, output); break;
         case 2: scatter_impl<2>(indices, source, output); break;
@@ -417,7 +409,16 @@ void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
 
 void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
     //TODO: this function is in the wrong place. need some restructuring
-    tensor_copy(source, target);
+    tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
+        {&source}, {&target}, target.size(0)
+    );
+}
+
+void CpuDevice::tensor_zero(Tensor& tensor) const {
+    //TODO: this function is in the wrong place. need some restructuring
+    tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
+        {&tensor}, {&tensor}, tensor.size(0)
+    );
 }
 
 void Runtime::initialize(const Function& function) {
