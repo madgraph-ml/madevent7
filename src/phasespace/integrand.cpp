@@ -12,11 +12,31 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto& [pids, me_index] = _pid_options.at(0);
     int64_t pid1 = pids.at(0);
     int64_t pid2 = pids.at(1);
-    auto me2 = fb.matrix_element(momenta, static_cast<int64_t>(me_index));
     auto pdf1 = fb.pdf(x1, _q2, pid1);
     auto pdf2 = fb.pdf(x2, _q2, pid2);
-    auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
-    return {xs};
+    if (_channel_count == 1) {
+        auto me2 = fb.matrix_element(momenta, static_cast<int64_t>(me_index));
+        auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
+        return {xs};
+    } else {
+        auto [me2, chan_weights] = fb.matrix_element_multichannel(
+            momenta, _amp2_remap, static_cast<int64_t>(me_index), _channel_count
+        );
+        auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
+        return {xs, chan_weights};
+    }
+}
+
+ValueVec Unweighter::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
+) const {
+    auto [uw_indices, uw_weights] = fb.unweight(args.at(3), args.at(4));
+    return {
+        fb.gather(uw_indices, args.at(0)),
+        fb.gather(uw_indices, args.at(1)),
+        fb.gather(uw_indices, args.at(2)),
+        uw_weights
+    };
 }
 
 ValueVec Integrand::build_function_impl(
@@ -38,6 +58,7 @@ ValueVec Integrand::build_function_impl(
     auto weights = fb.mul(fb.scatter(indices, det, dxs.at(0)), det);
     if (!_unweight) return {momenta, x1, x2, weights};
 
+    //TODO: use unweighter here
     auto [uw_indices, uw_weights] = fb.unweight(weights, args.at(1));
     return {
         fb.gather(uw_indices, momenta),

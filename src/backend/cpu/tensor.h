@@ -27,7 +27,7 @@ public:
         _shape(nullptr),
         _batch_stride(0) {}
 
-    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    template<int d = _dim> requires (d != 0)
     const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
         if constexpr (is_batch) {
             return {
@@ -41,7 +41,7 @@ public:
         }
     }
 
-    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    template<int d = _dim> requires (d != 0)
     VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
         if constexpr (is_batch) {
             return {
@@ -65,7 +65,7 @@ public:
         return vload(&buffer[0]);
     }
 
-    template<int d = _dim, typename = std::enable_if_t<d == 0>>
+    template<int d = _dim> requires (d == 0)
     V operator=(V value) {
         // This is somewhat ugly but needs to be done such that broadcasting from
         // batch size 1 -> n works. Maybe there is a better way
@@ -87,6 +87,18 @@ public:
         } else {
             return _shape[0];
         }
+    }
+
+    template<typename IVec>
+    V gather(IVec indices) const requires (_dim == 1) {
+        T buffer[simd_vec_size];
+        int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
+        for (int i = 0; i < simd_vec_size; ++i) {
+            buffer[i] = *reinterpret_cast<T*>(
+                _data + index_ptr[i] * _stride[0] + i * _batch_stride
+            );
+        }
+        return vload(&buffer[0]);
     }
 
 private:
@@ -191,16 +203,24 @@ void tensor_foreach_dynamic(
 ) {
     switch (std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim) {
         case 1:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 1>(inputs, outputs, batch_size);
+            tensor_foreach<scalar_func, vector_func, n_in, n_out, 1>(
+                inputs, outputs, batch_size
+            );
             break;
         case 2:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 2>(inputs, outputs, batch_size);
+            tensor_foreach<scalar_func, vector_func, n_in, n_out, 2>(
+                inputs, outputs, batch_size
+            );
             break;
         case 3:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 3>(inputs, outputs, batch_size);
+            tensor_foreach<scalar_func, vector_func, n_in, n_out, 3>(
+                inputs, outputs, batch_size
+            );
             break;
         case 4:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 4>(inputs, outputs, batch_size);
+            tensor_foreach<scalar_func, vector_func, n_in, n_out, 4>(
+                inputs, outputs, batch_size
+            );
             break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");

@@ -19,28 +19,28 @@ public:
         std::vector<SizeVec> output_shapes;
         std::size_t batch_size_index;
         Context& context;
-        bool eval_grad;
+        bool differentiable;
     };
 
-    Runtime(const Function& function) : context(Context::default_context()) {
-        initialize(function);
-    }
-    Runtime(const Function& function, ContextPtr context) : context(context) {
-        initialize(function);
-    }
-    TensorVec run(TensorVec& inputs) const;
-    std::tuple<TensorVec, TensorVec> run_with_grad(TensorVec& inputs) const;
-    std::unordered_map<std::string, Tensor> run_backward(
-        TensorVec& output_grads, TensorVec& locals
+    Runtime(const Function& function) : Runtime(function, Context::default_context()) {}
+    Runtime(const Function& function, ContextPtr context);
+    TensorVec run(const TensorVec& inputs) const;
+    std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad(
+        const TensorVec& inputs, const std::vector<bool>& input_requires_grad
+    ) const;
+    std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> run_backward(
+        const TensorVec& output_grads,
+        const TensorVec& stored_locals,
+        const std::vector<bool>& eval_grad
     );
 
 private:
-    void initialize(const Function& function);
-
     std::vector<Instruction> instructions;
     SizeVec output_indices;
+    std::size_t input_count;
     TensorVec locals_init;
-    std::unordered_map<std::string, std::size_t> grad_global_indices;
+    std::vector<bool> requires_grad_init;
+    std::vector<std::tuple<std::string, std::size_t>> grad_global_indices;
     ContextPtr context;
 };
 

@@ -5,9 +5,9 @@
 #include <cstdint>
 #include <vector>
 #include <functional>
-#include <type_traits>
 #include <initializer_list>
 #include <algorithm>
+#include <concepts>
 
 namespace madevent {
 
@@ -73,12 +73,12 @@ public:
         _stride(nullptr),
         _shape(nullptr) {}
 
-    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    template<int d = _dim> requires (d != 0)
     const TensorView<T, _dim-1> operator[](std::size_t index) const {
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
 
-    template<int d = _dim, typename = std::enable_if_t<d != 0>>
+    template<int d = _dim> requires (d != 0)
     TensorView<T, _dim-1> operator[](std::size_t index) {
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
@@ -87,7 +87,7 @@ public:
         return *reinterpret_cast<T*>(_data);
     }
 
-    template<int d = _dim, typename = std::enable_if_t<d == 0>>
+    template<int d = _dim> requires (d == 0)
     T operator=(T value) {
         *reinterpret_cast<T*>(_data) = value;
         return value;
@@ -98,6 +98,7 @@ public:
     uint8_t* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
+    T gather(int64_t index) const requires (_dim == 1) { return (*this)[index]; }
 
 private:
     uint8_t* _data;
@@ -201,9 +202,8 @@ public:
         1, {}, 0, 0, batch_sizes
     }) {}
 
-    template<typename T, typename = std::enable_if_t<
-        std::is_same_v<T, bool> || std::is_same_v<T, int64_t> || std::is_same_v<T, double>
-    >>
+    template<typename T>
+    requires std::same_as<T, bool> || std::same_as<T, int64_t> || std::same_as<T, double>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
             std::is_same_v<T, bool> ? DataType::dt_bool :
@@ -259,6 +259,7 @@ public:
     std::size_t size(std::size_t i) const { return impl->shape[i]; }
     DataType dtype() const { return impl->dtype; }
     const SizeVec& batch_sizes() const { return impl->batch_sizes; }
+    DevicePtr device() const { return impl->device; }
 
     std::size_t dtype_size() const {
         switch (impl->dtype) {
@@ -293,21 +294,21 @@ public:
         impl = nullptr;
     }
 
-    Tensor select(std::size_t axis, std::size_t index);
-    Tensor slice(std::size_t axis, std::size_t start, std::size_t stop);
-    std::vector<Tensor> split(std::size_t axis, SizeVec sizes);
-    std::vector<Tensor> unstack(std::size_t axis);
-    Tensor cpu() { return *this; } //TODO: implement
+    Tensor select(std::size_t axis, std::size_t index) const;
+    Tensor slice(std::size_t axis, std::size_t start, std::size_t stop) const;
+    std::vector<Tensor> split(std::size_t axis, const SizeVec& sizes) const;
+    std::vector<Tensor> unstack(std::size_t axis) const;
+    Tensor cpu() const { return *this; } //TODO: implement
     void zero() { impl->device->tensor_zero(*this); }
-    void copy_from(Tensor& source) { impl->device->tensor_copy(source, *this); }
+    void copy_from(const Tensor& source) { impl->device->tensor_copy(source, *this); }
 
-    Tensor copy() {
+    Tensor copy() const {
         Tensor tensor(impl->dtype, impl->shape, impl->device);
         impl->device->tensor_copy(*this, tensor);
         return tensor;
     }
 
-    Tensor contiguous() {
+    Tensor contiguous() const {
         return impl->contiguous_dims < impl->shape.size() ? copy() : *this;
     }
 

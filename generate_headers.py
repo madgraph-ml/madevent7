@@ -182,7 +182,7 @@ def cpu_runtime_backward_mixin(commands):
             if cmd.get("custom_op", False):
                 f.write(
                     f"case {opcode}:\n"
-                    f"    op_{name}(instr, locals);\n"
+                    f"    backward_op_{name}(instr, locals, local_grads);\n"
                     f"    break;\n"
                 )
             else:

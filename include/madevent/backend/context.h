@@ -19,13 +19,16 @@ struct SubProcessInfo {
 class MatrixElement {
 public:
     MatrixElement(
-        const std::string& file, const std::string& param_card, std::size_t process_index
+        const std::string& file,
+        const std::string& param_card,
+        std::size_t process_index,
+        double alpha_s
     );
-    MatrixElement(MatrixElement&&) = default;
-    MatrixElement& operator=(MatrixElement&&) = default;
+    MatrixElement(MatrixElement&&) noexcept = default;
+    MatrixElement& operator=(MatrixElement&&) noexcept = default;
     MatrixElement(const MatrixElement&) = delete;
     MatrixElement& operator=(const MatrixElement&) = delete;
-    ~MatrixElement();
+    //~MatrixElement();
     void call(Tensor momenta_in, Tensor matrix_element_out) const;
     void call_multichannel(
         Tensor momenta_in,
@@ -38,11 +41,11 @@ public:
     std::size_t diagram_count() const { return _diagram_count; }
 
 private:
-    void* _shared_lib;
+    std::unique_ptr<void, std::function<void(void*)>> _shared_lib;
     bool _on_gpu;
     std::size_t _particle_count;
     std::size_t _diagram_count;
-    void* (*_init_subprocess)(uint64_t, const char*);
+    void* (*_init_subprocess)(uint64_t, const char*, double);
     void (*_compute_matrix_element)(
         void*, uint64_t, uint64_t, const double*, double*
     );
@@ -50,17 +53,28 @@ private:
         void*, uint64_t, uint64_t, uint64_t, const double*, const int64_t*, double*, double*
     );
     void (*_free_subprocess)(void*);
-    std::vector<void*> _process_instances;
+    std::vector<std::unique_ptr<void, std::function<void(void*)>>> _process_instances;
 };
 
 class PdfSet {
 public:
     PdfSet(const std::string& name, int index);
-    ~PdfSet();
+    PdfSet(PdfSet&& other) noexcept = default;/* : pdf(other.pdf) {
+        other.pdf = nullptr;
+    }*/
+    PdfSet& operator=(PdfSet&& other) noexcept = default; /* {
+        pdf = other.pdf;
+        other.pdf = nullptr;
+        return *this;
+    }*/
+    PdfSet(const PdfSet&) = delete;
+    PdfSet& operator=(const PdfSet&) = delete;
+    //~PdfSet() { delete pdf; }
     void call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const;
+    double alpha_s(double q2) const { return pdf->alphasQ2(q2); }
 
 private:
-    LHAPDF::PDF* pdf;
+    std::unique_ptr<LHAPDF::PDF> pdf;
 };
 
 class Context {
@@ -74,8 +88,11 @@ public:
     Context& operator=(Context&&) = default;
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
-    void load_matrix_element(
-        const std::string& file, const std::string& param_card, std::size_t process_index
+    std::size_t load_matrix_element(
+        const std::string& file,
+        const std::string& param_card,
+        std::size_t process_index,
+        double alpha_s
     );
     void load_pdf(const std::string& name, int index=0);
     void define_global(

@@ -7,17 +7,22 @@
 using namespace madevent;
 
 MatrixElement::MatrixElement(
-    const std::string& file, const std::string& param_card, std::size_t process_index
+    const std::string& file,
+    const std::string& param_card,
+    std::size_t process_index,
+    double alpha_s
 ) {
-    _shared_lib = dlopen(file.c_str(), RTLD_NOW);
-    if (_shared_lib == nullptr) {
+    _shared_lib = std::unique_ptr<void, std::function<void(void*)>>(
+        dlopen(file.c_str(), RTLD_NOW), [](void* lib) { dlclose(lib); }
+    );
+    if (!_shared_lib) {
         throw std::runtime_error(std::format(
             "Could not load shared object {}", file
         ));
     }
 
     SubProcessInfo* (*subprocess_info)() = reinterpret_cast<decltype(subprocess_info)>(
-        dlsym(_shared_lib, "subprocess_info")
+        dlsym(_shared_lib.get(), "subprocess_info")
     );
     if (subprocess_info == nullptr) {
         throw std::runtime_error(std::format(
@@ -33,7 +38,7 @@ MatrixElement::MatrixElement(
     _diagram_count = info->diagram_counts[process_index];
 
     _init_subprocess = reinterpret_cast<decltype(_init_subprocess)>(
-        dlsym(_shared_lib, "init_subprocess")
+        dlsym(_shared_lib.get(), "init_subprocess")
     );
     if (_init_subprocess == nullptr) {
         throw std::runtime_error(std::format(
@@ -42,7 +47,7 @@ MatrixElement::MatrixElement(
     }
 
     _compute_matrix_element = reinterpret_cast<decltype(_compute_matrix_element)>(
-        dlsym(_shared_lib, "compute_matrix_element")
+        dlsym(_shared_lib.get(), "compute_matrix_element")
     );
     if (_compute_matrix_element == nullptr) {
         throw std::runtime_error(std::format(
@@ -52,7 +57,7 @@ MatrixElement::MatrixElement(
 
     _compute_matrix_element_multichannel = reinterpret_cast<
         decltype(_compute_matrix_element_multichannel)
-    >(dlsym(_shared_lib, "compute_matrix_element_multichannel"));
+    >(dlsym(_shared_lib.get(), "compute_matrix_element_multichannel"));
     if (_compute_matrix_element_multichannel == nullptr) {
         throw std::runtime_error(std::format(
             "Did not find symbol compute_matrix_element_multichannel in shared object {}", file
@@ -60,7 +65,7 @@ MatrixElement::MatrixElement(
     }
 
     _free_subprocess = reinterpret_cast<decltype(_free_subprocess)>(
-        dlsym(_shared_lib, "free_subprocess")
+        dlsym(_shared_lib.get(), "free_subprocess")
     );
     if (_free_subprocess == nullptr) {
         throw std::runtime_error(std::format(
@@ -70,16 +75,51 @@ MatrixElement::MatrixElement(
 
     std::size_t thread_count = cpu::ThreadPool::instance().get_thread_count();
     for (int i = 0; i == 0 || i < thread_count; ++i) {
-        _process_instances.push_back(_init_subprocess(process_index, param_card.c_str()));
+        _process_instances.push_back(
+            std::unique_ptr<void, std::function<void(void*)>>(
+                _init_subprocess(process_index, param_card.c_str(), alpha_s),
+                [this](void* proc) { _free_subprocess(proc); }
+            )
+        );
     }
 }
 
-MatrixElement::~MatrixElement() {
+/*MatrixElement::MatrixElement(MatrixElement&& other) noexcept :
+    _shared_lib(other._shared_lib),
+    _on_gpu(other._on_gpu),
+    _particle_count(other._particle_count),
+    _diagram_count(other._diagram_count),
+    _init_subprocess(other._init_subprocess),
+    _compute_matrix_element(other._compute_matrix_element),
+    _compute_matrix_element_multichannel(other._compute_matrix_element_multichannel),
+    _free_subprocess(other._free_subprocess),
+    _process_instances(std::move(other._process_instances))
+{
+    other._shared_lib = nullptr;
+}
+
+MatrixElement& MatrixElement::operator=(MatrixElement&& other) noexcept {
+    _shared_lib = other._shared_lib;
+    _on_gpu = other._on_gpu;
+    _particle_count = other._particle_count;
+    _diagram_count = other._diagram_count;
+    _init_subprocess = other._init_subprocess;
+    _compute_matrix_element = other._compute_matrix_element;
+    _compute_matrix_element_multichannel = other._compute_matrix_element_multichannel;
+    _free_subprocess = other._free_subprocess;
+    _process_instances = std::move(other._process_instances);
+
+    other._shared_lib = nullptr;
+    return *this;
+}*/
+
+/*MatrixElement::~MatrixElement() {
+    if (!_shared_lib) return;
     for (auto inst : _process_instances) {
         _free_subprocess(inst);
     }
     dlclose(_shared_lib);
-}
+}*/
 
 void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
     // TODO: maybe copy can be avoided sometimes
@@ -96,14 +136,14 @@ void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
     auto me_ptr = static_cast<double*>(matrix_element_out.data());
     if (thread_count == 0 || batch_size < thread_count * 100) {
         _compute_matrix_element(
-            _process_instances[0], batch_size, batch_size, mom_ptr, me_ptr
+            _process_instances[0].get(), batch_size, batch_size, mom_ptr, me_ptr
         );
     } else {
         auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
         pool.parallel([&](std::size_t thread_id) {
             std::size_t offset = thread_id * count_per_thread;
             _compute_matrix_element(
-                _process_instances[thread_id],
+                _process_instances[thread_id].get(),
                 std::min(batch_size - offset, count_per_thread),
                 batch_size, mom_ptr + offset, me_ptr + offset
             );
@@ -138,7 +178,7 @@ void MatrixElement::call_multichannel(
     auto cw_ptr = static_cast<double*>(channel_weights_out.data());
     if (thread_count == 0 || batch_size < thread_count * 100) {
         _compute_matrix_element_multichannel(
-            _process_instances[0], batch_size, batch_size, channel_count,
+            _process_instances[0].get(), batch_size, batch_size, channel_count,
             mom_ptr, remap_ptr, me_ptr, cw_ptr
         );
     } else {
@@ -146,7 +186,7 @@ void MatrixElement::call_multichannel(
         pool.parallel([&](std::size_t thread_id) {
             std::size_t offset = thread_id * count_per_thread;
             _compute_matrix_element_multichannel(
-                _process_instances[thread_id],
+                _process_instances[thread_id].get(),
                 std::min(batch_size - offset, count_per_thread),
                 batch_size, channel_count,
                 mom_ptr + offset, remap_ptr, me_ptr + offset, cw_ptr + offset
@@ -157,16 +197,12 @@ void MatrixElement::call_multichannel(
 
 PdfSet::PdfSet(const std::string& name, int index) {
     LHAPDF::setVerbosity(0);
-    pdf = LHAPDF::mkPDF(name, index);
+    pdf = std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(name, index));
     if (pdf == nullptr) {
         throw std::invalid_argument(std::format(
             "Could not load PDF {}, member {}", name, index
         ));
     }
-}
-
-PdfSet::~PdfSet() {
-    delete pdf;
 }
 
 void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const {
@@ -179,10 +215,14 @@ void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) cons
     }, x_view.size());
 }
 
-void Context::load_matrix_element(
-    const std::string& file, const std::string& param_card, std::size_t process_index
+std::size_t Context::load_matrix_element(
+    const std::string& file,
+    const std::string& param_card,
+    std::size_t process_index,
+    double alpha_s
 ) {
-    matrix_elements.emplace_back(file, param_card, process_index);
+    matrix_elements.emplace_back(file, param_card, process_index, alpha_s);
+    return matrix_elements.size() - 1;
 }
 
 void Context::load_pdf(const std::string& name, int index) {
@@ -199,7 +239,9 @@ void Context::define_global(
             "Context already contains a global named {}", name
         ));
     }
-    globals[name] = {Tensor(dtype, shape, _device), requires_grad};
+    Tensor tensor(dtype, shape, _device);
+    tensor.zero();
+    globals[name] = {tensor, requires_grad};
 }
 
 Tensor Context::global(const std::string& name) {

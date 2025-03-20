@@ -2,7 +2,7 @@
 
 using namespace madevent;
 
-Tensor Tensor::select(std::size_t axis, std::size_t index) {
+Tensor Tensor::select(std::size_t axis, std::size_t index) const {
     auto new_dim = impl->shape.size() - 1;
     Sizes new_shape(new_dim), new_stride(new_dim);
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
@@ -23,7 +23,7 @@ Tensor Tensor::select(std::size_t axis, std::size_t index) {
     });
 }
 
-Tensor Tensor::slice(std::size_t axis, std::size_t start, std::size_t stop) {
+Tensor Tensor::slice(std::size_t axis, std::size_t start, std::size_t stop) const {
     auto new_shape = impl->shape;
     new_shape[axis] = stop - start;
     return Tensor(new Tensor::TensorImpl{
@@ -40,7 +40,7 @@ Tensor Tensor::slice(std::size_t axis, std::size_t start, std::size_t stop) {
     });
 }
 
-std::vector<Tensor> Tensor::split(std::size_t axis, SizeVec sizes) {
+std::vector<Tensor> Tensor::split(std::size_t axis, const SizeVec& sizes) const {
     std::vector<Tensor> tensors;
     auto split_count = sizes.size();
     tensors.reserve(split_count);
@@ -53,7 +53,7 @@ std::vector<Tensor> Tensor::split(std::size_t axis, SizeVec sizes) {
     return tensors;
 }
 
-std::vector<Tensor> Tensor::unstack(std::size_t axis) {
+std::vector<Tensor> Tensor::unstack(std::size_t axis) const {
     std::vector<Tensor> tensors;
     auto axis_size = size(axis);
     tensors.reserve(axis_size);

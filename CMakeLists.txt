@@ -7,17 +7,9 @@ project (
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
-# Doesn't work for no apparent reason
-#execute_process(
-#    COMMAND python -c "import torch;print(torch.utils.cmake_prefix_path)"
-#    OUTPUT_VARIABLE TORCH_CMAKE_PREFIX_PATH
-#)
-#list(APPEND CMAKE_PREFIX_PATH ${TORCH_CMAKE_PREFIX_PATH})
-
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "-c" "import torch;print(torch.utils.cmake_prefix_path)"
-    #COMMAND "python" "-c" "import torch;print(torch.utils.cmake_prefix_path)"
     OUTPUT_VARIABLE PT_CMAKE_PREFIX
     COMMAND_ECHO STDOUT
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -76,7 +68,7 @@ find_library(
 add_library(
     madevent
     SHARED
-    #STATIC
+    src/util.cpp
     src/backend/common/invariants.h
     src/backend/common/kernels.h
     src/backend/common/kinematics.h
@@ -97,7 +89,10 @@ add_library(
     src/backend/cpu/tensor.h
     src/backend/cpu/simd.h
     src/backend/cpu/simd_arm.h
+    src/driver/combine.cpp
+    src/driver/generate.cpp
     src/driver/io.cpp
+    src/driver/vegas.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
@@ -115,11 +110,16 @@ add_library(
     src/phasespace/cuts.cpp
     src/phasespace/chili.cpp
     src/phasespace/integrand.cpp
+    include/madevent/util.h
     include/madevent/backend/tensor.h
     include/madevent/backend/context.h
     include/madevent/backend/cpu/runtime.h
     include/madevent/backend/cpu/thread_pool.h
+    include/madevent/driver.h
+    include/madevent/driver/combine.h
+    include/madevent/driver/generate.h
     include/madevent/driver/io.h
+    include/madevent/driver/vegas.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h

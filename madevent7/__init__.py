@@ -16,6 +16,7 @@ ctypes.CDLL(
 import torch
 
 from ._madevent_py import *
+#from .function_module import FunctionModule
 
 def _init():
     """

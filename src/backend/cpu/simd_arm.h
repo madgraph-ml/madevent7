@@ -7,6 +7,7 @@ struct FVec {
     FVec() = default;
     FVec(float64x2_t _v) : v(_v) {};
     FVec(double _v) : v(vdupq_n_f64(_v)) {};
+    explicit FVec(int64x2_t _v) : v(vcvtq_f64_s64(_v)) {};
     operator float64x2_t() { return v; }
     float64x2_t v;
 };
@@ -15,6 +16,7 @@ struct IVec {
     IVec() = default;
     IVec(int64x2_t _v) : v(_v) {};
     IVec(int64_t _v) : v(vdupq_n_s64(_v)) {};
+    explicit IVec(float64x2_t _v) : v(vcvtq_s64_f64(_v)) {};
     operator int64x2_t() { return v; }
     int64x2_t v;
 };

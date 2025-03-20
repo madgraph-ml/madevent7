@@ -1096,7 +1096,7 @@ rqs_forward:
       type: [float, n]
       desc:
   differentiable: True
-  dim: 2
+  dims: 2
 
 rqs_inverse:
   inputs:
@@ -1114,7 +1114,7 @@ rqs_inverse:
       type: [float, n]
       desc:
   differentiable: True
-  dim: 2
+  dims: 2
 
 softmax:
   inputs:
@@ -1316,6 +1316,7 @@ vegas_forward:
     - name: det
       type: [float]
       desc:
+  dims: 2
 
 vegas_inverse:
   inputs:

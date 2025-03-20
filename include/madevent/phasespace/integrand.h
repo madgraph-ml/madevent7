@@ -9,7 +9,11 @@ public:
     using PidOptions = std::tuple<std::vector<int>, std::size_t>;
 
     DifferentialCrossSection(
-        const std::vector<PidOptions>& pid_options, double e_cm2, double q2
+        const std::vector<PidOptions>& pid_options,
+        double e_cm2,
+        double q2,
+        std::size_t channel_count = 1,
+        const std::vector<int64_t>& amp2_remap = {}
     ) :
         FunctionGenerator(
             {
@@ -17,11 +21,15 @@ public:
                 batch_float,
                 batch_float
             },
-            {batch_float}
+            channel_count == 1 ?
+                TypeVec{batch_float} :
+                TypeVec{batch_float, batch_float_array(channel_count)}
         ),
         _pid_options(pid_options),
         _e_cm2(e_cm2),
-        _q2(q2)
+        _q2(q2),
+        _channel_count(channel_count),
+        _amp2_remap(amp2_remap)
     {}
 
     const std::vector<PidOptions>& pid_options() const { return _pid_options; }
@@ -31,6 +39,27 @@ private:
     std::vector<PidOptions> _pid_options;
     double _e_cm2;
     double _q2;
+    int64_t _channel_count;
+    std::vector<int64_t> _amp2_remap;
+};
+
+class Unweighter : public FunctionGenerator {
+public:
+    Unweighter(std::size_t particle_count) :
+        FunctionGenerator(
+            {
+                batch_four_vec_array(particle_count),
+                batch_float, batch_float, batch_float, single_float
+            },
+            {
+                batch_four_vec_array(particle_count),
+                batch_float, batch_float, batch_float
+            }
+        )
+    {}
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 };
 
 class Integrand : public FunctionGenerator {
@@ -66,6 +95,7 @@ public:
         _sample(sample),
         _unweight(unweight)
     {}
+    std::size_t particle_count() const { return _mapping.particle_count(); }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;

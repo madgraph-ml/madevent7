@@ -2,8 +2,11 @@
 #include <pybind11/stl.h>
 #include <sstream>
 
+#include "madevent/util.h"
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
+#include "madevent/backend/cpu/thread_pool.h"
+#include "madevent/driver.h"
 #include "instruction_set.h"
 #include "function.h"
 
@@ -138,24 +141,27 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("cpu_device", &cpu_device);
 
     py::class_<MatrixElement>(m, "MatrixElement")
-        .def(py::init<const std::string&, const std::string&, std::size_t>(),
-             py::arg("file"), py::arg("param_card"), py::arg("process_index"))
+        .def(py::init<const std::string&, const std::string&, std::size_t, double>(),
+             py::arg("file"), py::arg("param_card"),
+             py::arg("process_index"), py::arg("alpha_s"))
         .def("on_gpu", &MatrixElement::on_gpu)
         .def("particle_count", &MatrixElement::particle_count)
         .def("diagram_count", &MatrixElement::diagram_count);
 
-    py::class_<PdfSet> pdf_set(m, "PdfSet");
+    py::class_<PdfSet>(m, "PdfSet")
+        .def("alpha_s", &PdfSet::alpha_s, py::arg("q2"));
 
     py::class_<Context, ContextPtr>(m, "Context")
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
         .def("load_matrix_element", &Context::load_matrix_element,
-             py::arg("file"), py::arg("param_card"), py::arg("process_index"))
+             py::arg("file"), py::arg("param_card"),
+             py::arg("process_index"), py::arg("alpha_s"))
         .def("load_pdf", &Context::load_pdf, py::arg("name"), py::arg("index")=0)
         .def("define_global", &Context::define_global,
              py::arg("name"), py::arg("dtype"), py::arg("shape"),
              py::arg("requires_grad")=false)
-        //.def("get_global", &Context::global, py::arg("name"))
+        .def("get_global", &Context::global, py::arg("name"))
         .def("global_requires_grad", &Context::global_requires_grad, py::arg("name"))
         .def("matrix_element", &Context::matrix_element,
              py::arg("index"), py::return_value_policy::reference_internal)
@@ -173,6 +179,12 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("call", &FunctionRuntime::call_torch)
 #endif
         .def("call", &FunctionRuntime::call_numpy);
+
+    py::class_<Tensor>(m, "Tensor")
+#ifdef TORCH_FOUND
+        .def("torch", &tensor_to_torch)
+#endif
+        .def("numpy", &tensor_to_numpy);
 
     auto& fb = py::class_<FunctionBuilder>(m, "FunctionBuilder")
         .def(py::init<const std::vector<Type>, const std::vector<Type>>(),
@@ -334,13 +346,59 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("builder"), py::arg("args"));
     py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
         .def(py::init<const std::vector<DifferentialCrossSection::PidOptions>&,
-                      double,double>(),
-             py::arg("pid_options"), py::arg("e_cm2"), py::arg("q2"));
+                      double, double, std::size_t, std::vector<int64_t>>(),
+             py::arg("pid_options"), py::arg("e_cm2"), py::arg("q2"),
+             py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{});
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
         .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
                       bool, bool>(),
              py::arg("mapping"), py::arg("diff_xs"),
              py::arg("sample")=false, py::arg("unweight")=false);
 
-    m.def("optimize_constants", &optimize_constants);
+    py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
+        .def(py::init<>())
+        .def_readwrite("target_count", &EventGenerator::Config::target_count)
+        .def_readwrite("vegas_damping", &EventGenerator::Config::vegas_damping)
+        .def_readwrite("max_overweight_fraction",
+                       &EventGenerator::Config::max_overweight_fraction)
+        .def_readwrite("max_overweight_truncation",
+                       &EventGenerator::Config::max_overweight_truncation)
+        .def_readwrite("start_batch_size", &EventGenerator::Config::start_batch_size)
+        .def_readwrite("max_batch_size", &EventGenerator::Config::max_batch_size)
+        .def_readwrite("survey_min_iters", &EventGenerator::Config::survey_min_iters)
+        .def_readwrite("survey_max_iters", &EventGenerator::Config::survey_max_iters)
+        .def_readwrite("survey_target_precision",
+                       &EventGenerator::Config::survey_target_precision)
+        .def_readwrite("optimization_patience",
+                       &EventGenerator::Config::optimization_patience)
+        .def_readwrite("optimization_threshold",
+                       &EventGenerator::Config::optimization_threshold);
+    py::class_<EventGenerator::Status>(m, "EventGeneratorStatus")
+        .def(py::init<>())
+        .def_readwrite("index", &EventGenerator::Status::index)
+        .def_readwrite("mean", &EventGenerator::Status::mean)
+        .def_readwrite("error", &EventGenerator::Status::error)
+        .def_readwrite("rel_std_dev", &EventGenerator::Status::rel_std_dev)
+        .def_readwrite("count", &EventGenerator::Status::count)
+        .def_readwrite("count_unweighted", &EventGenerator::Status::count_unweighted)
+        .def_readwrite("count_target", &EventGenerator::Status::count_target)
+        .def_readwrite("iterations", &EventGenerator::Status::iterations)
+        .def_readwrite("done", &EventGenerator::Status::done);
+    py::class_<EventGenerator>(m, "EventGenerator")
+        .def(py::init<ContextPtr, const std::vector<Integrand>&,
+                      const std::string&, const EventGenerator::Config&,
+                      const std::optional<std::string>&>(),
+             py::arg("context"), py::arg("channels"), py::arg("file_name"),
+             py::arg("default_config")=EventGenerator::Config{},
+             py::arg("temp_file_dir")=std::nullopt)
+        .def("survey", &EventGenerator::survey)
+        .def("generate", &EventGenerator::generate)
+        .def("status", &EventGenerator::status)
+        .def("channel_status", &EventGenerator::channel_status);
+
+    m.def("optimize_constants", &optimize_constants, py::arg("function"));
+    m.def("set_thread_count", &cpu::ThreadPool::set_thread_count, py::arg("new_count"));
+    m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
+    m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
+    m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
 }

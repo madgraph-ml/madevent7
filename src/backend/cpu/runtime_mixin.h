@@ -191,10 +191,10 @@ case 62:
     batch_foreach<kernel_rqs_find_bin<CpuTypes>, kernel_rqs_find_bin<SimdTypes>, 4, 1, 2>(instr, locals);
     break;
 case 63:
-    batch_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 2, 2, 2>(instr, locals);
     break;
 case 64:
-    batch_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 2>(instr, locals);
     break;
 case 65:
     batch_foreach<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, 1>(instr, locals);
@@ -227,7 +227,7 @@ case 74:
     op_unweight(instr, locals);
     break;
 case 75:
-    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 1>(instr, locals);
+    batch_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 2>(instr, locals);
     break;
 case 76:
     batch_foreach<kernel_vegas_inverse<CpuTypes>, kernel_vegas_inverse<SimdTypes>, 2, 2, 1>(instr, locals);

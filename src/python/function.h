@@ -20,6 +20,11 @@ using namespace madevent;
 
 namespace madevent_py {
 
+#ifdef TORCH_FOUND
+torch::Tensor tensor_to_torch(Tensor tensor);
+#endif
+py::array_t<double> tensor_to_numpy(Tensor tensor);
+
 class FunctionRuntime {
 public:
     FunctionRuntime(Function function) : function(function), context(nullptr) {}

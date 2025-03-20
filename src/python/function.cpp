@@ -2,8 +2,18 @@
 
 #include <stdexcept>
 #include <format>
+#include <ranges>
 
 using namespace madevent_py;
+
+py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
+    auto data_raw = reinterpret_cast<double*>(tensor.data());
+    py::capsule destroy(
+        new Tensor(tensor),
+        [](void* ptr) { delete static_cast<Tensor*>(ptr); }
+    );
+    return {tensor.shape(), tensor.stride(), data_raw, destroy};
+}
 
 std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
     // TODO: update numpy bindings
@@ -53,20 +63,53 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             cpu_runtime.emplace(function);
         }
     }
-    auto outputs = cpu_runtime->run(inputs);
-    std::vector<py::array_t<double>> outputs_numpy;
-    for (auto& output : outputs) {
-        auto data_raw = reinterpret_cast<double*>(output.data());
-        py::capsule destroy(
-            new Tensor(output),
-            [](void* ptr) { delete static_cast<Tensor*>(ptr); }
-        );
-        outputs_numpy.emplace_back(output.shape(), output.stride(), data_raw, destroy);
-    }
-    return outputs_numpy;
+    return cpu_runtime->run(inputs)
+        | std::views::transform(tensor_to_numpy)
+        | std::ranges::to<std::vector<py::array_t<double>>>();
 }
 
 #ifdef TORCH_FOUND
+
+torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
+    std::vector<int64_t> shape {tensor.shape().begin(), tensor.shape().end()};
+    std::vector<int64_t> stride;
+    auto dtype_size = tensor.dtype_size();
+    for (auto s : tensor.stride()) {
+        stride.push_back(s / dtype_size);
+    }
+    if (tensor.dtype() == DataType::batch_sizes) {
+        auto& batch_sizes = tensor.batch_sizes();
+        torch::Tensor tensor = torch::zeros(
+            {static_cast<int64_t>(batch_sizes.size())},
+            torch::TensorOptions().dtype(torch::kInt64)
+        );
+        auto accessor = tensor.accessor<long long, 1>();
+        std::size_t i = 0;
+        for (auto size : batch_sizes) {
+            accessor[i] = size;
+            ++i;
+        }
+        return tensor;
+    } else {
+        torch::Dtype dtype;
+        switch(tensor.dtype()) {
+            case DataType::dt_float: dtype = torch::kFloat64; break;
+            case DataType::dt_int: dtype = torch::kInt64; break;
+            case DataType::dt_bool: dtype = torch::kBool; break;
+            default: break;
+        }
+        return torch::from_blob(
+            tensor.data(),
+            shape,
+            stride,
+            [tensor] (void* data) mutable { tensor.reset(); },
+            torch::TensorOptions()
+                .dtype(dtype)
+                .device(tensor.device() == cpu_device() ? torch::kCPU : torch::kCUDA)
+        );
+    }
+}
+
 std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor> args) {
     //TODO: check batch sizes
     auto n_args = function.inputs().size();
@@ -208,46 +251,8 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor
         }
         outputs = cpu_runtime->run(inputs);
     }
-    std::vector<torch::Tensor> output_tensors;
-    for (auto& output : outputs) {
-        std::vector<int64_t> shape {output.shape().begin(), output.shape().end()};
-        std::vector<int64_t> stride;
-        auto dtype_size = output.dtype_size();
-        for (auto s : output.stride()) {
-            stride.push_back(s / dtype_size);
-        }
-        if (output.dtype() == DataType::batch_sizes) {
-            auto& batch_sizes = output.batch_sizes();
-            torch::Tensor tensor = torch::zeros(
-                {static_cast<int64_t>(batch_sizes.size())},
-                torch::TensorOptions().dtype(torch::kInt64)
-            );
-            auto accessor = tensor.accessor<long long, 1>();
-            std::size_t i = 0;
-            for (auto size : batch_sizes) {
-                accessor[i] = size;
-                ++i;
-            }
-            output_tensors.push_back(tensor);
-        } else {
-            torch::Dtype dtype;
-            switch(output.dtype()) {
-                case DataType::dt_float: dtype = torch::kFloat64; break;
-                case DataType::dt_int: dtype = torch::kInt64; break;
-                case DataType::dt_bool: dtype = torch::kBool; break;
-                default: break;
-            }
-            output_tensors.push_back(torch::from_blob(
-                output.data(),
-                shape,
-                stride,
-                [output] (void* data) mutable { output.reset(); },
-                torch::TensorOptions()
-                    .dtype(dtype)
-                    .device(is_cuda ? torch::kCUDA : torch::kCPU)
-            ));
-        }
-    }
-    return output_tensors;
+    return outputs
+        | std::views::transform(tensor_to_torch)
+        | std::ranges::to<std::vector<torch::Tensor>>();
 }
 #endif

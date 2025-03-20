@@ -18,6 +18,16 @@ extern "C" void dgemm_(
     double* c, int* ldc
 );
 
+extern "C" void dgemv_(
+    char* trans,
+    int* m, int* n,
+    double* alpha,
+    double* a, int* lda,
+    double* x, int* incx,
+    double* beta,
+    double* y, int* incy
+);
+
 using namespace madevent;
 using namespace madevent::cpu;
 
@@ -38,8 +48,6 @@ void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
         Sizes shape(output_shape.size() + 1);
         shape[0] = batch_size;
         std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
-        //SizeVec shape {batch_size};
-        //shape.insert(shape.end(), output_shape.begin(), output_shape.end());
         output = Tensor(instruction.output_dtypes[i], shape);
         outputs[i] = &output;
     }
@@ -224,7 +232,9 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
     );
 }
 
-void backward_op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
+void backward_op_matmul(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
     /*auto input = locals[instruction.input_indices[0]].contiguous();
     auto weight = locals[instruction.input_indices[1]].contiguous();
     auto output_grad = locals[instruction.input_indices[2]].contiguous();
@@ -421,23 +431,23 @@ void CpuDevice::tensor_zero(Tensor& tensor) const {
     );
 }
 
-void Runtime::initialize(const Function& function) {
+Runtime::Runtime(const Function& function, ContextPtr context) :
+    context(context), input_count(function.inputs().size())
+{
     locals_init.resize(function.locals().size());
+    requires_grad_init.resize(function.locals().size());
     auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
     LastUseOfLocals last_use(opt_function);
-    std::vector<bool> requires_grad(function.locals().size());
 
     for (auto& instr : opt_function.instructions()) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
-        bool eval_grad = false;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
-            eval_grad |= requires_grad.at(in.local_index);
         }
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
@@ -455,11 +465,11 @@ void Runtime::initialize(const Function& function) {
             output_shapes,
             batch_size_index,
             *context,
-            eval_grad
+            false
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *context, requires_grad.at(local_index)
+                -1, {local_index}, {}, {}, {}, 0, *context, false
             });
         }
         ++instr_index;
@@ -478,8 +488,8 @@ void Runtime::initialize(const Function& function) {
         }
         locals_init.at(value.local_index) = global;
         if (context->global_requires_grad(name)) {
-            requires_grad.at(value.local_index) = true;
-            grad_global_indices[name] = value.local_index;
+            requires_grad_init.at(value.local_index) = true;
+            grad_global_indices.push_back({name, value.local_index});
         }
     }
 
@@ -516,7 +526,7 @@ void Runtime::initialize(const Function& function) {
     }
 }
 
-TensorVec Runtime::run(TensorVec& inputs) const {
+TensorVec Runtime::run(const TensorVec& inputs) const {
     auto locals = locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
@@ -535,17 +545,42 @@ TensorVec Runtime::run(TensorVec& inputs) const {
     return outputs;
 }
 
-std::tuple<TensorVec, TensorVec> Runtime::run_with_grad(TensorVec& inputs) const {
+std::tuple<TensorVec, TensorVec, std::vector<bool>> Runtime::run_with_grad(
+    const TensorVec& inputs, const std::vector<bool>& input_requires_grad
+) const {
     auto locals = locals_init;
+    auto requires_grad = requires_grad_init;
+    std::vector<bool> store_local(locals.size());
+    std::vector<bool> eval_grad(instructions.size());
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
-    for (auto& instr : instructions) {
+    for (auto [instr, instr_eval_grad] : std::views::zip(instructions, eval_grad)) {
+        if (instr.differentiable) {
+            for (auto input_index : instr.input_indices) {
+                if (requires_grad[input_index]) {
+                    instr_eval_grad = true;
+                    break;
+                }
+            }
+            if (instr_eval_grad) {
+                //TODO: only store necessary
+                for (auto input_index : instr.input_indices) {
+                    store_local[input_index] = true;
+                }
+                for (auto output_index : instr.output_indices) {
+                    store_local[output_index] = true;
+                    requires_grad[output_index] = true;
+                }
+            }
+        }
         switch (instr.opcode) {
-            case -1: // free memory
-                if (!instr.eval_grad) {
-                    locals[instr.input_indices[0]].reset();
+            case -1: { // free memory
+                auto input_index = instr.input_indices[0];
+                if (!store_local[input_index]) {
+                    locals[input_index].reset();
                 }
                 break;
+            }
 #include "runtime_mixin.h"
         }
     }
@@ -553,27 +588,43 @@ std::tuple<TensorVec, TensorVec> Runtime::run_with_grad(TensorVec& inputs) const
     for (auto index : output_indices) {
         outputs.push_back(locals[index]);
     }
-    return {outputs, locals};
+    return {outputs, locals, eval_grad};
 }
 
-std::unordered_map<std::string, Tensor> Runtime::run_backward(
-    TensorVec& output_grads, TensorVec& locals
+std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> Runtime::run_backward(
+    const TensorVec& output_grads,
+    const TensorVec& stored_locals,
+    const std::vector<bool>& eval_grad
 ) {
-    TensorVec local_grads(locals.size());
-    std::unordered_map<std::string, Tensor> global_grads;
+    TensorVec local_grads(stored_locals.size());
+    TensorVec locals(stored_locals);
     for (auto [index, grad] : std::views::zip(output_indices, output_grads)) {
         local_grads[index] = grad;
     }
-    for (auto& instr : std::views::reverse(instructions)) {
-        if (!instr.eval_grad) continue;
-        switch (instr.opcode) {
+    for (
+        auto [instr, instr_eval_grad] :
+        std::views::reverse(std::views::zip(instructions, eval_grad))
+    ) {
+        if (!instr_eval_grad) continue;
+        bool needs_grad = true;
+        for (auto [output_index, output_dtype] : std::views::zip(
+            instr.output_indices, instr.output_dtypes
+        )) {
+            if (!local_grads[output_index] && output_dtype == DataType::dt_float) {
+                needs_grad = false;
+                break;
+            }
+        }
+        if (needs_grad) {
+            switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
+            }
         }
     }
+    std::vector<std::tuple<std::string, Tensor>> global_grads;
     for (auto& [name, index] : grad_global_indices) {
-        global_grads[name] = locals[index];
+        global_grads.push_back({name, locals[index]});
     }
-
-    return global_grads;
+    return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
 }
 
