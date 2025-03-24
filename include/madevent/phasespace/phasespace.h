@@ -18,6 +18,7 @@ namespace madevent {
 class PhaseSpaceMapping : public Mapping {
 public:
     enum TChannelMode { propagator, rambo, chili };
+    enum AdaptiveSampler { vegas, flow, none };
 
     PhaseSpaceMapping(
         const Topology& topology,
@@ -27,7 +28,8 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode t_channel_mode = propagator,
-        std::optional<Cuts> cuts = std::nullopt
+        std::optional<Cuts> cuts = std::nullopt,
+        AdaptiveSampler adaptive_sampler = none
     );
     PhaseSpaceMapping(
         const std::vector<double>& external_masses,
@@ -36,7 +38,8 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode mode = rambo,
-        std::optional<Cuts> cuts = std::nullopt
+        std::optional<Cuts> cuts = std::nullopt,
+        AdaptiveSampler adaptive_sampler = none
     ) : PhaseSpaceMapping(
         Topology(
             [&] {
@@ -67,13 +70,13 @@ public:
                 );
             }(),
             Topology::no_decays
-        ), s_lab, leptonic, s_min_epsilon, nu, mode, cuts
+        ), s_lab, leptonic, s_min_epsilon, nu, mode, cuts, adaptive_sampler
     ) {}
     std::size_t random_dim() const {
-        return 3 * outgoing_masses.size() - (leptonic ? 4 : 2);
+        return 3 * _outgoing_masses.size() - (_leptonic ? 4 : 2);
     }
     std::size_t particle_count() const {
-        return outgoing_masses.size() + 2;
+        return _outgoing_masses.size() + 2;
     }
 private:
     Result build_forward_impl(
@@ -89,18 +92,18 @@ private:
         std::variant<TwoParticle, FastRamboMapping, std::monostate> decay = std::monostate{};
     };
 
-    double pi_factors;
-    double s_lab;
-    bool leptonic;
-    bool has_t_channel;
-    double sqrt_s_epsilon;
-    Cuts cuts;
-    std::vector<std::vector<DecayMappings>> s_decays;
-    std::variant<TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate> t_mapping;
-    std::optional<Luminosity> luminosity;
-    std::vector<double> outgoing_masses;
-    std::vector<std::size_t> permutation;
-    std::vector<std::size_t> inverse_permutation;
+    double _pi_factors;
+    double _s_lab;
+    bool _leptonic;
+    bool _has_t_channel;
+    double _sqrt_s_epsilon;
+    Cuts _cuts;
+    std::vector<std::vector<DecayMappings>> _s_decays;
+    std::variant<TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate> _t_mapping;
+    std::optional<Luminosity> _luminosity;
+    std::vector<double> _outgoing_masses;
+    std::vector<std::size_t> _permutation;
+    std::vector<std::size_t> _inverse_permutation;
 };
 
 }

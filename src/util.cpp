@@ -30,7 +30,7 @@ std::string madevent::format_si_prefix(double value) {
 }
 
 std::string madevent::format_with_error(double value, double error) {
-    int sig_power = 1 - int(std::floor(std::log10(error)));
+    int sig_power = 1 - static_cast<int>(std::floor(std::log10(error)));
     int value_power = std::floor(std::log10(value));
     if (sig_power < 0 || sig_power > 5) {
         std::string exp_fmt = std::format("{:.{}e}", value, value_power + sig_power);
@@ -55,7 +55,7 @@ std::string madevent::format_progress(double progress, int width) {
     if (n_full >= width) {
         n_remaining = 0;
     } else {
-        str << progress_symbols.at(int((frac - n_full) * progress_symbols.size()));
+        str << progress_symbols.at(static_cast<int>((frac - n_full) * progress_symbols.size()));
         n_remaining = width - n_full - 1;
     }
     for (int i = 0; i < n_remaining; ++i) str << progress_symbols.front();

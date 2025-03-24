@@ -11,7 +11,8 @@ using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology, double _s_lab, /*double s_hat_min,*/ bool _leptonic,
-    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> _cuts
+    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> cuts,
+    AdaptiveSampler adaptive_sampler
 ) :
     Mapping(
         //TODO: replace with scalar array
@@ -19,29 +20,29 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         {batch_four_vec_array(topology.outgoing_masses.size() + 2), batch_float, batch_float},
         {}
     ),
-    pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
-    s_lab(_s_lab),
-    leptonic(_leptonic),
-    has_t_channel(topology.t_propagators.size() != 0),
-    sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
-    t_mapping(std::monostate{}),
-    outgoing_masses(topology.outgoing_masses),
-    permutation(topology.permutation),
-    inverse_permutation(topology.inverse_permutation),
-    cuts(_cuts.value_or(Cuts(std::vector<int>(topology.outgoing_masses.size(), 0), {})))
+    _pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
+    _s_lab(_s_lab),
+    _leptonic(_leptonic),
+    _has_t_channel(topology.t_propagators.size() != 0),
+    _sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
+    _t_mapping(std::monostate{}),
+    _outgoing_masses(topology.outgoing_masses),
+    _permutation(topology.permutation),
+    _inverse_permutation(topology.inverse_permutation),
+    _cuts(cuts.value_or(Cuts(std::vector<int>(topology.outgoing_masses.size(), 0), {})))
 {
     // Initialize s invariants and decay mappings
-    auto pt_min_perm = cuts.get_pt_min();
-    auto eta_max_perm = cuts.get_eta_max();
+    auto pt_min_perm = _cuts.get_pt_min();
+    auto eta_max_perm = _cuts.get_eta_max();
     std::vector<double> sqrt_s_min, pt_min, eta_max;
-    for (auto index : inverse_permutation) {
-        sqrt_s_min.push_back(outgoing_masses.at(index));
+    for (auto index : _inverse_permutation) {
+        sqrt_s_min.push_back(_outgoing_masses.at(index));
         pt_min.push_back(pt_min_perm.at(index));
         eta_max.push_back(eta_max_perm.at(index));
     }
     for (auto& layer : topology.decays) {
-        if (!has_t_channel && &layer == &topology.decays.back()) {
-            auto& decay_mappings = s_decays.emplace_back().emplace_back();
+        if (!_has_t_channel && &layer == &topology.decays.back()) {
+            auto& decay_mappings = _s_decays.emplace_back().emplace_back();
             auto child_count = layer.at(0).child_count;
             decay_mappings.count = child_count;
             if (child_count == 2) {
@@ -55,13 +56,13 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         auto pt_iter = pt_min.begin();
         auto eta_iter = eta_max.begin();
         std::vector<double> sqrt_s_min_new, pt_min_new, eta_max_new;
-        auto& layer_decays = s_decays.emplace_back();
+        auto& layer_decays = _s_decays.emplace_back();
         for (auto& decay : layer) {
             auto& decay_mappings = layer_decays.emplace_back();
             decay_mappings.count = decay.child_count;
             double sqs_min_sum = 0;
             for (int i = 0; i < decay.child_count; ++i, ++sqs_iter) sqs_min_sum += *sqs_iter;
-            double sqs_min = std::max(decay.child_count > 1 ? sqrt_s_epsilon : 0., sqs_min_sum);
+            double sqs_min = std::max(decay.child_count > 1 ? _sqrt_s_epsilon : 0., sqs_min_sum);
             sqrt_s_min_new.push_back(sqs_min);
             if (decay.child_count == 1) {
                 pt_min_new.push_back(*(pt_iter++));
@@ -96,29 +97,29 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     // Initialize luminosity and t-channel mapping
     double sqs_min_sum = std::accumulate(sqrt_s_min.begin(), sqrt_s_min.end(), 0.);
 
-    double sqrt_s_hat_min = cuts.get_sqrt_s_min();
+    double sqrt_s_hat_min = _cuts.get_sqrt_s_min();
     double s_hat_min = std::max(sqs_min_sum * sqs_min_sum, sqrt_s_hat_min * sqrt_s_hat_min);
-    if (has_t_channel) {
-        if (!leptonic && t_channel_mode != PhaseSpaceMapping::chili) {
-            luminosity = Luminosity(s_lab, s_hat_min); //, s_lab, 0.);
+    if (_has_t_channel) {
+        if (!_leptonic && t_channel_mode != PhaseSpaceMapping::chili) {
+            _luminosity = Luminosity(_s_lab, s_hat_min); //, s_lab, 0.);
         }
         if (t_channel_mode == PhaseSpaceMapping::chili) {
             // |y| <= |eta|, so we can pass y_max = eta_max
-            t_mapping = ChiliMapping(topology.t_propagators.size() + 1, eta_max, pt_min);
+            _t_mapping = ChiliMapping(topology.t_propagators.size() + 1, eta_max, pt_min);
         } else if (
             t_channel_mode == PhaseSpaceMapping::propagator || topology.t_propagators.size() < 2
         ) {
-            t_mapping = TPropagatorMapping(topology.t_propagators, nu);
+            _t_mapping = TPropagatorMapping(topology.t_propagators, nu);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
-            t_mapping = FastRamboMapping(topology.t_propagators.size() + 1, false);
+            _t_mapping = FastRamboMapping(topology.t_propagators.size() + 1, false);
         }
-    } else if (!leptonic) {
+    } else if (!_leptonic) {
         auto& s_line = topology.decays.back().at(0).propagator;
         if (s_line.mass > std::sqrt(s_hat_min)) {
-            luminosity = Luminosity(s_lab, s_hat_min, s_lab, 0., s_line.mass, s_line.width);
+            _luminosity = Luminosity(_s_lab, s_hat_min, _s_lab, 0., s_line.mass, s_line.width);
         } else {
-            luminosity = Luminosity(s_lab, s_hat_min); //, s_lab, 0.);
+            _luminosity = Luminosity(_s_lab, s_hat_min); //, s_lab, 0.);
         }
     }
 
@@ -129,10 +130,10 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 ) const {
     auto random_numbers = fb.unstack(inputs.at(0));
     auto r = random_numbers.begin();
-    ValueVec dets{pi_factors};
+    ValueVec dets{_pi_factors};
     Value x1, x2, s_hat;
-    if (luminosity) {
-        auto [x12s, det_lumi] = luminosity->build_forward(fb, {*(r++), *(r++)}, {});
+    if (_luminosity) {
+        auto [x12s, det_lumi] = _luminosity->build_forward(fb, {*(r++), *(r++)}, {});
         dets.push_back(det_lumi);
         x1 = x12s.at(0);
         x2 = x12s.at(1);
@@ -140,14 +141,14 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     } else {
         x1 = 1.0;
         x2 = 1.0;
-        s_hat = s_lab;
+        s_hat = _s_lab;
     }
     auto sqrt_s_hat = fb.sqrt(s_hat);
 
     // sample s-invariants from decays, starting from the final state particles
     ValueVec sqrt_s;
-    for (auto index : inverse_permutation) {
-        sqrt_s.push_back(outgoing_masses.at(index));
+    for (auto index : _inverse_permutation) {
+        sqrt_s.push_back(_outgoing_masses.at(index));
     }
     struct DecayData {
         const DecayMappings& mappings;
@@ -156,7 +157,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         std::optional<Value> sqrt_s;
     };
     std::vector<std::vector<DecayData>> decay_data;
-    for (auto& layer_decays : s_decays) {
+    for (auto& layer_decays : _s_decays) {
         ValueVec sqrt_s_min;
         auto sqrt_s_iter = sqrt_s.begin();
         auto& layer_data = decay_data.emplace_back();
@@ -171,7 +172,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             }
             layer_data.push_back(layer_data_item);
             auto sqs_min = fb.sum(layer_data_item.masses);
-            sqrt_s_min.push_back(decay.count > 1 ? fb.clip_min(sqs_min, sqrt_s_epsilon) : sqs_min);
+            sqrt_s_min.push_back(decay.count > 1 ? fb.clip_min(sqs_min, _sqrt_s_epsilon) : sqs_min);
             sqrt_s_iter = sqrt_s_iter_next;
         }
         if (skip_layer) continue;
@@ -216,9 +217,9 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     ValueVec p_ext;
     ValueVec p_out;
-    if (has_t_channel) {
+    if (_has_t_channel) {
         ValueVec t_args;
-        if (auto t_map = std::get_if<TPropagatorMapping>(&t_mapping)) {
+        if (auto t_map = std::get_if<TPropagatorMapping>(&_t_mapping)) {
             std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
             r += t_map->random_dim();
             t_args.push_back(sqrt_s_hat);
@@ -227,7 +228,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             p_ext = {ps.at(0), ps.at(1)};
             std::copy(ps.begin() + 2, ps.end(), std::back_inserter(p_out));
             dets.push_back(det);
-        } else if (auto t_map = std::get_if<FastRamboMapping>(&t_mapping)) {
+        } else if (auto t_map = std::get_if<FastRamboMapping>(&_t_mapping)) {
             std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
             r += t_map->random_dim();
             t_args.push_back(sqrt_s_hat);
@@ -237,7 +238,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
             p_ext = {p1, p2};
             dets.push_back(det);
-        } else if (auto t_map = std::get_if<ChiliMapping>(&t_mapping)) {
+        } else if (auto t_map = std::get_if<ChiliMapping>(&_t_mapping)) {
             std::copy_n(r, t_map->random_dim(), std::back_inserter(t_args));
             r += t_map->random_dim();
             t_args.push_back(sqrt_s_hat);
@@ -291,14 +292,14 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     }
 
     // permute and return momenta
-    for (auto index : permutation) {
+    for (auto index : _permutation) {
         p_ext.push_back(p_out.at(index));
     }
     auto p_ext_stack = fb.stack(p_ext);
-    auto p_ext_lab = luminosity ?
+    auto p_ext_lab = _luminosity ?
         fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) :
         p_ext_stack;
-    auto cut_weights = cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
+    auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
     dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());
     auto ps_weight = fb.product(fb.stack(dets));
     return {{p_ext_lab, x1, x2}, ps_weight};

@@ -110,6 +110,7 @@ add_library(
     src/phasespace/cuts.cpp
     src/phasespace/chili.cpp
     src/phasespace/integrand.cpp
+    src/phasespace/vegas.cpp
     include/madevent/util.h
     include/madevent/backend/tensor.h
     include/madevent/backend/context.h
@@ -140,6 +141,7 @@ add_library(
     include/madevent/phasespace/cuts.h
     include/madevent/phasespace/chili.h
     include/madevent/phasespace/integrand.h
+    include/madevent/phasespace/vegas.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu

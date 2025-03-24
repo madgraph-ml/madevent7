@@ -188,17 +188,23 @@ public:
         impl->data = allocator(size);
     }
 
-    Tensor(DataType dtype, const Sizes& shape, void* data) :
-        Tensor(dtype, shape, cpu_device(), data) {}
+    Tensor(DataType dtype, const Sizes& shape, void* data, std::function<void()> external_reset) :
+        Tensor(dtype, shape, cpu_device(), data, external_reset) {}
 
-    Tensor(DataType dtype, const Sizes& shape, DevicePtr device, void* data) :
-        impl(new TensorImpl{dtype, shape, device, data, false})
+    Tensor(
+        DataType dtype,
+        const Sizes& shape,
+        DevicePtr device,
+        void* data,
+        std::function<void()> external_reset
+    ) :
+        impl(new TensorImpl{dtype, shape, device, data, false, external_reset})
     {
         init_stride();
     }
 
     Tensor(const SizeVec& batch_sizes) : impl(new TensorImpl{
-        DataType::batch_sizes, {}, cpu_device(), nullptr, true, nullptr,
+        DataType::batch_sizes, {}, cpu_device(), nullptr, true, std::nullopt, nullptr,
         1, {}, 0, 0, batch_sizes
     }) {}
 
@@ -319,6 +325,7 @@ private:
         DevicePtr device;
         void* data;
         bool owns_data = true;
+        std::optional<std::function<void()>> external_reset = std::nullopt;
         TensorImpl* data_owner;
         int ref_count = 1;
         Sizes stride;
@@ -335,6 +342,8 @@ private:
                 device->free(data);
             } else if (data_owner != nullptr) {
                 data_owner->reset();
+            } else if (external_reset) {
+                (*external_reset)();
             }
             delete this;
         }
@@ -348,6 +357,10 @@ private:
                 deleter(data);
             } else if (data_owner != nullptr) {
                 data_owner->reset(deleter);
+            } else if (external_reset) {
+                throw std::runtime_error(
+                    "Attempted to reset external resource with custom deleter"
+                );
             }
             delete this;
         }

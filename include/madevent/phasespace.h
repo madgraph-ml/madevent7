@@ -11,3 +11,4 @@
 #include "phasespace/rambo.h"
 #include "phasespace/cuts.h"
 #include "phasespace/integrand.h"
+#include "phasespace/vegas.h"

@@ -22,6 +22,12 @@ namespace madevent_py {
 
 #ifdef TORCH_FOUND
 torch::Tensor tensor_to_torch(Tensor tensor);
+Tensor torch_to_tensor(
+    torch::Tensor tensor,
+    Type expected_type,
+    std::size_t arg_index,
+    DevicePtr expected_device = nullptr
+);
 #endif
 py::array_t<double> tensor_to_numpy(Tensor tensor);
 

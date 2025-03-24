@@ -1314,7 +1314,7 @@ vegas_forward:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
   dims: 2
 
@@ -1331,6 +1331,7 @@ vegas_inverse:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
+  dims: 2
 

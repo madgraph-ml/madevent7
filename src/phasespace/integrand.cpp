@@ -30,20 +30,19 @@ ValueVec DifferentialCrossSection::build_function_impl(
 ValueVec Unweighter::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
-    auto [uw_indices, uw_weights] = fb.unweight(args.at(3), args.at(4));
-    return {
-        fb.gather(uw_indices, args.at(0)),
-        fb.gather(uw_indices, args.at(1)),
-        fb.gather(uw_indices, args.at(2)),
-        uw_weights
-    };
+    auto [uw_indices, uw_weights] = fb.unweight(args.at(0), args.back());
+    ValueVec output{uw_weights};
+    for (auto arg : std::span(args.begin() + 1, args.end() - 1)) {
+        output.push_back(fb.gather(uw_indices, arg));
+    }
+    return output;
 }
 
 ValueVec Integrand::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
-    auto r = _sample ?
-        fb.random(args.at(0), static_cast<int64_t>(_mapping.random_dim())) :
+    auto r = _flags & sample ?
+        fb.random(args.at(0), int64_t(_mapping.random_dim())) :
         args.at(0);
 
     auto [momenta_x1_x2, det] = _mapping.build_forward(fb, {r}, {});
@@ -56,14 +55,21 @@ ValueVec Integrand::build_function_impl(
         fb, {fb.gather(indices, momenta), fb.gather(indices, x1), fb.gather(indices, x2)}
     );
     auto weights = fb.mul(fb.scatter(indices, det, dxs.at(0)), det);
-    if (!_unweight) return {momenta, x1, x2, weights};
 
-    //TODO: use unweighter here
-    auto [uw_indices, uw_weights] = fb.unweight(weights, args.at(1));
-    return {
-        fb.gather(uw_indices, momenta),
-        fb.gather(uw_indices, x1),
-        fb.gather(uw_indices, x2),
-        uw_weights
-    };
+    ValueVec outputs{weights};
+    if (_flags & return_momenta) outputs.push_back(momenta);
+    if (_flags & return_x1_x2) {
+        outputs.push_back(x1);
+        outputs.push_back(x2);
+    }
+    if (_flags & return_random) outputs.push_back(r);
+
+    if (_flags & unweight) {
+        Unweighter unweighter(return_types(), _mapping.particle_count());
+        ValueVec unweighter_args = outputs;
+        unweighter_args.push_back(args.at(1));
+        outputs = unweighter.build_function(fb, unweighter_args);
+    }
+
+    return outputs;
 }

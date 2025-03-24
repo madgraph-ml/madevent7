@@ -7,7 +7,7 @@ namespace madevent {
 
 class TwoParticle : public Mapping {
 public:
-    TwoParticle(bool _com) : Mapping(
+    TwoParticle(bool com) : Mapping(
         [&] {
             TypeVec input_types(6, batch_float);
             if (!_com) {
@@ -17,7 +17,7 @@ public:
         }(),
         {batch_four_vec, batch_four_vec},
         {}
-    ), com(_com) {}
+    ), _com(com) {}
 
 private:
     Result build_forward_impl(
@@ -27,18 +27,18 @@ private:
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
-    bool com;
+    bool _com;
 };
 
 
 class TInvariantTwoParticle : public Mapping {
 public:
-    TInvariantTwoParticle(bool _com, double nu = 0, double mass = 0, double width = 0) :
+    TInvariantTwoParticle(bool com, double nu = 0, double mass = 0, double width = 0) :
         Mapping(
             {batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},
             {batch_four_vec, batch_four_vec}
-        ), com(_com), invariant(nu, mass, width) {}
+        ), _com(com), _invariant(nu, mass, width) {}
 
 private:
     Result build_forward_impl(
@@ -48,8 +48,8 @@ private:
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
-    bool com;
-    Invariant invariant;
+    bool _com;
+    Invariant _invariant;
 };
 
 }

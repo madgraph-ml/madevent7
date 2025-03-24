@@ -85,6 +85,6 @@ InstructionOwner instructions[] {
     InstructionOwner(new ScatterInstruction(72)),
     InstructionOwner(new RandomInstruction(73)),
     InstructionOwner(new UnweightInstruction(74)),
-    mi("vegas_forward", 75, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
-    mi("vegas_inverse", 76, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {}, false}}),
+    mi("vegas_forward", 75, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {"n"}, false}}),
+    mi("vegas_inverse", 76, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, true, {"n", "b"}, false}}, {{DataType::dt_float, false, {"n"}, false}, {DataType::dt_float, false, {"n"}, false}}),
 };

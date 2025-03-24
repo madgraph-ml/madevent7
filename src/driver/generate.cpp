@@ -19,14 +19,25 @@ EventGenerator::EventGenerator(
 ) :
     _context(context),
     _max_weight(0.),
-    _unweighter(Unweighter(channels.at(0).particle_count()).function(), context),
-    _status_all({0, 0., 0., 0., 0, 0., double(config.target_count), false}),
+    _unweighter(
+        Unweighter(
+            {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)},
+            channels.at(0).particle_count()
+        ).function(),
+        context
+    ),
+    _status_all({0, 0., 0., 0., 0, 0., static_cast<double>(config.target_count), false}),
     _writer(file_name, channels.at(0).particle_count())
 {
     std::size_t i = 0;
     fs::path file_path(file_name);
     fs::path temp_path = temp_file_dir.value_or(file_path.parent_path());
     for (auto& channel : channels) {
+        if (channel.flags() != integrand_flags) {
+            throw std::invalid_argument(
+                "Integrand flags must be sample | return_momenta | return_random"
+            );
+        }
         auto chan_path = temp_path / file_path.stem();
         chan_path += std::format(".channel{}.npy", i);
         std::optional<VegasGridOptimizer> vegas_optimizer;
@@ -160,7 +171,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     auto events = channel.runtime.run({Tensor({channel.batch_size})});
     channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
 
-    auto weights = events.at(3).cpu();
+    auto weights = events.at(0).cpu();
     auto w_view = weights.view<double,1>();
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         channel.cross_section.push(w_view[i]);
@@ -181,7 +192,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
         ++channel.iterations;
     }
     if (channel.needs_optimization && channel.vegas_optimizer) {
-        channel.vegas_optimizer->optimize(weights);
+        channel.vegas_optimizer->optimize(weights, events.at(2));
     }
 
     double total_mean = 0., total_var = 0.;
@@ -257,13 +268,13 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
 }
 
 void EventGenerator::unweight_and_write(ChannelState& channel, const std::vector<Tensor>& events) {
-    auto unweighter_args = events;
+    std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 2);
     unweighter_args.push_back(Tensor(channel.max_weight, _context->device()));
     auto unw_events = _unweighter.run(unweighter_args);
-    auto unw_momenta = unw_events.at(0);
-    auto mom_view = unw_momenta.view<double,3>();
-    auto unw_weights = unw_events.at(3);
+    auto unw_weights = unw_events.at(0);
     auto w_view = unw_weights.view<double,1>();
+    auto unw_momenta = unw_events.at(1);
+    auto mom_view = unw_momenta.view<double,3>();
 
     EventBuffer buffer(channel.writer.particle_count());
     auto& buf_event = buffer.event();

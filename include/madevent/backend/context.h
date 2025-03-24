@@ -103,6 +103,7 @@ public:
     );
     Tensor global(const std::string& name);
     bool global_requires_grad(const std::string& name);
+    bool global_exists(const std::string& name);
     const MatrixElement& matrix_element(std::size_t index) const;
     const PdfSet& pdf_set() const;
     void save(const std::string& file) const;

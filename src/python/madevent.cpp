@@ -163,6 +163,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("requires_grad")=false)
         .def("get_global", &Context::global, py::arg("name"))
         .def("global_requires_grad", &Context::global_requires_grad, py::arg("name"))
+        .def("global_exists", &Context::global_exists, py::arg("name"))
         .def("matrix_element", &Context::matrix_element,
              py::arg("index"), py::return_value_policy::reference_internal)
         .def("pdf_set", &Context::pdf_set,
@@ -261,6 +262,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .value("min", Cuts::min)
         .value("max", Cuts::max)
         .export_values();
+    py::class_<VegasMapping, Mapping>(m, "VegasMapping")
+        .def(py::init<std::size_t, std::size_t, const std::string&>(),
+             py::arg("dimension"), py::arg("bin_count"), py::arg("prefix")="")
+        .def("grid_name", &VegasMapping::grid_name)
+        .def("initialize_global", &VegasMapping::initialize_global, py::arg("context"));
 
     py::class_<Diagram::LineRef>(m, "LineRef")
         .def(py::init<std::string>(), py::arg("str"))
@@ -348,12 +354,21 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<const std::vector<DifferentialCrossSection::PidOptions>&,
                       double, double, std::size_t, std::vector<int64_t>>(),
              py::arg("pid_options"), py::arg("e_cm2"), py::arg("q2"),
-             py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{});
+             py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{})
+        .def("pid_options", &DifferentialCrossSection::pid_options);
+    py::class_<Unweighter, FunctionGenerator>(m, "Unweighter")
+        .def(py::init<const TypeVec&, std::size_t>(),
+             py::arg("types"), py::arg("particle_count"));
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
-        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
-                      bool, bool>(),
-             py::arg("mapping"), py::arg("diff_xs"),
-             py::arg("sample")=false, py::arg("unweight")=false);
+        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&, int>(),
+             py::arg("mapping"), py::arg("diff_xs"), py::arg("flags")=0)
+        .def("particle_count", &Integrand::particle_count)
+        .def("flags", &Integrand::flags)
+        .def_readonly_static("sample", &Integrand::sample)
+        .def_readonly_static("unweight", &Integrand::unweight)
+        .def_readonly_static("return_momenta", &Integrand::return_momenta)
+        .def_readonly_static("return_x1_x2", &Integrand::return_x1_x2)
+        .def_readonly_static("return_random", &Integrand::return_random);
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())
@@ -396,9 +411,23 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("status", &EventGenerator::status)
         .def("channel_status", &EventGenerator::channel_status);
 
+    py::class_<VegasGridOptimizer>(m, "VegasGridOptimizer")
+#ifdef TORCH_FOUND
+        .def("optimize", [](VegasGridOptimizer& opt, torch::Tensor weights, torch::Tensor inputs) {
+                opt.optimize(
+                    torch_to_tensor(weights, batch_float, 0),
+                    torch_to_tensor(inputs, batch_float_array(opt.input_dim()), 1)
+                );
+             }, py::arg("weights"), py::arg("inputs"))
+#endif
+        .def(py::init<ContextPtr, const std::string&, double>(),
+             py::arg("context"), py::arg("grid_name"), py::arg("damping"));
+
     m.def("optimize_constants", &optimize_constants, py::arg("function"));
     m.def("set_thread_count", &cpu::ThreadPool::set_thread_count, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
+    m.def("initialize_vegas_grid", &initialize_vegas_grid,
+          py::arg("context"), py::arg("grid_name"));
 }

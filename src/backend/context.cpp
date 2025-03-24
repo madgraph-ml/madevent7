@@ -239,7 +239,7 @@ void Context::define_global(
             "Context already contains a global named {}", name
         ));
     }
-    Tensor tensor(dtype, shape, _device);
+    Tensor tensor(dtype, full_shape, _device);
     tensor.zero();
     globals[name] = {tensor, requires_grad};
 }
@@ -252,6 +252,10 @@ Tensor Context::global(const std::string& name) {
             "Context does not contain a global named {}", name
         ));
     }
+}
+
+bool Context::global_exists(const std::string& name) {
+    return globals.find(name) != globals.end();
 }
 
 bool Context::global_requires_grad(const std::string& name) {

@@ -4,11 +4,12 @@ KERNELSPEC void kernel_vegas_forward(
     FIn<T,0> input, FIn<T,1> grid, FOut<T,0> output, FOut<T,0> det
 ) {
     FVal<T> bin_count_f(grid.size() - 1);
-    IVal<T> bin_index(input / bin_count_f);
+    IVal<T> bin_index_f(input * bin_count_f);
+    IVal<T> bin_index(bin_index_f);
     auto left_edge = grid.gather(bin_index);
     auto right_edge = grid.gather(bin_index + 1);
     auto bin_size = right_edge - left_edge;
-    output = left_edge + (input * bin_count_f - FVal<T>(bin_index)) * bin_size;
+    output = left_edge + (input * bin_count_f - bin_index_f) * bin_size;
     det = bin_count_f * bin_size;
 }
 

@@ -45,16 +45,14 @@ private:
 
 class Unweighter : public FunctionGenerator {
 public:
-    Unweighter(std::size_t particle_count) :
+    Unweighter(const TypeVec& types, std::size_t particle_count) :
         FunctionGenerator(
-            {
-                batch_four_vec_array(particle_count),
-                batch_float, batch_float, batch_float, single_float
-            },
-            {
-                batch_four_vec_array(particle_count),
-                batch_float, batch_float, batch_float
-            }
+            [&] {
+                auto arg_types = types;
+                arg_types.push_back(single_float);
+                return arg_types;
+            }(),
+            types
         )
     {}
 
@@ -64,46 +62,56 @@ private:
 
 class Integrand : public FunctionGenerator {
 public:
+    inline static const int sample = 1;
+    inline static const int unweight = 2;
+    inline static const int return_momenta = 4;
+    inline static const int return_x1_x2 = 8;
+    inline static const int return_random = 16;
+
     Integrand(
         const PhaseSpaceMapping& mapping,
         const DifferentialCrossSection& diff_xs,
-        bool sample = false,
-        bool unweight = false
+        int flags = 0
     ) :
         FunctionGenerator(
             [&] {
                 TypeVec arg_types;
-                if (sample) {
+                if (flags & sample) {
                     arg_types.push_back(Type({batch_size}));
                 } else {
                     arg_types.push_back(batch_float_array(mapping.random_dim()));
                 }
-                if (unweight) {
-                    arg_types.push_back(single_float);
-                }
+                if (flags & unweight) arg_types.push_back(single_float);
                 return arg_types;
             }(),
-            {
-                batch_four_vec_array(mapping.particle_count()),
-                batch_float,
-                batch_float,
-                batch_float
-            }
+            [&] {
+                TypeVec ret_types {batch_float};
+                if (flags & return_momenta) {
+                    ret_types.push_back(batch_four_vec_array(mapping.particle_count()));
+                }
+                if (flags & return_x1_x2) {
+                    ret_types.push_back(batch_float);
+                    ret_types.push_back(batch_float);
+                }
+                if (flags & return_random) {
+                    ret_types.push_back(batch_float_array(mapping.random_dim()));
+                }
+                return ret_types;
+            }()
         ),
         _mapping(mapping),
         _diff_xs(diff_xs),
-        _sample(sample),
-        _unweight(unweight)
+        _flags(flags)
     {}
     std::size_t particle_count() const { return _mapping.particle_count(); }
+    int flags() const { return _flags; }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
-    bool _sample;
-    bool _unweight;
+    int _flags;
 };
 
 }
