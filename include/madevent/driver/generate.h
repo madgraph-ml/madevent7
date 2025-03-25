@@ -50,11 +50,11 @@ private:
 
 class EventGenerator {
 public:
-    static const int integrand_flags =
+    static inline const int integrand_flags =
         Integrand::sample | Integrand::return_momenta | Integrand::return_random;
     struct Config {
-        std::size_t target_count = 50000;
-        double vegas_damping = 0.7;
+        std::size_t target_count = 10000;
+        double vegas_damping = 0.2;
         double max_overweight_fraction = 0.01;
         double max_overweight_truncation = 0.01;
         std::size_t start_batch_size = 1000;
@@ -62,8 +62,8 @@ public:
         std::size_t survey_min_iters = 3;
         std::size_t survey_max_iters = 4;
         double survey_target_precision = 0.1;
-        std::size_t optimization_patience = 2;
-        double optimization_threshold = 0.9;
+        std::size_t optimization_patience = 3;
+        double optimization_threshold = 0.99;
     };
     static const Config default_config;
     struct Status {
@@ -94,10 +94,10 @@ private:
         std::size_t index;
         cpu::Runtime runtime;
         EventFile writer;
-        bool needs_optimization;
         std::optional<VegasGridOptimizer> vegas_optimizer;
         std::size_t batch_size;
         RunningIntegral cross_section;
+        bool needs_optimization = true;
         double max_weight = 0.;
         double eff_count = 0.;
         double integral_fraction = 1.;

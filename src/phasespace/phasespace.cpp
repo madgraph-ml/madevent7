@@ -11,8 +11,7 @@ using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology, double _s_lab, /*double s_hat_min,*/ bool _leptonic,
-    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> cuts,
-    AdaptiveSampler adaptive_sampler
+    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> cuts
 ) :
     Mapping(
         //TODO: replace with scalar array

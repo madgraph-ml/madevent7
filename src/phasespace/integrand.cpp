@@ -1,5 +1,7 @@
 #include "madevent/phasespace/integrand.h"
 
+#include "madevent/util.h"
+
 using namespace madevent;
 
 ValueVec DifferentialCrossSection::build_function_impl(
@@ -45,7 +47,23 @@ ValueVec Integrand::build_function_impl(
         fb.random(args.at(0), int64_t(_mapping.random_dim())) :
         args.at(0);
 
+    std::optional<Value> adaptive_det;
+    std::visit(
+        Overloaded {
+            [&](std::monostate) {},
+            [&](auto& admap) {
+                auto [rs, r_det] = admap.build_forward(fb, {r}, {});
+                r = rs.at(0);
+                adaptive_det = r_det;
+            }
+        },
+        _adaptive_map
+    );
+
     auto [momenta_x1_x2, det] = _mapping.build_forward(fb, {r}, {});
+    if (adaptive_det) {
+        det = fb.mul(det, *adaptive_det);
+    }
     auto momenta = momenta_x1_x2.at(0);
     auto x1 = momenta_x1_x2.at(1);
     auto x2 = momenta_x1_x2.at(2);

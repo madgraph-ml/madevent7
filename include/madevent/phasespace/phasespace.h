@@ -18,7 +18,6 @@ namespace madevent {
 class PhaseSpaceMapping : public Mapping {
 public:
     enum TChannelMode { propagator, rambo, chili };
-    enum AdaptiveSampler { vegas, flow, none };
 
     PhaseSpaceMapping(
         const Topology& topology,
@@ -28,8 +27,7 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode t_channel_mode = propagator,
-        std::optional<Cuts> cuts = std::nullopt,
-        AdaptiveSampler adaptive_sampler = none
+        std::optional<Cuts> cuts = std::nullopt
     );
     PhaseSpaceMapping(
         const std::vector<double>& external_masses,
@@ -38,8 +36,7 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode mode = rambo,
-        std::optional<Cuts> cuts = std::nullopt,
-        AdaptiveSampler adaptive_sampler = none
+        std::optional<Cuts> cuts = std::nullopt
     ) : PhaseSpaceMapping(
         Topology(
             [&] {
@@ -70,7 +67,7 @@ public:
                 );
             }(),
             Topology::no_decays
-        ), s_lab, leptonic, s_min_epsilon, nu, mode, cuts, adaptive_sampler
+        ), s_lab, leptonic, s_min_epsilon, nu, mode, cuts
     ) {}
     std::size_t random_dim() const {
         return 3 * _outgoing_masses.size() - (_leptonic ? 4 : 2);

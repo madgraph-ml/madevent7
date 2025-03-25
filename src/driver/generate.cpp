@@ -18,6 +18,7 @@ EventGenerator::EventGenerator(
     const std::optional<std::string>& temp_file_dir
 ) :
     _context(context),
+    _config(config),
     _max_weight(0.),
     _unweighter(
         Unweighter(
@@ -40,13 +41,15 @@ EventGenerator::EventGenerator(
         }
         auto chan_path = temp_path / file_path.stem();
         chan_path += std::format(".channel{}.npy", i);
-        std::optional<VegasGridOptimizer> vegas_optimizer;
-        //vegas_optimizer.emplace(context, "", config.vegas_damping);
+        std::optional<VegasGridOptimizer> vegas_optimizer = channel
+            .vegas_grid_name()
+            .transform([&] (const std::string& name) {
+                return VegasGridOptimizer(context, name, config.vegas_damping);
+            });
         _channels.push_back({
             i,
             cpu::Runtime(channel.function(), context),
             EventFile(chan_path.string(), channel.particle_count()),
-            bool(vegas_optimizer),
             vegas_optimizer,
             config.start_batch_size
         });
@@ -59,7 +62,7 @@ void EventGenerator::survey() {
     for (std::size_t iter = 0; !done && iter < _config.survey_max_iters; ++iter) {
         done = true;
         for (auto& channel : _channels) {
-            clear_channel(channel);
+            //clear_channel(channel);
             auto [weights, events] = generate_channel(channel, true);
 
             if (iter >= _config.survey_min_iters - 1 && (
@@ -102,6 +105,7 @@ void EventGenerator::unweight_all() {
         channel.max_weight = std::max(
             channel.max_weight, _max_weight * channel.integral_fraction
         );
+        auto ecb = channel.eff_count;
         channel.eff_count = channel.writer.unweight(
             channel.max_weight, [&]() { return rand_dist(rand_gen); }
         );
@@ -139,8 +143,9 @@ void EventGenerator::combine() {
             channel_counts.begin(), channel_counts.end(), index
         );
         std::for_each(channel, channel_counts.end(), [](auto& count) { --count; });
+        auto& writer = _channels.at(channel - channel_counts.begin()).writer;
         do {
-            _channels.at(channel - channel_counts.begin()).writer.read(buffer);
+            writer.read(buffer);
         } while(buffer.event().weight == 0);
         _writer.write(buffer);
     }
@@ -168,6 +173,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
 std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     ChannelState& channel, bool always_optimize
 ) {
+    bool run_optim = channel.vegas_optimizer && (channel.needs_optimization || always_optimize);
+    if (run_optim) clear_channel(channel);
+
     auto events = channel.runtime.run({Tensor({channel.batch_size})});
     channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
 
@@ -178,7 +186,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     }
     channel.total_sample_count += w_view.size();
 
-    if (channel.needs_optimization || always_optimize) {
+    if (run_optim) {
         double rsd = channel.cross_section.rel_std_dev();
         if (rsd < _config.optimization_threshold * channel.best_rsd) {
             channel.iters_without_improvement = 0;
@@ -189,10 +197,8 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
             }
         }
         channel.best_rsd = std::min(rsd, channel.best_rsd);
-        ++channel.iterations;
-    }
-    if (channel.needs_optimization && channel.vegas_optimizer) {
         channel.vegas_optimizer->optimize(weights, events.at(2));
+        ++channel.iterations;
     }
 
     double total_mean = 0., total_var = 0.;
@@ -218,6 +224,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
 }
 
 void EventGenerator::clear_channel(ChannelState& channel) {
+    channel.eff_count = 0;
     channel.writer.clear();
     channel.cross_section.reset();
     std::erase_if(

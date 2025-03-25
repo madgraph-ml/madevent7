@@ -360,8 +360,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<const TypeVec&, std::size_t>(),
              py::arg("types"), py::arg("particle_count"));
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
-        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&, int>(),
-             py::arg("mapping"), py::arg("diff_xs"), py::arg("flags")=0)
+        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
+                      const Integrand::AdaptiveMapping&, int>(),
+             py::arg("mapping"), py::arg("diff_xs"),
+             py::arg("adaptive_map")=std::monostate{}, py::arg("flags")=0)
         .def("particle_count", &Integrand::particle_count)
         .def("flags", &Integrand::flags)
         .def_readonly_static("sample", &Integrand::sample)
@@ -409,7 +411,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("survey", &EventGenerator::survey)
         .def("generate", &EventGenerator::generate)
         .def("status", &EventGenerator::status)
-        .def("channel_status", &EventGenerator::channel_status);
+        .def("channel_status", &EventGenerator::channel_status)
+        .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
 
     py::class_<VegasGridOptimizer>(m, "VegasGridOptimizer")
 #ifdef TORCH_FOUND

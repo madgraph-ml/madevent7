@@ -251,14 +251,15 @@ void EventFile::write(const EventBuffer& event) {
 }
 
 bool EventFile::read(EventBuffer& event) {
+    if (_current_event == _event_count) return false;
     _file_stream.read(event.data(), event.size());
-    if (_file_stream.fail()) return false;
-    _current_event++;
+    //if (_file_stream.fail()) return false;
+    ++_current_event;
     return true;
 }
 
 void EventFile::seek(std::size_t index) {
-    _current_event = 0;
+    _current_event = index;
     _file_stream.seekp(_header_size + index * EventBuffer::size(_particle_count));
 }
 
@@ -281,8 +282,8 @@ std::size_t EventFile::unweight(double max_weight, std::function<double()> rando
         }
         seek(i);
         write(buffer);
-
     }
+
     return accept_count;
 }
 

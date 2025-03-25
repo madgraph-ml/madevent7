@@ -1,6 +1,8 @@
 #pragma once
 
 #include "madevent/phasespace/phasespace.h"
+#include "madevent/phasespace/vegas.h"
+#include "madevent/util.h"
 
 namespace madevent {
 
@@ -62,6 +64,7 @@ private:
 
 class Integrand : public FunctionGenerator {
 public:
+    using AdaptiveMapping = std::variant<std::monostate, VegasMapping>;
     inline static const int sample = 1;
     inline static const int unweight = 2;
     inline static const int return_momenta = 4;
@@ -71,6 +74,7 @@ public:
     Integrand(
         const PhaseSpaceMapping& mapping,
         const DifferentialCrossSection& diff_xs,
+        const AdaptiveMapping& adaptive_map,
         int flags = 0
     ) :
         FunctionGenerator(
@@ -101,16 +105,25 @@ public:
         ),
         _mapping(mapping),
         _diff_xs(diff_xs),
+        _adaptive_map(adaptive_map),
         _flags(flags)
     {}
     std::size_t particle_count() const { return _mapping.particle_count(); }
     int flags() const { return _flags; }
+    std::optional<std::string> vegas_grid_name() const {
+        if (auto vegas = std::get_if<VegasMapping>(&_adaptive_map)) {
+            return vegas->grid_name();
+        } else {
+            return std::nullopt;
+        }
+    }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
+    AdaptiveMapping _adaptive_map;
     int _flags;
 };
 
