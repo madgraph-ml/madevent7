@@ -9,8 +9,8 @@ class TwoParticle : public Mapping {
 public:
     TwoParticle(bool com) : Mapping(
         [&] {
-            TypeVec input_types(6, batch_float);
-            if (!_com) {
+            TypeVec input_types(5, batch_float);
+            if (!com) {
                 input_types.push_back(batch_four_vec);
             }
             return input_types;

@@ -16,7 +16,6 @@ template<typename T> using BVal = typename T::BVal;
 #include "autograd.h"
 #include "math.h"
 #include "kinematics.h"
-#include "two_particle.h"
 #include "invariants.h"
 #include "rambo.h"
 #include "cuts.h"

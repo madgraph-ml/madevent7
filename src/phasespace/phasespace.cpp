@@ -276,7 +276,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 continue;
             }
             if (auto decay_map = std::get_if<TwoParticle>(&data.mappings.decay)) {
-                ValueVec decay_args{*(r++), *(r++), *data.s, *data.sqrt_s};
+                ValueVec decay_args{*(r++), *(r++), *data.sqrt_s};
                 std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
                 if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));
                 auto [k_out, det] = decay_map->build_forward(fb, decay_args, {});
@@ -319,7 +319,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         );
     }
     auto p_ext_lab = _luminosity ?
-        fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) :
+        fb.boost_beam(p_ext_stack, x1, x2) :
         p_ext_stack;
     auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
     dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());

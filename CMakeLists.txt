@@ -73,7 +73,6 @@ add_library(
     src/backend/common/kernels.h
     src/backend/common/kinematics.h
     src/backend/common/math.h
-    src/backend/common/two_particle.h
     src/backend/common/rambo.h
     src/backend/common/cuts.h
     src/backend/common/chili.h

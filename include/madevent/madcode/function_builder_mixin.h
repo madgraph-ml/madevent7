@@ -71,14 +71,6 @@ Value uniform_costheta_inverse(Value in) {
     return instruction("uniform_costheta_inverse", {in})[0];
 }
 
-Value rotate_zy(Value p, Value phi, Value cos_theta) {
-    return instruction("rotate_zy", {p, phi, cos_theta})[0];
-}
-
-Value rotate_zy_inverse(Value p, Value phi, Value cos_theta) {
-    return instruction("rotate_zy_inverse", {p, phi, cos_theta})[0];
-}
-
 Value boost(Value p1, Value p2) {
     return instruction("boost", {p1, p2})[0];
 }
@@ -87,12 +79,12 @@ Value boost_inverse(Value p1, Value p2) {
     return instruction("boost_inverse", {p1, p2})[0];
 }
 
-Value boost_beam(Value p1, Value rap) {
-    return instruction("boost_beam", {p1, rap})[0];
+Value boost_beam(Value p1, Value x1, Value x2) {
+    return instruction("boost_beam", {p1, x1, x2})[0];
 }
 
-Value boost_beam_inverse(Value p1, Value rap) {
-    return instruction("boost_beam_inverse", {p1, rap})[0];
+Value boost_beam_inverse(Value p1, Value x1, Value x2) {
+    return instruction("boost_beam_inverse", {p1, x1, x2})[0];
 }
 
 Value com_momentum(Value sqrt_s) {
@@ -101,24 +93,6 @@ Value com_momentum(Value sqrt_s) {
 
 std::array<Value, 2> com_p_in(Value e_cm) {
     auto output_vector = instruction("com_p_in", {e_cm});
-    return {output_vector[0], output_vector[1]};
-}
-
-std::array<Value, 2> com_angles(Value p) {
-    auto output_vector = instruction("com_angles", {p});
-    return {output_vector[0], output_vector[1]};
-}
-
-Value s(Value p) {
-    return instruction("s", {p})[0];
-}
-
-Value sqrt_s(Value p) {
-    return instruction("sqrt_s", {p})[0];
-}
-
-std::array<Value, 2> s_and_sqrt_s(Value p) {
-    auto output_vector = instruction("s_and_sqrt_s", {p});
     return {output_vector[0], output_vector[1]};
 }
 
@@ -132,42 +106,33 @@ std::array<Value, 2> x1x2_to_r(Value x1, Value x2, Value s_lab) {
     return {output_vector[0], output_vector[1]};
 }
 
-Value rapidity(Value x1, Value x2) {
-    return instruction("rapidity", {x1, x2})[0];
-}
-
 Value diff_cross_section(Value x1, Value x2, Value pdf1, Value pdf2, Value matrix_element, Value e_cm2) {
     return instruction("diff_cross_section", {x1, x2, pdf1, pdf2, matrix_element, e_cm2})[0];
 }
 
-std::array<Value, 2> decay_momentum(Value s, Value sqrt_s, Value m1, Value m2) {
-    auto output_vector = instruction("decay_momentum", {s, sqrt_s, m1, m2});
+std::array<Value, 3> two_particle_decay_com(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_decay_com", {r_phi, r_cos_theta, m0, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_decay(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2, Value p0) {
+    auto output_vector = instruction("two_particle_decay", {r_phi, r_cos_theta, m0, m1, m2, p0});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_scattering_com", {r_phi, pa, pb, t, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_scattering(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_scattering", {r_phi, pa, pb, t, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
+    auto output_vector = instruction("t_inv_min_max", {pa, pb, m1, m2});
     return {output_vector[0], output_vector[1]};
-}
-
-std::array<Value, 2> invt_min_max(Value s, Value s_in1, Value s_in2, Value m1, Value m2) {
-    auto output_vector = instruction("invt_min_max", {s, s_in1, s_in2, m1, m2});
-    return {output_vector[0], output_vector[1]};
-}
-
-Value invt_to_costheta(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Value t) {
-    return instruction("invt_to_costheta", {s, s_in1, s_in2, m1, m2, t})[0];
-}
-
-Value costheta_to_invt(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Value cos_theta) {
-    return instruction("costheta_to_invt", {s, s_in1, s_in2, m1, m2, cos_theta})[0];
-}
-
-Value two_particle_density_inverse(Value s, Value m1, Value m2) {
-    return instruction("two_particle_density_inverse", {s, m1, m2})[0];
-}
-
-Value tinv_two_particle_density(Value det_t, Value s, Value s_in1, Value s_in2) {
-    return instruction("tinv_two_particle_density", {det_t, s, s_in1, s_in2})[0];
-}
-
-Value tinv_two_particle_density_inverse(Value det_t, Value s, Value s_in1, Value s_in2) {
-    return instruction("tinv_two_particle_density_inverse", {det_t, s, s_in1, s_in2})[0];
 }
 
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {

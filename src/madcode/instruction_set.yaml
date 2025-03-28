@@ -196,41 +196,8 @@ uniform_costheta_inverse:
       type: [float]
       desc:
 
-
 ---
 title: Kinematics
-
-rotate_zy:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: q
-      type: [float, 4]
-      desc:
-
-rotate_zy_inverse:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: q
-      type: [float, 4]
-      desc:
 
 boost:
   inputs:
@@ -263,7 +230,10 @@ boost_beam:
     - name: p1
       type: [float, n, 4]
       desc:
-    - name: rap
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
       type: [float]
       desc:
   outputs:
@@ -276,7 +246,10 @@ boost_beam_inverse:
     - name: p1
       type: [float, n, 4]
       desc:
-    - name: rap
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
       type: [float]
       desc:
   outputs:
@@ -305,52 +278,6 @@ com_p_in:
       desc:
     - name: p2
       type: [float, 4]
-      desc:
-
-com_angles:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-
-s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: s
-      type: [float]
-      desc:
-
-sqrt_s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: sqrt_s
-      type: [float]
-      desc:
-
-s_and_sqrt_s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: sqrt_s
-      type: [float]
       desc:
 
 r_to_x1x2:
@@ -394,19 +321,6 @@ x1x2_to_r:
       type: [float]
       desc:
 
-rapidity:
-  inputs:
-    - name: x1
-      type: [float]
-      desc:
-    - name: x2
-      type: [float]
-      desc:
-  outputs:
-    - name: rap
-      type: [float]
-      desc:
-
 diff_cross_section:
   inputs:
     - name: x1
@@ -432,15 +346,15 @@ diff_cross_section:
       type: [float]
       desc:
 
----
-title: Two-body decays and scattering
-
-decay_momentum:
+two_particle_decay_com:
   inputs:
-    - name: s
+    - name: r_phi
       type: [float]
       desc:
-    - name: sqrt_s
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: m0
       type: [float]
       desc:
     - name: m1
@@ -450,23 +364,116 @@ decay_momentum:
       type: [float]
       desc:
   outputs:
-    - name: p
+    - name: p1
       type: [float, 4]
       desc:
-    - name: gs
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
       type: [float]
       desc:
 
-invt_min_max:
+two_particle_decay:
   inputs:
-    - name: s
+    - name: r_phi
       type: [float]
       desc:
-    - name: s_in1
+    - name: r_cos_theta
       type: [float]
       desc:
-    - name: s_in2
+    - name: m0
       type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_particle_scattering_com:
+  inputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: t
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_particle_scattering:
+  inputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: t
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+t_inv_min_max:
+  inputs:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
       desc:
     - name: m1
       type: [float]
@@ -479,126 +486,6 @@ invt_min_max:
       type: [float]
       desc:
     - name: t_max
-      type: [float]
-      desc:
-
-invt_to_costheta:
-  inputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-    - name: t
-      type: [float]
-      desc:
-  outputs:
-    - name: cos_theta
-      type: [float]
-      desc:
-
-costheta_to_invt:
-  inputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: t
-      type: [float]
-      desc:
-
-        #two_particle_density:
-        #  inputs:
-        #    - name: s
-        #      type: [float]
-        #      desc:
-        #    - name: m1
-        #      type: [float]
-        #      desc:
-        #    - name: m2
-        #      type: [float]
-        #      desc:
-        #  outputs:
-        #    - name: gs
-        #      type: [float]
-        #      desc:
-
-two_particle_density_inverse:
-  inputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-  outputs:
-    - name: gs
-      type: [float]
-      desc:
-
-tinv_two_particle_density:
-  inputs:
-    - name: det_t
-      type: [float]
-      desc:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-  outputs:
-    - name: det
-      type: [float]
-      desc:
-
-tinv_two_particle_density_inverse:
-  inputs:
-    - name: det_t
-      type: [float]
-      desc:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-  outputs:
-    - name: det
       type: [float]
       desc:
 
