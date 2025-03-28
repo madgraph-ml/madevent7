@@ -320,15 +320,17 @@ PYBIND11_MODULE(_madevent_py, m) {
         .value("chili", PhaseSpaceMapping::chili)
         .export_values();
     psmap
-        .def(py::init<Topology&, double, bool, double, double,
-                      PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
+        .def(py::init<const Topology&, double, bool, double, double,
+                      PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
+                      const std::vector<Topology>&>(),
              py::arg("topology"), py::arg("s_lab"),
              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
-             py::arg("cuts")=std::nullopt)
+             py::arg("cuts")=std::nullopt,
+             py::arg("symmetric_topologies")=std::vector<Topology>{})
         .def(py::init<const std::vector<double>&, double, bool, double, double,
                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
-             py::arg("topology"), py::arg("s_lab"),
+             py::arg("masses"), py::arg("s_lab"),
              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
              py::arg("mode")=PhaseSpaceMapping::rambo,
              py::arg("cuts")=std::nullopt)
@@ -361,9 +363,12 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("types"), py::arg("particle_count"));
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
         .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
-                      const Integrand::AdaptiveMapping&, int>(),
+                      const Integrand::AdaptiveMapping&, int,
+                      const std::vector<std::size_t>&>(),
              py::arg("mapping"), py::arg("diff_xs"),
-             py::arg("adaptive_map")=std::monostate{}, py::arg("flags")=0)
+             py::arg("adaptive_map")=std::monostate{},
+             py::arg("flags")=0,
+             py::arg("channel_indices")=std::vector<std::size_t>{})
         .def("particle_count", &Integrand::particle_count)
         .def("flags", &Integrand::flags)
         .def_readonly_static("sample", &Integrand::sample)

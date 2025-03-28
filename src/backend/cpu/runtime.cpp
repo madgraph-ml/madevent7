@@ -139,6 +139,13 @@ void op_unstack(const Runtime::Instruction& instruction, TensorVec& locals) {
     }
 }
 
+void op_pop(const Runtime::Instruction& instruction, TensorVec& locals) {
+    auto input = locals[instruction.input_indices[0]];
+    std::size_t last_index = input.size(1) - 1;
+    locals[instruction.output_indices[0]] = input.slice(1, 0, last_index);
+    locals[instruction.output_indices[1]] = input.select(1, last_index);
+}
+
 void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
@@ -311,7 +318,7 @@ void op_nonzero(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 template<int dim>
-void gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
+void batch_gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
     auto batch_size = indices.size(0);
     Sizes out_shape = values.shape();
     out_shape[0] = batch_size;
@@ -320,21 +327,26 @@ void gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
     auto values_view = values.view<double, dim>();
     auto selection_view = selection.view<double, dim>();
     ThreadPool::instance().parallel_for([&](std::size_t i) {
+        if (i >= indices_view.size()) std::println("indices {} {}", i, indices_view.size());
+        if (indices_view[i] >= values_view.size())
+            std::println("values {} {} {}",
+                    i, static_cast<int64_t>(indices_view[i]), values_view.size());
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             values_view[indices_view[i]], selection_view[i]
         );
     }, batch_size);
 }
 
-void op_gather(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_batch_gather(const Runtime::Instruction& instruction, TensorVec& locals) {
+    //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
     auto& values = locals[instruction.input_indices[1]];
     auto& selection = locals[instruction.output_indices[0]];
     switch (values.shape().size()) {
-        case 1: gather_impl<1>(indices, values, selection); break;
-        case 2: gather_impl<2>(indices, values, selection); break;
-        case 3: gather_impl<3>(indices, values, selection); break;
-        case 4: gather_impl<4>(indices, values, selection); break;
+        case 1: batch_gather_impl<1>(indices, values, selection); break;
+        case 2: batch_gather_impl<2>(indices, values, selection); break;
+        case 3: batch_gather_impl<3>(indices, values, selection); break;
+        case 4: batch_gather_impl<4>(indices, values, selection); break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }
@@ -347,6 +359,10 @@ void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
     auto source_view = source.view<double, dim>();
     auto output_view = output.view<double, dim>();
     ThreadPool::instance().parallel_for([&](std::size_t i) {
+        if (i >= indices_view.size()) std::println("s_indices {} {}", i, indices_view.size());
+        if (indices_view[i] >= output_view.size())
+            std::println("s_output {} {} {}",
+                    i, static_cast<int64_t>(indices_view[i]), output_view.size());
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             source_view[i], output_view[indices_view[i]]
         );
@@ -419,6 +435,7 @@ void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
 
 void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
     //TODO: this function is in the wrong place. need some restructuring
+    //TODO: this only accidentally works for types other than double
     tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
         {&source}, {&target}, target.size(0)
     );
@@ -426,6 +443,7 @@ void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
 
 void CpuDevice::tensor_zero(Tensor& tensor) const {
     //TODO: this function is in the wrong place. need some restructuring
+    //TODO: this only accidentally works for types other than double
     tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
         {&tensor}, {&tensor}, tensor.size(0)
     );

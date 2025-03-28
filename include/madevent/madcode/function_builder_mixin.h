@@ -9,6 +9,11 @@ ValueVec unstack(Value in) {
     return instruction("unstack", {in});
 }
 
+std::array<Value, 2> pop(Value in) {
+    auto output_vector = instruction("pop", {in});
+    return {output_vector[0], output_vector[1]};
+}
+
 std::array<Value, 2> batch_cat(ValueVec args) {
     auto output_vector = instruction("batch_cat", args);
     return {output_vector[0], output_vector[1]};
@@ -220,6 +225,10 @@ std::array<Value, 4> rambo_four_vectors_massive(Value u, Value e_cm, Value cos_t
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
+Value cut_unphysical(Value w_in, Value p, Value x1, Value x2) {
+    return instruction("cut_unphysical", {w_in, p, x1, x2})[0];
+}
+
 Value cut_pt(Value p, Value min_max) {
     return instruction("cut_pt", {p, min_max})[0];
 }
@@ -303,6 +312,18 @@ std::array<Value, 2> sample_discrete_probs(Value r, Value probs) {
     return {output_vector[0], output_vector[1]};
 }
 
+Value permute_momenta(Value momenta, Value permutations, Value index) {
+    return instruction("permute_momenta", {momenta, permutations, index})[0];
+}
+
+Value gather(Value index, Value choices) {
+    return instruction("gather", {index, choices})[0];
+}
+
+Value gather_int(Value index, Value choices) {
+    return instruction("gather_int", {index, choices})[0];
+}
+
 Value one_hot(Value index, Value option_count) {
     return instruction("one_hot", {index, option_count})[0];
 }
@@ -311,8 +332,8 @@ Value nonzero(Value input) {
     return instruction("nonzero", {input})[0];
 }
 
-Value gather(Value indices, Value values) {
-    return instruction("gather", {indices, values})[0];
+Value batch_gather(Value indices, Value values) {
+    return instruction("batch_gather", {indices, values})[0];
 }
 
 Value scatter(Value indices, Value target, Value source) {

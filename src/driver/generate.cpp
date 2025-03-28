@@ -6,6 +6,7 @@
 #include <format>
 #include <cmath>
 #include <random>
+#include <ranges>
 
 using namespace madevent;
 namespace fs = std::filesystem;
@@ -253,7 +254,8 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
     if (_large_weights.size() > max_overweights) {
         _large_weights.erase(_large_weights.begin() + max_overweights, _large_weights.end());
     }
-    double new_max_weight = std::get<1>(_large_weights.back());
+    double new_max_weight = _large_weights.size() > 0 ?
+        std::get<1>(_large_weights.back()) : 0.;
     double truncation = 0;
     for (auto [w, w_scaled, chan_index] : _large_weights) {
         truncation += std::max(w_scaled, _max_weight) / w_scaled - 1;
@@ -334,12 +336,13 @@ void EventGenerator::print_gen_init() {
             "--------------------------------------------------------------------------\n"
             " #   integral        RSD      N      unweighted"
         );
-        for (std::size_t i = 0; i < _channels.size() /*&& i <= 20*/; ++i) {
-            //if (i == 20) {
-                //std::println(" ..");
-            //} else {
+        for (std::size_t i = 0; i < _channels.size(); ++i) {
+            if (i == 20) {
+                std::println(" ..");
+                break;
+            } else {
                 std::println(" {}", i);
-            //}
+            }
         }
         std::println(
             "--------------------------------------------------------------------------\n"
@@ -374,7 +377,9 @@ void EventGenerator::print_gen_update() {
         "\033[2K Rel. stddev:       {}\n"
         "\033[2K Number of events:  {}\n"
         "\033[2K Unweighted events: {}\n",
-        _channels.size() == 1 ? 7 : _channels.size() + 12,
+        _channels.size() == 1 ? 7 : (
+            _channels.size() > 20 ? 33 : _channels.size() + 12
+        ),
         int_str,
         rel_str,
         rsd_str,
@@ -383,26 +388,33 @@ void EventGenerator::print_gen_update() {
     );
 
     if (_channels.size() > 1) {
+        auto channels = channel_status();
+        std::sort(
+            channels.begin(),
+            channels.end(),
+            [] (auto& chan1, auto& chan2) {
+                return chan1.mean > chan2.mean;
+            }
+        );
+
         std::print("\n\n\n\n\n");
-        for (auto& channel : _channels) {
+        for (auto& channel : channels | std::views::take(20)) {
+            if (channel.index == 20) break;
             std::string int_str, rsd_str, count_str, unw_str;
-            if (!std::isnan(channel.cross_section.error())) {
-                int_str = format_with_error(
-                    channel.cross_section.mean(), channel.cross_section.error()
-                );
-                rsd_str = std::format("{:.3f}", channel.cross_section.rel_std_dev());
-                count_str = format_si_prefix(channel.total_sample_count);
-                double target_count = channel.integral_fraction * _config.target_count;
+            if (!std::isnan(channel.error)) {
+                int_str = format_with_error(channel.mean, channel.error);
+                rsd_str = std::format("{:.3f}", channel.rel_std_dev);
+                count_str = format_si_prefix(channel.count);
                 unw_str = std::format(
                     "{} / {}",
-                    format_si_prefix(channel.eff_count),
-                    format_si_prefix(target_count)
+                    format_si_prefix(channel.count_unweighted),
+                    format_si_prefix(channel.count_target)
                 );
-                if (channel.eff_count < target_count) {
+                if (!channel.done) {
                     unw_str = std::format(
                         "{:<15} {}",
                         unw_str,
-                        format_progress(channel.eff_count / target_count, 19)
+                        format_progress(channel.count_unweighted / channel.count_target, 19)
                     );
                 }
             }

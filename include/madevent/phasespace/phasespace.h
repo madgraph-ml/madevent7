@@ -27,8 +27,10 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode t_channel_mode = propagator,
-        std::optional<Cuts> cuts = std::nullopt
+        const std::optional<Cuts>& cuts = std::nullopt,
+        const std::vector<Topology>& symmetric_topologies = {}
     );
+
     PhaseSpaceMapping(
         const std::vector<double>& external_masses,
         double s_lab,
@@ -36,7 +38,7 @@ public:
         double s_min_epsilon = 1e-2,
         double nu = 1.4,
         TChannelMode mode = rambo,
-        std::optional<Cuts> cuts = std::nullopt
+        const std::optional<Cuts>& cuts = std::nullopt
     ) : PhaseSpaceMapping(
         Topology(
             [&] {
@@ -75,6 +77,9 @@ public:
     std::size_t particle_count() const {
         return _outgoing_masses.size() + 2;
     }
+    std::size_t channel_count() const {
+        return _permutations.size();
+    }
 private:
     Result build_forward_impl(
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
@@ -99,8 +104,8 @@ private:
     std::variant<TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate> _t_mapping;
     std::optional<Luminosity> _luminosity;
     std::vector<double> _outgoing_masses;
-    std::vector<std::size_t> _permutation;
-    std::vector<std::size_t> _inverse_permutation;
+    std::vector<std::vector<std::size_t>> _permutations;
+    std::vector<std::vector<std::size_t>> _inverse_permutations;
 };
 
 }

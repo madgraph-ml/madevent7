@@ -11,6 +11,24 @@ KERNELSPEC FVal<T> _eta(FIn<T,1> p) {
 // Kernels
 
 template<typename T>
+KERNELSPEC void kernel_cut_unphysical(
+    FIn<T,0> w_in, FIn<T,2> p, FIn<T,0> x1, FIn<T,0> x2, FOut<T,0> w_out
+) {
+    FVal<T> w = where(isnan(w_in), 0., w_in);
+    for (std::size_t i = 0; i < p.size(); ++i) {
+        auto p_i = p[i];
+        for (std::size_t j = 0; j < 4; ++j) {
+            w = where(isnan(p_i[j]), 0., w);
+        }
+    }
+    w_out = where(
+        (x1 < 0.) | (x1 > 1.) | isnan(x1) | (x2 < 0.) | (x2 > 1.) | isnan(x2),
+        0.,
+        w
+    );
+}
+
+template<typename T>
 KERNELSPEC void kernel_cut_pt(
     FIn<T,2> p, FIn<T,2> min_max, FOut<T,0> w
 ) {

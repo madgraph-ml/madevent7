@@ -17,6 +17,9 @@ enum class DataType {
     batch_sizes
 };
 
+template<typename T>
+concept ScalarType = std::same_as<T, bool> || std::same_as<T, int64_t> || std::same_as<T, double>;
+
 class BatchSize {
 public:
     using Named = std::string;
@@ -94,6 +97,17 @@ inline Type single_int_array(int count) {
 }
 
 const BatchSize batch_size = BatchSize("batch_size");
+inline Type multichannel_batch_size(int count) {
+    std::vector<BatchSize> batch_sizes;
+    BatchSize remaining = batch_size;
+    for (std::size_t i = 0; i < count - 1; ++i) {
+        BatchSize batch_size_i(std::format("channel_size_{}", i));
+        batch_sizes.push_back(batch_size_i);
+        remaining = remaining - batch_size_i;
+    }
+    batch_sizes.push_back(remaining);
+    return batch_sizes;
+}
 const Type batch_float{DataType::dt_float, batch_size, {}};
 const Type batch_int{DataType::dt_int, batch_size, {}};
 const Type batch_bool{DataType::dt_bool, batch_size, {}};
@@ -124,7 +138,30 @@ struct Value {
     Value(int64_t value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
 
-    template<typename T>
+    template<ScalarType T>
+    Value(const std::vector<std::vector<T>>& values) :
+        Value(
+            [&] {
+                std::size_t outer_size = values.size();
+                std::size_t inner_size = values.at(0).size();
+                std::vector<T> flat_values;
+                for (auto& vec : values) {
+                    if (vec.size() != inner_size) {
+                        throw std::invalid_argument("All inner vectors must have the same size");
+                    }
+                }
+                for (std::size_t j = 0; j < inner_size; ++j) {
+                    for (std::size_t i = 0; i < outer_size; ++i) {
+                        flat_values.push_back(values.at(i).at(j));
+                    }
+                }
+                std::println("perm: {}", flat_values);
+                return flat_values;
+            }(),
+            {static_cast<int>(values.size()), static_cast<int>(values.at(0).size())}
+        ) {}
+
+    template<ScalarType T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
             std::is_same_v<T, bool> ? DataType::dt_bool :

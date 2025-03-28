@@ -16,15 +16,7 @@ public:
             _mappings.at(0).output_types(),
             [&] {
                 auto condition_types = _mappings.at(0).condition_types();
-                std::vector<BatchSize> batch_sizes;
-                BatchSize remaining = batch_size;
-                for (std::size_t i = 0; i < _mappings.size() - 1; ++i) {
-                    BatchSize batch_size_i(std::format("channel_size_{}", i));
-                    batch_sizes.push_back(batch_size_i);
-                    remaining = remaining - batch_size_i;
-                }
-                batch_sizes.push_back(remaining);
-                condition_types.push_back(batch_sizes);
+                condition_types.push_back(multichannel_batch_size(_mappings.size()));
                 return condition_types;
             }()
         ),

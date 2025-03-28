@@ -408,7 +408,7 @@ TypeVec NonzeroInstruction::signature(const ValueVec& args) const {
     return {{DataType::dt_int, BatchSize(), {}}};
 }
 
-TypeVec GatherInstruction::signature(const ValueVec& args) const {
+TypeVec BatchGatherInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& indices_type = args.at(0).type;
     auto& values_type = args.at(1).type;
@@ -417,12 +417,12 @@ TypeVec GatherInstruction::signature(const ValueVec& args) const {
             "{}, argument 1: expected batch of integers", name()
         ));
     }
-    if (values_type.dtype != DataType::dt_float) {
+    if (values_type.dtype == DataType::batch_sizes) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected data type float", name()
+            "{}, argument 2: data type cannot be batch_sizes", name()
         ));
     }
-    return {{DataType::dt_float, indices_type.batch_size, values_type.shape}};
+    return {{values_type.dtype, indices_type.batch_size, values_type.shape}};
 }
 
 TypeVec ScatterInstruction::signature(const ValueVec& args) const {

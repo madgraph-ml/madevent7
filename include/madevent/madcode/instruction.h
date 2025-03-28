@@ -100,9 +100,9 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
-class GatherInstruction : public Instruction {
+class BatchGatherInstruction : public Instruction {
 public:
-    GatherInstruction(int _opcode) : Instruction("gather", _opcode) {}
+    BatchGatherInstruction(int _opcode) : Instruction("batch_gather", _opcode) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 

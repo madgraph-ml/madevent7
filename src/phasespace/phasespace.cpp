@@ -11,13 +11,14 @@ using namespace madevent;
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology, double _s_lab, /*double s_hat_min,*/ bool _leptonic,
-    double s_min_epsilon, double nu, TChannelMode t_channel_mode, std::optional<Cuts> cuts
+    double s_min_epsilon, double nu, TChannelMode t_channel_mode,
+    const std::optional<Cuts>& cuts,
+    const std::vector<Topology>& symmetric_topologies
 ) :
     Mapping(
-        //TODO: replace with scalar array
         {batch_float_array(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2))},
         {batch_four_vec_array(topology.outgoing_masses.size() + 2), batch_float, batch_float},
-        {}
+        symmetric_topologies.size() == 0 ? TypeVec{} : TypeVec{batch_int}
     ),
     _pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
     _s_lab(_s_lab),
@@ -26,15 +27,20 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     _sqrt_s_epsilon(std::sqrt(s_min_epsilon)),
     _t_mapping(std::monostate{}),
     _outgoing_masses(topology.outgoing_masses),
-    _permutation(topology.permutation),
-    _inverse_permutation(topology.inverse_permutation),
     _cuts(cuts.value_or(Cuts(std::vector<int>(topology.outgoing_masses.size(), 0), {})))
 {
+    _permutations.push_back(topology.permutation);
+    _inverse_permutations.push_back(topology.inverse_permutation);
+    for (auto& topo : symmetric_topologies) {
+        _permutations.push_back(topo.permutation);
+        _inverse_permutations.push_back(topo.inverse_permutation);
+    }
+
     // Initialize s invariants and decay mappings
     auto pt_min_perm = _cuts.get_pt_min();
     auto eta_max_perm = _cuts.get_eta_max();
     std::vector<double> sqrt_s_min, pt_min, eta_max;
-    for (auto index : _inverse_permutation) {
+    for (auto index : _inverse_permutations.at(0)) {
         sqrt_s_min.push_back(_outgoing_masses.at(index));
         pt_min.push_back(pt_min_perm.at(index));
         eta_max.push_back(eta_max_perm.at(index));
@@ -146,7 +152,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // sample s-invariants from decays, starting from the final state particles
     ValueVec sqrt_s;
-    for (auto index : _inverse_permutation) {
+    for (auto index : _inverse_permutations.at(0)) {
         sqrt_s.push_back(_outgoing_masses.at(index));
     }
     struct DecayData {
@@ -291,16 +297,33 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     }
 
     // permute and return momenta
-    for (auto index : _permutation) {
-        p_ext.push_back(p_out.at(index));
+    Value p_ext_stack;
+    if (_permutations.size() == 1) {
+        for (auto index : _permutations.at(0)) {
+            p_ext.push_back(p_out.at(index));
+        }
+        p_ext_stack = fb.stack(p_ext);
+    } else {
+        p_ext.insert(p_ext.end(), p_out.begin(), p_out.end());
+        std::vector<std::vector<int64_t>> permutations;
+        for (auto& perm : _permutations) {
+            auto& new_perm = permutations.emplace_back();
+            new_perm.push_back(0);
+            new_perm.push_back(1);
+            for (auto index : perm) {
+                new_perm.push_back(index + 2);
+            }
+        }
+        p_ext_stack = fb.permute_momenta(
+            fb.stack(p_ext), permutations, conditions.at(0)
+        );
     }
-    auto p_ext_stack = fb.stack(p_ext);
     auto p_ext_lab = _luminosity ?
         fb.boost_beam(p_ext_stack, fb.rapidity(x1, x2)) :
         p_ext_stack;
     auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
     dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());
-    auto ps_weight = fb.product(fb.stack(dets));
+    auto ps_weight = fb.cut_unphysical(fb.product(fb.stack(dets)), p_ext_lab, x1, x2);
     return {{p_ext_lab, x1, x2}, ps_weight};
 }
 

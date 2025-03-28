@@ -73,22 +73,19 @@ public:
         _stride(nullptr),
         _shape(nullptr) {}
 
-    template<int d = _dim> requires (d != 0)
-    const TensorView<T, _dim-1> operator[](std::size_t index) const {
+    const TensorView<T, _dim-1> operator[](std::size_t index) const requires (_dim != 0) {
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
 
-    template<int d = _dim> requires (d != 0)
-    TensorView<T, _dim-1> operator[](std::size_t index) {
+    TensorView<T, _dim-1> operator[](std::size_t index) requires (_dim != 0) {
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
 
-    operator typename std::conditional_t<_dim == 0, T, Nothing>() const {
+    operator T() const requires (_dim == 0) {
         return *reinterpret_cast<T*>(_data);
     }
 
-    template<int d = _dim> requires (d == 0)
-    T operator=(T value) {
+    T operator=(T value) requires (_dim == 0) {
         *reinterpret_cast<T*>(_data) = value;
         return value;
     }
@@ -208,8 +205,7 @@ public:
         1, {}, 0, 0, batch_sizes
     }) {}
 
-    template<typename T>
-    requires std::same_as<T, bool> || std::same_as<T, int64_t> || std::same_as<T, double>
+    template<ScalarType T>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
             std::is_same_v<T, bool> ? DataType::dt_bool :

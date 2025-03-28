@@ -15,6 +15,7 @@ namespace {
 void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("stack", &FunctionBuilder::stack, py::arg("args"));
     fb.def("unstack", &FunctionBuilder::unstack, py::arg("in"));
+    fb.def("pop", &FunctionBuilder::pop, py::arg("in"));
     fb.def("batch_cat", &FunctionBuilder::batch_cat, py::arg("args"));
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
@@ -63,6 +64,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("fast_rambo_r_to_u", &FunctionBuilder::fast_rambo_r_to_u, py::arg("r"));
     fb.def("rambo_four_vectors_massless", &FunctionBuilder::rambo_four_vectors_massless, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"));
     fb.def("rambo_four_vectors_massive", &FunctionBuilder::rambo_four_vectors_massive, py::arg("u"), py::arg("e_cm"), py::arg("cos_theta"), py::arg("phi"), py::arg("masses"));
+    fb.def("cut_unphysical", &FunctionBuilder::cut_unphysical, py::arg("w_in"), py::arg("p"), py::arg("x1"), py::arg("x2"));
     fb.def("cut_pt", &FunctionBuilder::cut_pt, py::arg("p"), py::arg("min_max"));
     fb.def("cut_eta", &FunctionBuilder::cut_eta, py::arg("p"), py::arg("min_max"));
     fb.def("cut_dr", &FunctionBuilder::cut_dr, py::arg("p"), py::arg("indices"), py::arg("min_max"));
@@ -82,9 +84,12 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("softmax_prior", &FunctionBuilder::softmax_prior, py::arg("input"), py::arg("prior"));
     fb.def("sample_discrete", &FunctionBuilder::sample_discrete, py::arg("r"), py::arg("option_count"));
     fb.def("sample_discrete_probs", &FunctionBuilder::sample_discrete_probs, py::arg("r"), py::arg("probs"));
+    fb.def("permute_momenta", &FunctionBuilder::permute_momenta, py::arg("momenta"), py::arg("permutations"), py::arg("index"));
+    fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
+    fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
     fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
-    fb.def("gather", &FunctionBuilder::gather, py::arg("indices"), py::arg("values"));
+    fb.def("batch_gather", &FunctionBuilder::batch_gather, py::arg("indices"), py::arg("values"));
     fb.def("scatter", &FunctionBuilder::scatter, py::arg("indices"), py::arg("target"), py::arg("source"));
     fb.def("random", &FunctionBuilder::random, py::arg("batch_size"), py::arg("count"));
     fb.def("unweight", &FunctionBuilder::unweight, py::arg("weights"), py::arg("max_weight"));

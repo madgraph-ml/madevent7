@@ -17,6 +17,21 @@ unstack:
   desc: 
   class: UnstackInstruction
   custom_op: True
+
+pop:
+  inputs:
+    - name: in
+      type: [float, n, ...]
+      desc:
+  outputs:
+    - name: rest
+      type: [float, n-1, ...]
+      desc:
+    - name: item
+      type: [float, ...]
+      desc:
+  custom_op: True
+
 batch_cat:
   inputs: any
   outputs:
@@ -844,6 +859,26 @@ rambo_four_vectors_massive:
 ---
 title: Cuts
 
+cut_unphysical:
+  inputs:
+    - name: w_in
+      type: [float]
+      desc:
+    - name: p
+      type: [float, n, 4]
+      desc:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+  outputs:
+    - name: w_out
+      type: [float]
+      desc:
+
+
 cut_pt:
   inputs:
     - name: p
@@ -1178,32 +1213,48 @@ sample_discrete_probs:
       type: [float]
       desc:
 
-#gather:
-#  inputs:
-#    - name: index
-#      type: [int]
-#      desc:
-#    - name: choices
-#      type: [float, n]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [float]
-#      desc:
-#
-#gather_int:
-#  inputs:
-#    - name: index
-#      type: [int]
-#      desc:
-#    - name: choices
-#      type: [int, n]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [int]
-#      desc:
-#
+permute_momenta:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+    - name: permutations
+      type: [int, single, m, n]
+      desc:
+    - name: index
+      type: [int]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n, 4]
+      desc: 
+
+gather:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float]
+      desc:
+
+gather_int:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [int, n]
+      desc:
+  outputs:
+    - name: output
+      type: [int]
+      desc:
+
 #select:
 #  inputs:
 #    - name: input
@@ -1243,7 +1294,7 @@ nonzero:
   class: NonzeroInstruction
   custom_op: True
 
-gather:
+batch_gather:
   inputs:
     - name: indices
       desc:
@@ -1252,7 +1303,7 @@ gather:
   outputs:
     - name: selection
       desc:
-  class: GatherInstruction
+  class: BatchGatherInstruction
   custom_op: True
 
 scatter:

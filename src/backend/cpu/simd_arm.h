@@ -95,4 +95,4 @@ FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
 FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
 FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
 
-bool isnan(FVec arg) { return false; }
+bool isnan(FVec arg) {  } // TODO: implement
