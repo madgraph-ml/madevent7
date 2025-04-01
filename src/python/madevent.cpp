@@ -178,6 +178,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<Function, ContextPtr>(), py::arg("function"), py::arg("context"))
 #ifdef TORCH_FOUND
         .def("call", &FunctionRuntime::call_torch)
+        .def("call_with_grad", &FunctionRuntime::call_with_grad_torch)
+        .def("call_backward", &FunctionRuntime::call_backward_torch)
 #endif
         .def("call", &FunctionRuntime::call_numpy);
 
@@ -376,6 +378,23 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_momenta", &Integrand::return_momenta)
         .def_readonly_static("return_x1_x2", &Integrand::return_x1_x2)
         .def_readonly_static("return_random", &Integrand::return_random);
+
+    py::class_<MLP, FunctionGenerator> mlp(m, "MLP");
+    py::enum_<MLP::Activation>(mlp, "Activation")
+        .value("leaky_relu", MLP::leaky_relu)
+        .value("linear", MLP::linear)
+        .export_values();
+    mlp.def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
+                      MLP::Activation, const std::string&>(),
+             py::arg("input_dim"),
+             py::arg("output_dim"),
+             py::arg("hidden_dim") = 32,
+             py::arg("layers") = 3,
+             py::arg("activation") = MLP::leaky_relu,
+             py::arg("prefix") = "")
+        .def("input_dim", &MLP::input_dim)
+        .def("output_dim", &MLP::output_dim)
+        .def("initialize_globals", &MLP::initialize_globals, py::arg("context"));
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())

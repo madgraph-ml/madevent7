@@ -12,3 +12,4 @@
 #include "phasespace/cuts.h"
 #include "phasespace/integrand.h"
 #include "phasespace/vegas.h"
+#include "phasespace/mlp.h"

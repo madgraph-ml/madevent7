@@ -95,7 +95,7 @@ public:
         double alpha_s
     );
     void load_pdf(const std::string& name, int index=0);
-    void define_global(
+    Tensor define_global(
         const std::string& name,
         DataType dtype,
         const SizeVec& shape,

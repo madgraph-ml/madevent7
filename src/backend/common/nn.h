@@ -102,6 +102,8 @@ template<typename T>
 KERNELSPEC void backward_kernel_leaky_relu(
     FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
 ) {
+    //FVal<T> x(input), g(output_grad);
+    //input_grad = where(x < 0, g * 0.01, g);
     backward<T, kernel_leaky_relu<AutogradTypes>, 1, 1>(
         {input}, {output_grad}, {input_grad}
     );

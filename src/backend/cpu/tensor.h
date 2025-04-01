@@ -150,6 +150,48 @@ void recursive_for(V... views) {
     }
 }
 
+template<auto func, int dims, typename... V>
+void nested_for(std::size_t batch_size, V... views) {
+    auto& first_view = std::get<0>(std::tie(views...));
+    if constexpr (dims == 0) {
+        func(views...);
+    } else if constexpr (dims == 1) {
+        for (std::size_t i = 0; i < batch_size; ++i) {
+            func(views[i]...);
+        }
+    } else if constexpr (dims == 2) {
+        auto size1 = first_view.size(1);
+        for (std::size_t j = 0; j < size1; ++j) {
+            for (std::size_t i = 0; i < batch_size; ++i) {
+                func(views.get(i, j)...);
+            }
+        }
+    } else if constexpr (dims == 3) {
+        auto size1 = first_view.size(1);
+        auto size2 = first_view.size(2);
+        for (std::size_t k = 0; k < size2; ++k) {
+            for (std::size_t j = 0; j < size1; ++j) {
+                for (std::size_t i = 0; i < batch_size; ++i) {
+                    func(views.get(i, j, k)...);
+                }
+            }
+        }
+    } else if constexpr (dims == 4) {
+        auto size1 = first_view.size(1);
+        auto size2 = first_view.size(2);
+        auto size3 = first_view.size(3);
+        for (std::size_t l = 0; l < size3; ++l) {
+            for (std::size_t k = 0; k < size2; ++k) {
+                for (std::size_t j = 0; j < size1; ++j) {
+                    for (std::size_t i = 0; i < batch_size; ++i) {
+                        func(views.get(i, j, k, l)...);
+                    }
+                }
+            }
+        }
+    }
+}
+
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
     std::array<const madevent::Tensor*, n_in>& inputs,
@@ -162,11 +204,14 @@ void tensor_foreach(
     );
     // scalar func and vector func have the same type if cpu vectorization is turned off
     if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
-        madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
+        /*madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
             std::apply([i](auto&&... args) {
                 recursive_for<scalar_func, dims-1>(args[i]...);
             }, views);
-        }, batch_size);
+        }, batch_size);*/
+        std::apply([batch_size](auto&&... args) {
+            nested_for<scalar_func, dims>(batch_size, args...);
+        }, views);
     } else {
         auto vectorized_views = std::apply(
             get_vectorized_views<decltype(vector_func), dims>(), views

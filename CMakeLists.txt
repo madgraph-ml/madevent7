@@ -62,7 +62,7 @@ find_library(
     LHAPDF_LIBRARIES
     REQUIRED
     PATHS ${LHAPDF_LIBRARY_DIR}
-    NAMES LHAPDF
+    NAMES "libLHAPDF.a"
 )
 
 add_library(
@@ -110,6 +110,7 @@ add_library(
     src/phasespace/chili.cpp
     src/phasespace/integrand.cpp
     src/phasespace/vegas.cpp
+    src/phasespace/mlp.cpp
     include/madevent/util.h
     include/madevent/backend/tensor.h
     include/madevent/backend/context.h
@@ -141,6 +142,7 @@ add_library(
     include/madevent/phasespace/chili.h
     include/madevent/phasespace/integrand.h
     include/madevent/phasespace/vegas.h
+    include/madevent/phasespace/mlp.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu
@@ -164,6 +166,7 @@ target_link_libraries(madevent PRIVATE BLAS::BLAS)
 target_link_libraries(madevent PRIVATE nlohmann_json::nlohmann_json)
 #target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
+#target_link_libraries(madevent PRIVATE -static-libstdc++)
 
 #pybind11_add_module(
 #    _madevent_py
@@ -183,6 +186,7 @@ python_add_library(
 )
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
 target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
+#target_link_libraries(_madevent_py PRIVATE -static-libstdc++)
 
 #target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
 if(TORCH_FOUND)

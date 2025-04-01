@@ -115,22 +115,31 @@ def instruction_set_mixin(commands):
             "const auto mi = [](\n"
             "    std::string name,\n"
             "    int opcode,\n"
+            "    bool differentiable,\n"
             "    std::initializer_list<SigType> inputs,\n"
             "    std::initializer_list<SigType> outputs\n"
-            ") { return InstructionOwner(new SimpleInstruction(name, opcode, inputs, outputs)); };\n"
+            ") {\n"
+            "    return InstructionOwner(new SimpleInstruction(\n"
+            "        name, opcode, differentiable, inputs, outputs\n"
+            "    ));\n"
+            "};\n"
             "\n"
             "InstructionOwner instructions[] {\n"
         )
         first = True
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
+            differentiable = "true" if cmd.get("differentiable", False) else "true"
             if "class" in cmd:
-                f.write(f"    InstructionOwner(new {cmd['class']}({opcode})),\n")
+                f.write(
+                    f"    InstructionOwner(new {cmd['class']}("
+                    f"{opcode}, {differentiable})),\n"
+                )
             else:
                 input_types = ", ".join(format_type(arg) for arg in cmd["inputs"])
                 output_types = ", ".join(format_type(ret) for ret in cmd["outputs"])
                 f.write(
-                    f"    mi(\"{name}\", {opcode}, "
+                    f"    mi(\"{name}\", {opcode}, {differentiable}, "
                     f"{{{input_types}}}, {{{output_types}}}),\n"
                 )
 

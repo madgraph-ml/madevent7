@@ -80,25 +80,25 @@ void backward_batch_foreach(
     constexpr int n_args = n_in_stored + n_out_stored + n_out;
     std::array<const Tensor*, n_args> args;
     std::array<Tensor*, n_in> input_grads;
-    int i = 0;
-    for (; i < n_in_stored; ++i) {
+    for (int i = 0; i < n_in_stored; ++i) {
         args[i] = &locals[instruction.input_indices[in_stored_indices[i]]];
     }
-    for (; i < n_in_stored + n_out_stored; ++i) {
-        args[i] = &locals[instruction.output_indices[out_stored_indices[i]]];
+    for (int i = 0; i < n_out_stored; ++i) {
+        args[n_in_stored + i] = &locals[instruction.output_indices[out_stored_indices[i]]];
     }
-    for (; i < n_args; ++i) {
-        args[i] = &local_grads[instruction.output_indices[i]];
+    for (int i = 0; i < n_out; ++i) {
+        args[n_in_stored + n_out_stored + i] = &local_grads[instruction.output_indices[i]];
     }
-    for (i = 0; i < n_in; ++i) {
-        auto& input_grad = locals[instruction.input_indices[i]];
+    for (int i = 0; i < n_in; ++i) {
+        auto input_index = instruction.input_indices[i];
+        auto& input_grad = local_grads[input_index];
         if (!input_grad) {
-            auto& input = locals[instruction.input_indices[i]];
-            auto& grad_shape = input.shape();
-            Sizes shape(grad_shape.size() + 1);
-            shape[0] = batch_size;
-            std::copy(grad_shape.begin(), grad_shape.end(), shape.begin() + 1);
-            input_grad = Tensor(input.dtype(), shape);
+            auto& input = locals[input_index];
+            //auto& grad_shape = input.shape();
+            //Sizes shape(grad_shape.size() + 1);
+            //shape[0] = batch_size;
+            //std::copy(grad_shape.begin(), grad_shape.end(), shape.begin() + 1);
+            input_grad = Tensor(input.dtype(), input.shape());
             input_grad.zero();
         }
         input_grads[i] = &input_grad;
@@ -226,7 +226,9 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
-    output = bias.copy();
+    output = Tensor(DataType::dt_float, {batch_size, dims_out});
+    output.copy_from(bias);
+
     char transa = 'N', transb = 'T';
     int m = batch_size, n = dims_out, k = dims_in;
     double alpha = 1., beta = 1.;
@@ -242,12 +244,12 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
 void backward_op_matmul(
     const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
-    /*auto input = locals[instruction.input_indices[0]].contiguous();
+    auto input = locals[instruction.input_indices[0]].contiguous();
     auto weight = locals[instruction.input_indices[1]].contiguous();
-    auto output_grad = locals[instruction.input_indices[2]].contiguous();
-    auto& input_grad = locals[instruction.output_indices[0]];
-    auto& weight_grad = locals[instruction.output_indices[1]];
-    auto& bias_grad = locals[instruction.output_indices[2]];
+    auto output_grad = local_grads[instruction.output_indices[0]].contiguous();
+    auto& input_grad = local_grads[instruction.input_indices[0]];
+    auto& weight_grad = local_grads[instruction.input_indices[1]];
+    auto& bias_grad = local_grads[instruction.input_indices[2]];
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
@@ -261,42 +263,53 @@ void backward_op_matmul(
         weight_grad.zero();
     }
     if (!bias_grad) {
-        bias_grad = Tensor(DataType::dt_float, {batch_size, dims_out});
+        bias_grad = Tensor(DataType::dt_float, {1, dims_out});
         bias_grad.zero();
     }
 
-    // compute grad_input += grad_output * weight
+    // compute input_grad += output_grad * weight
     {
         char transa = 'N', transb = 'N';
-        int m = batch_size, n = dims_out, k = dims_in;
+        int m = batch_size, n = dims_in, k = dims_out;
         double alpha = 1., beta = 1.;
         int lda = batch_size, ldb = dims_out, ldc = batch_size;
-        double* a = static_cast<double*>(input.data());
+        double* a = static_cast<double*>(output_grad.data());
         double* b = static_cast<double*>(weight.data());
-        double* c = static_cast<double*>(output.data());
+        double* c = static_cast<double*>(input_grad.data());
         dgemm_(
             &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
         );
     }
 
-    // compute grad_weight += grad_output.T * input
+    // compute weight_grad += output_grad.T * input
     {
         char transa = 'T', transb = 'N';
         int m = dims_out, n = dims_in, k = batch_size;
         double alpha = 1., beta = 1.;
-        int lda = batch_size, ldb = dims_out, ldc = batch_size;
-        double* a = static_cast<double*>(input.data());
-        double* b = static_cast<double*>(weight.data());
-        double* c = static_cast<double*>(output.data());
+        int lda = batch_size, ldb = batch_size, ldc = dims_out;
+        double* a = static_cast<double*>(output_grad.data());
+        double* b = static_cast<double*>(input.data());
+        double* c = static_cast<double*>(weight_grad.data());
         dgemm_(
             &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
         );
     }
 
-    // compute grad_bias += sum_i grad_output_ij
+    // compute bias_grad += sum_i output_grad_ij
     {
-
-    }*/
+        // TODO: we should probably do this differently...
+        std::vector<double> ones(batch_size, 1.);
+        char trans = 'T';
+        int m = batch_size, n = dims_out;
+        double alpha = 1., beta = 1.;
+        int lda = batch_size, incx = 1, incy = 1;
+        double* a = static_cast<double*>(output_grad.data());
+        double* x = ones.data();
+        double* y = static_cast<double*>(bias_grad.data());
+        dgemv_(
+            &trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy
+        );
+    }
 }
 
 void op_nonzero(const Runtime::Instruction& instruction, TensorVec& locals) {
@@ -327,10 +340,6 @@ void batch_gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
     auto values_view = values.view<double, dim>();
     auto selection_view = selection.view<double, dim>();
     ThreadPool::instance().parallel_for([&](std::size_t i) {
-        if (i >= indices_view.size()) std::println("indices {} {}", i, indices_view.size());
-        if (indices_view[i] >= values_view.size())
-            std::println("values {} {} {}",
-                    i, static_cast<int64_t>(indices_view[i]), values_view.size());
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             values_view[indices_view[i]], selection_view[i]
         );
@@ -359,10 +368,6 @@ void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
     auto source_view = source.view<double, dim>();
     auto output_view = output.view<double, dim>();
     ThreadPool::instance().parallel_for([&](std::size_t i) {
-        if (i >= indices_view.size()) std::println("s_indices {} {}", i, indices_view.size());
-        if (indices_view[i] >= output_view.size())
-            std::println("s_output {} {} {}",
-                    i, static_cast<int64_t>(indices_view[i]), output_view.size());
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             source_view[i], output_view[indices_view[i]]
         );
@@ -483,7 +488,7 @@ Runtime::Runtime(const Function& function, ContextPtr context) :
             output_shapes,
             batch_size_index,
             *context,
-            false
+            instr.instruction->differentiable()
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({
@@ -641,7 +646,7 @@ std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> Runtime::run
     }
     std::vector<std::tuple<std::string, Tensor>> global_grads;
     for (auto& [name, index] : grad_global_indices) {
-        global_grads.push_back({name, locals[index]});
+        global_grads.push_back({name, local_grads[index]});
     }
     return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
 }

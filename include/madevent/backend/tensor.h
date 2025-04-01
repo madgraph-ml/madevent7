@@ -81,6 +81,26 @@ public:
         return {_data + index * _stride[0], _stride + 1, _shape + 1};
     }
 
+    template<typename... I>
+    const TensorView<T, _dim - sizeof...(I)> get(I... index) const
+    requires (_dim >= sizeof...(I))
+    {
+        uint8_t* ptr = _data;
+        int i = 0;
+        ((ptr += index * _stride[i++]), ...);
+        return {ptr, _stride + sizeof...(I), _shape + sizeof...(I)};
+    }
+
+    template<typename... I>
+    TensorView<T, _dim - sizeof...(I)> get(I... index)
+    requires (_dim >= sizeof...(I))
+    {
+        uint8_t* ptr = _data;
+        int i = 0;
+        ((ptr += index * _stride[i++]), ...);
+        return {ptr, _stride + sizeof...(I), _shape + sizeof...(I)};
+    }
+
     operator T() const requires (_dim == 0) {
         return *reinterpret_cast<T*>(_data);
     }
@@ -91,7 +111,7 @@ public:
     }
 
     TensorView<T, _dim>& operator=(TensorView<T, _dim>& value) = delete;
-    std::size_t size() const { return _shape[0]; }
+    std::size_t size(std::size_t index = 0) const { return _shape[index]; }
     uint8_t* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
@@ -238,32 +258,41 @@ public:
         return *this;
     }
 
-    operator bool() {
+    operator bool() const {
         return impl != nullptr;
     }
 
     template<class T, int dim>
     TensorView<T, dim> view() {
+        check_impl();
         return TensorView<T, dim>(bytes(), impl->stride.data(), impl->shape.data());
     }
 
     template<class T, int dim>
     const TensorView<T, dim> view() const {
+        check_impl();
         return TensorView<T, dim>(bytes(), impl->stride.data(), impl->shape.data());
     }
 
-    void* data() { return impl->data; }
-    void* data() const { return impl->data; }
-    uint8_t* bytes() { return static_cast<uint8_t*>(impl->data) + impl->offset; }
-    uint8_t* bytes() const { return static_cast<uint8_t*>(impl->data) + impl->offset; }
-    const Sizes& shape() const { return impl->shape; }
-    const Sizes& stride() const { return impl->stride; }
-    std::size_t size(std::size_t i) const { return impl->shape[i]; }
-    DataType dtype() const { return impl->dtype; }
-    const SizeVec& batch_sizes() const { return impl->batch_sizes; }
-    DevicePtr device() const { return impl->device; }
+    void* data() { check_impl(); return impl->data; }
+    void* data() const { check_impl(); return impl->data; }
+    uint8_t* bytes() {
+        check_impl();
+        return static_cast<uint8_t*>(impl->data) + impl->offset;
+    }
+    uint8_t* bytes() const {
+        check_impl();
+        return static_cast<uint8_t*>(impl->data) + impl->offset;
+    }
+    const Sizes& shape() const { check_impl(); return impl->shape; }
+    const Sizes& stride() const { check_impl(); return impl->stride; }
+    std::size_t size(std::size_t i) const { check_impl(); return impl->shape[i]; }
+    DataType dtype() const { check_impl(); return impl->dtype; }
+    const SizeVec& batch_sizes() const { check_impl(); return impl->batch_sizes; }
+    DevicePtr device() const { check_impl(); return impl->device; }
 
     std::size_t dtype_size() const {
+        check_impl();
         switch (impl->dtype) {
             case DataType::dt_bool: return sizeof(bool);
             case DataType::dt_int: return sizeof(int64_t);
@@ -273,6 +302,7 @@ public:
     }
 
     std::size_t byte_size() const {
+        check_impl();
         std::size_t size = dtype_size();
         for (auto dim_size : impl->shape) {
             size *= dim_size;
@@ -281,6 +311,7 @@ public:
     }
 
     void copy_from(void* source) {
+        check_impl();
         impl->device->memcpy(impl->data, source, impl->stride.back() * impl->shape.back());
     }
 
@@ -301,16 +332,24 @@ public:
     std::vector<Tensor> split(std::size_t axis, const SizeVec& sizes) const;
     std::vector<Tensor> unstack(std::size_t axis) const;
     Tensor cpu() const { return *this; } //TODO: implement
-    void zero() { impl->device->tensor_zero(*this); }
-    void copy_from(const Tensor& source) { impl->device->tensor_copy(source, *this); }
+    void zero() {
+        check_impl();
+        impl->device->tensor_zero(*this);
+    }
+    void copy_from(const Tensor& source) {
+        check_impl();
+        impl->device->tensor_copy(source, *this);
+    }
 
     Tensor copy() const {
+        check_impl();
         Tensor tensor(impl->dtype, impl->shape, impl->device);
         impl->device->tensor_copy(*this, tensor);
         return tensor;
     }
 
     Tensor contiguous() const {
+        check_impl();
         return impl->contiguous_dims < impl->shape.size() ? copy() : *this;
     }
 
@@ -368,6 +407,11 @@ private:
         }
     }
     std::size_t init_stride();
+
+    void check_impl() const {
+        if (impl == nullptr) throw std::runtime_error("empty tensor");
+    }
+
     TensorImpl* impl;
 };
 

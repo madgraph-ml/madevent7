@@ -229,7 +229,7 @@ void Context::load_pdf(const std::string& name, int index) {
     _pdf_set.emplace(name, index);
 }
 
-void Context::define_global(
+Tensor Context::define_global(
     const std::string& name, DataType dtype, const SizeVec& shape, bool requires_grad
 ) {
     SizeVec full_shape {1};
@@ -242,6 +242,7 @@ void Context::define_global(
     Tensor tensor(dtype, full_shape, _device);
     tensor.zero();
     globals[name] = {tensor, requires_grad};
+    return tensor;
 }
 
 Tensor Context::global(const std::string& name) {

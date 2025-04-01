@@ -19,11 +19,13 @@ enum Opcode {
 
 class Instruction {
 public:
-    Instruction(const std::string& name, int opcode) : _name(name), _opcode(opcode) {}
+    Instruction(const std::string& name, int opcode, bool differentiable) :
+        _name(name), _opcode(opcode), _differentiable(differentiable) {}
     virtual ~Instruction() = default;
     virtual TypeVec signature(const ValueVec& args) const = 0;
     const std::string& name() const { return _name; }
     int opcode() const { return _opcode; }
+    bool differentiable() const { return  _differentiable; }
 
 protected:
     void check_arg_count(const ValueVec& args, std::size_t count) const;
@@ -31,6 +33,7 @@ protected:
 private:
     std::string _name;
     int _opcode;
+    bool _differentiable;
 };
 
 class ShapeExpr {
@@ -51,11 +54,12 @@ public:
     using SigType = std::tuple<DataType, bool, DynShape, bool>;
 
     SimpleInstruction(
-        std::string _name,
-        int _opcode,
+        std::string name,
+        int opcode,
+        bool differentiable,
         std::initializer_list<SigType> _inputs,
         std::initializer_list<SigType> _outputs
-    ) : Instruction(_name, _opcode), inputs(_inputs), outputs(_outputs) {}
+    ) : Instruction(name, opcode, differentiable), inputs(_inputs), outputs(_outputs) {}
 
     TypeVec signature(const ValueVec& args) const override;
 
@@ -66,61 +70,71 @@ private:
 
 class StackInstruction : public Instruction {
 public:
-    StackInstruction(int _opcode) : Instruction("stack", _opcode) {}
+    StackInstruction(int opcode, bool differentiable) :
+        Instruction("stack", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class UnstackInstruction : public Instruction {
 public:
-    UnstackInstruction(int _opcode) : Instruction("unstack", _opcode) {}
+    UnstackInstruction(int opcode, bool differentiable) :
+        Instruction("unstack", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class BatchCatInstruction : public Instruction {
 public:
-    BatchCatInstruction(int _opcode) : Instruction("batch_cat", _opcode) {}
+    BatchCatInstruction(int opcode, bool differentiable) :
+        Instruction("batch_cat", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class BatchSplitInstruction : public Instruction {
 public:
-    BatchSplitInstruction(int _opcode) : Instruction("batch_split", _opcode) {}
+    BatchSplitInstruction(int opcode, bool differentiable) :
+        Instruction("batch_split", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class RqsActivationInstruction : public Instruction {
 public:
-    RqsActivationInstruction(int _opcode) : Instruction("rqs_activation", _opcode) {}
+    RqsActivationInstruction(int opcode, bool differentiable) :
+        Instruction("rqs_activation", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class NonzeroInstruction : public Instruction {
 public:
-    NonzeroInstruction(int _opcode) : Instruction("nonzero", _opcode) {}
+    NonzeroInstruction(int opcode, bool differentiable) :
+        Instruction("nonzero", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class BatchGatherInstruction : public Instruction {
 public:
-    BatchGatherInstruction(int _opcode) : Instruction("batch_gather", _opcode) {}
+    BatchGatherInstruction(int opcode, bool differentiable) :
+        Instruction("batch_gather", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class ScatterInstruction : public Instruction {
 public:
-    ScatterInstruction(int _opcode) : Instruction("scatter", _opcode) {}
+    ScatterInstruction(int opcode, bool differentiable) :
+        Instruction("scatter", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class RandomInstruction : public Instruction {
 public:
-    RandomInstruction(int _opcode) : Instruction("random", _opcode) {}
+    RandomInstruction(int opcode, bool differentiable) :
+        Instruction("random", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 
 class UnweightInstruction : public Instruction {
 public:
-    UnweightInstruction(int _opcode) : Instruction("unweight", _opcode) {}
+    UnweightInstruction(int opcode, bool differentiable) :
+        Instruction("unweight", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 

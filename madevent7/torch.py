@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd.function import FunctionCtx, once_differentiable
-import .madevent_py as me
+from . import _madevent_py as me
 
 class FunctionModule(nn.Module):
     def __init__(
@@ -10,44 +10,51 @@ class FunctionModule(nn.Module):
         context: me.Context = me.Context.default_context(),
     ):
         super().__init__()
-        context.define_function_globals(function)
         self.global_params = nn.ParameterDict({
-            nn.Parameter(
+            name: nn.Parameter(
                 context.get_global(name).torch(),
                 context.global_requires_grad(name),
             )
             for name in function.globals
         })
         self.runtime = me.FunctionRuntime(function, context)
+        self.dummy = torch.zeros(
+            1, requires_grad=any(glob.requires_grad for glob in self.global_params.values())
+        )
 
     def forward(self, *args: torch.Tensor) -> list[torch.Tensor]:
-        return AutogradWrapper.apply(self, args)
+        if torch.is_grad_enabled():
+            return AutogradWrapper.apply(self, self.dummy, *args)
+        else:
+            return self.runtime.call(args)
 
 
 class AutogradWrapper(torch.autograd.Function):
     @staticmethod
     def forward(
-        ctx: FunctionCtx, module: FunctionModule, args: list[torch.Tensor]
+        ctx: FunctionCtx, module: FunctionModule, dummy: torch.Tensor, *args: torch.Tensor
     ) -> list[torch.Tensor]:
-        if torch.is_grad_enabled():
-            return module.runtime.call(args)
-        else:
-            outputs, local_grads = module.runtime.call_with_grad(args)
-            ctx.module = module
-            ctx.save_for_backward(local_grads)
-            return outputs
+        outputs, local_grads, eval_grad = module.runtime.call_with_grad(
+            args, [arg.requires_grad for arg in args]
+        )
+        ctx.module = module
+        ctx.eval_grad = eval_grad
+        ctx.save_for_backward(*local_grads)
+        return tuple(outputs)
 
     @staticmethod
     @once_differentiable
     def backward(ctx: FunctionCtx, *output_grads: torch.Tensor):
         input_grads, global_grads = ctx.module.runtime.call_backward(
-            output_grads, ctx.saved_tensors
+            output_grads, ctx.saved_tensors, ctx.eval_grad
         )
-        for name, grad in global_grads.items():
+        for name, grad in global_grads:
             param = ctx.module.global_params[name]
+            if grad is None:
+                continue
             if param.grad is None:
                 param.grad = grad
             else:
                 param.grad += grad
-        return input_grads
+        return None, None, *input_grads
 

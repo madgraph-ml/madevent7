@@ -1,8 +1,8 @@
 
-constexpr std::size_t max_instr = 100;
+constexpr std::size_t max_instr = 150;
 
 enum class AutogradOp {
-    nop, load, store, where,
+    nop, load, store, literal, assign, copy, where,
     eq, neq, gt, lt, ge, le, band, bor, bnot,
     neg, add, sub, mul, div,
     sqrt, sin, cos, sinh, cosh, atan2, pow, fabs, log, tan, atan, exp, log1p
@@ -11,26 +11,27 @@ enum class AutogradOp {
 union AutogradScalar {
     double f;
     bool b;
-    int64_t i;
+    //int64_t i;
     constexpr AutogradScalar() = default;
     constexpr AutogradScalar(double val) : f(val) {}
     constexpr AutogradScalar(bool val) : b(val) {}
-    constexpr AutogradScalar(int64_t val) : i(val) {}
+    //constexpr AutogradScalar(int64_t val) : i(val) {}
 };
 
 template<typename T>
 union AutogradEvalScalar {
     FVal<T> f;
     BVal<T> b;
-    IVal<T> i;
+    //IVal<T> i;
     constexpr AutogradEvalScalar() = default;
     constexpr AutogradEvalScalar(double val) : f(val) {}
     constexpr AutogradEvalScalar(bool val) : b(val) {}
-    constexpr AutogradEvalScalar(int64_t val) : i(val) {}
+    //constexpr AutogradEvalScalar(int64_t val) : i(val) {}
 };
 
 struct AutogradInstruction {
     AutogradOp op = AutogradOp::nop;
+    AutogradScalar literal = 0.0;
     std::size_t arg1 = 0;
     std::size_t arg2 = 0;
     std::size_t arg3 = 0;
@@ -61,10 +62,27 @@ struct AutogradValue {
     constexpr AutogradValue(AutogradInput<T> input) :
         graph(&input.graph), index(input.graph.size)
     {
-        graph->append(AutogradOp::load, input.index);
+        graph->append(AutogradOp::load, AutogradScalar{}, input.index);
     }
 
     constexpr AutogradValue(T literal) : graph(nullptr), index(0), literal(literal) {}
+
+    constexpr AutogradValue(AutogradValue& val) : graph(val.graph) {
+        if (graph == nullptr) {
+            literal = val.literal;
+        } else {
+            index = graph->size;
+            graph->append(AutogradOp::copy, AutogradScalar{}, val.index);
+        }
+    }
+
+    constexpr AutogradValue(AutogradValue&& val) = default;
+
+    constexpr AutogradValue(Graph* _graph, std::size_t _index) :
+        graph(_graph), index(_index) {};
+
+    constexpr AutogradValue(Graph* _graph, std::size_t _index, AutogradScalar _literal) :
+        graph(_graph), index(_index), literal(_literal) {};
 
     template<typename... V>
     constexpr AutogradValue(AutogradOp op, V&... args) {
@@ -73,8 +91,19 @@ struct AutogradValue {
                 graph = args.graph;
             }
         }(), ...);
+        ([&]{
+            if (args.graph == nullptr) {
+                args.graph = graph;
+                args.index = graph->size;
+                graph->append(AutogradOp::literal, args.literal);
+            }
+        }(), ...);
         index = graph->size;
-        graph->append(op, args.index...);
+        graph->append(op, AutogradScalar{}, args.index...);
+    }
+
+    constexpr AutogradValue<T> operator=(AutogradValue<T> arg) {
+        return {AutogradOp::assign, *this, arg};
     }
 
     Graph* graph;
@@ -85,7 +114,7 @@ struct AutogradValue {
 template<typename T>
 struct AutogradOutput {
     constexpr AutogradOutput<T>& operator=(AutogradValue<T> value) {
-        graph.append(AutogradOp::store, index, value.index);
+        graph.append(AutogradOp::store, AutogradScalar{}, index, value.index);
         return *this;
     }
 
@@ -223,6 +252,16 @@ constexpr void eval_rec(
         case AutogradOp::store:
             // *args[instr.arg1] = locals[instr.arg2].f;
             break;
+        case AutogradOp::literal:
+            locals[instr_index].f = instr.literal.f;
+            break;
+        case AutogradOp::assign:
+            locals[instr.arg1] = locals[instr.arg2];
+            locals[instr_index] = locals[instr.arg2];
+            break;
+        case AutogradOp::copy:
+            locals[instr_index] = locals[instr.arg1];
+            break;
         case AutogradOp::where:
             locals[instr_index].f = where(
                 locals[instr.arg1].b, locals[instr.arg2].f, locals[instr.arg3].f
@@ -351,6 +390,23 @@ constexpr void backward_rec(
                 local_grads_init[instr.arg2],
                 local_grads[instr.arg2].f,
                 out_grads[instr.arg1]
+            );
+            break;
+        case AutogradOp::literal:
+            break;
+        case AutogradOp::assign:
+            accumulate_grad(
+                local_grads_init[instr.arg2],
+                local_grads[instr.arg2].f,
+                local_grads[instr.arg1].f
+            );
+            accumulate_grad(
+                local_grads_init[instr.arg2], local_grads[instr.arg2].f, grad
+            );
+            break;
+        case AutogradOp::copy:
+            accumulate_grad(
+                local_grads_init[instr.arg1], local_grads[instr.arg1].f, grad
             );
             break;
         case AutogradOp::where: {
@@ -583,6 +639,6 @@ struct AutogradTypes {
     //template<int dim> using IOut = VectorizedTensorView<IVec, int64_t, dim, false>;
     //template<int dim> using BOut = VectorizedTensorView<BVec, bool, dim, false>;
     using FVal = AutogradValue<double>;
-    using IVal = AutogradValue<int64_t>;
+    //using IVal = AutogradValue<int64_t>;
     using BVal = AutogradValue<bool>;
 };

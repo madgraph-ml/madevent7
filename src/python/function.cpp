@@ -6,6 +6,71 @@
 
 using namespace madevent_py;
 
+namespace {
+
+template<
+    typename CpuFunc
+#ifdef CUDA_FOUND
+    , typename CudaFunc
+#endif
+>
+std::vector<torch::Tensor> call_torch_impl(
+    const std::vector<torch::Tensor>& args,
+    const Function& function,
+    ContextPtr context,
+    std::optional<cpu::Runtime>& cpu_runtime,
+    CpuFunc cpu_func
+#ifdef CUDA_FOUND
+    , std::optional<cuda::Runtime>& cuda_runtime
+    , CudaFunc cuda_func
+#endif
+) {
+    //TODO: check batch sizes
+    auto n_args = function.inputs().size();
+    if (args.size() != n_args) {
+        throw std::invalid_argument(std::format(
+            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
+        ));
+    }
+    std::vector<Tensor> inputs;
+    bool is_cuda = false;
+    DevicePtr expected_device = nullptr;
+    for (int i = 0; i < n_args; ++i) {
+        auto& arg = args.at(i);
+        auto& input_type = function.inputs().at(i).type;
+        auto tensor = torch_to_tensor(arg, input_type, i, expected_device);
+        if (i == 0) expected_device = tensor.device();
+        inputs.push_back(tensor);
+    }
+
+    std::vector<Tensor> outputs;
+    if (is_cuda) {
+#ifdef CUDA_FOUND
+        //TODO: update for context
+        if (!cuda_runtime) {
+            cuda_runtime.emplace(function);
+        }
+        outputs = cuda_func(inputs);
+#endif
+    } else {
+        if (!cpu_runtime) {
+            if (context) {
+                if (context->device() != cpu_device()) {
+                    throw std::invalid_argument("Given context does not have device CPU");
+                }
+                cpu_runtime.emplace(function, context);
+            } else {
+                cpu_runtime.emplace(function);
+            }
+        }
+        outputs = cpu_func(inputs);
+    }
+    return outputs
+        | std::views::transform(tensor_to_torch)
+        | std::ranges::to<std::vector<torch::Tensor>>();
+}
+
+}
 py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
     auto data_raw = reinterpret_cast<double*>(tensor.data());
     py::capsule destroy(
@@ -107,6 +172,14 @@ torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
                 .dtype(dtype)
                 .device(tensor.device() == cpu_device() ? torch::kCPU : torch::kCUDA)
         );
+    }
+}
+
+std::optional<torch::Tensor> madevent_py::tensor_to_torch_opt(Tensor tensor) {
+    if (tensor) {
+        return tensor_to_torch(tensor);
+    } else {
+        return std::nullopt;
     }
 }
 
@@ -221,50 +294,138 @@ Tensor madevent_py::torch_to_tensor(
     }
 }
 
-std::vector<torch::Tensor> FunctionRuntime::call_torch(std::vector<torch::Tensor> args) {
-    //TODO: check batch sizes
-    auto n_args = function.inputs().size();
-    if (args.size() != n_args) {
-        throw std::invalid_argument(std::format(
-            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
-        ));
-    }
-    std::vector<torch::Tensor> tensors;
-    std::vector<Tensor> inputs;
-    bool is_cuda = false;
-    DevicePtr expected_device = nullptr;
-    for (int i = 0; i < n_args; ++i) {
-        auto& arg = args.at(i);
-        auto& input_type = function.inputs().at(i).type;
-        auto tensor = torch_to_tensor(arg, input_type, i, expected_device);
-        if (i == 0) expected_device = tensor.device();
-        inputs.push_back(tensor);
-    }
+Tensor madevent_py::torch_to_tensor_unchecked(std::optional<torch::Tensor> torch_tensor) {
+    if (!torch_tensor) return {};
 
-    std::vector<Tensor> outputs;
-    if (is_cuda) {
-#ifdef CUDA_FOUND
-        //TODO: update for context
-        if (!cuda_runtime) {
-            cuda_runtime.emplace(function);
-        }
-        outputs = cuda_runtime->run(inputs);
-#endif
-    } else {
-        if (!cpu_runtime) {
-            if (context) {
-                if (context->device() != cpu_device()) {
-                    throw std::invalid_argument("Given context does not have device CPU");
-                }
-                cpu_runtime.emplace(function, context);
-            } else {
-                cpu_runtime.emplace(function);
-            }
-        }
-        outputs = cpu_runtime->run(inputs);
+    auto n_dims = torch_tensor->dim();
+    std::vector<int64_t> permutation;
+    for (int k = n_dims-1; k >= 0; --k) {
+        permutation.push_back(k);
     }
-    return outputs
-        | std::views::transform(tensor_to_torch)
-        | std::ranges::to<std::vector<torch::Tensor>>();
+    auto torch_dtype = torch_tensor->scalar_type();
+    torch::Dtype target_dtype;
+    DataType dtype;
+    if (torch_dtype == torch::kFloat64 || torch_dtype == torch::kFloat32) {
+        target_dtype = torch::kFloat64;
+        dtype = DataType::dt_float;
+    } else if (torch_dtype == torch::kInt64 || torch_dtype == torch::kInt32) {
+        target_dtype = torch::kInt64;
+        dtype = DataType::dt_int;
+    } else if (torch_dtype == torch::kBool) {
+        target_dtype = torch::kBool;
+        dtype = DataType::dt_bool;
+    } else {
+        throw std::invalid_argument("dtype not accepted");
+    }
+    auto tensor = torch_tensor
+        ->permute(permutation)
+        .to(target_dtype)
+        .contiguous()
+        .permute(permutation);
+
+    void* data_ptr;
+    if (target_dtype == torch::kFloat64) {
+        data_ptr = torch_tensor->data_ptr<double>();
+    } else if (target_dtype == torch::kInt64) {
+        data_ptr = torch_tensor->data_ptr<int64_t>();
+    } else {
+        data_ptr = torch_tensor->data_ptr<bool>();
+    }
+    SizeVec shape;
+    for (std::size_t i = 0; i < n_dims; ++i) {
+        shape.push_back(tensor.size(i));
+    }
+    return {
+        dtype, shape, cpu_device(), data_ptr,
+        [tensor] mutable { tensor = torch::Tensor(); }
+    };
 }
+
+std::vector<torch::Tensor> FunctionRuntime::call_torch(
+    const std::vector<torch::Tensor>& args
+) {
+    return call_torch_impl(
+        args,
+        function,
+        context,
+        cpu_runtime,
+        [&] (auto inputs) { return cpu_runtime->run(inputs); }
+#ifdef CUDA_FOUND
+        , cuda_runtime
+        , [&] (auto inputs) { return cuda_runtime->run(inputs); }
+#endif
+    );
+}
+
+std::tuple<
+    std::vector<torch::Tensor>,
+    std::vector<std::optional<torch::Tensor>>,
+    std::vector<bool>
+> FunctionRuntime::call_with_grad_torch(
+    const std::vector<torch::Tensor>& args,
+    const std::vector<bool>& input_requires_grad
+) {
+    std::vector<std::optional<torch::Tensor>> local_grads;
+    std::vector<bool> eval_grad;
+    auto outputs = call_torch_impl(
+        args,
+        function,
+        context,
+        cpu_runtime,
+        [&] (auto inputs) {
+            auto [out, loc_grad, ev_grad] = cpu_runtime->run_with_grad(
+                inputs, input_requires_grad
+            );
+            local_grads = loc_grad
+                | std::views::transform(tensor_to_torch_opt)
+                | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
+            eval_grad = ev_grad;
+            return out;
+        }
+#ifdef CUDA_FOUND
+        , cuda_runtime
+        , [&] (auto inputs) {
+            auto [out, loc_grad, ev_grad] = cuda_runtime->run_with_grad(
+                inputs, input_requires_grad
+            );
+            local_grads = loc_grad
+                | std::views::transform(tensor_to_torch_opt)
+                | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
+            eval_grad = ev_grad;
+            return out;
+        }
+#endif
+    );
+    return {outputs, local_grads, eval_grad};
+}
+std::tuple<
+    std::vector<std::optional<torch::Tensor>>,
+    std::vector<std::tuple<std::string, std::optional<torch::Tensor>>>
+> FunctionRuntime::call_backward_torch(
+    const std::vector<torch::Tensor>& output_grads,
+    const std::vector<std::optional<torch::Tensor>>& stored_locals,
+    const std::vector<bool>& eval_grad
+) {
+    auto arg_out = output_grads
+        | std::views::transform(torch_to_tensor_unchecked)
+        | std::ranges::to<std::vector<Tensor>>();
+    auto arg_locals = stored_locals
+        | std::views::transform(torch_to_tensor_unchecked)
+        | std::ranges::to<std::vector<Tensor>>();
+    // TODO: checks here
+    auto [ret_in_grads, ret_glob_grads] = cpu_runtime->run_backward(
+        arg_out, arg_locals, eval_grad
+    );
+    auto input_grads = ret_in_grads
+        | std::views::transform(tensor_to_torch_opt)
+        | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
+    using STP = std::tuple<std::string, std::optional<torch::Tensor>>;
+    auto global_grads = ret_glob_grads
+        | std::views::transform([] (auto& item) -> STP {
+            return {std::get<0>(item), tensor_to_torch_opt(std::get<1>(item))};
+        })
+        | std::ranges::to<std::vector<STP>>();
+    return {input_grads, global_grads};
+}
+
 #endif
