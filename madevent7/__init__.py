@@ -26,12 +26,20 @@ def _init():
     def function_call(self, *args):
         if not hasattr(self, "runtime"):
             self.runtime = FunctionRuntime(self)
-        return self.runtime.call(args)
+        out = self.runtime.call(args)
+        if len(out) == 1:
+            return out[0]
+        else:
+            return out
 
     def function_generator_call(self, *args):
         if not hasattr(self, "runtime"):
             self.runtime = FunctionRuntime(self.function())
-        return self.runtime.call(args)
+        out = self.runtime.call(args)
+        if len(out) == 1:
+            return out[0]
+        else:
+            return out
 
     def map_forward(self, inputs, conditions=[]):
         if not hasattr(self, "forward_runtime"):

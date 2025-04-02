@@ -47,7 +47,7 @@ def test_training(mlp):
     for i in range(10):
         x = torch.randn((128, 10))
 
-        loss_me7 = (x**2 - mlp(x)[0]).square().mean()
+        loss_me7 = (x**2 - mlp(x)).square().mean()
         opt_me7.zero_grad()
         loss_me7.backward()
         opt_me7.step()

@@ -40,7 +40,10 @@ class AutogradWrapper(torch.autograd.Function):
         ctx.module = module
         ctx.eval_grad = eval_grad
         ctx.save_for_backward(*local_grads)
-        return tuple(outputs)
+        if len(outputs) == 1:
+            return outputs[0]
+        else:
+            return tuple(outputs)
 
     @staticmethod
     @once_differentiable
