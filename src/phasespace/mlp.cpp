@@ -61,7 +61,7 @@ void initialize_layer(
             weight_view[i][j] = zeros ? 0. : rand_dist(rand_gen);
         }
     }
-    auto bias_view = weight_tensor.view<double, 2>()[0];
+    auto bias_view = bias_tensor.view<double, 2>()[0];
     for (std::size_t i = 0; i < output_dim; ++i) {
         bias_view[i] = zeros ? 0. : rand_dist(rand_gen);
     }
