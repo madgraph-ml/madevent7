@@ -29,7 +29,7 @@ private:
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const override;
 
-    std::vector<TInvariantTwoParticle> t_invariants;
+    std::vector<TwoParticleScattering> t_invariants;
     std::vector<Invariant> s_pseudo_invariants;
 };
 

@@ -5,9 +5,9 @@
 
 namespace madevent {
 
-class TwoParticle : public Mapping {
+class TwoParticleDecay : public Mapping {
 public:
-    TwoParticle(bool com) : Mapping(
+    TwoParticleDecay(bool com) : Mapping(
         [&] {
             TypeVec input_types(5, batch_float);
             if (!com) {
@@ -31,9 +31,9 @@ private:
 };
 
 
-class TInvariantTwoParticle : public Mapping {
+class TwoParticleScattering : public Mapping {
 public:
-    TInvariantTwoParticle(bool com, double nu = 0, double mass = 0, double width = 0) :
+    TwoParticleScattering(bool com, double nu = 0, double mass = 0, double width = 0) :
         Mapping(
             {batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},

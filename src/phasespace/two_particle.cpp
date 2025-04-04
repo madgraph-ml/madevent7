@@ -2,7 +2,7 @@
 
 using namespace madevent;
 
-Mapping::Result TwoParticle::build_forward_impl(
+Mapping::Result TwoParticleDecay::build_forward_impl(
     FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r_phi = inputs.at(0), r_cos_theta = inputs.at(1);
@@ -13,13 +13,13 @@ Mapping::Result TwoParticle::build_forward_impl(
     return {{p1, p2}, det};
 }
 
-Mapping::Result TwoParticle::build_inverse_impl(
+Mapping::Result TwoParticleDecay::build_inverse_impl(
     FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }
 
-Mapping::Result TInvariantTwoParticle::build_forward_impl(
+Mapping::Result TwoParticleScattering::build_forward_impl(
     FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     auto r_phi = inputs.at(0), r_inv = inputs.at(1), m1 = inputs.at(2), m2 = inputs.at(3);
@@ -32,7 +32,7 @@ Mapping::Result TInvariantTwoParticle::build_forward_impl(
     return {{p1, p2}, fb.mul(det_inv, det_scatter)};
 }
 
-Mapping::Result TInvariantTwoParticle::build_inverse_impl(
+Mapping::Result TwoParticleScattering::build_inverse_impl(
     FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");

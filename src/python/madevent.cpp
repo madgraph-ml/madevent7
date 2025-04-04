@@ -220,9 +220,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<double, double, double, double, double, double>(),
              py::arg("s_lab"), py::arg("s_hat_min"), py::arg("s_hat_max")=0.,
              py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
-    py::class_<TwoParticle, Mapping>(m, "TwoParticle")
+    py::class_<TwoParticleDecay, Mapping>(m, "TwoParticleDecay")
         .def(py::init<bool>(), py::arg("com"));
-    py::class_<TInvariantTwoParticle, Mapping>(m, "TInvariantTwoParticle")
+    py::class_<TwoParticleScattering, Mapping>(m, "TwoParticleScattering")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
     py::class_<Propagator>(m, "Propagator")

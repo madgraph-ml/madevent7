@@ -51,7 +51,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             auto child_count = layer.at(0).child_count;
             decay_mappings.count = child_count;
             if (child_count == 2) {
-                decay_mappings.decay = TwoParticle(true);
+                decay_mappings.decay = TwoParticleDecay(true);
             } else {
                 decay_mappings.decay = FastRamboMapping(child_count, false, true);
             }
@@ -89,7 +89,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             }
             decay_mappings.invariant.emplace(nu, mass, width);
             if (decay.child_count == 2) {
-                decay_mappings.decay = TwoParticle(false);
+                decay_mappings.decay = TwoParticleDecay(false);
             } else {
                 decay_mappings.decay = FastRamboMapping(decay.child_count, false, false);
             }
@@ -275,7 +275,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 p_out.push_back(*(k_in_iter++));
                 continue;
             }
-            if (auto decay_map = std::get_if<TwoParticle>(&data.mappings.decay)) {
+            if (auto decay_map = std::get_if<TwoParticleDecay>(&data.mappings.decay)) {
                 ValueVec decay_args{*(r++), *(r++), *data.sqrt_s};
                 std::copy(data.masses.begin(), data.masses.end(), std::back_inserter(decay_args));
                 if (k_in_iter != p_out_prev.end()) decay_args.push_back(*(k_in_iter++));

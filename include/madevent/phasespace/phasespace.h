@@ -91,7 +91,7 @@ private:
     struct DecayMappings {
         std::size_t count;
         std::optional<Invariant> invariant;
-        std::variant<TwoParticle, FastRamboMapping, std::monostate> decay = std::monostate{};
+        std::variant<TwoParticleDecay, FastRamboMapping, std::monostate> decay = std::monostate{};
     };
 
     double _pi_factors;

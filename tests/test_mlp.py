@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 
 torch.set_default_dtype(torch.float64)
+torch.manual_seed(3210)
 
 @pytest.fixture
 def mlp():
