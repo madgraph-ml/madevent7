@@ -73,7 +73,7 @@ Flow::Flow(
                 subnet_hidden_dim,
                 subnet_layers,
                 subnet_activation,
-                std::format("{}subnet{}a_", prefix, block_index)
+                std::format("{}subnet{}a_", prefix, block_index + 1)
             ),
             MLP(
                 indices1.size() + condition_dim,
@@ -81,7 +81,7 @@ Flow::Flow(
                 subnet_hidden_dim,
                 subnet_layers,
                 subnet_activation,
-                std::format("{}subnet{}b_", prefix, block_index)
+                std::format("{}subnet{}b_", prefix, block_index + 1)
             ),
             indices1,
             indices2
@@ -97,19 +97,19 @@ void Flow::initialize_globals(ContextPtr context) const {
 }
 
 Mapping::Result Flow::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     return build_transform(fb, inputs, conditions, false);
 }
 
 Mapping::Result Flow::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     return build_transform(fb, inputs, conditions, true);
 }
 
 Mapping::Result Flow::build_transform(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions, bool inverse
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
 ) const {
     Value x = inputs.at(0);
     Value cond;

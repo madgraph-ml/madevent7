@@ -33,7 +33,7 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
 }
 
 Mapping::Result FastRamboMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto r_u = inputs | views::take(n_particles - 2)
                       | ranges::to<ValueVec>();
@@ -83,7 +83,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
 }
 
 Mapping::Result FastRamboMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }

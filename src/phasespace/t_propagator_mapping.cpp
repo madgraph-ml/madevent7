@@ -22,7 +22,7 @@ TPropagatorMapping::TPropagatorMapping(
 }
 
 Mapping::Result TPropagatorMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     // TODO: document inputs somewhere
     // nti = len(t_invariants)
@@ -91,7 +91,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
 }
 
 Mapping::Result TPropagatorMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
     /*auto p_in1 = inputs[0];

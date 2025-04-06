@@ -4,7 +4,7 @@ using namespace madevent;
 
 
 Mapping::Result MultiChannelMapping::build_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions, bool inverse
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
 ) const {
     auto& counts = conditions.back();
 

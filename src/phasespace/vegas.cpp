@@ -3,7 +3,7 @@
 using namespace madevent;
 
 Mapping::Result VegasMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto grid = fb.global(
         _grid_name,
@@ -15,7 +15,7 @@ Mapping::Result VegasMapping::build_forward_impl(
 }
 
 Mapping::Result VegasMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto grid = fb.global(
         _grid_name,

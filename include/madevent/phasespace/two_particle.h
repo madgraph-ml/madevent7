@@ -21,10 +21,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
     bool _com;
@@ -42,10 +42,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
     bool _com;

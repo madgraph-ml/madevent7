@@ -34,7 +34,7 @@ public:
     using Mapping::Mapping;
 
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override {
         PYBIND11_OVERRIDE_PURE(
             Result, Mapping, build_forward_impl, &fb, inputs, conditions
@@ -42,7 +42,7 @@ public:
     }
 
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override {
         PYBIND11_OVERRIDE_PURE(
             Result, Mapping, build_inverse_impl, &fb, inputs, conditions
@@ -205,8 +205,6 @@ PYBIND11_MODULE(_madevent_py, m) {
     add_instructions(fb);
 
     py::class_<Mapping, PyMapping>(m, "Mapping", py::dynamic_attr())
-        .def(py::init<TypeVec, TypeVec, TypeVec>(),
-             py::arg("input_types"), py::arg("output_types"), py::arg("condition_types"))
         .def("forward_function", &Mapping::forward_function)
         .def("inverse_function", &Mapping::inverse_function)
         .def("build_forward", &Mapping::build_forward,

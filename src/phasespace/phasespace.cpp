@@ -131,7 +131,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 }
 
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto random_numbers = fb.unstack(inputs.at(0));
     auto r = random_numbers.begin();
@@ -328,7 +328,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 }
 
 Mapping::Result PhaseSpaceMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }

@@ -24,7 +24,7 @@ ChiliMapping::ChiliMapping(
 {}
 
 Mapping::Result ChiliMapping::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto r = inputs | std::views::take(3 * n_particles - 2) | std::ranges::to<ValueVec>();
     auto e_cm = inputs.at(3 * n_particles - 2);
@@ -39,7 +39,7 @@ Mapping::Result ChiliMapping::build_forward_impl(
 }
 
 Mapping::Result ChiliMapping::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     throw std::logic_error("inverse mapping not implemented");
 }

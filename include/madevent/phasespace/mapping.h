@@ -31,10 +31,10 @@ public:
 protected:
     //TODO: make parameters const ref
     virtual Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const = 0;
     virtual Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const = 0;
     void check_types(const ValueVec& values, const TypeVec& types, const std::string& prefix) const;
 
