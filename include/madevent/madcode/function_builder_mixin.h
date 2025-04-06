@@ -23,6 +23,10 @@ ValueVec batch_split(Value in, Value counts) {
     return instruction("batch_split", {in, counts});
 }
 
+Value cat(ValueVec args) {
+    return instruction("cat", args)[0];
+}
+
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
 }
@@ -287,6 +291,10 @@ Value gather(Value index, Value choices) {
 
 Value gather_int(Value index, Value choices) {
     return instruction("gather_int", {index, choices})[0];
+}
+
+Value select(Value input, Value indices) {
+    return instruction("select", {input, indices})[0];
 }
 
 Value one_hot(Value index, Value option_count) {

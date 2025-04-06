@@ -96,6 +96,13 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
+class CatInstruction : public Instruction {
+public:
+    CatInstruction(int opcode, bool differentiable) :
+        Instruction("cat", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int opcode, bool differentiable) :

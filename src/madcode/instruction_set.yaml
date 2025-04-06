@@ -42,6 +42,7 @@ batch_cat:
   desc:
   class: BatchCatInstruction
   custom_op: True
+
 batch_split:
   inputs:
     - name: in
@@ -51,6 +52,15 @@ batch_split:
   outputs: any
   desc:
   class: BatchSplitInstruction
+  custom_op: True
+
+cat:
+  inputs: any
+  outputs:
+    - name: out
+      desc:
+  desc:
+  class: CatInstruction
   custom_op: True
 
 ---
@@ -1142,18 +1152,18 @@ gather_int:
       type: [int]
       desc:
 
-#select:
-#  inputs:
-#    - name: input
-#      type: [float, n]
-#      desc:
-#    - name: indices
-#      type: [int, single, m]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [float, m]
-#      desc:
+select:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: indices
+      type: [int, single, m]
+      desc:
+  outputs:
+    - name: output
+      type: [float, m]
+      desc:
 
 one_hot:
   inputs:

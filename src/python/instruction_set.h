@@ -18,6 +18,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("pop", &FunctionBuilder::pop, py::arg("in"));
     fb.def("batch_cat", &FunctionBuilder::batch_cat, py::arg("args"));
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
+    fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
@@ -78,6 +79,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("permute_momenta", &FunctionBuilder::permute_momenta, py::arg("momenta"), py::arg("permutations"), py::arg("index"));
     fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
     fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
+    fb.def("select", &FunctionBuilder::select, py::arg("input"), py::arg("indices"));
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
     fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
     fb.def("batch_gather", &FunctionBuilder::batch_gather, py::arg("indices"), py::arg("values"));

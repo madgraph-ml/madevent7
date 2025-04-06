@@ -386,15 +386,31 @@ PYBIND11_MODULE(_madevent_py, m) {
         .export_values();
     mlp.def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
                       MLP::Activation, const std::string&>(),
-             py::arg("input_dim"),
-             py::arg("output_dim"),
-             py::arg("hidden_dim") = 32,
-             py::arg("layers") = 3,
-             py::arg("activation") = MLP::leaky_relu,
-             py::arg("prefix") = "")
+            py::arg("input_dim"),
+            py::arg("output_dim"),
+            py::arg("hidden_dim") = 32,
+            py::arg("layers") = 3,
+            py::arg("activation") = MLP::leaky_relu,
+            py::arg("prefix") = "")
         .def("input_dim", &MLP::input_dim)
         .def("output_dim", &MLP::output_dim)
         .def("initialize_globals", &MLP::initialize_globals, py::arg("context"));
+
+
+    py::class_<Flow, Mapping>(m, "Flow")
+        .def(py::init<std::size_t, std::size_t, const std::string&, std::size_t, std::size_t,
+                      std::size_t, MLP::Activation, bool>(),
+             py::arg("input_dim"),
+             py::arg("condition_dim") = 0,
+             py::arg("prefix") = "",
+             py::arg("bin_count") = 10,
+             py::arg("subnet_hidden_dim") = 32,
+             py::arg("subnet_layers") = 3,
+             py::arg("subnet_activation") = MLP::leaky_relu,
+             py::arg("_invert_spline") = true)
+        .def("input_dim", &Flow::input_dim)
+        .def("output_dim", &Flow::condition_dim)
+        .def("initialize_globals", &Flow::initialize_globals, py::arg("context"));
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())

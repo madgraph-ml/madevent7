@@ -13,3 +13,4 @@
 #include "phasespace/integrand.h"
 #include "phasespace/vegas.h"
 #include "phasespace/mlp.h"
+#include "phasespace/flow.h"

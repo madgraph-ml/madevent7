@@ -178,6 +178,29 @@ void op_batch_split(const Runtime::Instruction& instruction, TensorVec& locals) 
     }
 }
 
+void op_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
+    std::size_t cat_size = 0;
+    for (auto input_index : instruction.input_indices) {
+        cat_size += locals[input_index].size(1);
+    }
+
+    auto& first_shape = locals[instruction.input_indices[0]].shape();
+    Sizes shape(first_shape.size());
+    shape[0] = locals[instruction.batch_size_index].size(0);
+    shape[1] = cat_size;
+    std::copy(first_shape.begin() + 2, first_shape.end(), shape.begin() + 2);
+
+    Tensor output(instruction.output_dtypes.front(), shape);
+    std::size_t offset = 0;
+    for (auto input_index : instruction.input_indices) {
+        auto& input = locals[input_index];
+        auto next_offset = offset + input.size(1);
+        output.slice(1, offset, next_offset).copy_from(input);
+        offset = next_offset;
+    }
+    locals[instruction.output_indices[0]] = output;
+}
+
 void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];

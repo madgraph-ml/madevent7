@@ -298,7 +298,7 @@ TypeVec StackInstruction::signature(const ValueVec& args) const {
             arg.type.batch_size != BatchSize::one && batch_size != arg.type.batch_size
         ) {
             throw std::invalid_argument(std::format(
-                "{}, argument {}: incompatible batch size", name(), i
+                "stack, argument {}: incompatible batch size", i
             ));
         }
         if (arg.type.dtype != type.dtype || arg.type.shape != type.shape) {
@@ -393,8 +393,86 @@ TypeVec BatchSplitInstruction::signature(const ValueVec& args) const {
     return out_types;
 }
 
+TypeVec CatInstruction::signature(const ValueVec& args) const {
+    if (args.size() == 0) {
+        throw std::invalid_argument("cat has to be called with at least one argument");
+    }
+    auto type = args.at(0).type;
+    BatchSize batch_size = BatchSize::one;
+    std::size_t cat_dim = 0;
+    std::size_t i = 1;
+    for (auto& arg : args) {
+        if (arg.type.dtype == DataType::batch_sizes) {
+            throw std::invalid_argument(std::format(
+                "cat, argument {}: batch size list not accepted as argument", i
+            ));
+        }
+        if (arg.type.shape.size() == 0) {
+            throw std::invalid_argument(std::format(
+                "cat, argument {}: arguments must be at least 1-dimensional", i
+            ));
+        }
+        cat_dim += arg.type.shape.at(0);
+        if (batch_size == BatchSize::one) {
+            batch_size = arg.type.batch_size;
+        } else if (
+            arg.type.batch_size != BatchSize::one && batch_size != arg.type.batch_size
+        ) {
+            throw std::invalid_argument(std::format(
+                "cat, argument {}: incompatible batch size", i
+            ));
+        }
+        if (
+            arg.type.dtype != type.dtype ||
+            !std::equal(
+                arg.type.shape.begin() + 1, arg.type.shape.end(),
+                type.shape.begin() + 1, type.shape.end()
+            )
+        ) {
+            throw std::invalid_argument(
+                "cat: all arguments must have the same shape and dtype"
+            );
+        }
+        ++i;
+    }
+    std::vector<int> out_shape{static_cast<int>(cat_dim)};
+    out_shape.insert(out_shape.end(), type.shape.begin() + 1, type.shape.end());
+    return {{type.dtype, batch_size, out_shape}};
+}
+
 TypeVec RqsActivationInstruction::signature(const ValueVec& args) const {
-    return {}; //TODO: implement
+    check_arg_count(args, 2);
+    auto& bin_count_arg = args.at(1);
+    auto& bin_count_type = bin_count_arg.type;
+    if (
+        bin_count_type.dtype != DataType::dt_int ||
+        bin_count_type.batch_size != BatchSize::one ||
+        bin_count_type.shape.size() != 0 ||
+        !std::holds_alternative<int64_t>(bin_count_arg.literal_value)
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 2: expected integer constant", name()
+        ));
+    }
+    int bin_count = std::get<int64_t>(bin_count_arg.literal_value);
+
+    auto& input_type = args.at(0).type;
+    if (
+        input_type.dtype != DataType::dt_float ||
+        input_type.shape.size() != 1 ||
+        input_type.shape.at(0) % (3 * bin_count + 1) != 0
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument 1: expected batch of n_dims * (3 * n_bins + 1) floats", name()
+        ));
+    }
+    int dim = input_type.shape.at(0) / (3 * bin_count + 1);
+
+    return {
+        {DataType::dt_float, input_type.batch_size, {dim, bin_count}},
+        {DataType::dt_float, input_type.batch_size, {dim, bin_count}},
+        {DataType::dt_float, input_type.batch_size, {dim, bin_count + 1}},
+    };
 }
 
 TypeVec NonzeroInstruction::signature(const ValueVec& args) const {

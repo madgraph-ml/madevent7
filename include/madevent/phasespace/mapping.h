@@ -9,18 +9,18 @@ public:
     using Result = std::tuple<ValueVec, Value>;
 
     Mapping(
-        TypeVec input_types,
-        TypeVec output_types,
-        TypeVec condition_types
+        const TypeVec& input_types,
+        const TypeVec& output_types,
+        const TypeVec& condition_types
     ) : _input_types(input_types),
         _output_types(output_types),
         _condition_types(condition_types) {}
     virtual ~Mapping() = default;
     Result build_forward(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions = {}
     ) const;
     Result build_inverse(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions = {}
     ) const;
     Function forward_function() const;
     Function inverse_function() const;
@@ -29,13 +29,14 @@ public:
     const TypeVec& condition_types() const { return _condition_types; }
 
 protected:
+    //TODO: make parameters const ref
     virtual Result build_forward_impl(
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const = 0;
     virtual Result build_inverse_impl(
         FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
     ) const = 0;
-    void check_types(ValueVec values, TypeVec types, std::string prefix) const;
+    void check_types(const ValueVec& values, const TypeVec& types, const std::string& prefix) const;
 
 private:
     TypeVec _input_types;

@@ -3,7 +3,7 @@
 using namespace madevent;
 
 Mapping::Result Mapping::build_forward(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     check_types(inputs, _input_types, "Input");
     check_types(conditions, _condition_types, "Condition");
@@ -14,7 +14,7 @@ Mapping::Result Mapping::build_forward(
 }
 
 Mapping::Result Mapping::build_inverse(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     check_types(inputs, _output_types, "Input");
     check_types(conditions, _condition_types, "Condition");
@@ -56,7 +56,9 @@ Function Mapping::inverse_function() const {
     return fb.function();
 }
 
-void Mapping::check_types(ValueVec values, TypeVec types, std::string prefix) const {
+void Mapping::check_types(
+    const ValueVec& values, const TypeVec& types, const std::string& prefix
+) const {
     //TODO: implement this
 }
 
