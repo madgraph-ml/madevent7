@@ -324,14 +324,14 @@ PYBIND11_MODULE(_madevent_py, m) {
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
                       const std::vector<Topology>&>(),
              py::arg("topology"), py::arg("s_lab"),
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.8,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
              py::arg("cuts")=std::nullopt,
              py::arg("symmetric_topologies")=std::vector<Topology>{})
         .def(py::init<const std::vector<double>&, double, bool, double, double,
                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
              py::arg("masses"), py::arg("s_lab"),
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=1.4,
+             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.8,
              py::arg("mode")=PhaseSpaceMapping::rambo,
              py::arg("cuts")=std::nullopt)
         .def("random_dim", &PhaseSpaceMapping::random_dim)

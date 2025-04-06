@@ -25,7 +25,7 @@ public:
         //double s_hat_min = 0.0,
         bool leptonic = false,
         double s_min_epsilon = 1e-2,
-        double nu = 1.4,
+        double nu = 0.8,
         TChannelMode t_channel_mode = propagator,
         const std::optional<Cuts>& cuts = std::nullopt,
         const std::vector<Topology>& symmetric_topologies = {}
@@ -36,12 +36,15 @@ public:
         double s_lab,
         bool leptonic = false,
         double s_min_epsilon = 1e-2,
-        double nu = 1.4,
+        double nu = 0.8,
         TChannelMode mode = rambo,
         const std::optional<Cuts>& cuts = std::nullopt
     ) : PhaseSpaceMapping(
         Topology(
             [&] {
+                if (external_masses.size() < 4) {
+                    throw std::invalid_argument("The number of masses must be at least 4");
+                }
                 std::vector<Diagram::Vertex> vertices;
                 auto n_out = external_masses.size() - 2;
                 vertices.push_back({

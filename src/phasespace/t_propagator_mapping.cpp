@@ -35,7 +35,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     auto n_particles = n_invariants + 1;
     auto t_inv_offset = n_invariants - 1;
     auto m_out_offset = 3 * n_invariants;
-    auto e_cm = inputs[m_out_offset - 1];
+    auto e_cm = inputs.at(m_out_offset - 1);
     ValueVec dets;
 
     // construct initial state momenta
@@ -45,21 +45,21 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     auto sqs_max = e_cm;
     ValueVec sqrt_s_max;
     for (int i = n_particles - 1; i > 1; --i) {
-        auto sqrt_s = inputs[m_out_offset + i];
+        auto sqrt_s = inputs.at(m_out_offset + i);
         sqs_max = fb.sub(sqs_max, sqrt_s);
         sqrt_s_max.push_back(sqs_max);
     }
-    ValueVec cumulated_m_out {inputs[m_out_offset]};
+    ValueVec cumulated_m_out {inputs.at(m_out_offset)};
     for (int i = 0; i < n_particles - 2; ++i) {
-        auto invariant = s_pseudo_invariants[i];
-        auto r = inputs[i];
-        auto sqrt_s = inputs[m_out_offset + 1 + i];
-        auto sqrt_s_rev = sqrt_s_max[n_particles - 3 - i];
+        auto invariant = s_pseudo_invariants.at(i);
+        auto r = inputs.at(i);
+        auto sqrt_s = inputs.at(m_out_offset + 1 + i);
+        auto sqrt_s_rev = sqrt_s_max.at(n_particles - 3 - i);
 
         auto s_max = fb.square(sqrt_s_rev);
-        auto s_min = fb.square(fb.add(cumulated_m_out[i], sqrt_s));
+        auto s_min = fb.square(fb.add(cumulated_m_out.at(i), sqrt_s));
         auto [s_vec, det] = invariant.build_forward(fb, {r}, {s_min, s_max});
-        cumulated_m_out.push_back(fb.sqrt(s_vec[0]));
+        cumulated_m_out.push_back(fb.sqrt(s_vec.at(0)));
         dets.push_back(det);
     }
 
