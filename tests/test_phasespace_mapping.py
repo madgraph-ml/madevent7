@@ -73,4 +73,4 @@ def test_t_channel_momentum_conservation(masses, rng):
     p_in = np.sum(p_ext[:, :2], axis=1)
     p_out = np.sum(p_ext[:, 2:], axis=1)
 
-    assert p_in == approx(p_out)
+    assert p_out == approx(p_in)

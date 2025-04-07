@@ -204,14 +204,14 @@ void tensor_foreach(
     );
     // scalar func and vector func have the same type if cpu vectorization is turned off
     if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
-        /*madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
+        madevent::cpu::ThreadPool::instance().parallel_for([&](std::size_t i) {
             std::apply([i](auto&&... args) {
                 recursive_for<scalar_func, dims-1>(args[i]...);
             }, views);
-        }, batch_size);*/
-        std::apply([batch_size](auto&&... args) {
+        }, batch_size);
+        /*std::apply([batch_size](auto&&... args) {
             nested_for<scalar_func, dims>(batch_size, args...);
-        }, views);
+        }, views);*/
     } else {
         auto vectorized_views = std::apply(
             get_vectorized_views<decltype(vector_func), dims>(), views

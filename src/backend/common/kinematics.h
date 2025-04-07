@@ -23,8 +23,7 @@ KERNELSPEC FVal<T> kaellen(FVal<T> x, FVal<T> y, FVal<T> z) {
 
 template<typename T>
 KERNELSPEC FVal<T> lsquare(FourMom<T> p) {
-    auto p2 = p[0] * p[0] - p[1] * p[1] - p[2] * p[2] - p[3] * p[3];
-    return where(p2 >= EPS, p2, EPS);
+    return p[0] * p[0] - p[1] * p[1] - p[2] * p[2] - p[3] * p[3];
 }
 
 template<typename T>
@@ -103,6 +102,8 @@ KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_decay(
     return {p1, det};
 }
 
+#define NANCHECK(name) if (isnan(name)) std::println("nan: {}", #name);
+
 template<typename T>
 KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_scattering(
     FVal<T> r_phi, FourMom<T> pa_com, FVal<T> s_tot, FVal<T> t,
@@ -129,6 +130,7 @@ KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_scattering(
     auto phi = PI * (2. * r_phi - 1.);
     p1_com[1] = pt * cos(phi);
     p1_com[2] = pt * sin(phi);
+    if (p1_com[3] > pp) std::println("FALSCH!!!");
 
     auto det = PI / (2. * sqrt(kaellen<T>(s_tot, ma_2, mb_2)));
     return {p1_com, det};
@@ -252,6 +254,16 @@ KERNELSPEC void kernel_two_particle_scattering_com(
     store_mom<T>(p1, p1_com);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_com[i];
     det = det_tmp;
+    /*auto s_tot_test = sqrt(s_tot);
+    std::println("COM pa = {} ma = {}", load_mom<T>(pa), sqrt(lsquare<T>(load_mom<T>(pa))));
+    std::println("COM pb = {} mb = {}", load_mom<T>(pb), sqrt(lsquare<T>(load_mom<T>(pb))));
+    std::println("COM p1 = {} m1 = {}", load_mom<T>(p1), sqrt(lsquare<T>(load_mom<T>(p1))));
+    std::println("COM p2 = {} m2 = {}", load_mom<T>(p2), sqrt(lsquare<T>(load_mom<T>(p2))));
+    auto m1_test = sqrt(lsquare<T>(load_mom<T>(p1)));
+    auto m2_test = sqrt(lsquare<T>(load_mom<T>(p2)));
+    if (s_tot_test < m1 + m2) __builtin_trap();
+    if (abs(m1_test - m1) > 0.5) __builtin_trap();
+    if (abs(m2_test - m2) > 0.5) __builtin_trap();*/
 }
 
 template<typename T>
@@ -261,17 +273,32 @@ KERNELSPEC void kernel_two_particle_scattering(
 ) {
     FourMom<T> p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    //auto load_pa = load_mom<T>(pa);
+    //auto load_pb = load_mom<T>(pb);
     auto pa_com = boost<T>(load_mom<T>(pa), p_tot, -1.);
+    //auto pb_com = boost<T>(load_mom<T>(pb), p_tot, -1.);//TODO:remove
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
     auto [p1_com, det_tmp] = two_particle_scattering<T>(
         r_phi, pa_com, s_tot, t, m1, m2, ma_2, mb_2
     );
+    //auto m1_test_com = sqrt(lsquare<T>(p1_com));
     auto p1_rot = rotate<T>(p1_com, pa_com);
+    //auto m1_test_rot = sqrt(lsquare<T>(p1_rot));
     auto p1_lab = boost<T>(p1_rot, p_tot, 1.);
     store_mom<T>(p1, p1_lab);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_lab[i];
     det = det_tmp;
+    /*std::println("LAB pa = {} ma = {}", load_mom<T>(pa), sqrt(lsquare<T>(load_mom<T>(pa))));
+    std::println("LAB pb = {} mb = {}", load_mom<T>(pb), sqrt(lsquare<T>(load_mom<T>(pb))));
+    std::println("LAB p1 = {} m1 = {}", load_mom<T>(p1), sqrt(lsquare<T>(load_mom<T>(p1))));
+    std::println("LAB p2 = {} m2 = {}", load_mom<T>(p2), sqrt(lsquare<T>(load_mom<T>(p2))));
+    auto s_tot_test = sqrt(s_tot);
+    auto m1_test = sqrt(lsquare<T>(p1_lab));
+    auto m2_test = sqrt(lsquare<T>(load_mom<T>(p2)));
+    if (s_tot_test < m1 + m2) __builtin_trap();
+    if (abs(m1_test - m1) > 0.5) __builtin_trap();
+    if (abs(m2_test - m2) > 0.5) __builtin_trap();*/
 }
 
 template<typename T>
@@ -289,13 +316,17 @@ KERNELSPEC void kernel_t_inv_min_max(
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
 
-    auto ysqr = kaellen<T>(s, ma_2, mb_2) * kaellen<T>(s, m2_2, m1_2);
+    auto ysqr = kaellen<T>(s, ma_2, mb_2) * kaellen<T>(s, m1_2, m2_2);
     auto yr = where(ysqr > EPS, sqrt(ysqr), EPS);
-    auto m_sum = ma_2 + m2_2;
-    auto prod = (s + ma_2 - mb_2) * (s + m2_2 - m1_2);
+    auto m_sum = ma_2 + m1_2;
+    auto prod = (s + ma_2 - mb_2) * (s + m1_2 - m2_2);
     auto s_eps = s + EPS;
     auto y1 = m_sum - 0.5 * (prod - yr) / s_eps;
     auto y2 = m_sum - 0.5 * (prod + yr) / s_eps;
-    t_min = - where(y1 < y2, y2, y1);
-    t_max = - where(y1 < y2, y1, y2);
+    auto t_min_tmp = - where(y1 < y2, y2, y1);
+    auto t_max_tmp = - where(y1 < y2, y1, y2);
+    t_min = where(t_min_tmp > 0., t_min_tmp, 0.);
+    t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
+    //std::println("args {} {} {} {} {}", s, ma_2, mb_2, static_cast<double>(m1), static_cast<double>(m2));
+    //std::println("LIMIT {} {} {} {}", y1, y2, static_cast<double>(t_min), static_cast<double>(t_max));
 }

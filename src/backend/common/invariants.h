@@ -49,7 +49,7 @@ template<typename T>
 KERNELSPEC void kernel_stable_invariant(
     FIn<T,0> r, FIn<T,0> mass, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
-    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
+    auto m2 = where(mass == 0., -1e-2, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
 
@@ -61,7 +61,7 @@ template<typename T>
 KERNELSPEC void kernel_stable_invariant_inverse(
     FIn<T,0> s, FIn<T,0> mass, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
-    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
+    auto m2 = where(mass == 0., -1e-2, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
     auto q = s - m2;
@@ -75,7 +75,7 @@ template<typename T>
 KERNELSPEC void kernel_stable_invariant_nu(
     FIn<T,0> r, FIn<T,0> mass, FIn<T,0> nu, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
 ) {
-    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
+    auto m2 = where(mass == 0., -1e-2, mass * mass);
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
     auto power = 1.0 - nu;
@@ -84,6 +84,7 @@ KERNELSPEC void kernel_stable_invariant_nu(
     auto _s = pow(r * qmaxpow + (1 - r) * qminpow, 1 / power) + m2;
 
     s = _s;
+    //std::println("SAMPLE {} {} {}", static_cast<double>(s_min), _s, static_cast<double>(s_max));
     gs = (qmaxpow - qminpow) * pow(_s - m2, nu) / power;
 }
 
@@ -91,7 +92,7 @@ template<typename T>
 KERNELSPEC void kernel_stable_invariant_nu_inverse(
     FIn<T,0> s, FIn<T,0> mass, FIn<T,0> nu, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> r, FOut<T,0> gs
 ) {
-    auto m2 = where((mass == 0.) & (s_min == 0), -1e-8, mass * mass);
+    auto m2 = where(mass == 0., -1e-2, mass * mass);
     auto q = s - m2;
     auto q_max = s_max - m2;
     auto q_min = s_min - m2;
