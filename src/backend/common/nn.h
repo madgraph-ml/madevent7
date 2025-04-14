@@ -1,6 +1,5 @@
 
-inline constexpr double MIN_BIN_WIDTH = 1e-3;
-inline constexpr double MIN_BIN_HEIGHT = 1e-3;
+inline constexpr double MIN_BIN_SIZE = 1e-3;
 inline constexpr double MIN_DERIVATIVE = 1e-3;
 
 template<typename T>
@@ -166,7 +165,7 @@ KERNELSPEC void backward_kernel_rqs_activation(
         auto grad_w_j = widths_grad[j];
         std::size_t offset = j * n_cond;
         FVal<T> w_grad_sum(0.);
-        for (std::size_t i = n_bins; i < 2 * n_bins; ++i) {
+        for (std::size_t i = 0; i < n_bins; ++i) {
             w_grad_sum = w_grad_sum + w_j[i] * grad_w_j[i];
         }
         for (std::size_t i = 0; i < n_bins; ++i) {
@@ -177,7 +176,7 @@ KERNELSPEC void backward_kernel_rqs_activation(
         auto grad_h_j = heights_grad[j];
         offset += n_bins;
         FVal<T> h_grad_sum(0.);
-        for (std::size_t i = n_bins; i < 2 * n_bins; ++i) {
+        for (std::size_t i = 0; i < n_bins; ++i) {
             h_grad_sum = h_grad_sum + h_j[i] * grad_h_j[i];
         }
         for (std::size_t i = 0; i < n_bins; ++i) {
@@ -201,15 +200,14 @@ KERNELSPEC void kernel_rqs_find_bin(
     auto high_mask = input > 1.;
     auto clamp = low_mask | high_mask;
     auto input01 = where(high_mask, 1., where(low_mask, 0., input));
-    auto bin_width_factor = 1. - MIN_BIN_WIDTH * n_bins;
-    auto bin_height_factor = 1. - MIN_BIN_HEIGHT * n_bins;
+    auto bin_factor = 1. - MIN_BIN_SIZE * n_bins;
 
     FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
     FVal<T> width(0.), height(0.), cumwidth(0.), cumheight(0.);
     FVal<T> derivative_unorm(0.), derivative_plus_one_unorm(0.);
     for (std::size_t bin = 0; bin < n_bins; ++bin) {
-        auto w = MIN_BIN_WIDTH + bin_width_factor * in_sizes[bin];
-        auto h = MIN_BIN_HEIGHT + bin_height_factor * out_sizes[bin];
+        auto w = MIN_BIN_SIZE + bin_factor * in_sizes[bin];
+        auto h = MIN_BIN_SIZE + bin_factor * out_sizes[bin];
         auto d = derivatives[bin];
         auto dp1 = derivatives[bin + 1];
 
@@ -248,22 +246,21 @@ KERNELSPEC void backward_kernel_rqs_find_bin(
     auto high_mask = input > 1.;
     auto clamp = low_mask | high_mask;
     auto input01 = where(high_mask, 1., where(low_mask, 0., input));
-    auto bin_width_factor = 1. - MIN_BIN_WIDTH * n_bins;
-    auto bin_height_factor = 1. - MIN_BIN_HEIGHT * n_bins;
+    auto bin_factor = 1. - MIN_BIN_SIZE * n_bins;
 
     FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
     IVal<T> selected_bin(0);
-    BVal<T> prev_mask(false);
+    BVal<T> mask(false);
     for (std::size_t bin = 0; bin < n_bins; ++bin) {
-        auto w = MIN_BIN_WIDTH + bin_width_factor * in_sizes[bin];
-        auto mask = input01 < loop_cumwidth;
+        auto w = MIN_BIN_SIZE + bin_factor * in_sizes[bin];
         selected_bin = where(mask, selected_bin, bin);
-        in_sizes_grad[bin] += where(mask, 0., bin_width_factor * cumwidth_grad);
-        out_sizes_grad[bin] += where(mask, 0., bin_height_factor * cumheight_grad);
         loop_cumwidth = loop_cumwidth + w;
+        mask = input01 < loop_cumwidth; // false ---> true
+        in_sizes_grad[bin] += where(mask, 0., bin_factor * cumwidth_grad);
+        out_sizes_grad[bin] += where(mask, 0., bin_factor * cumheight_grad);
     }
-    in_sizes_grad.scatter_add(selected_bin, bin_width_factor * width_grad);
-    out_sizes_grad.scatter_add(selected_bin, bin_height_factor * height_grad);
+    in_sizes_grad.scatter_add(selected_bin, bin_factor * width_grad);
+    out_sizes_grad.scatter_add(selected_bin, bin_factor * height_grad);
     derivatives_grad.scatter_add(selected_bin, derivative_unorm_grad);
     derivatives_grad.scatter_add(selected_bin + 1, derivative_plus_one_unorm_grad);
 }

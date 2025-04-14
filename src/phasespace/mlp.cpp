@@ -107,5 +107,5 @@ void MLP::initialize_globals(ContextPtr context) const {
         initialize_layer(context, dim, _hidden_dim, _prefix, i, rand_gen, false);
         dim = _hidden_dim;
     }
-    initialize_layer(context, dim, _output_dim, _prefix, _layers, rand_gen, false); //true);
+    initialize_layer(context, dim, _output_dim, _prefix, _layers, rand_gen, true);
 }
