@@ -84,7 +84,10 @@ MLP::MLP(
     _layers(layers),
     _activation(activation),
     _prefix(prefix)
-{};
+{
+    if (input_dim == 0) throw std::invalid_argument("MLP input dimension cannot be 0");
+    if (output_dim == 0) throw std::invalid_argument("MLP output dimension cannot be 0");
+};
 
 ValueVec MLP::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
     std::size_t dim = _input_dim;
@@ -104,5 +107,5 @@ void MLP::initialize_globals(ContextPtr context) const {
         initialize_layer(context, dim, _hidden_dim, _prefix, i, rand_gen, false);
         dim = _hidden_dim;
     }
-    initialize_layer(context, dim, _output_dim, _prefix, _layers, rand_gen, true);
+    initialize_layer(context, dim, _output_dim, _prefix, _layers, rand_gen, false); //true);
 }

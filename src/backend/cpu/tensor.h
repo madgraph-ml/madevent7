@@ -77,6 +77,18 @@ public:
         return value;
     }
 
+    template<int d = _dim> requires (d == 0)
+    V operator+=(V value) {
+        // This is somewhat ugly but needs to be done such that broadcasting from
+        // batch size 1 -> n works. Maybe there is a better way
+        T buffer[simd_vec_size];
+        vstore(&buffer[0], value);
+        for (int i = 0; i < simd_vec_size; ++i) {
+            *reinterpret_cast<T*>(_data + i * _batch_stride) += buffer[i];
+        }
+        return value;
+    }
+
     VectorizedTensorView<V, T, _dim, is_batch>& operator=(
         VectorizedTensorView<V, T, _dim, is_batch>& value
     ) = delete;
@@ -99,6 +111,18 @@ public:
             );
         }
         return vload(&buffer[0]);
+    }
+
+    template<typename IVec>
+    void scatter_add(IVec indices, V values) requires (_dim == 1) {
+        T buffer[simd_vec_size];
+        vstore(&buffer[0], values);
+        int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
+        for (int i = 0; i < simd_vec_size; ++i) {
+            *reinterpret_cast<T*>(
+                _data + index_ptr[i] * _stride[0] + i * _batch_stride
+            ) += buffer[i];
+        }
     }
 
 private:

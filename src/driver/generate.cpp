@@ -50,7 +50,7 @@ EventGenerator::EventGenerator(
         _channels.push_back({
             i,
             cpu::Runtime(channel.function(), context),
-            EventFile(chan_path.string(), channel.particle_count()),
+            EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
             vegas_optimizer,
             config.start_batch_size
         });
@@ -140,14 +140,18 @@ void EventGenerator::combine() {
         auto index = std::uniform_int_distribution<std::size_t>(
             0, channel_counts.back() - 1
         )(rand_gen);
-        auto channel = std::lower_bound(
+        auto channel_iter = std::lower_bound(
             channel_counts.begin(), channel_counts.end(), index
         );
-        std::for_each(channel, channel_counts.end(), [](auto& count) { --count; });
-        auto& writer = _channels.at(channel - channel_counts.begin()).writer;
+        std::for_each(channel_iter, channel_counts.end(), [](auto& count) { --count; });
+        auto& channel = _channels.at(channel_iter - channel_counts.begin());
+        auto& writer = channel.writer;
         do {
             writer.read(buffer);
         } while(buffer.event().weight == 0);
+        buffer.event().weight = std::max(
+            _max_weight, buffer.event().weight / channel.integral_fraction
+        );
         _writer.write(buffer);
     }
 }
@@ -410,7 +414,7 @@ void EventGenerator::print_gen_update() {
                     format_si_prefix(channel.count_unweighted),
                     format_si_prefix(channel.count_target)
                 );
-                if (!channel.done) {
+                if (!_status_all.done) {
                     unw_str = std::format(
                         "{:<15} {}",
                         unw_str,

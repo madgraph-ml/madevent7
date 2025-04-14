@@ -110,12 +110,20 @@ public:
         return value;
     }
 
+    T operator+=(T value) requires (_dim == 0) {
+        *reinterpret_cast<T*>(_data) += value;
+        return value;
+    }
+
     TensorView<T, _dim>& operator=(TensorView<T, _dim>& value) = delete;
     std::size_t size(std::size_t index = 0) const { return _shape[index]; }
     uint8_t* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
     T gather(int64_t index) const requires (_dim == 1) { return (*this)[index]; }
+    void scatter_add(int64_t index, T value) requires (_dim == 1) {
+        (*this)[index] += value;
+    }
 
 private:
     uint8_t* _data;
@@ -133,6 +141,7 @@ public:
     virtual void memcpy(void* to, void* from, std::size_t size) const = 0;
     virtual void tensor_copy(const Tensor& source, Tensor& target) const = 0;
     virtual void tensor_zero(Tensor& tensor) const = 0;
+    virtual void tensor_add(const Tensor& source, Tensor& target) const = 0;
 };
 
 using DevicePtr = std::shared_ptr<Device>;
@@ -155,6 +164,7 @@ public:
 
     void tensor_copy(const Tensor& source, Tensor& target) const override;
     void tensor_zero(Tensor& tensor) const override;
+    void tensor_add(const Tensor& source, Tensor& target) const override;
 
     CpuDevice(const CpuDevice&) = delete;
     CpuDevice& operator=(CpuDevice&) = delete;
@@ -339,6 +349,10 @@ public:
     void copy_from(const Tensor& source) {
         check_impl();
         impl->device->tensor_copy(source, *this);
+    }
+    void add(const Tensor& source) {
+        check_impl();
+        impl->device->tensor_add(source, *this);
     }
 
     Tensor copy() const {

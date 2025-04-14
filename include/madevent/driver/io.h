@@ -60,7 +60,10 @@ class EventFile {
 public:
     enum Mode { create, append, load };
     EventFile(
-        const std::string& file_name, std::size_t particle_count = 0, Mode mode = create
+        const std::string& file_name,
+        std::size_t particle_count = 0,
+        Mode mode = create,
+        bool delete_on_close = false
     );
     EventFile(EventFile&& other) noexcept = default;
     EventFile& operator=(EventFile&& other) noexcept = default;
@@ -81,6 +84,7 @@ private:
     std::fstream _file_stream;
     std::size_t _header_size;
     Mode _mode;
+    bool _delete_on_close;
 };
 
 }

@@ -1,6 +1,27 @@
 // This file was automatically generated based on instruction_set.yaml
 // Do not modify its content directly
 
+case 0:
+    backward_op_stack(instr, locals, local_grads);
+    break;
+case 1:
+    backward_op_unstack(instr, locals, local_grads);
+    break;
+case 2:
+    backward_op_pop(instr, locals, local_grads);
+    break;
+case 3:
+    backward_op_batch_cat(instr, locals, local_grads);
+    break;
+case 4:
+    backward_op_batch_split(instr, locals, local_grads);
+    break;
+case 5:
+    backward_op_cat(instr, locals, local_grads);
+    break;
+case 9:
+    backward_batch_foreach<backward_kernel_product<CpuTypes>, backward_kernel_product<SimdTypes>, 1, 1, 1, 0, 1>(instr, locals, local_grads, {0}, {});
+    break;
 case 53:
     backward_op_matmul(instr, locals, local_grads);
     break;
@@ -24,4 +45,7 @@ case 59:
     break;
 case 60:
     backward_batch_foreach<backward_kernel_softmax_prior<CpuTypes>, backward_kernel_softmax_prior<SimdTypes>, 2, 1, 0, 1, 1>(instr, locals, local_grads, {}, {0});
+    break;
+case 66:
+    backward_batch_foreach<backward_kernel_select<CpuTypes>, backward_kernel_select<SimdTypes>, 2, 1, 1, 0, 1>(instr, locals, local_grads, {1}, {});
     break;

@@ -42,13 +42,13 @@ KERNELSPEC void rqs_forward_body(
         two_delta * theta_one_minus_theta +
         derivative * one_minus_theta * one_minus_theta
     );
-    det = where(clamp, 1., derivative_numerator / denominator * denominator);
+    det = where(clamp, 1., derivative_numerator / (denominator * denominator));
 }
 
 template<typename T>
 KERNELSPEC void rqs_inverse_body(
-    FIn<T,0> input, FIn<T,0> width, FIn<T,0> height, FIn<T,0> cumwidth,
-    FIn<T,0> cumheight, FIn<T,0> derivative_unorm, FIn<T,0> derivative_plus_one_unorm,
+    FIn<T,0> input, FIn<T,0> height, FIn<T,0> width, FIn<T,0> cumheight,
+    FIn<T,0> cumwidth, FIn<T,0> derivative_unorm, FIn<T,0> derivative_plus_one_unorm,
     FOut<T,0> output, FOut<T,0> det
 ) {
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
@@ -145,7 +145,7 @@ KERNELSPEC void kernel_rqs_activation(
 
         offset += n_bins;
         auto d_out = derivatives[j];
-        for (std::size_t i = 0; i < n_bins; ++i) {
+        for (std::size_t i = 0; i < n_bins + 1; ++i) {
             d_out[i] = input[offset + i];
         }
     }
@@ -165,28 +165,28 @@ KERNELSPEC void backward_kernel_rqs_activation(
         auto w_j = widths[j];
         auto grad_w_j = widths_grad[j];
         std::size_t offset = j * n_cond;
+        FVal<T> w_grad_sum(0.);
+        for (std::size_t i = n_bins; i < 2 * n_bins; ++i) {
+            w_grad_sum = w_grad_sum + w_j[i] * grad_w_j[i];
+        }
         for (std::size_t i = 0; i < n_bins; ++i) {
-            FVal<T> grad = grad_w_j[i];
-            for (std::size_t k = 0; j < n_bins; ++k) {
-                grad = grad - w_j[j] * grad_w_j[j];
-            }
-            input_grad[offset+i] = w_j[i] * grad;
+            input_grad[offset + i] += w_j[i] * (grad_w_j[i] - w_grad_sum);
         }
 
         auto h_j = heights[j];
         auto grad_h_j = heights_grad[j];
         offset += n_bins;
+        FVal<T> h_grad_sum(0.);
+        for (std::size_t i = n_bins; i < 2 * n_bins; ++i) {
+            h_grad_sum = h_grad_sum + h_j[i] * grad_h_j[i];
+        }
         for (std::size_t i = 0; i < n_bins; ++i) {
-            FVal<T> grad = grad_h_j[i];
-            for (std::size_t k = n_bins; j < 2*n_bins; ++k) {
-                grad = grad - h_j[j] * grad_h_j[j];
-            }
-            input_grad[offset+i] = h_j[i] * grad;
+            input_grad[offset + i] += h_j[i] * (grad_h_j[i] - h_grad_sum);
         }
 
         offset += n_bins;
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            input_grad[offset+i] = derivatives_grad[j][i];
+        for (std::size_t i = 0; i < n_bins + 1; ++i) {
+            input_grad[offset + i] += derivatives_grad[j][i];
         }
     }
 }
@@ -251,31 +251,21 @@ KERNELSPEC void backward_kernel_rqs_find_bin(
     auto bin_width_factor = 1. - MIN_BIN_WIDTH * n_bins;
     auto bin_height_factor = 1. - MIN_BIN_HEIGHT * n_bins;
 
-    /*FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
-    FVal<T> width(0.), height(0.), cumwidth(0.), cumheight(0.);
-    FVal<T> derivative_unorm(0.), derivative_plus_one_unorm(0.);
+    FVal<T> loop_cumwidth(0.), loop_cumheight(0.);
+    IVal<T> selected_bin(0);
+    BVal<T> prev_mask(false);
     for (std::size_t bin = 0; bin < n_bins; ++bin) {
         auto w = MIN_BIN_WIDTH + bin_width_factor * in_sizes[bin];
-        auto h = MIN_BIN_HEIGHT + bin_height_factor * out_sizes[bin];
-        auto d = derivatives[bin];
-        auto dp1 = derivatives[bin + 1];
-
         auto mask = input01 < loop_cumwidth;
-        width = where(mask, width, w);
-        height = where(mask, height, h);
-        derivative_unorm = where(mask, derivative_unorm, d);
-        derivative_plus_one_unorm = where(mask, derivative_plus_one_unorm, dp1);
-        cumwidth = where(mask, cumwidth, loop_cumwidth);
-        cumheight = where(mask, cumheight, loop_cumheight);
+        selected_bin = where(mask, selected_bin, bin);
+        in_sizes_grad[bin] += where(mask, 0., bin_width_factor * cumwidth_grad);
+        out_sizes_grad[bin] += where(mask, 0., bin_height_factor * cumheight_grad);
         loop_cumwidth = loop_cumwidth + w;
-        loop_cumheight = loop_cumheight + h;
     }
-    condition[0] = width;
-    condition[1] = height;
-    condition[2] = cumwidth;
-    condition[3] = cumheight;
-    condition[4] = derivative_unorm;
-    condition[5] = derivative_plus_one_unorm;*/
+    in_sizes_grad.scatter_add(selected_bin, bin_width_factor * width_grad);
+    out_sizes_grad.scatter_add(selected_bin, bin_height_factor * height_grad);
+    derivatives_grad.scatter_add(selected_bin, derivative_unorm_grad);
+    derivatives_grad.scatter_add(selected_bin + 1, derivative_plus_one_unorm_grad);
 }
 
 template<typename T>
@@ -394,12 +384,12 @@ KERNELSPEC void backward_kernel_softmax(
     FIn<T,1> output, FIn<T,1> output_grad, FOut<T,1> input_grad
 ) {
     std::size_t dim = output.size();
+    FVal<T> grad_sum(0.);
     for (std::size_t i = 0; i < dim; ++i) {
-        FVal<T> grad = output_grad[i];
-        for (std::size_t j = 0; j < dim; ++j) {
-            grad = grad - output[j] * output_grad[j];
-        }
-        input_grad[i] = output[i] * grad;
+        grad_sum = grad_sum + output[i] * output_grad[i];
+    }
+    for (std::size_t i = 0; i < dim; ++i) {
+        input_grad[i] += output[i] * (output_grad[i] - grad_sum);
     }
 }
 
@@ -427,14 +417,22 @@ KERNELSPEC void backward_kernel_softmax_prior(
         for (std::size_t j = 0; j < dim; ++j) {
             grad = grad - output[j] * output_grad[j];
         }
-        input_grad[i] = output[i] * grad;
+        input_grad[i] += output[i] * grad;
     }
 }
-
 
 template<typename T>
 KERNELSPEC void kernel_select(FIn<T,1> input, IIn<T,1> indices, FOut<T,1> output) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
         output[i] = input[single_index(indices[i])];
+    }
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_select(
+    IIn<T,1> indices, FIn<T,1> output_grad, FOut<T,1> input_grad, FOut<T,1> indices_grad
+) {
+    for (std::size_t i = 0; i < indices.size(); ++i) {
+        input_grad[single_index(indices[i])] = output_grad[i];
     }
 }

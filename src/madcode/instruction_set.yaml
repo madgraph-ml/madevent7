@@ -9,6 +9,8 @@ stack:
   desc: Combines input tensors
   class: StackInstruction
   custom_op: True
+  differentiable: True
+
 unstack:
   inputs:
     - name: in
@@ -17,6 +19,7 @@ unstack:
   desc: 
   class: UnstackInstruction
   custom_op: True
+  differentiable: True
 
 pop:
   inputs:
@@ -31,6 +34,7 @@ pop:
       type: [float, ...]
       desc:
   custom_op: True
+  differentiable: True
 
 batch_cat:
   inputs: any
@@ -42,6 +46,7 @@ batch_cat:
   desc:
   class: BatchCatInstruction
   custom_op: True
+  differentiable: True
 
 batch_split:
   inputs:
@@ -53,6 +58,7 @@ batch_split:
   desc:
   class: BatchSplitInstruction
   custom_op: True
+  differentiable: True
 
 cat:
   inputs: any
@@ -62,6 +68,7 @@ cat:
   desc:
   class: CatInstruction
   custom_op: True
+  differentiable: True
 
 ---
 title: Math
@@ -119,6 +126,7 @@ product:
     - name: out
       type: [float]
       desc:
+  differentiable: True
 
 clip_min:
   inputs:
@@ -1160,10 +1168,12 @@ select:
     - name: indices
       type: [int, single, m]
       desc:
+      backward_arg: True
   outputs:
     - name: output
       type: [float, m]
       desc:
+  differentiable: True
 
 one_hot:
   inputs:

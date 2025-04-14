@@ -130,12 +130,48 @@ void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
     locals[instruction.output_indices[0]] = output;
 }
 
+void backward_op_stack(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    // TODO: differentiate integer and float here (also other backwards)
+    auto& output_grad = local_grads[instruction.output_indices[0]];
+    std::size_t index = 0;
+    for (auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
+        if (!input_grad) {
+            input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+            input_grad.zero();
+        }
+        input_grad.add(output_grad.select(1, index));
+        ++index;
+    }
+}
+
 void op_unstack(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
-    auto output_index = instruction.output_indices.begin();
-    for (auto& tensor : tensors) {
-        locals[*output_index] = tensor;
-        ++output_index;
+    for (
+        auto [tensor, output_index] :
+        std::views::zip(tensors, instruction.output_indices)
+    ) {
+        locals[output_index] = tensor;
+    }
+}
+
+void backward_op_unstack(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    auto input_index = instruction.input_indices[0];
+    auto& input_grad = local_grads[input_index];
+    if (!input_grad) {
+        input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+        input_grad.zero();
+    }
+    auto unstacked_grads = input_grad.unstack(1);
+    for (
+        auto [grad, output_index] :
+        std::views::zip(unstacked_grads, instruction.output_indices)
+    ) {
+        grad.add(local_grads[output_index]);
     }
 }
 
@@ -144,6 +180,20 @@ void op_pop(const Runtime::Instruction& instruction, TensorVec& locals) {
     std::size_t last_index = input.size(1) - 1;
     locals[instruction.output_indices[0]] = input.slice(1, 0, last_index);
     locals[instruction.output_indices[1]] = input.select(1, last_index);
+}
+
+void backward_op_pop(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    auto input_index = instruction.input_indices[0];
+    auto input_grad = local_grads[input_index];
+    if (!input_grad) {
+        input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+        input_grad.zero();
+    }
+    std::size_t last_index = input_grad.size(1) - 1;
+    input_grad.slice(1, 0, last_index).add(local_grads[instruction.output_indices[0]]);
+    input_grad.select(1, last_index).add(local_grads[instruction.output_indices[1]]);
 }
 
 void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
@@ -169,13 +219,49 @@ void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
     locals[instruction.output_indices[1]] = Tensor(sizes);
 }
 
+void backward_op_batch_cat(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    auto output_grad = local_grads[instruction.output_indices[0]];
+    std::size_t offset = 0;
+    for (auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
+        auto next_offset = offset + input_grad.size(0);
+        if (!input_grad) {
+            input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+            input_grad.zero();
+        }
+        input_grad.add(output_grad.slice(0, offset, next_offset));
+        offset = next_offset;
+    }
+}
+
 void op_batch_split(const Runtime::Instruction& instruction, TensorVec& locals) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
-    auto output_index = instruction.output_indices.begin();
     for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
         locals[output_index] = tensor;
     }
+}
+
+void backward_op_batch_split(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
+    auto input_index = instruction.input_indices[0];
+    auto& input_grad = local_grads[input_index];
+    if (!input_grad) {
+        input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+        input_grad.zero();
+    }
+    auto split_grads = input_grad.split(0, sizes);
+    for (
+        auto [tensor, output_index] :
+        std::views::zip(split_grads, instruction.output_indices)
+    ) {
+        tensor.add(locals[output_index]);
+    }
+
 }
 
 void op_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
@@ -199,6 +285,23 @@ void op_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
         offset = next_offset;
     }
     locals[instruction.output_indices[0]] = output;
+}
+
+void backward_op_cat(
+    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+) {
+    auto& output_grad = local_grads[instruction.output_indices[0]];
+    std::size_t offset = 0;
+    for (auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
+        if (!input_grad) {
+            input_grad = Tensor(DataType::dt_float, locals[input_index].shape());
+            input_grad.zero();
+        }
+        auto next_offset = offset + input_grad.size(1);
+        input_grad.add(output_grad.slice(1, offset, next_offset));
+        offset = next_offset;
+    }
 }
 
 void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& locals) {
@@ -474,6 +577,13 @@ void CpuDevice::tensor_zero(Tensor& tensor) const {
     //TODO: this only accidentally works for types other than double
     tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
         {&tensor}, {&tensor}, tensor.size(0)
+    );
+}
+
+void CpuDevice::tensor_add(const Tensor& source, Tensor& target) const {
+    //TODO: this function is in the wrong place. need some restructuring
+    tensor_foreach_dynamic<kernel_add_inplace<CpuTypes>, kernel_add_inplace<SimdTypes>, 1, 1>(
+        {&source}, {&target}, target.size(0)
     );
 }
 

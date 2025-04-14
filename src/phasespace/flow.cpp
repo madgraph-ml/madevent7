@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <bitset>
 #include <format>
+#include <ranges>
 
 using namespace madevent;
 
@@ -50,8 +51,9 @@ Flow::Flow(
     _bin_count(bin_count),
     _invert_spline(invert_spline)
 {
+    if (input_dim == 0) throw std::invalid_argument("Flow input dimension must be at least 2");
     std::size_t block_count = 0;
-    for(std::size_t dim = input_dim; dim > 0; dim /= 2, ++block_count);
+    for(std::size_t dim = input_dim - 1; dim > 0; dim /= 2) ++block_count;
     std::vector<std::bitset<32>> masks;
     for (std::size_t i = 0; i < input_dim; ++i) masks.push_back(i);
 
@@ -120,8 +122,19 @@ Mapping::Result Flow::build_transform(
     std::iota(dim_positions.begin(), dim_positions.end(), 0);
 
     auto loop_body = [&](const CouplingBlock& block) {
-        auto half1 = fb.select(x, block.indices1);
-        auto half2 = fb.select(x, block.indices2);
+        std::println("{}", dim_positions);
+        auto half1 = fb.select(
+            x,
+            block.indices1
+                | std::views::transform([&](auto index) { return dim_positions[index]; })
+                | std::ranges::to<std::vector<int64_t>>()
+        );
+        auto half2 = fb.select(
+            x,
+            block.indices2
+                | std::views::transform([&](auto index) { return dim_positions[index]; })
+                | std::ranges::to<std::vector<int64_t>>()
+        );
         Value det1, det2;
         bool spline_inv = _invert_spline ^ inverse;
         if (inverse) {
@@ -146,10 +159,16 @@ Mapping::Result Flow::build_transform(
         dets.push_back(det1);
         dets.push_back(det2);
         x = fb.cat({half1, half2});
-        auto iter_next = std::copy(
-            block.indices1.begin(), block.indices1.end(), dim_positions.begin()
-        );
-        std::copy(block.indices2.begin(), block.indices2.end(), iter_next);
+
+        std::size_t pos = 0;
+        for (std::size_t index : block.indices1) {
+            dim_positions[index] = pos;
+            ++pos;
+        }
+        for (std::size_t index : block.indices2) {
+            dim_positions[index] = pos;
+            ++pos;
+        }
     };
     if (inverse) {
         std::for_each(_coupling_blocks.rbegin(), _coupling_blocks.rend(), loop_body);

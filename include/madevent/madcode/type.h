@@ -155,7 +155,6 @@ struct Value {
                         flat_values.push_back(values.at(i).at(j));
                     }
                 }
-                std::println("perm: {}", flat_values);
                 return flat_values;
             }(),
             {static_cast<int>(values.size()), static_cast<int>(values.at(0).size())}

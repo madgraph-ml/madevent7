@@ -203,13 +203,19 @@ void madevent::save_tensor(const std::string& file, Tensor tensor) {
     );
 }
 
-EventFile::EventFile(const std::string& file_name, std::size_t particle_count, EventFile::Mode mode) :
+EventFile::EventFile(
+    const std::string& file_name,
+    std::size_t particle_count,
+    EventFile::Mode mode,
+    bool delete_on_close
+) :
     _file_name(file_name),
     _event_count(0),
     _current_event(0),
     _capacity(0),
     _particle_count(particle_count),
-    _mode(mode)
+    _mode(mode),
+    _delete_on_close(delete_on_close)
 {
     auto file_mode = std::ios::binary | std::ios::in;
     if (mode == EventFile::create) {
@@ -299,6 +305,12 @@ void EventFile::clear() {
 
 EventFile::~EventFile() {
     if (!_file_stream.is_open() || _mode == EventFile::load) return;
+    if (_delete_on_close) {
+        _file_stream.close();
+        std::filesystem::remove(_file_name);
+        return;
+    }
+
     _file_stream.seekp(_shape_pos);
     _file_stream << _event_count << ",)}";
     if (_event_count < _capacity) {
