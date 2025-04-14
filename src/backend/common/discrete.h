@@ -3,9 +3,11 @@ template<typename T>
 KERNELSPEC void kernel_sample_discrete(
     FIn<T,0> r, IIn<T,0> option_count, IOut<T,0> output, FOut<T,0> det
 ) {
-    IVal<T> option(r * option_count);
+    IVal<T> opt_count_i(option_count);
+    FVal<T> opt_count_f(opt_count_i);
+    IVal<T> option(r * opt_count_f);
     output = option;
-    det = option_count;
+    det = opt_count_f;
 }
 
 template<typename T>
@@ -16,7 +18,7 @@ KERNELSPEC void kernel_sample_discrete_probs(
     IVal<T> option(0);
     for (std::size_t i = 0; i < probs.size(); ++i) {
         cum_prob = cum_prob + probs[i];
-        option = where(r < cum_prob, i, option);
+        option = where(r < cum_prob, IVal<T>(i), option);
     }
     output = option;
     det = 1. / probs.gather(option);

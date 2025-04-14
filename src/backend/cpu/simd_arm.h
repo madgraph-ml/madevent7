@@ -60,6 +60,9 @@ void vstore(bool* ptr, BVec values) {
 FVec where(BVec arg1, FVec arg2, FVec arg3) {
     return vbslq_f64(arg1, arg2, arg3);
 }
+IVec where(BVec arg1, IVec arg2, IVec arg3) {
+    return vbslq_s64(arg1, arg2, arg3);
+}
 std::size_t single_index(IVec arg) {
     return vgetq_lane_s64(arg, 0);
 }
@@ -69,6 +72,14 @@ BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }
 BVec operator<(FVec arg1, FVec arg2) { return vcltq_f64(arg1, arg2); }
 BVec operator>=(FVec arg1, FVec arg2) { return vcgeq_f64(arg1, arg2); }
 BVec operator<=(FVec arg1, FVec arg2) { return vcleq_f64(arg1, arg2); }
+
+BVec operator==(IVec arg1, IVec arg2) { return vceqq_s64(arg1, arg2); }
+BVec operator!=(IVec arg1, IVec arg2) { return vceqzq_u64(vceqq_s64(arg1, arg2)); }
+BVec operator>(IVec arg1, IVec arg2) { return vcgtq_s64(arg1, arg2); }
+BVec operator<(IVec arg1, IVec arg2) { return vcltq_s64(arg1, arg2); }
+BVec operator>=(IVec arg1, IVec arg2) { return vcgeq_s64(arg1, arg2); }
+BVec operator<=(IVec arg1, IVec arg2) { return vcleq_s64(arg1, arg2); }
+
 BVec operator&(BVec arg1, BVec arg2) { return vandq_u64(arg1, arg2); }
 BVec operator|(BVec arg1, BVec arg2) { return vorrq_u64(arg1, arg2); }
 BVec operator!(BVec arg1) { return vceqzq_u64(arg1); }

@@ -130,7 +130,7 @@ KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_scattering(
     auto phi = PI * (2. * r_phi - 1.);
     p1_com[1] = pt * cos(phi);
     p1_com[2] = pt * sin(phi);
-    if (p1_com[3] > pp) std::println("FALSCH!!!");
+    //if (p1_com[3] > pp) std::println("FALSCH!!!");
 
     auto det = PI / (2. * sqrt(kaellen<T>(s_tot, ma_2, mb_2)));
     return {p1_com, det};
