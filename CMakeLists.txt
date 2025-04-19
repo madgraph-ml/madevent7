@@ -112,6 +112,8 @@ add_library(
     src/phasespace/vegas.cpp
     src/phasespace/mlp.cpp
     src/phasespace/flow.cpp
+    src/phasespace/discrete_flow.cpp
+    src/phasespace/discrete_sampler.cpp
     include/madevent/util.h
     include/madevent/backend/tensor.h
     include/madevent/backend/context.h
@@ -145,6 +147,8 @@ add_library(
     include/madevent/phasespace/vegas.h
     include/madevent/phasespace/mlp.h
     include/madevent/phasespace/flow.h
+    include/madevent/phasespace/discrete_flow.h
+    include/madevent/phasespace/discrete_sampler.h
 
     #src/backend/cuda/runtime.cu
     #src/backend/cuda/device.cu

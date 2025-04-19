@@ -8,21 +8,21 @@ namespace madevent {
 
 class DifferentialCrossSection : public FunctionGenerator {
 public:
-    using PidOptions = std::tuple<std::vector<int>, std::size_t>;
-
     DifferentialCrossSection(
-        const std::vector<PidOptions>& pid_options,
+        const std::vector<std::vector<int64_t>>& pid_options,
+        std::size_t matrix_element_index,
         double e_cm2,
         double q2,
         std::size_t channel_count = 1,
         const std::vector<int64_t>& amp2_remap = {}
     );
-    const std::vector<PidOptions>& pid_options() const { return _pid_options; }
+    const std::vector<std::vector<int64_t>>& pid_options() const { return _pid_options; }
     std::size_t channel_count() const { return _channel_count; }
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
-    std::vector<PidOptions> _pid_options;
+    std::vector<std::vector<int64_t>> _pid_options;
+    int64_t _matrix_element_index;
     double _e_cm2;
     double _q2;
     int64_t _channel_count;

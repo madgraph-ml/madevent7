@@ -13,12 +13,12 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology, double _s_lab, /*double s_hat_min,*/ bool _leptonic,
     double s_min_epsilon, double nu, TChannelMode t_channel_mode,
     const std::optional<Cuts>& cuts,
-    const std::vector<Topology>& symmetric_topologies
+    const std::vector<std::vector<std::size_t>>& permutations
 ) :
     Mapping(
         {batch_float_array(3 * topology.outgoing_masses.size() - (_leptonic ? 4 : 2))},
         {batch_four_vec_array(topology.outgoing_masses.size() + 2), batch_float, batch_float},
-        symmetric_topologies.size() == 0 ? TypeVec{} : TypeVec{batch_int}
+        permutations.size() == 0 ? TypeVec{} : TypeVec{batch_int}
     ),
     _pi_factors(std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses.size()))),
     _s_lab(_s_lab),
@@ -31,9 +31,17 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 {
     _permutations.push_back(topology.permutation);
     _inverse_permutations.push_back(topology.inverse_permutation);
-    for (auto& topo : symmetric_topologies) {
-        _permutations.push_back(topo.permutation);
-        _inverse_permutations.push_back(topo.inverse_permutation);
+    for (auto& perm : permutations) {
+        std::vector<std::size_t> final_perm(perm.size()), final_inv_perm(perm.size());
+        std::size_t from_index = 0;
+        for (auto index : perm) {
+            std::size_t to_index = topology.permutation.at(index);
+            final_perm.at(from_index) = to_index;
+            final_inv_perm.at(to_index) = from_index;
+            ++from_index;
+        }
+        _permutations.push_back(final_perm);
+        _inverse_permutations.push_back(final_inv_perm);
     }
 
     // Initialize s invariants and decay mappings

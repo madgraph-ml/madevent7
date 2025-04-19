@@ -5,23 +5,31 @@
 using namespace madevent;
 
 DifferentialCrossSection::DifferentialCrossSection(
-    const std::vector<PidOptions>& pid_options,
+    const std::vector<std::vector<int64_t>>& pid_options,
+    std::size_t matrix_element_index,
     double e_cm2,
     double q2,
     std::size_t channel_count,
     const std::vector<int64_t>& amp2_remap
 ) :
     FunctionGenerator(
-        {
-            batch_four_vec_array(std::get<0>(pid_options.at(0)).size()),
-            batch_float,
-            batch_float
-        },
+        [&] {
+            TypeVec arg_types {
+                batch_four_vec_array(pid_options.at(0).size()),
+                batch_float,
+                batch_float
+            };
+            if (pid_options.size() > 1) {
+                arg_types.push_back(batch_int);
+            }
+            return arg_types;
+        }(),
         channel_count == 1 ?
             TypeVec{batch_float} :
             TypeVec{batch_float, batch_float_array(channel_count)}
     ),
     _pid_options(pid_options),
+    _matrix_element_index(matrix_element_index),
     _e_cm2(e_cm2),
     _q2(q2),
     _channel_count(channel_count),
@@ -35,18 +43,31 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto x1 = args.at(1);
     auto x2 = args.at(2);
 
-    auto& [pids, me_index] = _pid_options.at(0);
-    int64_t pid1 = pids.at(0);
-    int64_t pid2 = pids.at(1);
+    auto& pids = _pid_options.at(0);
+    Value pid1, pid2;
+    if (_pid_options.size() > 1) {
+        std::vector<int64_t> pid1_options;
+        std::vector<int64_t> pid2_options;
+        for (auto& option : _pid_options) {
+            pid1_options.push_back(option.at(0));
+            pid2_options.push_back(option.at(1));
+        }
+        auto flavor_id = args.at(3);
+        pid1 = fb.batch_gather(flavor_id, pid1_options);
+        pid2 = fb.batch_gather(flavor_id, pid2_options);
+    } else {
+        pid1 = pids.at(0);
+        pid2 = pids.at(1);
+    }
     auto pdf1 = fb.pdf(x1, _q2, pid1);
     auto pdf2 = fb.pdf(x2, _q2, pid2);
     if (_channel_count == 1) {
-        auto me2 = fb.matrix_element(momenta, static_cast<int64_t>(me_index));
+        auto me2 = fb.matrix_element(momenta, _matrix_element_index);
         auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
         return {xs};
     } else {
         auto [me2, chan_weights] = fb.matrix_element_multichannel(
-            momenta, _amp2_remap, static_cast<int64_t>(me_index), _channel_count
+            momenta, _amp2_remap, _matrix_element_index, _channel_count
         );
         auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
         return {xs, chan_weights};

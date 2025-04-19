@@ -28,7 +28,7 @@ public:
         double nu = 0.8,
         TChannelMode t_channel_mode = propagator,
         const std::optional<Cuts>& cuts = std::nullopt,
-        const std::vector<Topology>& symmetric_topologies = {}
+        const std::vector<std::vector<std::size_t>>& permutations = {}
     );
 
     PhaseSpaceMapping(

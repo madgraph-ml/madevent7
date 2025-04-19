@@ -15,7 +15,7 @@ public:
         std::size_t subnet_hidden_dim = 32,
         std::size_t subnet_layers = 3,
         MLP::Activation subnet_activation = MLP::leaky_relu,
-        bool _invert_spline = true
+        bool invert_spline = true
     );
     std::size_t input_dim() const { return _input_dim; }
     std::size_t condition_dim() const { return _condition_dim; }
@@ -29,7 +29,10 @@ private:
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_transform(
-        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
+        FunctionBuilder& fb,
+        const ValueVec& inputs,
+        const ValueVec& conditions,
+        bool inverse
     ) const;
 
     struct CouplingBlock {

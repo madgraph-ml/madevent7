@@ -322,12 +322,12 @@ PYBIND11_MODULE(_madevent_py, m) {
     psmap
         .def(py::init<const Topology&, double, bool, double, double,
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
-                      const std::vector<Topology>&>(),
+                      const std::vector<std::vector<std::size_t>>&>(),
              py::arg("topology"), py::arg("s_lab"),
              py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.8,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
              py::arg("cuts")=std::nullopt,
-             py::arg("symmetric_topologies")=std::vector<Topology>{})
+             py::arg("permutations")=std::vector<Topology>{})
         .def(py::init<const std::vector<double>&, double, bool, double, double,
                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
              py::arg("masses"), py::arg("s_lab"),
@@ -353,9 +353,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("build_function", &FunctionGenerator::build_function,
              py::arg("builder"), py::arg("args"));
     py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<DifferentialCrossSection::PidOptions>&,
+        .def(py::init<const std::vector<std::vector<int64_t>>&, int64_t,
                       double, double, std::size_t, std::vector<int64_t>>(),
-             py::arg("pid_options"), py::arg("e_cm2"), py::arg("q2"),
+             py::arg("pid_options"), py::arg("matrix_element_index"),
+             py::arg("e_cm2"), py::arg("q2"),
              py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{})
         .def("pid_options", &DifferentialCrossSection::pid_options);
     py::class_<Unweighter, FunctionGenerator>(m, "Unweighter")
@@ -405,7 +406,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("subnet_hidden_dim") = 32,
              py::arg("subnet_layers") = 3,
              py::arg("subnet_activation") = MLP::leaky_relu,
-             py::arg("_invert_spline") = true)
+             py::arg("invert_spline") = true)
         .def("input_dim", &Flow::input_dim)
         .def("output_dim", &Flow::condition_dim)
         .def("initialize_globals", &Flow::initialize_globals, py::arg("context"));

@@ -1,0 +1,37 @@
+#pragma once
+
+#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/mlp.h"
+
+namespace madevent {
+
+class DiscreteFlow : public Mapping {
+public:
+    DiscreteFlow(
+        std::vector<std::size_t> option_counts,
+        const std::string& prefix = "",
+        const std::vector<std::size_t>& dims_with_prior = {},
+        std::size_t condition_dim = 0,
+        std::size_t subnet_hidden_dim = 32,
+        std::size_t subnet_layers = 3,
+        MLP::Activation subnet_activation = MLP::leaky_relu
+    );
+    const std::vector<std::size_t>& option_counts() const { return _option_counts; }
+    std::size_t condition_dim() const { return _condition_dim; }
+    void initialize_globals(ContextPtr context) const;
+
+private:
+    Result build_forward_impl(
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
+    ) const override;
+    Result build_inverse_impl(
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
+    ) const override;
+    std::vector<std::size_t> _option_counts;
+    std::size_t _condition_dim;
+    std::optional<std::string> _first_prob_name;
+    std::vector<MLP> _subnets;
+    std::vector<std::size_t> _dims_with_prior;
+};
+
+}

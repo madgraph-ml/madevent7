@@ -122,7 +122,6 @@ Mapping::Result Flow::build_transform(
     std::iota(dim_positions.begin(), dim_positions.end(), 0);
 
     auto loop_body = [&](const CouplingBlock& block) {
-        std::println("{}", dim_positions);
         auto half1 = fb.select(
             x,
             block.indices1

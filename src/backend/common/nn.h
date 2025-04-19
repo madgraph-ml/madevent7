@@ -255,7 +255,7 @@ KERNELSPEC void backward_kernel_rqs_find_bin(
         auto w = MIN_BIN_SIZE + bin_factor * in_sizes[bin];
         selected_bin = where(mask, selected_bin, bin);
         loop_cumwidth = loop_cumwidth + w;
-        mask = input01 < loop_cumwidth; // false ---> true
+        mask = input01 < loop_cumwidth;
         in_sizes_grad[bin] += where(mask, 0., bin_factor * cumwidth_grad);
         out_sizes_grad[bin] += where(mask, 0., bin_factor * cumheight_grad);
     }
