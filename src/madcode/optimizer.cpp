@@ -3,10 +3,11 @@
 #include <algorithm>
 #include <numeric>
 #include <ranges>
+#include <unordered_map>
 
 using namespace madevent;
 
-namespace {
+/*namespace {
 
 std::vector<int> find_permutation(const std::vector<int>& from, const std::vector<int>& to) {
     auto indices = std::views::iota(from.size());
@@ -17,7 +18,7 @@ std::vector<int> find_permutation(const std::vector<int>& from, const std::vecto
                    | std::ranges::to<std::vector<int>>();
 }
 
-}
+}*/
 
 Function madevent::optimize_constants(const Function& function) {
     // add, sub, mul, clip_min, sqrt, square

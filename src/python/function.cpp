@@ -148,7 +148,7 @@ torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
             {static_cast<int64_t>(batch_sizes.size())},
             torch::TensorOptions().dtype(torch::kInt64)
         );
-        auto accessor = tensor.accessor<long long, 1>();
+        auto accessor = tensor.accessor<int64_t, 1>();
         std::size_t i = 0;
         for (auto size : batch_sizes) {
             accessor[i] = size;
@@ -243,7 +243,7 @@ Tensor madevent_py::torch_to_tensor(
             ));
         }
         std::vector<std::size_t> batch_sizes(
-            tensor.data_ptr<long long>(), tensor.data_ptr<long long>() + tensor.numel()
+            tensor.data_ptr<int64_t>(), tensor.data_ptr<int64_t>() + tensor.numel()
         );
         return {batch_sizes};
     } else if (expected_type.batch_size == BatchSize::one && expected_type.shape.size() == 0) {
@@ -251,7 +251,7 @@ Tensor madevent_py::torch_to_tensor(
         case DataType::dt_float:
             return {tensor.item<double>(), device};
         case DataType::dt_int:
-            return {tensor.item<long long>(), device};
+            return {tensor.item<int64_t>(), device};
         case DataType::dt_bool:
             return {tensor.item<bool>(), device};
         default:

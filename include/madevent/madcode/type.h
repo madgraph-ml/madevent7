@@ -61,6 +61,10 @@ private:
     std::variant<Named, Unnamed, One, Compound> value;
 };
 
+void to_json(nlohmann::json& j, const BatchSize& batch_size);
+void to_json(nlohmann::json& j, const BatchSize& batch_size);
+void from_json(const nlohmann::json& j, BatchSize& batch_size);
+
 struct Type {
     DataType dtype;
     BatchSize batch_size;

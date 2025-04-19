@@ -308,6 +308,7 @@ public:
             case DataType::dt_int: return sizeof(int64_t);
             case DataType::dt_float: return sizeof(double);
             case DataType::batch_sizes: return 0;
+            default: std::unreachable();
         }
     }
 
