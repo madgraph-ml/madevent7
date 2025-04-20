@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
+
 template<typename T>
 KERNELSPEC void kernel_copy(FIn<T,0> in, FOut<T,0> out) {
     out = in;
@@ -92,4 +98,6 @@ KERNELSPEC void kernel_uniform_costheta(FIn<T,0> in, FOut<T,0> out) {
 template<typename T>
 KERNELSPEC void kernel_uniform_costheta_inverse(FIn<T,0> in, FOut<T,0> out) {
     out = in / 2 + 0.5;
+}
+
 }

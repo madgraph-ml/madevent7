@@ -1,3 +1,8 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
 
 constexpr std::size_t max_instr = 150;
 
@@ -642,3 +647,5 @@ struct AutogradTypes {
     //using IVal = AutogradValue<int64_t>;
     using BVal = AutogradValue<bool>;
 };
+
+}

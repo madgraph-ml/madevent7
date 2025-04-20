@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
+
 // constants and helper functions
 
 constexpr double a_fit_vals[] {
@@ -127,4 +133,6 @@ KERNELSPEC void kernel_rambo_four_vectors_massive(
         cum_m_prev = cum_m;
     }
     det = cum_det;
+}
+
 }

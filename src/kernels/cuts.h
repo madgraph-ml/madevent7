@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
+
 // Helper functions
 
 template<typename T>
@@ -107,4 +113,6 @@ KERNELSPEC void kernel_cut_sqrt_s(
     FIn<T,0> sqrt_s, FIn<T,1> min_max, FOut<T,0> w
 ) {
     w = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), FVal<T>(0.), 1.);
+}
+
 }

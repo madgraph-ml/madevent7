@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+#include "autograd.h"
+
+namespace madevent_kernels {
 
 inline constexpr double MIN_BIN_SIZE = 1e-3;
 inline constexpr double MIN_DERIVATIVE = 1e-3;
@@ -432,4 +438,6 @@ KERNELSPEC void backward_kernel_select(
     for (std::size_t i = 0; i < indices.size(); ++i) {
         input_grad[single_index(indices[i])] = output_grad[i];
     }
+}
+
 }

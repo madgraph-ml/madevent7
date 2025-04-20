@@ -1,3 +1,8 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
 
 template<typename T>
 KERNELSPEC void kernel_chili_forward(
@@ -99,4 +104,6 @@ KERNELSPEC void kernel_chili_forward(
 
     // keep invalid point but set det/weight to zero (important to obtain correct integral)
     det = where((x1 < 1.) & (x2 < 1.), det_tmp, 0.);
+}
+
 }

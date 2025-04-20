@@ -1,7 +1,8 @@
 #include "madevent/cpu/runtime.h"
 #include "madevent/madcode/optimizer.h"
 #include "madevent/util.h"
-#include "kernels.h"
+
+#include "../kernels/kernels.h"
 
 #include <tuple>
 #include <array>
@@ -30,6 +31,7 @@ extern "C" void dgemv_(
 
 using namespace madevent;
 using namespace madevent_cpu;
+using namespace madevent_kernels;
 
 namespace {
 

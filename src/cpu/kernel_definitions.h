@@ -7,7 +7,7 @@
 
 #define KERNELSPEC constexpr
 
-namespace {
+namespace madevent_kernels {
 
 struct CpuTypes {
     template<int dim> using FIn = const madevent::TensorView<double, dim>;
@@ -62,7 +62,5 @@ struct SimdTypes {
 #else // USE_SIMD
 using SimdTypes = CpuTypes;
 #endif // USE_SIMD
-
-#include "../kernels/kernels.h"
 
 }

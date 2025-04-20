@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
+
 constexpr double INV_GEV2_TO_PB = 0.38937937217186e9;
 
 // Helper functions
@@ -329,4 +335,6 @@ KERNELSPEC void kernel_t_inv_min_max(
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
     //std::println("args {} {} {} {} {}", s, ma_2, mb_2, static_cast<double>(m1), static_cast<double>(m2));
     //std::println("LIMIT {} {} {} {}", y1, y2, static_cast<double>(t_min), static_cast<double>(t_max));
+}
+
 }

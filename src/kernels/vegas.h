@@ -1,3 +1,8 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
 
 template<typename T>
 KERNELSPEC void kernel_vegas_forward(
@@ -28,4 +33,6 @@ KERNELSPEC void kernel_vegas_inverse(
     auto bin_size = right_edge - left_edge;
     output = (FVal<T>(bin_index) + (input - left_edge) / bin_size) / bin_count_f;
     det = 1 / (bin_count_f * bin_size);
+}
+
 }

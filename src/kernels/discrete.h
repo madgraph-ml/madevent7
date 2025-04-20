@@ -1,3 +1,8 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
 
 template<typename T>
 KERNELSPEC void kernel_sample_discrete(
@@ -56,5 +61,7 @@ template<typename T>
 KERNELSPEC void kernel_one_hot(
     IIn<T,0> index, IIn<T,0> option_count, FOut<T,1> output
 ) {
+
+}
 
 }

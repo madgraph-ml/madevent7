@@ -1,3 +1,9 @@
+#pragma once
+
+#include "definitions.h"
+
+namespace madevent_kernels {
+
 template<typename T>
 KERNELSPEC void kernel_uniform_invariant(
     FIn<T,0> r, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
@@ -104,4 +110,6 @@ KERNELSPEC void kernel_stable_invariant_nu_inverse(
 
     r = (qpow - qminpow) / dqpow;
     gs = power / (dqpow * pow(q, nu));
+}
+
 }

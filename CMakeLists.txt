@@ -85,6 +85,7 @@ set(
     src/kernels/nn.h
     src/kernels/discrete.h
     src/kernels/vegas.h
+    src/kernels/definitions.h
 )
 
 
@@ -106,7 +107,7 @@ add_library(
     madevent_cpu
     STATIC
     src/cpu/runtime.cpp
-    src/cpu/kernels.h
+    src/cpu/kernel_definitions.h
     src/cpu/runtime_mixin.h
     src/cpu/tensor.h
     src/cpu/simd.h
