@@ -80,6 +80,7 @@ struct Type {
     {}
 };
 
+std::ostream& operator<<(std::ostream& out, const BatchSize& batch_size);
 std::ostream& operator<<(std::ostream& out, const DataType& dtype);
 std::ostream& operator<<(std::ostream& out, const Type& type);
 

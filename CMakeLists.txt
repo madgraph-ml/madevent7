@@ -2,8 +2,15 @@ cmake_minimum_required (VERSION 3.15...3.27)
 project (
     madevent
     VERSION 0.1
-    LANGUAGES CXX #CUDA
+    LANGUAGES CXX
 )
+
+include(CheckLanguage)
+check_language(CUDA)
+if(CMAKE_CUDA_COMPILER)
+    enable_language(CUDA)
+    set(COMPILE_CUDA 1)
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
@@ -65,33 +72,70 @@ find_library(
     NAMES "libLHAPDF.a"
 )
 
+set(
+    KERNEL_SRC
+    src/kernels/autograd.h
+    src/kernels/invariants.h
+    src/kernels/kernels.h
+    src/kernels/kinematics.h
+    src/kernels/math.h
+    src/kernels/rambo.h
+    src/kernels/cuts.h
+    src/kernels/chili.h
+    src/kernels/nn.h
+    src/kernels/discrete.h
+    src/kernels/vegas.h
+)
+
+
+if(COMPILE_CUDA)
+    add_library(
+        madevent_cuda
+        SHARED
+        src/cuda/runtime.cu
+        src/cuda/device.cu
+        src/cuda/kernels.h
+        include/madevent/cuda/runtime.h
+        include/madevent/cuda/tensor.h
+        include/madevent/cuda/device.h
+        ${KERNEL_SRC}
+    )
+endif()
+
+add_library(
+    madevent_cpu
+    STATIC
+    src/cpu/runtime.cpp
+    src/cpu/kernels.h
+    src/cpu/runtime_mixin.h
+    src/cpu/tensor.h
+    src/cpu/simd.h
+    src/cpu/simd_arm.h
+    ${KERNEL_SRC}
+    include/madevent/cpu/runtime.h
+)
+target_include_directories(madevent_cpu PUBLIC include)
+target_compile_features(madevent_cpu PUBLIC cxx_std_23)
+target_link_libraries(madevent_cpu PRIVATE BLAS::BLAS)
+target_link_libraries(madevent_cpu PRIVATE nlohmann_json::nlohmann_json)
+target_include_directories(madevent_cpu PUBLIC ${LHAPDF_INCLUDE_DIRS})
+target_link_libraries(madevent_cpu PRIVATE ${LHAPDF_LIBRARIES})
+#target_compile_options(madevent_cpu PRIVATE -ffast-math)
+if(USE_SIMD)
+    target_link_libraries(madevent_cpu PRIVATE sleef::sleef)
+    target_compile_definitions(madevent_cpu PRIVATE USE_SIMD=1)
+endif()
+
 add_library(
     madevent
     SHARED
     src/util.cpp
-    src/backend/common/invariants.h
-    src/backend/common/kernels.h
-    src/backend/common/kinematics.h
-    src/backend/common/math.h
-    src/backend/common/rambo.h
-    src/backend/common/cuts.h
-    src/backend/common/chili.h
-    src/backend/common/nn.h
-    src/backend/common/discrete.h
-    src/backend/common/vegas.h
-    src/backend/tensor.cpp
-    src/backend/context.cpp
-    src/backend/cpu/runtime.cpp
-    src/backend/cpu/thread_pool.cpp
-    src/backend/cpu/kernels.h
-    src/backend/cpu/runtime_mixin.h
-    src/backend/cpu/tensor.h
-    src/backend/cpu/simd.h
-    src/backend/cpu/simd_arm.h
-    src/driver/combine.cpp
-    src/driver/generate.cpp
-    src/driver/io.cpp
-    src/driver/vegas.cpp
+    src/runtime/tensor.cpp
+    src/runtime/context.cpp
+    src/runtime/generate.cpp
+    src/runtime/thread_pool.cpp
+    src/runtime/io.cpp
+    src/runtime/vegas.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
@@ -115,15 +159,13 @@ add_library(
     src/phasespace/discrete_flow.cpp
     src/phasespace/discrete_sampler.cpp
     include/madevent/util.h
-    include/madevent/backend/tensor.h
-    include/madevent/backend/context.h
-    include/madevent/backend/cpu/runtime.h
-    include/madevent/backend/cpu/thread_pool.h
-    include/madevent/driver.h
-    include/madevent/driver/combine.h
-    include/madevent/driver/generate.h
-    include/madevent/driver/io.h
-    include/madevent/driver/vegas.h
+    include/madevent/runtime.h
+    include/madevent/runtime/tensor.h
+    include/madevent/runtime/context.h
+    include/madevent/runtime/thread_pool.h
+    include/madevent/runtime/generate.h
+    include/madevent/runtime/io.h
+    include/madevent/runtime/vegas.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h
@@ -149,27 +191,15 @@ add_library(
     include/madevent/phasespace/flow.h
     include/madevent/phasespace/discrete_flow.h
     include/madevent/phasespace/discrete_sampler.h
-
-    #src/backend/cuda/runtime.cu
-    #src/backend/cuda/device.cu
-    #src/backend/cuda/kernels.h
-    #include/madevent/backend/cuda/runtime.h
-    #include/madevent/backend/cuda/tensor.h
-    #include/madevent/backend/cuda/device.h
 )
 
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
-#target_compile_options(madevent PRIVATE -ffast-math)
-if(USE_SIMD)
-    target_link_libraries(madevent PRIVATE sleef::sleef)
-    target_compile_definitions(madevent PRIVATE USE_SIMD=1)
-endif()
 target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
 target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
 #target_link_libraries(madevent PRIVATE ${OpenBLAS_LIBRARIES})
-target_link_libraries(madevent PRIVATE BLAS::BLAS)
 target_link_libraries(madevent PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(madevent PRIVATE madevent_cpu)
 #target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
 #target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 #target_link_libraries(madevent PRIVATE -static-libstdc++)
@@ -194,7 +224,10 @@ target_link_libraries(_madevent_py PRIVATE pybind11::headers)
 target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
 #target_link_libraries(_madevent_py PRIVATE -static-libstdc++)
 
-#target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
+if(COMPILE_CUDA)
+    target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
+endif()
+
 if(TORCH_FOUND)
     target_compile_definitions(_madevent_py PRIVATE TORCH_FOUND=1)
     target_link_libraries(_madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
@@ -204,7 +237,7 @@ target_link_libraries(_madevent_py PUBLIC madevent)
 set_target_properties(_madevent_py PROPERTIES INSTALL_RPATH "$ORIGIN")
 
 install(
-    TARGETS madevent
+    TARGETS madevent madevent_cpu
     DESTINATION madevent7/lib
 )
 install(

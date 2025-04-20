@@ -5,8 +5,7 @@
 #include "madevent/util.h"
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
-#include "madevent/backend/cpu/thread_pool.h"
-#include "madevent/driver.h"
+#include "madevent/runtime.h"
 #include "instruction_set.h"
 #include "function.h"
 
@@ -466,7 +465,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 
     m.def("optimize_constants", &optimize_constants, py::arg("function"));
-    m.def("set_thread_count", &cpu::ThreadPool::set_thread_count, py::arg("new_count"));
+    m.def("set_thread_count", &ThreadPool::set_thread_count, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));

@@ -7,11 +7,11 @@
 #include <torch/extension.h>
 #endif
 
-#include "madevent/backend/cpu/runtime.h"
+#include "madevent/cpu/runtime.h"
 #include "madevent/madcode.h"
 #ifdef CUDA_FOUND
-#include "madevent/backend/cuda/runtime.h"
-#include "madevent/backend/cuda/device.h"
+#include "madevent/cuda/runtime.h"
+#include "madevent/cuda/device.h"
 #endif
 
 
@@ -62,7 +62,7 @@ public:
 private:
     Function function;
     ContextPtr context;
-    std::optional<cpu::Runtime> cpu_runtime;
+    std::optional<madevent_cpu::Runtime> cpu_runtime;
 #ifdef CUDA_FOUND
     std::optional<cuda::Runtime> cuda_runtime;
 #endif

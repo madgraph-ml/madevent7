@@ -18,7 +18,7 @@ std::vector<torch::Tensor> call_torch_impl(
     const std::vector<torch::Tensor>& args,
     const Function& function,
     ContextPtr context,
-    std::optional<cpu::Runtime>& cpu_runtime,
+    std::optional<madevent_cpu::Runtime>& cpu_runtime,
     CpuFunc cpu_func
 #ifdef CUDA_FOUND
     , std::optional<cuda::Runtime>& cuda_runtime

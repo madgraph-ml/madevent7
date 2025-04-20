@@ -153,7 +153,7 @@ def instruction_set_mixin(commands):
 
 
 def cpu_runtime_mixin(commands):
-    with open("src/backend/cpu/runtime_mixin.h", "w") as f:
+    with open("src/cpu/runtime_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
@@ -181,7 +181,7 @@ def cpu_runtime_mixin(commands):
 
 
 def cpu_runtime_backward_mixin(commands):
-    with open("src/backend/cpu/runtime_backward_mixin.h", "w") as f:
+    with open("src/cpu/runtime_backward_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
