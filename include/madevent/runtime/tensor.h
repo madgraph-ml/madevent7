@@ -65,59 +65,56 @@ public:
     static const int dim = _dim;
     static const bool is_single = false;
 
-    TensorView(uint8_t* data, std::size_t* stride, std::size_t* shape) :
+    TensorView(T* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
 
-    TensorView(T& value) :
-        _data(reinterpret_cast<uint8_t*>(&value)),
-        _stride(nullptr),
-        _shape(nullptr) {}
+    TensorView(T& value) : _data(&value), _stride(nullptr), _shape(nullptr) {}
 
     const TensorView<T, _dim-1> operator[](std::size_t index) const requires (_dim != 0) {
-        return {_data + index * _stride[0], _stride + 1, _shape + 1};
+        return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
     TensorView<T, _dim-1> operator[](std::size_t index) requires (_dim != 0) {
-        return {_data + index * _stride[0], _stride + 1, _shape + 1};
+        return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
     template<typename... I>
     const TensorView<T, _dim - sizeof...(I)> get(I... index) const
     requires (_dim >= sizeof...(I))
     {
-        uint8_t* ptr = _data;
+        T* ptr = _data;
         int i = 0;
-        ((ptr += index * _stride[i++]), ...);
-        return {ptr, _stride + sizeof...(I), _shape + sizeof...(I)};
+        ((ptr = &ptr[index * _stride[i++]]), ...);
+        return {ptr, &_stride[sizeof...(I)], &_shape[sizeof...(I)]};
     }
 
     template<typename... I>
     TensorView<T, _dim - sizeof...(I)> get(I... index)
     requires (_dim >= sizeof...(I))
     {
-        uint8_t* ptr = _data;
+        T* ptr = _data;
         int i = 0;
-        ((ptr += index * _stride[i++]), ...);
-        return {ptr, _stride + sizeof...(I), _shape + sizeof...(I)};
+        ((ptr = &ptr[index * _stride[i++]]), ...);
+        return {ptr, &_stride[sizeof...(I)], &_shape[sizeof...(I)]};
     }
 
     operator T() const requires (_dim == 0) {
-        return *reinterpret_cast<T*>(_data);
+        return *_data;
     }
 
     T operator=(T value) requires (_dim == 0) {
-        *reinterpret_cast<T*>(_data) = value;
+        *_data = value;
         return value;
     }
 
     T operator+=(T value) requires (_dim == 0) {
-        *reinterpret_cast<T*>(_data) += value;
+        *_data += value;
         return value;
     }
 
     TensorView<T, _dim>& operator=(TensorView<T, _dim>& value) = delete;
     std::size_t size(std::size_t index = 0) const { return _shape[index]; }
-    uint8_t* data() const { return _data; }
+    T* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
     T gather(int64_t index) const requires (_dim == 1) { return (*this)[index]; }
@@ -126,7 +123,7 @@ public:
     }
 
 private:
-    uint8_t* _data;
+    T* _data;
     std::size_t* _stride;
     std::size_t* _shape;
 };
@@ -149,16 +146,16 @@ using DevicePtr = std::shared_ptr<Device>;
 class CpuDevice : public Device {
 public:
     void* allocate(std::size_t size) const override {
-        return new uint8_t[size];
+        return new std::byte[size];
     }
 
     void free(void* ptr) const override {
-        delete[] static_cast<uint8_t*>(ptr);
+        delete[] static_cast<std::byte*>(ptr);
     }
 
     void memcpy(void* to, void* from, std::size_t size) const override {
-        auto to_u8 = static_cast<uint8_t*>(to);
-        auto from_u8 = static_cast<uint8_t*>(from);
+        auto to_u8 = static_cast<std::byte*>(to);
+        auto from_u8 = static_cast<std::byte*>(from);
         std::copy(from_u8, from_u8 + size, to_u8);
     }
 
@@ -275,25 +272,31 @@ public:
     template<class T, int dim>
     TensorView<T, dim> view() {
         check_impl();
-        return TensorView<T, dim>(bytes(), impl->stride.data(), impl->shape.data());
+        T* data = static_cast<T*>(impl->data);
+        return TensorView<T, dim>(
+            &data[impl->offset], impl->stride.data(), impl->shape.data()
+        );
     }
 
     template<class T, int dim>
     const TensorView<T, dim> view() const {
         check_impl();
-        return TensorView<T, dim>(bytes(), impl->stride.data(), impl->shape.data());
+        T* data = static_cast<T*>(impl->data);
+        return TensorView<T, dim>(
+            &data[impl->offset], impl->stride.data(), impl->shape.data()
+        );
     }
 
     void* data() { check_impl(); return impl->data; }
     void* data() const { check_impl(); return impl->data; }
-    uint8_t* bytes() {
+    /*std::byte* bytes() {
         check_impl();
-        return static_cast<uint8_t*>(impl->data) + impl->offset;
+        return static_cast<std::byte*>(impl->data) + impl->offset;
     }
-    uint8_t* bytes() const {
+    std::byte* bytes() const {
         check_impl();
-        return static_cast<uint8_t*>(impl->data) + impl->offset;
-    }
+        return static_cast<std::byte*>(impl->data) + impl->offset;
+    }*/
     const Sizes& shape() const { check_impl(); return impl->shape; }
     const Sizes& stride() const { check_impl(); return impl->stride; }
     std::size_t size(std::size_t i) const { check_impl(); return impl->shape[i]; }
@@ -319,11 +322,6 @@ public:
             size *= dim_size;
         }
         return size;
-    }
-
-    void copy_from(void* source) {
-        check_impl();
-        impl->device->memcpy(impl->data, source, impl->stride.back() * impl->shape.back());
     }
 
     void reset() {

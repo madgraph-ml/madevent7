@@ -18,11 +18,11 @@ public:
         _batch_stride(view.stride()[0]) {}
 
     VectorizedTensorView(
-        uint8_t* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride
+        T* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride
     ) : _data(data), _stride(stride), _shape(shape), _batch_stride(batch_stride) {}
 
     VectorizedTensorView(V& value) :
-        _data(reinterpret_cast<uint8_t*>(&value)),
+        _data(reinterpret_cast<T*>(&value)),
         _stride(nullptr),
         _shape(nullptr),
         _batch_stride(0) {}
@@ -31,13 +31,13 @@ public:
     const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
         if constexpr (is_batch) {
             return {
-                _data + index * _stride[0] * simd_vec_size,
-                _stride + 1,
-                _shape + 1,
+                &_data[index * _stride[0] * simd_vec_size],
+                &_stride[1],
+                &_shape[1],
                 _batch_stride
             };
         } else {
-            return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
+            return {&_data[index * _stride[0]], &_stride[1], &_shape[1], _batch_stride};
         }
     }
 
@@ -45,13 +45,13 @@ public:
     VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
         if constexpr (is_batch) {
             return {
-                _data + index * _stride[0] * simd_vec_size,
-                _stride + 1,
-                _shape + 1,
+                &_data[index * _stride[0] * simd_vec_size],
+                &_stride[1],
+                &_shape[1],
                 _batch_stride
             };
         } else {
-            return {_data + index * _stride[0], _stride + 1, _shape + 1, _batch_stride};
+            return {&_data[index * _stride[0]], &_stride[1], &_shape[1], _batch_stride};
         }
     }
 
@@ -60,7 +60,7 @@ public:
         // batch size 1 -> n works. Maybe there is a better way
         T buffer[simd_vec_size];
         for (int i = 0; i < simd_vec_size; ++i) {
-            buffer[i] = *reinterpret_cast<T*>(_data + i * _batch_stride);
+            buffer[i] = _data[i * _batch_stride];
         }
         return vload(&buffer[0]);
     }
@@ -72,7 +72,7 @@ public:
         T buffer[simd_vec_size];
         vstore(&buffer[0], value);
         for (int i = 0; i < simd_vec_size; ++i) {
-            *reinterpret_cast<T*>(_data + i * _batch_stride) = buffer[i];
+            _data[i * _batch_stride] = buffer[i];
         }
         return value;
     }
@@ -84,7 +84,7 @@ public:
         T buffer[simd_vec_size];
         vstore(&buffer[0], value);
         for (int i = 0; i < simd_vec_size; ++i) {
-            *reinterpret_cast<T*>(_data + i * _batch_stride) += buffer[i];
+            _data[i * _batch_stride] += buffer[i];
         }
         return value;
     }
@@ -106,9 +106,7 @@ public:
         T buffer[simd_vec_size];
         int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
         for (int i = 0; i < simd_vec_size; ++i) {
-            buffer[i] = *reinterpret_cast<T*>(
-                _data + index_ptr[i] * _stride[0] + i * _batch_stride
-            );
+            buffer[i] = _data[index_ptr[i] * _stride[0] + i * _batch_stride];
         }
         return vload(&buffer[0]);
     }
@@ -119,14 +117,12 @@ public:
         vstore(&buffer[0], values);
         int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
         for (int i = 0; i < simd_vec_size; ++i) {
-            *reinterpret_cast<T*>(
-                _data + index_ptr[i] * _stride[0] + i * _batch_stride
-            ) += buffer[i];
+            _data[index_ptr[i] * _stride[0] + i * _batch_stride] += buffer[i];
         }
     }
 
 private:
-    uint8_t* _data;
+    T* _data;
     std::size_t* _stride;
     std::size_t* _shape;
     std::size_t _batch_stride;

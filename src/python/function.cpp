@@ -77,7 +77,12 @@ py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
         new Tensor(tensor),
         [](void* ptr) { delete static_cast<Tensor*>(ptr); }
     );
-    return {tensor.shape(), tensor.stride(), data_raw, destroy};
+    SizeVec stride;
+    std::size_t dtype_size = tensor.dtype_size();
+    for (auto stride_item : tensor.stride()) {
+        stride.push_back(dtype_size * stride_item);
+    }
+    return {tensor.shape(), stride, data_raw, destroy};
 }
 
 std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
@@ -137,11 +142,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
 
 torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
     std::vector<int64_t> shape {tensor.shape().begin(), tensor.shape().end()};
-    std::vector<int64_t> stride;
-    auto dtype_size = tensor.dtype_size();
-    for (auto s : tensor.stride()) {
-        stride.push_back(s / dtype_size);
-    }
+    std::vector<int64_t> stride {tensor.stride().begin(), tensor.stride().end()};
     if (tensor.dtype() == DataType::batch_sizes) {
         auto& batch_sizes = tensor.batch_sizes();
         torch::Tensor tensor = torch::zeros(

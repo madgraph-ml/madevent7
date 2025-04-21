@@ -95,12 +95,17 @@ if(COMPILE_CUDA)
         SHARED
         src/cuda/runtime.cu
         src/cuda/device.cu
-        src/cuda/kernels.h
+        src/cuda/kernel_definitions.h
         include/madevent/cuda/runtime.h
         include/madevent/cuda/tensor.h
         include/madevent/cuda/device.h
         ${KERNEL_SRC}
     )
+    target_include_directories(madevent_cuda PUBLIC include)
+    set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
+    target_link_libraries(madevent_cuda PRIVATE nlohmann_json::nlohmann_json)
+    target_include_directories(madevent_cuda PUBLIC ${LHAPDF_INCLUDE_DIRS})
+    target_link_libraries(madevent_cuda PRIVATE ${LHAPDF_LIBRARIES})
 endif()
 
 add_library(
@@ -226,7 +231,7 @@ target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
 #target_link_libraries(_madevent_py PRIVATE -static-libstdc++)
 
 if(COMPILE_CUDA)
-    target_compile_definitions(madevent_py PRIVATE CUDA_FOUND=1)
+    target_compile_definitions(_madevent_py PRIVATE CUDA_FOUND=1)
 endif()
 
 if(TORCH_FOUND)

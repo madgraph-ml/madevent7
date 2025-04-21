@@ -16,8 +16,10 @@ def main():
     function_builder_mixin(commands)
     instruction_set_python(commands)
     instruction_set_mixin(commands)
-    cpu_runtime_mixin(commands)
-    cpu_runtime_backward_mixin(commands)
+    runtime_mixin(commands, "cpu")
+    runtime_backward_mixin(commands, "cpu")
+    runtime_mixin(commands, "cuda")
+    runtime_backward_mixin(commands, "cuda")
 
 
 def write_autogen(f):
@@ -152,8 +154,8 @@ def instruction_set_mixin(commands):
         f_op.write("\n")
 
 
-def cpu_runtime_mixin(commands):
-    with open("src/cpu/runtime_mixin.h", "w") as f:
+def runtime_mixin(commands, device):
+    with open(f"src/{device}/runtime_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
@@ -164,14 +166,12 @@ def cpu_runtime_mixin(commands):
                 n_inputs = len(cmd["inputs"])
                 n_outputs = len(cmd["outputs"])
                 dims = cmd.get("dims", 1)
-                cpu_kernel = f"kernel_{name}<CpuTypes>"
-                simd_kernel = (
-                    f"kernel_{name}<SimdTypes>"
-                    if cmd.get("vectorized", True)
-                    else cpu_kernel
-                )
+                if device == "cpu":
+                    kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
+                elif device == "cuda":
+                    kernel = f"kernel_{name}<CudaTypes>"
                 func = (
-                    f"batch_foreach<{cpu_kernel}, {simd_kernel}, {n_inputs}, {n_outputs}, {dims}>"
+                    f"batch_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}>"
                 )
             f.write(
                 f"case {opcode}:\n"
@@ -180,8 +180,8 @@ def cpu_runtime_mixin(commands):
             )
 
 
-def cpu_runtime_backward_mixin(commands):
-    with open("src/cpu/runtime_backward_mixin.h", "w") as f:
+def runtime_backward_mixin(commands, device):
+    with open(f"src/{device}/runtime_backward_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
@@ -210,11 +210,18 @@ def cpu_runtime_backward_mixin(commands):
                 in_stored_str = ",".join(str(i) for i in in_stored)
                 out_stored_str = ",".join(str(i) for i in out_stored)
 
+                if device == "cpu":
+                    kernel = (
+                        f"backward_kernel_{name}<CpuTypes>, "
+                        f"backward_kernel_{name}<SimdTypes>"
+                    )
+                elif device == "cuda":
+                    kernel = f"backward_kernel_{name}<CudaTypes>"
+
                 dims = cmd.get("dims", 1)
                 func = (
-                    f"backward_batch_foreach<"
-                    f"backward_kernel_{name}<CpuTypes>, backward_kernel_{name}<SimdTypes>, "
-                    f"{n_inputs}, {n_outputs}, {len(in_stored)}, {len(out_stored)}, {dims}>"
+                    f"backward_batch_foreach<{kernel}, {n_inputs}, {n_outputs}, "
+                    f"{len(in_stored)}, {len(out_stored)}, {dims}>"
                 )
                 f.write(
                     f"case {opcode}:\n"

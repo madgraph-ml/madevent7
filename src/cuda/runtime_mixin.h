@@ -2,125 +2,227 @@
 // Do not modify its content directly
 
 case 0:
-    batch_foreach<kernel_add, 2, 1, true>(instr, locals);
+    op_stack(instr, locals);
     break;
 case 1:
-    batch_foreach<kernel_sub, 2, 1, true>(instr, locals);
+    op_unstack(instr, locals);
     break;
 case 2:
-    batch_foreach<kernel_mul, 2, 1, false>(instr, locals);
+    op_pop(instr, locals);
     break;
 case 3:
-    batch_foreach<kernel_mul_scalar, 2, 1, true>(instr, locals);
+    op_batch_cat(instr, locals);
     break;
 case 4:
-    batch_foreach<kernel_clip_min, 2, 1, false>(instr, locals);
+    op_batch_split(instr, locals);
     break;
 case 5:
-    batch_foreach<kernel_sqrt, 1, 1, false>(instr, locals);
+    op_cat(instr, locals);
     break;
 case 6:
-    batch_foreach<kernel_square, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_add<CudaTypes>, 2, 1, 0>(instr, locals);
     break;
 case 7:
-    batch_foreach<kernel_uniform_phi, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_sub<CudaTypes>, 2, 1, 0>(instr, locals);
     break;
 case 8:
-    batch_foreach<kernel_uniform_phi_inverse, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_mul<CudaTypes>, 2, 1, 1>(instr, locals);
     break;
 case 9:
-    batch_foreach<kernel_uniform_costheta, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_product<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 10:
-    batch_foreach<kernel_uniform_costheta_inverse, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_clip_min<CudaTypes>, 2, 1, 1>(instr, locals);
     break;
 case 11:
-    batch_foreach<kernel_rotate_zy, 3, 1, false>(instr, locals);
+    batch_foreach<kernel_sqrt<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 12:
-    batch_foreach<kernel_rotate_zy_inverse, 3, 1, false>(instr, locals);
+    batch_foreach<kernel_square<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 13:
-    batch_foreach<kernel_boost, 2, 1, false>(instr, locals);
+    batch_foreach<kernel_pow<CudaTypes>, 2, 1, 1>(instr, locals);
     break;
 case 14:
-    batch_foreach<kernel_boost_inverse, 2, 1, false>(instr, locals);
+    batch_foreach<kernel_uniform_phi<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 15:
-    batch_foreach<kernel_boost_beam, 2, 1, false>(instr, locals);
+    batch_foreach<kernel_uniform_phi_inverse<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 16:
-    batch_foreach<kernel_boost_beam_inverse, 2, 1, false>(instr, locals);
+    batch_foreach<kernel_uniform_costheta<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 17:
-    batch_foreach<kernel_com_momentum, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_uniform_costheta_inverse<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 18:
-    batch_foreach<kernel_com_p_in, 1, 2, false>(instr, locals);
+    batch_foreach<kernel_boost<CudaTypes>, 2, 1, 1>(instr, locals);
     break;
 case 19:
-    batch_foreach<kernel_com_angles, 1, 2, false>(instr, locals);
+    batch_foreach<kernel_boost_inverse<CudaTypes>, 2, 1, 1>(instr, locals);
     break;
 case 20:
-    batch_foreach<kernel_s, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_boost_beam<CudaTypes>, 3, 1, 1>(instr, locals);
     break;
 case 21:
-    batch_foreach<kernel_sqrt_s, 1, 1, false>(instr, locals);
+    batch_foreach<kernel_boost_beam_inverse<CudaTypes>, 3, 1, 1>(instr, locals);
     break;
 case 22:
-    batch_foreach<kernel_s_and_sqrt_s, 1, 2, false>(instr, locals);
+    batch_foreach<kernel_com_momentum<CudaTypes>, 1, 1, 1>(instr, locals);
     break;
 case 23:
-    batch_foreach<kernel_r_to_x1x2, 3, 3, false>(instr, locals);
+    batch_foreach<kernel_com_p_in<CudaTypes>, 1, 2, 1>(instr, locals);
     break;
 case 24:
-    batch_foreach<kernel_x1x2_to_r, 3, 2, false>(instr, locals);
+    batch_foreach<kernel_r_to_x1x2<CudaTypes>, 3, 3, 1>(instr, locals);
     break;
 case 25:
-    batch_foreach<kernel_rapidity, 2, 1, false>(instr, locals);
+    batch_foreach<kernel_x1x2_to_r<CudaTypes>, 3, 2, 1>(instr, locals);
     break;
 case 26:
-    batch_foreach<kernel_decay_momentum, 4, 2, false>(instr, locals);
+    batch_foreach<kernel_diff_cross_section<CudaTypes>, 6, 1, 1>(instr, locals);
     break;
 case 27:
-    batch_foreach<kernel_invt_min_max, 5, 2, false>(instr, locals);
+    batch_foreach<kernel_two_particle_decay_com<CudaTypes>, 5, 3, 1>(instr, locals);
     break;
 case 28:
-    batch_foreach<kernel_invt_to_costheta, 6, 1, false>(instr, locals);
+    batch_foreach<kernel_two_particle_decay<CudaTypes>, 6, 3, 1>(instr, locals);
     break;
 case 29:
-    batch_foreach<kernel_costheta_to_invt, 6, 1, false>(instr, locals);
+    batch_foreach<kernel_two_particle_scattering_com<CudaTypes>, 6, 3, 1>(instr, locals);
     break;
 case 30:
-    batch_foreach<kernel_two_particle_density_inverse, 3, 1, false>(instr, locals);
+    batch_foreach<kernel_two_particle_scattering<CudaTypes>, 6, 3, 1>(instr, locals);
     break;
 case 31:
-    batch_foreach<kernel_tinv_two_particle_density, 4, 1, false>(instr, locals);
+    batch_foreach<kernel_t_inv_min_max<CudaTypes>, 4, 2, 1>(instr, locals);
     break;
 case 32:
-    batch_foreach<kernel_tinv_two_particle_density_inverse, 4, 1, false>(instr, locals);
+    batch_foreach<kernel_uniform_invariant<CudaTypes>, 3, 2, 1>(instr, locals);
     break;
 case 33:
-    batch_foreach<kernel_uniform_invariant, 3, 2, false>(instr, locals);
+    batch_foreach<kernel_uniform_invariant_inverse<CudaTypes>, 3, 2, 1>(instr, locals);
     break;
 case 34:
-    batch_foreach<kernel_uniform_invariant_inverse, 3, 2, false>(instr, locals);
+    batch_foreach<kernel_breit_wigner_invariant<CudaTypes>, 5, 2, 1>(instr, locals);
     break;
 case 35:
-    batch_foreach<kernel_breit_wigner_invariant, 5, 2, false>(instr, locals);
+    batch_foreach<kernel_breit_wigner_invariant_inverse<CudaTypes>, 5, 2, 1>(instr, locals);
     break;
 case 36:
-    batch_foreach<kernel_breit_wigner_invariant_inverse, 5, 2, false>(instr, locals);
+    batch_foreach<kernel_stable_invariant<CudaTypes>, 4, 2, 1>(instr, locals);
     break;
 case 37:
-    batch_foreach<kernel_stable_invariant, 4, 2, false>(instr, locals);
+    batch_foreach<kernel_stable_invariant_inverse<CudaTypes>, 4, 2, 1>(instr, locals);
     break;
 case 38:
-    batch_foreach<kernel_stable_invariant_inverse, 4, 2, false>(instr, locals);
+    batch_foreach<kernel_stable_invariant_nu<CudaTypes>, 5, 2, 1>(instr, locals);
     break;
 case 39:
-    batch_foreach<kernel_stable_invariant_nu, 5, 2, false>(instr, locals);
+    batch_foreach<kernel_stable_invariant_nu_inverse<CudaTypes>, 5, 2, 1>(instr, locals);
     break;
 case 40:
-    batch_foreach<kernel_stable_invariant_nu_inverse, 5, 2, false>(instr, locals);
+    batch_foreach<kernel_fast_rambo_r_to_u<CudaTypes>, 1, 2, 1>(instr, locals);
+    break;
+case 41:
+    batch_foreach<kernel_rambo_four_vectors_massless<CudaTypes>, 4, 2, 1>(instr, locals);
+    break;
+case 42:
+    batch_foreach<kernel_rambo_four_vectors_massive<CudaTypes>, 5, 4, 1>(instr, locals);
+    break;
+case 43:
+    batch_foreach<kernel_cut_unphysical<CudaTypes>, 4, 1, 1>(instr, locals);
+    break;
+case 44:
+    batch_foreach<kernel_cut_pt<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 45:
+    batch_foreach<kernel_cut_eta<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 46:
+    batch_foreach<kernel_cut_dr<CudaTypes>, 3, 1, 1>(instr, locals);
+    break;
+case 47:
+    batch_foreach<kernel_cut_m_inv<CudaTypes>, 3, 1, 1>(instr, locals);
+    break;
+case 48:
+    batch_foreach<kernel_cut_sqrt_s<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 49:
+    batch_foreach<kernel_chili_forward<CudaTypes>, 5, 4, 1>(instr, locals);
+    break;
+case 50:
+    op_matrix_element(instr, locals);
+    break;
+case 51:
+    op_matrix_element_multichannel(instr, locals);
+    break;
+case 52:
+    op_pdf(instr, locals);
+    break;
+case 53:
+    op_matmul(instr, locals);
+    break;
+case 54:
+    batch_foreach<kernel_leaky_relu<CudaTypes>, 1, 1, 2>(instr, locals);
+    break;
+case 55:
+    batch_foreach<kernel_rqs_activation<CudaTypes>, 2, 3, 1>(instr, locals);
+    break;
+case 56:
+    batch_foreach<kernel_rqs_find_bin<CudaTypes>, 4, 1, 2>(instr, locals);
+    break;
+case 57:
+    batch_foreach<kernel_rqs_forward<CudaTypes>, 2, 2, 2>(instr, locals);
+    break;
+case 58:
+    batch_foreach<kernel_rqs_inverse<CudaTypes>, 2, 2, 2>(instr, locals);
+    break;
+case 59:
+    batch_foreach<kernel_softmax<CudaTypes>, 1, 1, 1>(instr, locals);
+    break;
+case 60:
+    batch_foreach<kernel_softmax_prior<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 61:
+    batch_foreach<kernel_sample_discrete<CudaTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 62:
+    batch_foreach<kernel_sample_discrete_probs<CudaTypes>, 2, 2, 1>(instr, locals);
+    break;
+case 63:
+    batch_foreach<kernel_permute_momenta<CudaTypes>, 3, 1, 1>(instr, locals);
+    break;
+case 64:
+    batch_foreach<kernel_gather<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 65:
+    batch_foreach<kernel_gather_int<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 66:
+    batch_foreach<kernel_select<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 67:
+    batch_foreach<kernel_one_hot<CudaTypes>, 2, 1, 1>(instr, locals);
+    break;
+case 68:
+    op_nonzero(instr, locals);
+    break;
+case 69:
+    op_batch_gather(instr, locals);
+    break;
+case 70:
+    op_scatter(instr, locals);
+    break;
+case 71:
+    op_random(instr, locals);
+    break;
+case 72:
+    op_unweight(instr, locals);
+    break;
+case 73:
+    batch_foreach<kernel_vegas_forward<CudaTypes>, 2, 2, 2>(instr, locals);
+    break;
+case 74:
+    batch_foreach<kernel_vegas_inverse<CudaTypes>, 2, 2, 2>(instr, locals);
     break;

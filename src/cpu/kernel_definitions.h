@@ -21,13 +21,13 @@ struct CpuTypes {
     using BVal = bool;
 };
 
-double where(bool condition, double val_true, double val_false) {
+inline double where(bool condition, double val_true, double val_false) {
     return condition ? val_true : val_false;
 }
-int64_t where(bool condition, int64_t val_true, int64_t val_false) {
+inline int64_t where(bool condition, int64_t val_true, int64_t val_false) {
     return condition ? val_true : val_false;
 }
-std::size_t single_index(int64_t arg) {
+inline std::size_t single_index(int64_t arg) {
     return arg;
 }
 

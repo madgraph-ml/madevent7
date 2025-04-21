@@ -1,17 +1,17 @@
 #include "madevent/cuda/runtime.h"
-#include "madevent/cuda/tensor.h"
-#include "madevent/cuda/device.h"
-#include "madevent/util.h"
-
-#include "kernels.h"
 
 #include <tuple>
 #include <array>
 #include <functional>
 #include <algorithm>
 
+#include "madevent/cuda/tensor.h"
+#include "madevent/cuda/device.h"
+#include "madevent/util.h"
+#include "../kernels/kernels.h"
+
 using namespace madevent;
-using namespace madevent::cuda;
+using namespace madevent_cuda;
 
 namespace {
 
