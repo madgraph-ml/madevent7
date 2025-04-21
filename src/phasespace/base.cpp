@@ -1,4 +1,4 @@
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 
 using namespace madevent;
 

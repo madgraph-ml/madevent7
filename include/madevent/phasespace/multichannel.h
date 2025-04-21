@@ -3,7 +3,7 @@
 #include <vector>
 #include <format>
 
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 #include "madevent/phasespace/phasespace.h"
 
 namespace madevent {

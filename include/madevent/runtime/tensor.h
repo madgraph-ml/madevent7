@@ -58,7 +58,7 @@ inline bool operator==(const Sizes& a, const Sizes& b) {
 }
 inline bool operator!=(const Sizes& a, const Sizes& b) { return !(a == b); }
 
-template<class T, int _dim>
+template<ScalarType T, int _dim>
 class TensorView {
 public:
     using DType = T;
@@ -212,7 +212,12 @@ public:
         impl->data = allocator(size);
     }
 
-    Tensor(DataType dtype, const Sizes& shape, void* data, std::function<void()> external_reset) :
+    Tensor(
+        DataType dtype,
+        const Sizes& shape,
+        void* data,
+        std::function<void()> external_reset
+    ) :
         Tensor(dtype, shape, cpu_device(), data, external_reset) {}
 
     Tensor(
@@ -289,14 +294,6 @@ public:
 
     void* data() { check_impl(); return impl->data; }
     void* data() const { check_impl(); return impl->data; }
-    /*std::byte* bytes() {
-        check_impl();
-        return static_cast<std::byte*>(impl->data) + impl->offset;
-    }
-    std::byte* bytes() const {
-        check_impl();
-        return static_cast<std::byte*>(impl->data) + impl->offset;
-    }*/
     const Sizes& shape() const { check_impl(); return impl->shape; }
     const Sizes& stride() const { check_impl(); return impl->stride; }
     std::size_t size(std::size_t i) const { check_impl(); return impl->shape[i]; }

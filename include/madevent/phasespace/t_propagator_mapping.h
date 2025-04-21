@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "madevent/phasespace/topology.h"
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 #include "madevent/phasespace/invariants.h"
 #include "madevent/phasespace/two_particle.h"
 

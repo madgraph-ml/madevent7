@@ -147,7 +147,7 @@ add_library(
     src/madcode/instruction.cpp
     src/madcode/optimizer.cpp
     src/madcode/instruction_set_mixin.h
-    src/phasespace/mapping.cpp
+    src/phasespace/base.cpp
     src/phasespace/invariants.cpp
     src/phasespace/two_particle.cpp
     src/phasespace/luminosity.cpp
@@ -180,7 +180,7 @@ add_library(
     include/madevent/madcode/instruction.h
     include/madevent/madcode/optimizer.h
     include/madevent/phasespace.h
-    include/madevent/phasespace/mapping.h
+    include/madevent/phasespace/base.h
     include/madevent/phasespace/invariants.h
     include/madevent/phasespace/two_particle.h
     include/madevent/phasespace/luminosity.h

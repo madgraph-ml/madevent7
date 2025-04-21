@@ -1,6 +1,6 @@
 #pragma once
 
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 
 namespace madevent {
 
