@@ -6,66 +6,6 @@
 
 using namespace madevent_py;
 
-namespace {
-
-template<typename F>
-std::vector<torch::Tensor> call_torch_impl(
-    const std::vector<torch::Tensor>& args,
-    const Function& function,
-    ContextPtr context,
-    RuntimePtr& cpu_runtime,
-    RuntimePtr& cuda_runtime,
-    F run_func
-) {
-    //TODO: check batch sizes
-    auto n_args = function.inputs().size();
-    if (args.size() != n_args) {
-        throw std::invalid_argument(std::format(
-            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
-        ));
-    }
-    std::vector<Tensor> inputs;
-    bool is_cuda = false;
-    DevicePtr expected_device = nullptr;
-    for (int i = 0; i < n_args; ++i) {
-        auto& arg = args.at(i);
-        auto& input_type = function.inputs().at(i).type;
-        auto tensor = torch_to_tensor(arg, input_type, i, expected_device);
-        if (i == 0) expected_device = tensor.device();
-        inputs.push_back(tensor);
-    }
-
-    std::vector<Tensor> outputs;
-    if (is_cuda) {
-        if (!cuda_runtime) {
-            if (context) {
-                if (context->device() != cuda_device()) {
-                    throw std::invalid_argument("Given context does not have device CUDA");
-                }
-                cuda_runtime = build_runtime(function, context);
-            } else {
-                //TODO: default cuda context
-                cuda_runtime = build_runtime(function, madevent::default_cuda_context());
-            }
-        }
-    } else {
-        if (!cpu_runtime) {
-            if (context) {
-                if (context->device() != cpu_device()) {
-                    throw std::invalid_argument("Given context does not have device CPU");
-                }
-                cpu_runtime = build_runtime(function, context);
-            } else {
-                cpu_runtime = build_runtime(function, madevent::default_context());
-            }
-        }
-    }
-    return run_func(inputs)
-        | std::views::transform(tensor_to_torch)
-        | std::ranges::to<std::vector<torch::Tensor>>();
-}
-
-}
 py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
     auto data_raw = reinterpret_cast<double*>(tensor.data());
     py::capsule destroy(
@@ -134,6 +74,67 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
 }
 
 #ifdef TORCH_FOUND
+
+namespace {
+
+template<typename F>
+std::vector<torch::Tensor> call_torch_impl(
+    const std::vector<torch::Tensor>& args,
+    const Function& function,
+    ContextPtr context,
+    RuntimePtr& cpu_runtime,
+    RuntimePtr& cuda_runtime,
+    F run_func
+) {
+    //TODO: check batch sizes
+    auto n_args = function.inputs().size();
+    if (args.size() != n_args) {
+        throw std::invalid_argument(std::format(
+            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
+        ));
+    }
+    std::vector<Tensor> inputs;
+    bool is_cuda = false;
+    DevicePtr expected_device = nullptr;
+    for (int i = 0; i < n_args; ++i) {
+        auto& arg = args.at(i);
+        auto& input_type = function.inputs().at(i).type;
+        auto tensor = torch_to_tensor(arg, input_type, i, expected_device);
+        if (i == 0) expected_device = tensor.device();
+        inputs.push_back(tensor);
+    }
+
+    std::vector<Tensor> outputs;
+    if (is_cuda) {
+        if (!cuda_runtime) {
+            if (context) {
+                if (context->device() != cuda_device()) {
+                    throw std::invalid_argument("Given context does not have device CUDA");
+                }
+                cuda_runtime = build_runtime(function, context);
+            } else {
+                //TODO: default cuda context
+                cuda_runtime = build_runtime(function, madevent::default_cuda_context());
+            }
+        }
+    } else {
+        if (!cpu_runtime) {
+            if (context) {
+                if (context->device() != cpu_device()) {
+                    throw std::invalid_argument("Given context does not have device CPU");
+                }
+                cpu_runtime = build_runtime(function, context);
+            } else {
+                cpu_runtime = build_runtime(function, madevent::default_context());
+            }
+        }
+    }
+    return run_func(inputs)
+        | std::views::transform(tensor_to_torch)
+        | std::ranges::to<std::vector<torch::Tensor>>();
+}
+
+}
 
 torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
     std::vector<int64_t> shape {tensor.shape().begin(), tensor.shape().end()};
@@ -217,11 +218,7 @@ Tensor madevent_py::torch_to_tensor(
 
     DevicePtr device;
     if (tensor.is_cuda()) {
-#ifdef CUDA_FOUND
         device = cuda_device();
-#else
-        throw std::runtime_error("madevent was compiled without cuda support");
-#endif
     } else {
         device = cpu_device();
     }

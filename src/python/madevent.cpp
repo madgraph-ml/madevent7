@@ -64,7 +64,13 @@ public:
 
 }
 
-PYBIND11_MODULE(_madevent_py, m) {
+#ifdef TORCH_FOUND
+#define MODULE_NAME _madevent_py_torch
+#else
+#define MODULE_NAME _madevent_py
+#endif
+
+PYBIND11_MODULE(MODULE_NAME, m) {
     py::enum_<DataType>(m, "DataType")
         .value("bool", DataType::dt_bool)
         .value("int", DataType::dt_int)

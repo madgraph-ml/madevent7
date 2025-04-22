@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd.function import FunctionCtx, once_differentiable
-from . import _madevent_py as me
+from . import _madevent_py_torch as me
 
 class FunctionModule(nn.Module):
     def __init__(

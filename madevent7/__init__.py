@@ -12,11 +12,13 @@ ctypes.CDLL(
     mode=ctypes.RTLD_GLOBAL
 )
 
-# pre-load torch
-import torch
+try:
+    import torch
+except ImportError:
+    from ._madevent_py import *
+else:
+    from ._madevent_py_torch import *
 
-from ._madevent_py import *
-#from .function_module import FunctionModule
 
 def _init():
     """

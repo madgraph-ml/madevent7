@@ -157,6 +157,13 @@ target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
 #target_link_libraries(madevent PRIVATE -static-libstdc++)
 
+install(TARGETS madevent DESTINATION madevent7/lib)
+install(
+    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+    DESTINATION "madevent7/include"
+    FILES_MATCHING PATTERN "*.h*"
+)
+
 
 ############################################################################################
 # Compute kernel source files                                                              #
@@ -198,6 +205,7 @@ if(COMPILE_CUDA)
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
+    install(TARGETS madevent_cuda DESTINATION madevent7/lib)
 endif()
 
 
@@ -228,6 +236,7 @@ if(USE_SIMD)
     target_link_libraries(madevent_cpu PRIVATE sleef::sleef)
     target_compile_definitions(madevent_cpu PRIVATE USE_SIMD=1)
 endif()
+install(TARGETS madevent_cpu DESTINATION madevent7/lib)
 
 
 ############################################################################################
@@ -244,35 +253,31 @@ python_add_library(
     WITH_SOABI
 )
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
-#target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
-#target_link_libraries(_madevent_py PRIVATE -static-libstdc++)
-
-if(COMPILE_CUDA)
-    target_compile_definitions(_madevent_py PRIVATE CUDA_FOUND=1)
-endif()
+target_link_libraries(_madevent_py PUBLIC madevent)
+install(TARGETS _madevent_py DESTINATION madevent7)
 
 if(TORCH_FOUND)
-    target_compile_definitions(_madevent_py PRIVATE TORCH_FOUND=1)
-    target_link_libraries(_madevent_py PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY})
-endif()
+    python_add_library(
+        _madevent_py_torch
+        MODULE
+        src/python/madevent.cpp
+        src/python/function.cpp
+        src/python/instruction_set.h
+        src/python/function.h
+        WITH_SOABI
+    )
+    target_link_libraries(_madevent_py_torch PRIVATE pybind11::headers)
+    target_link_libraries(_madevent_py_torch PUBLIC madevent)
 
-target_link_libraries(_madevent_py PUBLIC madevent)
+    target_compile_definitions(_madevent_py_torch PRIVATE TORCH_FOUND=1)
+    target_link_libraries(
+        _madevent_py_torch PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY}
+    )
+    install(TARGETS _madevent_py_torch DESTINATION madevent7)
+endif()
 
 
 ############################################################################################
 # Installation settings                                                                    #
 ############################################################################################
 
-install(
-    TARGETS madevent madevent_cpu
-    DESTINATION madevent7/lib
-)
-install(
-    DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
-    DESTINATION "madevent7/include"
-    FILES_MATCHING PATTERN "*.h*"
-)
-install(
-    TARGETS _madevent_py
-    DESTINATION madevent7
-)
