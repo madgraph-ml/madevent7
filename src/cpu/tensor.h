@@ -6,7 +6,7 @@
 
 namespace {
 
-template<class V, class T, int _dim, bool is_batch>
+template<class V, madevent::ScalarType T, int _dim, bool is_batch>
 class VectorizedTensorView {
 public:
     using VType = V;
@@ -27,8 +27,9 @@ public:
         _shape(nullptr),
         _batch_stride(0) {}
 
-    template<int d = _dim> requires (d != 0)
-    const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const {
+    const VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) const
+    requires (_dim != 0)
+    {
         if constexpr (is_batch) {
             return {
                 &_data[index * _stride[0] * simd_vec_size],
@@ -41,8 +42,9 @@ public:
         }
     }
 
-    template<int d = _dim> requires (d != 0)
-    VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index) {
+    VectorizedTensorView<V, T, _dim-1, false> operator[](std::size_t index)
+    requires (_dim != 0)
+    {
         if constexpr (is_batch) {
             return {
                 &_data[index * _stride[0] * simd_vec_size],
@@ -55,7 +57,7 @@ public:
         }
     }
 
-    operator typename std::conditional_t<_dim == 0, V, madevent::Nothing>() const {
+    operator V() const requires (_dim == 0) {
         // This is somewhat ugly but needs to be done such that broadcasting from
         // batch size 1 -> n works. Maybe there is a better way
         T buffer[simd_vec_size];
@@ -65,8 +67,7 @@ public:
         return vload(&buffer[0]);
     }
 
-    template<int d = _dim> requires (d == 0)
-    V operator=(V value) {
+    V operator=(V value) requires (_dim == 0) {
         // This is somewhat ugly but needs to be done such that broadcasting from
         // batch size 1 -> n works. Maybe there is a better way
         T buffer[simd_vec_size];
@@ -77,8 +78,7 @@ public:
         return value;
     }
 
-    template<int d = _dim> requires (d == 0)
-    V operator+=(V value) {
+    V operator+=(V value) requires (_dim == 0) {
         // This is somewhat ugly but needs to be done such that broadcasting from
         // batch size 1 -> n works. Maybe there is a better way
         T buffer[simd_vec_size];

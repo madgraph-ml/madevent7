@@ -1,13 +1,13 @@
 #include "madevent/runtime/generate.h"
 
-#include "madevent/util.h"
-
 #include <filesystem>
 #include <format>
 #include <cmath>
 #include <random>
 #include <ranges>
 #include <print>
+
+#include "madevent/util.h"
 
 using namespace madevent;
 namespace fs = std::filesystem;
@@ -22,13 +22,13 @@ EventGenerator::EventGenerator(
     _context(context),
     _config(config),
     _max_weight(0.),
-    _unweighter(
+    _unweighter(build_runtime(
         Unweighter(
             {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)},
             channels.at(0).particle_count()
         ).function(),
         context
-    ),
+    )),
     _status_all({0, 0., 0., 0., 0, 0., static_cast<double>(config.target_count), false}),
     _writer(file_name, channels.at(0).particle_count())
 {
@@ -50,7 +50,7 @@ EventGenerator::EventGenerator(
             });
         _channels.push_back({
             i,
-            madevent_cpu::Runtime(channel.function(), context),
+            build_runtime(channel.function(), context),
             EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
             vegas_optimizer,
             config.start_batch_size
@@ -182,7 +182,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     bool run_optim = channel.vegas_optimizer && (channel.needs_optimization || always_optimize);
     if (run_optim) clear_channel(channel);
 
-    auto events = channel.runtime.run({Tensor({channel.batch_size})});
+    auto events = channel.runtime->run({Tensor({channel.batch_size})});
     channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
 
     auto weights = events.at(0).cpu();
@@ -284,7 +284,7 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
 void EventGenerator::unweight_and_write(ChannelState& channel, const std::vector<Tensor>& events) {
     std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 2);
     unweighter_args.push_back(Tensor(channel.max_weight, _context->device()));
-    auto unw_events = _unweighter.run(unweighter_args);
+    auto unw_events = _unweighter->run(unweighter_args);
     auto unw_weights = unw_events.at(0);
     auto w_view = unw_weights.view<double,1>();
     auto unw_momenta = unw_events.at(1);

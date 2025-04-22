@@ -7,7 +7,7 @@
 #include "madevent/phasespace.h"
 #include "madevent/runtime/io.h"
 #include "madevent/runtime/vegas.h"
-#include "madevent/cpu/runtime.h"
+#include "madevent/runtime/runtime_base.h"
 
 namespace madevent {
 
@@ -92,7 +92,7 @@ public:
 private:
     struct ChannelState {
         std::size_t index;
-        madevent_cpu::Runtime runtime;
+        RuntimePtr runtime;
         EventFile writer;
         std::optional<VegasGridOptimizer> vegas_optimizer;
         std::size_t batch_size;
@@ -112,7 +112,7 @@ private:
     std::vector<ChannelState> _channels;
     std::vector<std::tuple<double, double, std::size_t>> _large_weights;
     double _max_weight;
-    madevent_cpu::Runtime _unweighter;
+    RuntimePtr _unweighter;
     Status _status_all;
     EventFile _writer;
 

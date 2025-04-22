@@ -29,81 +29,81 @@ struct BVec {
     uint64x2_t v;
 };
 
-FVec vload(float64_t* ptr) {
+inline FVec vload(float64_t* ptr) {
     return vld1q_f64(ptr);
 }
 
-IVec vload(int64_t* ptr) {
+inline IVec vload(int64_t* ptr) {
     return vld1q_s64(ptr);
 }
 
-BVec vload(bool* ptr) {
+inline BVec vload(bool* ptr) {
     uint64_t buffer[2]{ptr[0], ptr[1]};
     return vld1q_u64(&buffer[0]);
 }
 
-void vstore(float64_t* ptr, FVec values) {
+inline void vstore(float64_t* ptr, FVec values) {
     vst1q_f64(ptr, values);
 }
 
-void vstore(int64_t* ptr, IVec values) {
+inline void vstore(int64_t* ptr, IVec values) {
     vst1q_s64(ptr, values);
 }
 
-void vstore(bool* ptr, BVec values) {
+inline void vstore(bool* ptr, BVec values) {
     uint64_t buffer[2];
     vst1q_u64(&buffer[0], values);
     ptr[0] = buffer[0] != 0;
     ptr[1] = buffer[1] != 0;
 }
 
-FVec where(BVec arg1, FVec arg2, FVec arg3) {
+inline FVec where(BVec arg1, FVec arg2, FVec arg3) {
     return vbslq_f64(arg1, arg2, arg3);
 }
-IVec where(BVec arg1, IVec arg2, IVec arg3) {
+inline IVec where(BVec arg1, IVec arg2, IVec arg3) {
     return vbslq_s64(arg1, arg2, arg3);
 }
-std::size_t single_index(IVec arg) {
+inline std::size_t single_index(IVec arg) {
     return vgetq_lane_s64(arg, 0);
 }
-BVec operator==(FVec arg1, FVec arg2) { return vceqq_f64(arg1, arg2); }
-BVec operator!=(FVec arg1, FVec arg2) { return vceqzq_u64(vceqq_f64(arg1, arg2)); }
-BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }
-BVec operator<(FVec arg1, FVec arg2) { return vcltq_f64(arg1, arg2); }
-BVec operator>=(FVec arg1, FVec arg2) { return vcgeq_f64(arg1, arg2); }
-BVec operator<=(FVec arg1, FVec arg2) { return vcleq_f64(arg1, arg2); }
+inline BVec operator==(FVec arg1, FVec arg2) { return vceqq_f64(arg1, arg2); }
+inline BVec operator!=(FVec arg1, FVec arg2) { return vceqzq_u64(vceqq_f64(arg1, arg2)); }
+inline BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }
+inline BVec operator<(FVec arg1, FVec arg2) { return vcltq_f64(arg1, arg2); }
+inline BVec operator>=(FVec arg1, FVec arg2) { return vcgeq_f64(arg1, arg2); }
+inline BVec operator<=(FVec arg1, FVec arg2) { return vcleq_f64(arg1, arg2); }
 
-BVec operator==(IVec arg1, IVec arg2) { return vceqq_s64(arg1, arg2); }
-BVec operator!=(IVec arg1, IVec arg2) { return vceqzq_u64(vceqq_s64(arg1, arg2)); }
-BVec operator>(IVec arg1, IVec arg2) { return vcgtq_s64(arg1, arg2); }
-BVec operator<(IVec arg1, IVec arg2) { return vcltq_s64(arg1, arg2); }
-BVec operator>=(IVec arg1, IVec arg2) { return vcgeq_s64(arg1, arg2); }
-BVec operator<=(IVec arg1, IVec arg2) { return vcleq_s64(arg1, arg2); }
+inline BVec operator==(IVec arg1, IVec arg2) { return vceqq_s64(arg1, arg2); }
+inline BVec operator!=(IVec arg1, IVec arg2) { return vceqzq_u64(vceqq_s64(arg1, arg2)); }
+inline BVec operator>(IVec arg1, IVec arg2) { return vcgtq_s64(arg1, arg2); }
+inline BVec operator<(IVec arg1, IVec arg2) { return vcltq_s64(arg1, arg2); }
+inline BVec operator>=(IVec arg1, IVec arg2) { return vcgeq_s64(arg1, arg2); }
+inline BVec operator<=(IVec arg1, IVec arg2) { return vcleq_s64(arg1, arg2); }
 
-BVec operator&(BVec arg1, BVec arg2) { return vandq_u64(arg1, arg2); }
-BVec operator|(BVec arg1, BVec arg2) { return vorrq_u64(arg1, arg2); }
-BVec operator!(BVec arg1) { return vceqzq_u64(arg1); }
-FVec operator-(FVec arg1) { return vnegq_f64(arg1); }
-FVec operator+(FVec arg1, FVec arg2) { return vaddq_f64(arg1, arg2); }
-FVec operator-(FVec arg1, FVec arg2) { return vsubq_f64(arg1, arg2); }
-FVec operator*(FVec arg1, FVec arg2) { return vmulq_f64(arg1, arg2); }
-FVec operator/(FVec arg1, FVec arg2) { return vdivq_f64(arg1, arg2); }
-IVec operator-(IVec arg1) { return vnegq_s64(arg1); }
-IVec operator+(IVec arg1, IVec arg2) { return vaddq_s64(arg1, arg2); }
-IVec operator-(IVec arg1, IVec arg2) { return vsubq_s64(arg1, arg2); }
+inline BVec operator&(BVec arg1, BVec arg2) { return vandq_u64(arg1, arg2); }
+inline BVec operator|(BVec arg1, BVec arg2) { return vorrq_u64(arg1, arg2); }
+inline BVec operator!(BVec arg1) { return vceqzq_u64(arg1); }
+inline FVec operator-(FVec arg1) { return vnegq_f64(arg1); }
+inline FVec operator+(FVec arg1, FVec arg2) { return vaddq_f64(arg1, arg2); }
+inline FVec operator-(FVec arg1, FVec arg2) { return vsubq_f64(arg1, arg2); }
+inline FVec operator*(FVec arg1, FVec arg2) { return vmulq_f64(arg1, arg2); }
+inline FVec operator/(FVec arg1, FVec arg2) { return vdivq_f64(arg1, arg2); }
+inline IVec operator-(IVec arg1) { return vnegq_s64(arg1); }
+inline IVec operator+(IVec arg1, IVec arg2) { return vaddq_s64(arg1, arg2); }
+inline IVec operator-(IVec arg1, IVec arg2) { return vsubq_s64(arg1, arg2); }
 //IVec operator*(IVec arg1, IVec arg2) { return vmulq_s64(arg1, arg2); }
-FVec sqrt(FVec arg1) { return Sleef_sqrtd2_u05(arg1); }
-FVec sin(FVec arg1) { return Sleef_sind2_u10(arg1); }
-FVec cos(FVec arg1) { return Sleef_cosd2_u10(arg1); }
-FVec sinh(FVec arg1) { return Sleef_sinhd2_u10(arg1); }
-FVec cosh(FVec arg1) { return Sleef_coshd2_u10(arg1); }
-FVec atan2(FVec arg1, FVec arg2) { return Sleef_atan2d2_u10(arg1, arg2); }
-FVec pow(FVec arg1, FVec arg2) { return Sleef_powd2_u10(arg1, arg2); }
-FVec fabs(FVec arg1) { return Sleef_fabsd2(arg1); }
-FVec log(FVec arg1) { return Sleef_logd2_u10(arg1); }
-FVec tan(FVec arg1) { return Sleef_tand2_u10(arg1); }
-FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
-FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
-FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
+inline FVec sqrt(FVec arg1) { return Sleef_sqrtd2_u05(arg1); }
+inline FVec sin(FVec arg1) { return Sleef_sind2_u10(arg1); }
+inline FVec cos(FVec arg1) { return Sleef_cosd2_u10(arg1); }
+inline FVec sinh(FVec arg1) { return Sleef_sinhd2_u10(arg1); }
+inline FVec cosh(FVec arg1) { return Sleef_coshd2_u10(arg1); }
+inline FVec atan2(FVec arg1, FVec arg2) { return Sleef_atan2d2_u10(arg1, arg2); }
+inline FVec pow(FVec arg1, FVec arg2) { return Sleef_powd2_u10(arg1, arg2); }
+inline FVec fabs(FVec arg1) { return Sleef_fabsd2(arg1); }
+inline FVec log(FVec arg1) { return Sleef_logd2_u10(arg1); }
+inline FVec tan(FVec arg1) { return Sleef_tand2_u10(arg1); }
+inline FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
+inline FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
+inline FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
 
-bool isnan(FVec arg) {  } // TODO: implement
+inline bool isnan(FVec arg) {  } // TODO: implement

@@ -1,13 +1,14 @@
-#include "madevent/cpu/runtime.h"
-#include "madevent/madcode/optimizer.h"
-#include "madevent/util.h"
-
-#include "../kernels/kernels.h"
+#include "runtime.h"
 
 #include <tuple>
 #include <array>
 #include <algorithm>
 #include <ranges>
+
+#include "madevent/madcode/optimizer.h"
+#include "madevent/util.h"
+#include "../kernels/kernels.h"
+
 
 extern "C" void dgemm_(
     char* transa, char* transb,
@@ -36,7 +37,7 @@ using namespace madevent_kernels;
 namespace {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
-void batch_foreach(const Runtime::Instruction& instruction, TensorVec& locals) {
+void batch_foreach(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     std::array<const Tensor*, n_in> inputs;
     for (int i = 0; i < n_in; ++i) {
@@ -72,7 +73,7 @@ template<
     int dims
 >
 void backward_batch_foreach(
-    const Runtime::Instruction& instruction,
+    const CpuRuntime::Instruction& instruction,
     TensorVec& locals,
     TensorVec& local_grads,
     std::array<std::size_t, n_in_stored> in_stored_indices,
@@ -117,7 +118,7 @@ void backward_batch_foreach(
     }
 }
 
-void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_stack(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto& first_shape = locals[instruction.input_indices[0]].shape();
     Sizes shape(first_shape.size() + 1);
     shape[0] = locals[instruction.batch_size_index].size(0);
@@ -133,7 +134,7 @@ void op_stack(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_stack(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     // TODO: differentiate integer and float here (also other backwards)
     auto& output_grad = local_grads[instruction.output_indices[0]];
@@ -149,7 +150,7 @@ void backward_op_stack(
     }
 }
 
-void op_unstack(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_unstack(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
     for (
         auto [tensor, output_index] :
@@ -160,7 +161,7 @@ void op_unstack(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_unstack(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto input_index = instruction.input_indices[0];
     auto& input_grad = local_grads[input_index];
@@ -177,7 +178,7 @@ void backward_op_unstack(
     }
 }
 
-void op_pop(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_pop(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto input = locals[instruction.input_indices[0]];
     std::size_t last_index = input.size(1) - 1;
     locals[instruction.output_indices[0]] = input.slice(1, 0, last_index);
@@ -185,7 +186,7 @@ void op_pop(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_pop(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto input_index = instruction.input_indices[0];
     auto input_grad = local_grads[input_index];
@@ -198,7 +199,7 @@ void backward_op_pop(
     input_grad.select(1, last_index).add(local_grads[instruction.output_indices[1]]);
 }
 
-void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_batch_cat(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = 0;
     SizeVec sizes;
     for (auto input_index : instruction.input_indices) {
@@ -222,7 +223,7 @@ void op_batch_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_batch_cat(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto output_grad = local_grads[instruction.output_indices[0]];
     std::size_t offset = 0;
@@ -238,7 +239,7 @@ void backward_op_batch_cat(
     }
 }
 
-void op_batch_split(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_batch_split(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
     for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
@@ -247,7 +248,7 @@ void op_batch_split(const Runtime::Instruction& instruction, TensorVec& locals) 
 }
 
 void backward_op_batch_split(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto input_index = instruction.input_indices[0];
@@ -266,7 +267,7 @@ void backward_op_batch_split(
 
 }
 
-void op_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_cat(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     std::size_t cat_size = 0;
     for (auto input_index : instruction.input_indices) {
         cat_size += locals[input_index].size(1);
@@ -290,7 +291,7 @@ void op_cat(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_cat(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto& output_grad = local_grads[instruction.output_indices[0]];
     std::size_t offset = 0;
@@ -306,7 +307,7 @@ void backward_op_cat(
     }
 }
 
-void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_matrix_element(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size});
@@ -317,7 +318,7 @@ void op_matrix_element(const Runtime::Instruction& instruction, TensorVec& local
 }
 
 void op_matrix_element_multichannel(
-    const Runtime::Instruction& instruction, TensorVec& locals
+    const CpuRuntime::Instruction& instruction, TensorVec& locals
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
@@ -334,7 +335,7 @@ void op_matrix_element_multichannel(
     );
 }
 
-void op_pdf(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_pdf(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& output = locals[instruction.output_indices[0]];
     output = Tensor(DataType::dt_float, {batch_size});
@@ -346,7 +347,7 @@ void op_pdf(const Runtime::Instruction& instruction, TensorVec& locals) {
     );
 }
 
-void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_matmul(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto input = locals[instruction.input_indices[0]].contiguous();
     auto weight = locals[instruction.input_indices[1]].contiguous();
     auto bias = locals[instruction.input_indices[2]].contiguous();
@@ -370,7 +371,7 @@ void op_matmul(const Runtime::Instruction& instruction, TensorVec& locals) {
 }
 
 void backward_op_matmul(
-    const Runtime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
 ) {
     auto input = locals[instruction.input_indices[0]].contiguous();
     auto weight = locals[instruction.input_indices[1]].contiguous();
@@ -440,7 +441,7 @@ void backward_op_matmul(
     }
 }
 
-void op_nonzero(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_nonzero(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     // TODO: not parallelized for now
     auto& input = locals[instruction.input_indices[0]];
     auto batch_size = input.size(0);
@@ -474,7 +475,7 @@ void batch_gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
     }, batch_size);
 }
 
-void op_batch_gather(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_batch_gather(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
     auto& values = locals[instruction.input_indices[1]];
@@ -502,7 +503,7 @@ void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
     }, batch_size);
 }
 
-void op_scatter(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_scatter(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto& indices = locals[instruction.input_indices[0]];
     auto& target = locals[instruction.input_indices[1]];
     auto& source = locals[instruction.input_indices[2]];
@@ -519,7 +520,7 @@ void op_scatter(const Runtime::Instruction& instruction, TensorVec& locals) {
     }
 }
 
-void op_random(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_random(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     auto batch_size = locals[instruction.input_indices[0]].batch_sizes()[0];
     auto& output = locals[instruction.output_indices[0]];
     auto dim = instruction.output_shapes[0][0];
@@ -533,7 +534,7 @@ void op_random(const Runtime::Instruction& instruction, TensorVec& locals) {
     }, batch_size * dim);
 }
 
-void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
+void op_unweight(const CpuRuntime::Instruction& instruction, TensorVec& locals) {
     // TODO: not parallelized for now
     auto& weights = locals[instruction.input_indices[0]];
     auto& max_weight = locals[instruction.input_indices[1]];
@@ -566,30 +567,7 @@ void op_unweight(const Runtime::Instruction& instruction, TensorVec& locals) {
 
 }
 
-void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
-    //TODO: this function is in the wrong place. need some restructuring
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0)
-    );
-}
-
-void CpuDevice::tensor_zero(Tensor& tensor) const {
-    //TODO: this function is in the wrong place. need some restructuring
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
-        {&tensor}, {&tensor}, tensor.size(0)
-    );
-}
-
-void CpuDevice::tensor_add(const Tensor& source, Tensor& target) const {
-    //TODO: this function is in the wrong place. need some restructuring
-    tensor_foreach_dynamic<kernel_add_inplace<CpuTypes>, kernel_add_inplace<SimdTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0)
-    );
-}
-
-Runtime::Runtime(const Function& function, ContextPtr context) :
+CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
     context(context), input_count(function.inputs().size())
 {
     locals_init.resize(function.locals().size());
@@ -684,7 +662,7 @@ Runtime::Runtime(const Function& function, ContextPtr context) :
     }
 }
 
-TensorVec Runtime::run(const TensorVec& inputs) const {
+TensorVec CpuRuntime::run(const TensorVec& inputs) const {
     auto locals = locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
@@ -703,7 +681,7 @@ TensorVec Runtime::run(const TensorVec& inputs) const {
     return outputs;
 }
 
-std::tuple<TensorVec, TensorVec, std::vector<bool>> Runtime::run_with_grad(
+std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
     auto locals = locals_init;
@@ -749,11 +727,13 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> Runtime::run_with_grad(
     return {outputs, locals, eval_grad};
 }
 
-std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> Runtime::run_backward(
+std::tuple<
+    TensorVec, std::vector<std::tuple<std::string, Tensor>>
+> CpuRuntime::run_backward (
     const TensorVec& output_grads,
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
-) {
+) const {
     TensorVec local_grads(stored_locals.size());
     TensorVec locals(stored_locals);
     for (auto [index, grad] : std::views::zip(output_indices, output_grads)) {
@@ -784,5 +764,11 @@ std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> Runtime::run
         global_grads.push_back({name, local_grads[index]});
     }
     return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
+}
+
+extern "C" Runtime* build_runtime(
+    const madevent::Function& function, madevent::ContextPtr context
+) {
+    return new CpuRuntime(function, context);
 }
 

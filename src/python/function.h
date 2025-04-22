@@ -7,12 +7,8 @@
 #include <torch/extension.h>
 #endif
 
-#include "madevent/cpu/runtime.h"
 #include "madevent/madcode.h"
-#ifdef CUDA_FOUND
-#include "madevent/cuda/runtime.h"
-#include "madevent/cuda/device.h"
-#endif
+#include "madevent/runtime/runtime_base.h"
 
 
 namespace py = pybind11;
@@ -62,10 +58,8 @@ public:
 private:
     Function function;
     ContextPtr context;
-    std::optional<madevent_cpu::Runtime> cpu_runtime;
-#ifdef CUDA_FOUND
-    std::optional<cuda::Runtime> cuda_runtime;
-#endif
+    RuntimePtr cpu_runtime;
+    RuntimePtr cuda_runtime;
 };
 
 }

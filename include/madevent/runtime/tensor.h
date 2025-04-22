@@ -11,8 +11,6 @@
 
 namespace madevent {
 
-struct Nothing;
-
 using SizeVec = std::vector<std::size_t>;
 
 class Sizes {
@@ -141,40 +139,8 @@ public:
     virtual void tensor_add(const Tensor& source, Tensor& target) const = 0;
 };
 
-using DevicePtr = std::shared_ptr<Device>;
-
-class CpuDevice : public Device {
-public:
-    void* allocate(std::size_t size) const override {
-        return new std::byte[size];
-    }
-
-    void free(void* ptr) const override {
-        delete[] static_cast<std::byte*>(ptr);
-    }
-
-    void memcpy(void* to, void* from, std::size_t size) const override {
-        auto to_u8 = static_cast<std::byte*>(to);
-        auto from_u8 = static_cast<std::byte*>(from);
-        std::copy(from_u8, from_u8 + size, to_u8);
-    }
-
-    void tensor_copy(const Tensor& source, Tensor& target) const override;
-    void tensor_zero(Tensor& tensor) const override;
-    void tensor_add(const Tensor& source, Tensor& target) const override;
-
-    CpuDevice(const CpuDevice&) = delete;
-    CpuDevice& operator=(CpuDevice&) = delete;
-    friend inline DevicePtr cpu_device();
-
-private:
-    CpuDevice() {}
-};
-
-inline DevicePtr cpu_device() {
-    static DevicePtr device = DevicePtr(new CpuDevice());
-    return device;
-}
+using DevicePtr = Device*;
+DevicePtr cpu_device(); // defined in runtime_base.cpp
 
 class Tensor {
 public:

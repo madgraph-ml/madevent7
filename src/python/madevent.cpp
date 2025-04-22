@@ -136,8 +136,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("globals", &Function::globals)
         .def_property_readonly("instructions", &Function::instructions);
 
-    py::class_<Device, DevicePtr> device(m, "Device");
+    py::class_<DevicePtr> device(m, "Device");
     m.def("cpu_device", &cpu_device);
+    m.def("cuda_device", &cuda_device);
 
     py::class_<MatrixElement>(m, "MatrixElement")
         .def(py::init<const std::string&, const std::string&, std::size_t, double>(),
@@ -471,4 +472,5 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
     m.def("initialize_vegas_grid", &initialize_vegas_grid,
           py::arg("context"), py::arg("grid_name"));
+    m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));
 }

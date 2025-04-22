@@ -22,6 +22,11 @@ def _init():
     """
     Monkey-patch Function and Mapping classes for a more pythonic experience.
     """
+    set_lib_path(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "lib"
+        )
+    )
 
     def function_call(self, *args):
         if not hasattr(self, "runtime"):

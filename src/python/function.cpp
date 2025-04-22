@@ -18,10 +18,10 @@ std::vector<torch::Tensor> call_torch_impl(
     const std::vector<torch::Tensor>& args,
     const Function& function,
     ContextPtr context,
-    std::optional<madevent_cpu::Runtime>& cpu_runtime,
+    RuntimePtr& cpu_runtime,
     CpuFunc cpu_func
 #ifdef CUDA_FOUND
-    , std::optional<cuda::Runtime>& cuda_runtime
+    , RuntimePtr& cuda_runtime
     , CudaFunc cuda_func
 #endif
 ) {
@@ -48,7 +48,7 @@ std::vector<torch::Tensor> call_torch_impl(
 #ifdef CUDA_FOUND
         //TODO: update for context
         if (!cuda_runtime) {
-            cuda_runtime.emplace(function);
+            cuda_runtime = build_runtime(function, Context::default_context());
         }
         outputs = cuda_func(inputs);
 #endif
@@ -58,9 +58,9 @@ std::vector<torch::Tensor> call_torch_impl(
                 if (context->device() != cpu_device()) {
                     throw std::invalid_argument("Given context does not have device CPU");
                 }
-                cpu_runtime.emplace(function, context);
+                cpu_runtime = build_runtime(function, context);
             } else {
-                cpu_runtime.emplace(function);
+                cpu_runtime = build_runtime(function, Context::default_context());
             }
         }
         outputs = cpu_func(inputs);
@@ -128,9 +128,9 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             if (context->device() != cpu_device()) {
                 throw std::invalid_argument("Given context does not have device CPU");
             }
-            cpu_runtime.emplace(function, context);
+            cpu_runtime = build_runtime(function, context);
         } else {
-            cpu_runtime.emplace(function);
+            cpu_runtime = build_runtime(function, Context::default_context());
         }
     }
     return cpu_runtime->run(inputs)
