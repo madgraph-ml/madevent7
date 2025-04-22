@@ -7,7 +7,15 @@
 #include "madevent/phasespace.h"
 #include "madevent/runtime.h"
 #include "instruction_set.h"
-#include "function.h"
+#include "function_runtime.h"
+
+#ifdef TORCH_FOUND
+#define MODULE_NAME _madevent_py_torch
+#include "torch.h"
+#else
+#define MODULE_NAME _madevent_py
+#endif
+
 
 namespace py = pybind11;
 using namespace madevent;
@@ -63,12 +71,6 @@ public:
 };
 
 }
-
-#ifdef TORCH_FOUND
-#define MODULE_NAME _madevent_py_torch
-#else
-#define MODULE_NAME _madevent_py
-#endif
 
 PYBIND11_MODULE(MODULE_NAME, m) {
     py::enum_<DataType>(m, "DataType")
@@ -184,9 +186,9 @@ PYBIND11_MODULE(MODULE_NAME, m) {
         .def(py::init<Function>(), py::arg("function"))
         .def(py::init<Function, ContextPtr>(), py::arg("function"), py::arg("context"))
 #ifdef TORCH_FOUND
-        .def("call", &FunctionRuntime::call_torch)
-        .def("call_with_grad", &FunctionRuntime::call_with_grad_torch)
-        .def("call_backward", &FunctionRuntime::call_backward_torch)
+        .def("call", &call_torch)
+        .def("call_with_grad", &call_with_grad_torch)
+        .def("call_backward", &call_backward_torch)
 #endif
         .def("call", &FunctionRuntime::call_numpy);
 

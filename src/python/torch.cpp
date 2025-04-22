@@ -1,4 +1,4 @@
-#include "function.h"
+#include "torch.h"
 
 #include <stdexcept>
 #include <format>
@@ -6,88 +6,16 @@
 
 using namespace madevent_py;
 
-py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
-    auto data_raw = reinterpret_cast<double*>(tensor.data());
-    py::capsule destroy(
-        new Tensor(tensor),
-        [](void* ptr) { delete static_cast<Tensor*>(ptr); }
-    );
-    SizeVec stride;
-    std::size_t dtype_size = tensor.dtype_size();
-    for (auto stride_item : tensor.stride()) {
-        stride.push_back(dtype_size * stride_item);
-    }
-    return {tensor.shape(), stride, data_raw, destroy};
-}
-
-std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::array> args) {
-    // TODO: update numpy bindings
-    auto n_args = function.inputs().size();
-    if (args.size() != n_args) {
-        throw std::invalid_argument(std::format(
-            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
-        ));
-    }
-    using Arr = py::array_t<double, py::array::f_style | py::array::forcecast>;
-    std::vector<Arr> arrays;
-    std::vector<Tensor> inputs;
-    for (int i = 0; i < n_args; ++i) {
-        auto arr = Arr::ensure(args.at(i));
-        if (!arr) {
-            throw std::invalid_argument(std::format("Argument {}: wrong dtype", i));
-        }
-        auto& input_type = function.inputs().at(i).type;
-        if (arr.ndim() != input_type.shape.size() + 1) {
-            throw std::invalid_argument(std::format(
-                "Argument {}: wrong input dimension. Expected {}, got {}",
-                i, input_type.shape.size() + 1, arr.ndim()
-            ));
-        }
-        std::vector<size_t> shape;
-        for (int j = 0; j < arr.ndim(); ++j) {
-            auto arr_size = arr.shape(j);
-            if (j != 0 && arr_size != input_type.shape.at(j - 1)) {
-                throw std::invalid_argument(std::format(
-                    "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
-                    i, j, input_type.shape.at(j - 1), arr_size
-                ));
-            }
-            shape.push_back(arr_size);
-        }
-        inputs.emplace_back(DataType::dt_float, shape, arr.mutable_data(), []{});
-        arrays.push_back(arr);
-    }
-
-    if (!cpu_runtime) {
-        if (context) {
-            if (context->device() != cpu_device()) {
-                throw std::invalid_argument("Given context does not have device CPU");
-            }
-            cpu_runtime = build_runtime(function, context);
-        } else {
-            cpu_runtime = build_runtime(function, madevent::default_context());
-        }
-    }
-    return cpu_runtime->run(inputs)
-        | std::views::transform(tensor_to_numpy)
-        | std::ranges::to<std::vector<py::array_t<double>>>();
-}
-
-#ifdef TORCH_FOUND
-
 namespace {
 
 template<typename F>
 std::vector<torch::Tensor> call_torch_impl(
     const std::vector<torch::Tensor>& args,
-    const Function& function,
-    ContextPtr context,
-    RuntimePtr& cpu_runtime,
-    RuntimePtr& cuda_runtime,
+    FunctionRuntime& func_runtime,
     F run_func
 ) {
     //TODO: check batch sizes
-    auto n_args = function.inputs().size();
+    auto n_args = func_runtime.function.inputs().size();
     if (args.size() != n_args) {
         throw std::invalid_argument(std::format(
             "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
@@ -98,7 +26,7 @@ std::vector<torch::Tensor> call_torch_impl(
     DevicePtr expected_device = nullptr;
     for (int i = 0; i < n_args; ++i) {
         auto& arg = args.at(i);
-        auto& input_type = function.inputs().at(i).type;
+        auto& input_type = func_runtime.function.inputs().at(i).type;
         auto tensor = torch_to_tensor(arg, input_type, i, expected_device);
         if (i == 0) expected_device = tensor.device();
         inputs.push_back(tensor);
@@ -106,26 +34,34 @@ std::vector<torch::Tensor> call_torch_impl(
 
     std::vector<Tensor> outputs;
     if (is_cuda) {
-        if (!cuda_runtime) {
-            if (context) {
-                if (context->device() != cuda_device()) {
+        if (!func_runtime.cuda_runtime) {
+            if (func_runtime.context) {
+                if (func_runtime.context->device() != cuda_device()) {
                     throw std::invalid_argument("Given context does not have device CUDA");
                 }
-                cuda_runtime = build_runtime(function, context);
+                func_runtime.cuda_runtime = build_runtime(
+                    func_runtime.function, func_runtime.context
+                );
             } else {
                 //TODO: default cuda context
-                cuda_runtime = build_runtime(function, madevent::default_cuda_context());
+                func_runtime.cuda_runtime = build_runtime(
+                    func_runtime.function, madevent::default_cuda_context()
+                );
             }
         }
     } else {
-        if (!cpu_runtime) {
-            if (context) {
-                if (context->device() != cpu_device()) {
+        if (!func_runtime.cpu_runtime) {
+            if (func_runtime.context) {
+                if (func_runtime.context->device() != cpu_device()) {
                     throw std::invalid_argument("Given context does not have device CPU");
                 }
-                cpu_runtime = build_runtime(function, context);
+                func_runtime.cpu_runtime = build_runtime(
+                    func_runtime.function, func_runtime.context
+                );
             } else {
-                cpu_runtime = build_runtime(function, madevent::default_context());
+                func_runtime.cpu_runtime = build_runtime(
+                    func_runtime.function, madevent::default_context()
+                );
             }
         }
     }
@@ -340,16 +276,14 @@ Tensor madevent_py::torch_to_tensor_unchecked(std::optional<torch::Tensor> torch
     };
 }
 
-std::vector<torch::Tensor> FunctionRuntime::call_torch(
+std::vector<torch::Tensor> madevent_py::call_torch(
+    FunctionRuntime& func_runtime,
     const std::vector<torch::Tensor>& args
 ) {
     return call_torch_impl(
         args,
-        function,
-        context,
-        cpu_runtime,
-        cuda_runtime,
-        [&] (auto inputs) { return cpu_runtime->run(inputs); }
+        func_runtime,
+        [&] (auto inputs) { return func_runtime.cpu_runtime->run(inputs); }
     );
 }
 
@@ -357,7 +291,8 @@ std::tuple<
     std::vector<torch::Tensor>,
     std::vector<std::optional<torch::Tensor>>,
     std::vector<bool>
-> FunctionRuntime::call_with_grad_torch(
+> madevent_py::call_with_grad_torch(
+    FunctionRuntime& func_runtime,
     const std::vector<torch::Tensor>& args,
     const std::vector<bool>& input_requires_grad
 ) {
@@ -365,12 +300,9 @@ std::tuple<
     std::vector<bool> eval_grad;
     auto outputs = call_torch_impl(
         args,
-        function,
-        context,
-        cpu_runtime,
-        cuda_runtime,
+        func_runtime,
         [&] (auto inputs) {
-            auto [out, loc_grad, ev_grad] = cpu_runtime->run_with_grad(
+            auto [out, loc_grad, ev_grad] = func_runtime.cpu_runtime->run_with_grad(
                 inputs, input_requires_grad
             );
             local_grads = loc_grad
@@ -385,7 +317,8 @@ std::tuple<
 std::tuple<
     std::vector<std::optional<torch::Tensor>>,
     std::vector<std::tuple<std::string, std::optional<torch::Tensor>>>
-> FunctionRuntime::call_backward_torch(
+> madevent_py::call_backward_torch(
+    FunctionRuntime& func_runtime,
     const std::vector<torch::Tensor>& output_grads,
     const std::vector<std::optional<torch::Tensor>>& stored_locals,
     const std::vector<bool>& eval_grad
@@ -397,7 +330,7 @@ std::tuple<
         | std::views::transform(torch_to_tensor_unchecked)
         | std::ranges::to<std::vector<Tensor>>();
     // TODO: checks here
-    auto [ret_in_grads, ret_glob_grads] = cpu_runtime->run_backward(
+    auto [ret_in_grads, ret_glob_grads] = func_runtime.cpu_runtime->run_backward(
         arg_out, arg_locals, eval_grad
     );
     auto input_grads = ret_in_grads
@@ -411,5 +344,3 @@ std::tuple<
         | std::ranges::to<std::vector<STP>>();
     return {input_grads, global_grads};
 }
-
-#endif

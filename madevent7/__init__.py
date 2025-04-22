@@ -14,10 +14,9 @@ ctypes.CDLL(
 
 try:
     import torch
+    from ._madevent_py_torch import *
 except ImportError:
     from ._madevent_py import *
-else:
-    from ._madevent_py_torch import *
 
 
 def _init():

@@ -247,9 +247,9 @@ python_add_library(
     _madevent_py
     MODULE
     src/python/madevent.cpp
-    src/python/function.cpp
     src/python/instruction_set.h
-    src/python/function.h
+    src/python/function_runtime.cpp
+    src/python/function_runtime.h
     WITH_SOABI
 )
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
@@ -261,9 +261,11 @@ if(TORCH_FOUND)
         _madevent_py_torch
         MODULE
         src/python/madevent.cpp
-        src/python/function.cpp
         src/python/instruction_set.h
-        src/python/function.h
+        src/python/function_runtime.cpp
+        src/python/function_runtime.h
+        src/python/torch.cpp
+        src/python/torch.h
         WITH_SOABI
     )
     target_link_libraries(_madevent_py_torch PRIVATE pybind11::headers)
