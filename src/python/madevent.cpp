@@ -170,8 +170,9 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::return_value_policy::reference_internal)
         .def("save", &Context::save, py::arg("file"))
         .def("load", &Context::load, py::arg("file"))
-        .def("device", &Context::device)
-        .def_static("default_context", &Context::default_context);
+        .def("device", &Context::device);
+    m.def("default_context", &default_context);
+    m.def("default_cuda_context", &default_cuda_context);
 
     py::class_<FunctionRuntime>(m, "FunctionRuntime")
         .def(py::init<Function>(), py::arg("function"))

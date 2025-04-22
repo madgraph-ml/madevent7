@@ -7,7 +7,7 @@ class FunctionModule(nn.Module):
     def __init__(
         self,
         function: me.Function,
-        context: me.Context = me.Context.default_context(),
+        context: me.Context = me.default_context(),
     ):
         super().__init__()
         self.global_params = nn.ParameterDict({

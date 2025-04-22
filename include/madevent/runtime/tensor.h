@@ -140,7 +140,9 @@ public:
 };
 
 using DevicePtr = Device*;
-DevicePtr cpu_device(); // defined in runtime_base.cpp
+// defined in runtime_base.cpp, but need to declare them here
+DevicePtr cpu_device();
+DevicePtr cuda_device();
 
 class Tensor {
 public:

@@ -109,7 +109,6 @@ public:
     void save(const std::string& file) const;
     void load(const std::string& file);
     DevicePtr device() { return _device; }
-    static std::shared_ptr<Context> default_context();
 
 private:
     DevicePtr _device;
@@ -119,5 +118,8 @@ private:
 };
 
 using ContextPtr = std::shared_ptr<Context>;
+
+ContextPtr default_context();
+ContextPtr default_cuda_context();
 
 }

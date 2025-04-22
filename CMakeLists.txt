@@ -14,6 +14,11 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
+
+############################################################################################
+# Load dependencies                                                                        #
+############################################################################################
+
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 execute_process(
     COMMAND "${Python3_EXECUTABLE}" "-c" "import torch;print(torch.utils.cmake_prefix_path)"
@@ -72,6 +77,9 @@ find_library(
     NAMES "libLHAPDF.a"
 )
 
+############################################################################################
+# Main madevent module                                                                     #
+############################################################################################
 
 add_library(
     madevent
@@ -146,12 +154,13 @@ target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_23)
 target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
 target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
-#target_link_libraries(madevent PRIVATE ${OpenBLAS_LIBRARIES})
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
-#target_include_directories(madevent PUBLIC ${OpenBLAS_INCLUDE_DIRS})
-#target_compile_definitions(madevent PRIVATE CUDA_FOUND=1)
 #target_link_libraries(madevent PRIVATE -static-libstdc++)
 
+
+############################################################################################
+# Compute kernel source files                                                              #
+############################################################################################
 
 set(
     KERNEL_SRC
@@ -170,6 +179,10 @@ set(
 )
 
 
+############################################################################################
+# CUDA runtime                                                                             #
+############################################################################################
+
 if(COMPILE_CUDA)
     add_library(
         madevent_cuda
@@ -177,15 +190,20 @@ if(COMPILE_CUDA)
         src/cuda/runtime.cu
         src/cuda/device.cu
         src/cuda/kernel_definitions.h
-        include/madevent/cuda/runtime.h
-        include/madevent/cuda/tensor.h
-        include/madevent/cuda/device.h
+        src/cuda/runtime.h
+        src/cuda/tensor.h
+        src/cuda/device.h
         ${KERNEL_SRC}
     )
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
 endif()
+
+
+############################################################################################
+# CPU runtime                                                                              #
+############################################################################################
 
 add_library(
     madevent_cpu
@@ -211,13 +229,11 @@ if(USE_SIMD)
     target_compile_definitions(madevent_cpu PRIVATE USE_SIMD=1)
 endif()
 
-#pybind11_add_module(
-#    _madevent_py
-#    src/python/madevent.cpp
-#    src/python/function.cpp
-#    src/python/instruction_set.h
-#    src/python/function.h
-#)
+
+############################################################################################
+# Python bindings                                                                          #
+############################################################################################
+
 python_add_library(
     _madevent_py
     MODULE
@@ -228,7 +244,7 @@ python_add_library(
     WITH_SOABI
 )
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
-target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
+#target_link_libraries(_madevent_py PRIVATE nlohmann_json::nlohmann_json)
 #target_link_libraries(_madevent_py PRIVATE -static-libstdc++)
 
 if(COMPILE_CUDA)
@@ -241,7 +257,11 @@ if(TORCH_FOUND)
 endif()
 
 target_link_libraries(_madevent_py PUBLIC madevent)
-#set_target_properties(_madevent_py PROPERTIES INSTALL_RPATH "$ORIGIN")
+
+
+############################################################################################
+# Installation settings                                                                    #
+############################################################################################
 
 install(
     TARGETS madevent madevent_cpu
@@ -256,7 +276,3 @@ install(
     TARGETS _madevent_py
     DESTINATION madevent7
 )
-#install(TARGETS madevent DESTINATION madevent7/lib)
-
-#install(TARGETS _madevent_py DESTINATION madevent7)
-#install(TARGETS madevent DESTINATION ${SKBUILD_PLATLIB_DIR})

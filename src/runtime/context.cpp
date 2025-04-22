@@ -291,7 +291,12 @@ void Context::load(const std::string& file) {
 
 }
 
-ContextPtr Context::default_context() {
+ContextPtr madevent::default_context() {
     static ContextPtr context = std::make_shared<Context>(cpu_device());
+    return context;
+}
+
+ContextPtr madevent::default_cuda_context() {
+    static ContextPtr context = std::make_shared<Context>(cuda_device());
     return context;
 }

@@ -8,22 +8,14 @@ using namespace madevent_py;
 
 namespace {
 
-template<
-    typename CpuFunc
-#ifdef CUDA_FOUND
-    , typename CudaFunc
-#endif
->
+template<typename F>
 std::vector<torch::Tensor> call_torch_impl(
     const std::vector<torch::Tensor>& args,
     const Function& function,
     ContextPtr context,
     RuntimePtr& cpu_runtime,
-    CpuFunc cpu_func
-#ifdef CUDA_FOUND
-    , RuntimePtr& cuda_runtime
-    , CudaFunc cuda_func
-#endif
+    RuntimePtr& cuda_runtime,
+    F run_func
 ) {
     //TODO: check batch sizes
     auto n_args = function.inputs().size();
@@ -45,13 +37,17 @@ std::vector<torch::Tensor> call_torch_impl(
 
     std::vector<Tensor> outputs;
     if (is_cuda) {
-#ifdef CUDA_FOUND
-        //TODO: update for context
         if (!cuda_runtime) {
-            cuda_runtime = build_runtime(function, Context::default_context());
+            if (context) {
+                if (context->device() != cuda_device()) {
+                    throw std::invalid_argument("Given context does not have device CUDA");
+                }
+                cuda_runtime = build_runtime(function, context);
+            } else {
+                //TODO: default cuda context
+                cuda_runtime = build_runtime(function, madevent::default_cuda_context());
+            }
         }
-        outputs = cuda_func(inputs);
-#endif
     } else {
         if (!cpu_runtime) {
             if (context) {
@@ -60,12 +56,11 @@ std::vector<torch::Tensor> call_torch_impl(
                 }
                 cpu_runtime = build_runtime(function, context);
             } else {
-                cpu_runtime = build_runtime(function, Context::default_context());
+                cpu_runtime = build_runtime(function, madevent::default_context());
             }
         }
-        outputs = cpu_func(inputs);
     }
-    return outputs
+    return run_func(inputs)
         | std::views::transform(tensor_to_torch)
         | std::ranges::to<std::vector<torch::Tensor>>();
 }
@@ -130,7 +125,7 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             }
             cpu_runtime = build_runtime(function, context);
         } else {
-            cpu_runtime = build_runtime(function, Context::default_context());
+            cpu_runtime = build_runtime(function, madevent::default_context());
         }
     }
     return cpu_runtime->run(inputs)
@@ -210,7 +205,9 @@ Tensor madevent_py::torch_to_tensor(
         dtype_ok = expected_type.dtype == DataType::dt_bool;
     }
     if (!dtype_ok) {
-        throw std::invalid_argument(std::format("Argument {}: dtype not accepted", arg_index + 1));
+        throw std::invalid_argument(
+            std::format("Argument {}: dtype not accepted", arg_index + 1)
+        );
     }
     auto tensor = torch_tensor
         .permute(permutation)
@@ -234,7 +231,8 @@ Tensor madevent_py::torch_to_tensor(
     if (is_batch_sizes) {
         if (n_dims != 1) {
             throw std::invalid_argument(std::format(
-                "Argument {}: wrong input dimension. Expected 1, got {}", arg_index + 1, n_dims
+                "Argument {}: wrong input dimension. Expected 1, got {}",
+                arg_index + 1, n_dims
             ));
         }
         if (tensor.size(0) != expected_type.batch_size_list.size()) {
@@ -247,7 +245,10 @@ Tensor madevent_py::torch_to_tensor(
             tensor.data_ptr<int64_t>(), tensor.data_ptr<int64_t>() + tensor.numel()
         );
         return {batch_sizes};
-    } else if (expected_type.batch_size == BatchSize::one && expected_type.shape.size() == 0) {
+    } else if (
+        expected_type.batch_size == BatchSize::one &&
+        expected_type.shape.size() == 0
+    ) {
         switch(expected_type.dtype) {
         case DataType::dt_float:
             return {tensor.item<double>(), device};
@@ -350,11 +351,8 @@ std::vector<torch::Tensor> FunctionRuntime::call_torch(
         function,
         context,
         cpu_runtime,
+        cuda_runtime,
         [&] (auto inputs) { return cpu_runtime->run(inputs); }
-#ifdef CUDA_FOUND
-        , cuda_runtime
-        , [&] (auto inputs) { return cuda_runtime->run(inputs); }
-#endif
     );
 }
 
@@ -373,6 +371,7 @@ std::tuple<
         function,
         context,
         cpu_runtime,
+        cuda_runtime,
         [&] (auto inputs) {
             auto [out, loc_grad, ev_grad] = cpu_runtime->run_with_grad(
                 inputs, input_requires_grad
@@ -383,19 +382,6 @@ std::tuple<
             eval_grad = ev_grad;
             return out;
         }
-#ifdef CUDA_FOUND
-        , cuda_runtime
-        , [&] (auto inputs) {
-            auto [out, loc_grad, ev_grad] = cuda_runtime->run_with_grad(
-                inputs, input_requires_grad
-            );
-            local_grads = loc_grad
-                | std::views::transform(tensor_to_torch_opt)
-                | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
-            eval_grad = ev_grad;
-            return out;
-        }
-#endif
     );
     return {outputs, local_grads, eval_grad};
 }
