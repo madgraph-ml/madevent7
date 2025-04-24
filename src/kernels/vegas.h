@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 template<typename T>
 KERNELSPEC void kernel_vegas_forward(
@@ -35,4 +36,5 @@ KERNELSPEC void kernel_vegas_inverse(
     det = 1 / (bin_count_f * bin_size);
 }
 
+}
 }

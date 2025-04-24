@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 // Helper functions
 
@@ -115,4 +116,5 @@ KERNELSPEC void kernel_cut_sqrt_s(
     w = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), FVal<T>(0.), 1.);
 }
 
+}
 }

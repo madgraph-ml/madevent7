@@ -170,12 +170,17 @@ def runtime_mixin(commands, device):
                     kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
                 elif device == "cuda":
                     kernel = f"kernel_{name}<CudaTypes>"
+                foreach_func = (
+                    f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}>"
+                    if dims == 0 else
+                    f"tensor_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}>"
+                )
                 func = (
-                    f"batch_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}>"
+                    f"batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}>"
                 )
             f.write(
                 f"case {opcode}:\n"
-                f"    {func}(instr, locals);\n"
+                f"    {func}(instr, locals, device);\n"
                 f"    break;\n"
             )
 
@@ -191,7 +196,7 @@ def runtime_backward_mixin(commands, device):
             if cmd.get("custom_op", False):
                 f.write(
                     f"case {opcode}:\n"
-                    f"    backward_op_{name}(instr, locals, local_grads);\n"
+                    f"    backward_op_{name}(instr, locals, local_grads, device);\n"
                     f"    break;\n"
                 )
             else:
@@ -219,14 +224,20 @@ def runtime_backward_mixin(commands, device):
                     kernel = f"backward_kernel_{name}<CudaTypes>"
 
                 dims = cmd.get("dims", 1)
+                n_args = len(in_stored) + len(out_stored) + n_outputs
+                foreach_func = (
+                    f"tensor_foreach_dynamic<{kernel}, {n_args}, {n_inputs}>"
+                    if dims == 0 else
+                    f"tensor_foreach<{kernel}, {n_args}, {n_inputs}, {dims}>"
+                )
                 func = (
-                    f"backward_batch_foreach<{kernel}, {n_inputs}, {n_outputs}, "
-                    f"{len(in_stored)}, {len(out_stored)}, {dims}>"
+                    f"backward_batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}, "
+                    f"{len(in_stored)}, {len(out_stored)}>"
                 )
                 f.write(
                     f"case {opcode}:\n"
                     f"    {func}(instr, locals, local_grads, "
-                    f"{{{in_stored_str}}}, {{{out_stored_str}}});\n"
+                    f"{{{in_stored_str}}}, {{{out_stored_str}}}, device);\n"
                     f"    break;\n"
                 )
 

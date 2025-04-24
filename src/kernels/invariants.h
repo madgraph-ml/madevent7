@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 template<typename T>
 KERNELSPEC void kernel_uniform_invariant(
@@ -112,4 +113,5 @@ KERNELSPEC void kernel_stable_invariant_nu_inverse(
     gs = power / (dqpow * pow(q, nu));
 }
 
+}
 }

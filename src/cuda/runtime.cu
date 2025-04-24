@@ -1,4 +1,4 @@
-#include "madevent/cuda/runtime.h"
+#include "runtime.h"
 
 #include <tuple>
 #include <array>
@@ -14,66 +14,6 @@ using namespace madevent;
 using namespace madevent_cuda;
 
 namespace {
-
-struct CudaInstruction {
-    int opcode;
-    SizeVec input_indices;
-    SizeVec output_indices;
-    std::vector<DataType> output_dtypes;
-    std::vector<SizeVec> output_shapes;
-    cudaStream_t stream;
-    cudaEvent_t event;
-};
-
-}
-
-struct Runtime::Impl {
-    std::vector<CudaInstruction> instructions;
-    SizeVec output_indices;
-    std::vector<Tensor> locals_init;
-    std::vector<cudaStream_t> streams;
-    std::vector<cudaEvent_t> events;
-
-    //template<auto function, int NIn, int NOut, bool flatten>
-    //friend void batch_foreach(Runtime::Impl::Instruction& instruction, std::vector<Tensor>& locals);
-};
-
-namespace {
-
-// call function(i) with argument i=0...N-1 and return the results as a tuple
-template<std::size_t N, typename F, std::size_t... i>
-constexpr auto range_to_tuple_impl(F&& function, std::index_sequence<i...>) {
-    return std::make_tuple(function(i)...);
-}
-template<std::size_t N, typename F>
-constexpr auto range_to_tuple(F&& function) {
-    return range_to_tuple_impl<N>(std::forward<F>(function), std::make_index_sequence<N>{});
-}
-
-// return the tuple of TensorViews where the type is extracted from the signature of F
-template<typename F, bool flatten> struct get_views;
-template<typename... TParam, bool flatten>
-struct get_views<void(*)(TParam...), flatten> {
-    template <typename... TArg>
-    auto operator()(TArg&&... args) {
-        return std::make_tuple(
-            PackedCudaTensorView(
-                args.template view<typename TParam::DType, TParam::dim + 1>(flatten)
-            )...
-        );
-    }
-};
-
-template<auto function, typename... TArgs>
-__global__ void run_kernel(std::size_t batch_size, TArgs... args) {
-    auto i = blockDim.x * blockIdx.x + threadIdx.x;
-    if (i < batch_size) {
-        function(args[i]...);
-    }
-}
-
-//namespace madevent {
-//namespace cuda {
 
 template<auto function, int NIn, int NOut, bool flatten>
 void batch_foreach(CudaInstruction& instruction, std::vector<Tensor>& locals) {
@@ -122,7 +62,6 @@ void batch_foreach(CudaInstruction& instruction, std::vector<Tensor>& locals) {
     }, views);
 }
 
-// }
 }
 
 Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
@@ -174,8 +113,6 @@ Runtime::Runtime(const Function& function) : impl(std::make_unique<Impl>()) {
         impl->output_indices.push_back(out.local_index);
     }
 }
-
-Runtime::~Runtime() {}
 
 std::vector<Tensor> Runtime::run(std::vector<Tensor>& inputs) const {
     auto locals = impl->locals_init;

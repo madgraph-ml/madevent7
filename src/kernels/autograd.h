@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 constexpr std::size_t max_instr = 150;
 
@@ -648,4 +649,5 @@ struct AutogradTypes {
     using BVal = AutogradValue<bool>;
 };
 
+}
 }

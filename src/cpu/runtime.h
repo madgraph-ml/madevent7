@@ -5,30 +5,29 @@
 #include "madevent/runtime/context.h"
 #include "madevent/madcode/function.h"
 
-namespace madevent_cpu {
+namespace madevent {
+namespace cpu {
 
-using TensorVec = std::vector<madevent::Tensor>;
-
-class CpuRuntime : public madevent::Runtime {
+class CpuRuntime : public Runtime {
 public:
     struct Instruction {
         int opcode;
-        madevent::SizeVec input_indices;
-        madevent::SizeVec output_indices;
-        std::vector<madevent::DataType> output_dtypes;
-        std::vector<madevent::SizeVec> output_shapes;
+        SizeVec input_indices;
+        SizeVec output_indices;
+        std::vector<DataType> output_dtypes;
+        std::vector<SizeVec> output_shapes;
         std::size_t batch_size_index;
-        madevent::Context& context;
+        Context& context;
         bool differentiable;
     };
 
-    CpuRuntime(const madevent::Function& function, madevent::ContextPtr context);
+    CpuRuntime(const Function& function, ContextPtr context);
     TensorVec run(const TensorVec& inputs) const override;
     std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad(
         const TensorVec& inputs, const std::vector<bool>& input_requires_grad
     ) const override;
     std::tuple<
-        TensorVec, std::vector<std::tuple<std::string, madevent::Tensor>>
+        TensorVec, std::vector<std::tuple<std::string, Tensor>>
     > run_backward(
         const TensorVec& output_grads,
         const TensorVec& stored_locals,
@@ -37,16 +36,17 @@ public:
 
 private:
     std::vector<Instruction> instructions;
-    madevent::SizeVec output_indices;
+    SizeVec output_indices;
     std::size_t input_count;
     TensorVec locals_init;
     std::vector<bool> requires_grad_init;
     std::vector<std::tuple<std::string, std::size_t>> grad_global_indices;
-    madevent::ContextPtr context;
+    ContextPtr context;
 };
 
-extern "C" madevent::Runtime* build_runtime(
-    const madevent::Function& function, madevent::ContextPtr context
+extern "C" Runtime* build_runtime(
+    const Function& function, ContextPtr context
 );
 
+}
 }

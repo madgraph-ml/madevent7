@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 template<typename T>
 KERNELSPEC void kernel_copy(FIn<T,0> in, FOut<T,0> out) {
@@ -100,4 +101,5 @@ KERNELSPEC void kernel_uniform_costheta_inverse(FIn<T,0> in, FOut<T,0> out) {
     out = in / 2 + 0.5;
 }
 
+}
 }

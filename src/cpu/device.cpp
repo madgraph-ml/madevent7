@@ -3,8 +3,8 @@
 #include "../kernels/kernels.h"
 
 using namespace madevent;
-using namespace madevent_cpu;
-using namespace madevent_kernels;
+using namespace madevent::cpu;
+using namespace madevent::kernels;
 
 void CpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
     //TODO: this only accidentally works for types other than double
@@ -26,6 +26,6 @@ void CpuDevice::tensor_add(const Tensor& source, Tensor& target) const {
     );
 }
 
-extern "C" madevent::DevicePtr get_device() {
-    return CpuDevice::instance();
+extern "C" DevicePtr get_device() {
+    return &CpuDevice::instance();
 }

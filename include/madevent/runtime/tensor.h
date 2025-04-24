@@ -61,7 +61,6 @@ class TensorView {
 public:
     using DType = T;
     static const int dim = _dim;
-    static const bool is_single = false;
 
     TensorView(T* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
@@ -137,9 +136,11 @@ public:
     virtual void tensor_copy(const Tensor& source, Tensor& target) const = 0;
     virtual void tensor_zero(Tensor& tensor) const = 0;
     virtual void tensor_add(const Tensor& source, Tensor& target) const = 0;
+    virtual void tensor_cpu(const Tensor& source, Tensor& target) const = 0;
+    virtual const Device* device_ptr() const = 0;
 };
 
-using DevicePtr = Device*;
+using DevicePtr = const Device*;
 // defined in runtime_base.cpp, but need to declare them here
 DevicePtr cpu_device();
 DevicePtr cuda_device();
@@ -166,18 +167,12 @@ public:
         impl->data = device->allocate(size);
     }
 
-    Tensor(DataType dtype, const Sizes& shape, std::function<void*(std::size_t)> allocator) :
-        Tensor(dtype, shape, cpu_device(), allocator) {}
-
-    Tensor(
-        DataType dtype,
-        const Sizes& shape,
-        DevicePtr device,
-        std::function<void*(std::size_t)> allocator
-    ) : impl(new TensorImpl{dtype, shape, device})
+    template<typename D>
+    Tensor(DataType dtype, const Sizes& shape, const D& device) :
+        impl(new TensorImpl{dtype, shape, device.device_ptr()})
     {
         auto size = init_stride();
-        impl->data = allocator(size);
+        impl->data = device.allocate(size);
     }
 
     Tensor(
@@ -291,13 +286,14 @@ public:
 
     void reset() {
         if (impl == nullptr) return;
-        impl->reset();
+        impl->reset(*impl->device);
         impl = nullptr;
     }
 
-    void reset(std::function<void(void*)> deleter) {
+    template<typename D>
+    void reset(const D& device) {
         if (impl == nullptr) return;
-        impl->reset(deleter);
+        impl->reset(device);
         impl = nullptr;
     }
 
@@ -305,31 +301,56 @@ public:
     Tensor slice(std::size_t axis, std::size_t start, std::size_t stop) const;
     std::vector<Tensor> split(std::size_t axis, const SizeVec& sizes) const;
     std::vector<Tensor> unstack(std::size_t axis) const;
-    Tensor cpu() const { return *this; } //TODO: implement
-    void zero() {
-        check_impl();
-        impl->device->tensor_zero(*this);
-    }
-    void copy_from(const Tensor& source) {
-        check_impl();
-        impl->device->tensor_copy(source, *this);
-    }
-    void add(const Tensor& source) {
-        check_impl();
-        impl->device->tensor_add(source, *this);
-    }
 
-    Tensor copy() const {
+    template<typename D>
+    Tensor cpu(const D& device) const {
+        check_impl();
+        if (impl->device == cpu_device()) {
+            return *this;
+        } else {
+            Tensor tensor(impl->dtype, impl->shape, impl->device);
+            device.tensor_cpu(*this, tensor);
+            return tensor;
+        }
+    }
+    Tensor cpu() const { return cpu(*impl->device); }
+
+    template<typename D>
+    void zero(const D& device) {
+        check_impl();
+        device.tensor_zero(*this);
+    }
+    void zero() { zero(*impl->device); }
+
+    template<typename D>
+    void copy_from(const Tensor& source, const D& device) {
+        check_impl();
+        device.tensor_copy(source, *this);
+    }
+    void copy_from(const Tensor& source) { copy_from(source, *impl->device); }
+
+    template<typename D>
+    void add(const Tensor& source, const D& device) {
+        check_impl();
+        device.tensor_add(source, *this);
+    }
+    void add(const Tensor& source) { add(source, *impl->device); }
+
+    template<typename D>
+    Tensor copy(const D& device) const {
         check_impl();
         Tensor tensor(impl->dtype, impl->shape, impl->device);
-        impl->device->tensor_copy(*this, tensor);
+        device.tensor_copy(*this, tensor);
         return tensor;
     }
+    Tensor copy() const { return copy(*impl->device); }
 
-    Tensor contiguous() const {
+    template<typename D>
+    Tensor contiguous(const D& device) const {
         check_impl();
-        return impl->contiguous_dims < impl->shape.size() ? copy() : *this;
+        return impl->contiguous_dims < impl->shape.size() ? copy(device) : *this;
     }
+    Tensor contiguous() const { return contiguous(*impl->device); }
 
 private:
     struct TensorImpl {
@@ -346,34 +367,18 @@ private:
         std::size_t contiguous_dims;
         SizeVec batch_sizes;
 
-        void reset() {
+        template<typename D>
+        void reset(const D& device) {
             if (ref_count > 1) {
                 --ref_count;
                 return;
             }
             if (owns_data) {
-                device->free(data);
+                device.free(data);
             } else if (data_owner != nullptr) {
-                data_owner->reset();
+                data_owner->reset(device);
             } else if (external_reset) {
                 (*external_reset)();
-            }
-            delete this;
-        }
-
-        void reset(std::function<void(void*)> deleter) {
-            if (ref_count > 1) {
-                --ref_count;
-                return;
-            }
-            if (owns_data) {
-                deleter(data);
-            } else if (data_owner != nullptr) {
-                data_owner->reset(deleter);
-            } else if (external_reset) {
-                throw std::runtime_error(
-                    "Attempted to reset external resource with custom deleter"
-                );
             }
             delete this;
         }
@@ -393,5 +398,6 @@ private:
     TensorImpl* impl;
 };
 
+using TensorVec = std::vector<Tensor>;
 
 }

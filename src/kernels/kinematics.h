@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 constexpr double INV_GEV2_TO_PB = 0.38937937217186e9;
 
@@ -337,4 +338,5 @@ KERNELSPEC void kernel_t_inv_min_max(
     //std::println("LIMIT {} {} {} {}", y1, y2, static_cast<double>(t_min), static_cast<double>(t_max));
 }
 
+}
 }

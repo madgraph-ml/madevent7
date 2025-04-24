@@ -183,6 +183,7 @@ set(
     src/kernels/discrete.h
     src/kernels/vegas.h
     src/kernels/definitions.h
+    src/kernels/operations.h
 )
 
 

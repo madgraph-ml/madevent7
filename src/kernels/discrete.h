@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 template<typename T>
 KERNELSPEC void kernel_sample_discrete(
@@ -64,4 +65,5 @@ KERNELSPEC void kernel_one_hot(
 
 }
 
+}
 }

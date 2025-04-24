@@ -1,6 +1,7 @@
 #include "madevent/cuda/device.h"
 
 using namespace madevent;
+using namespace madevent::cuda;
 
 void* CudaDevice::allocate(std::size_t size) const {
     void* ptr;

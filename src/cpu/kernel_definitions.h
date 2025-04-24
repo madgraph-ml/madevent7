@@ -7,15 +7,16 @@
 
 #define KERNELSPEC constexpr
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 struct CpuTypes {
-    template<int dim> using FIn = const madevent::TensorView<double, dim>;
-    template<int dim> using IIn = const madevent::TensorView<int64_t, dim>;
-    template<int dim> using BIn = const madevent::TensorView<bool, dim>;
-    template<int dim> using FOut = madevent::TensorView<double, dim>;
-    template<int dim> using IOut = madevent::TensorView<int64_t, dim>;
-    template<int dim> using BOut = madevent::TensorView<bool, dim>;
+    template<int dim> using FIn = const TensorView<double, dim>;
+    template<int dim> using IIn = const TensorView<int64_t, dim>;
+    template<int dim> using BIn = const TensorView<bool, dim>;
+    template<int dim> using FOut = TensorView<double, dim>;
+    template<int dim> using IOut = TensorView<int64_t, dim>;
+    template<int dim> using BOut = TensorView<bool, dim>;
     using FVal = double;
     using IVal = int64_t;
     using BVal = bool;
@@ -63,4 +64,5 @@ struct SimdTypes {
 using SimdTypes = CpuTypes;
 #endif // USE_SIMD
 
+}
 }

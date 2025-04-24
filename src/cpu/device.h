@@ -1,8 +1,9 @@
 #include "madevent/runtime/tensor.h"
 
-namespace madevent_cpu {
+namespace madevent {
+namespace cpu {
 
-class CpuDevice : public madevent::Device {
+class CpuDevice : public Device {
 public:
     void* allocate(std::size_t size) const override {
         return new std::byte[size];
@@ -18,21 +19,24 @@ public:
         std::copy(from_u8, from_u8 + size, to_u8);
     }
 
-    void tensor_copy(const madevent::Tensor& source, madevent::Tensor& target) const override;
-    void tensor_zero(madevent::Tensor& tensor) const override;
-    void tensor_add(const madevent::Tensor& source, madevent::Tensor& target) const override;
+    void tensor_copy(const Tensor& source, Tensor& target) const override;
+    void tensor_zero(Tensor& tensor) const override;
+    void tensor_add(const Tensor& source, Tensor& target) const override;
+    void tensor_cpu(const Tensor& source, Tensor& target) const override {}
+    DevicePtr device_ptr() const override { return &instance(); }
 
     CpuDevice(const CpuDevice&) = delete;
     CpuDevice& operator=(CpuDevice&) = delete;
-    static CpuDevice* instance() {
+    static const CpuDevice& instance() {
         static CpuDevice device;
-        return &device;
+        return device;
     }
 
 private:
     CpuDevice() {}
 };
 
-extern "C" madevent::DevicePtr get_device();
+extern "C" DevicePtr get_device();
 
+}
 }

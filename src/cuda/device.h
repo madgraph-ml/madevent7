@@ -5,6 +5,7 @@
 #include <vector>
 
 namespace madevent {
+namespace cuda {
 
 class CudaDevice : public Device {
 public:
@@ -23,4 +24,5 @@ inline CudaDevice& cuda_device() {
     return inst;
 }
 
+}
 }

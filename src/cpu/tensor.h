@@ -4,16 +4,17 @@
 #include "madevent/runtime/thread_pool.h"
 #include "simd.h"
 
-namespace {
+namespace madevent {
+namespace cpu {
 
-template<class V, madevent::ScalarType T, int _dim, bool is_batch>
+template<class V, ScalarType T, int _dim, bool is_batch>
 class VectorizedTensorView {
 public:
     using VType = V;
     using DType = T;
     static const int dim = _dim;
 
-    VectorizedTensorView(const madevent::TensorView<T, _dim>& view) :
+    VectorizedTensorView(const TensorView<T, _dim>& view) :
         _data(view.data()), _stride(view.stride()), _shape(view.shape()),
         _batch_stride(view.stride()[0]) {}
 
@@ -214,8 +215,8 @@ void nested_for(std::size_t batch_size, V... views) {
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
-    std::array<const madevent::Tensor*, n_in>& inputs,
-    std::array<madevent::Tensor*, n_out>& outputs,
+    std::array<const Tensor*, n_in>& inputs,
+    std::array<Tensor*, n_out>& outputs,
     std::size_t batch_size
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
@@ -224,7 +225,7 @@ void tensor_foreach(
     );
     // scalar func and vector func have the same type if cpu vectorization is turned off
     if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
-        madevent::ThreadPool::instance().parallel_for([&](std::size_t i) {
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
             std::apply([i](auto&&... args) {
                 recursive_for<scalar_func, dims-1>(args[i]...);
             }, views);
@@ -237,7 +238,7 @@ void tensor_foreach(
             get_vectorized_views<decltype(vector_func), dims>(), views
         );
         std::size_t vec_batch_size = batch_size / simd_vec_size;
-        madevent::ThreadPool::instance().parallel_for([&](std::size_t i) {
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
             std::apply([i](auto&&... args) {
                 recursive_for<vector_func, dims-1>(args[i]...);
             }, vectorized_views);
@@ -262,8 +263,8 @@ void tensor_foreach(
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out>
 void tensor_foreach_dynamic(
-    std::array<const madevent::Tensor*, n_in> inputs,
-    std::array<madevent::Tensor*, n_out> outputs,
+    std::array<const Tensor*, n_in> inputs,
+    std::array<Tensor*, n_out> outputs,
     std::size_t batch_size
 ) {
     switch (std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim) {
@@ -292,4 +293,5 @@ void tensor_foreach_dynamic(
     }
 }
 
+}
 }

@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 // constants and helper functions
 
@@ -135,4 +136,5 @@ KERNELSPEC void kernel_rambo_four_vectors_massive(
     det = cum_det;
 }
 
+}
 }

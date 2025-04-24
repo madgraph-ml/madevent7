@@ -3,7 +3,8 @@
 #include "definitions.h"
 #include "autograd.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 inline constexpr double MIN_BIN_SIZE = 1e-3;
 inline constexpr double MIN_DERIVATIVE = 1e-3;
@@ -440,4 +441,5 @@ KERNELSPEC void backward_kernel_select(
     }
 }
 
+}
 }

@@ -8,7 +8,8 @@
 #include "../cpu/kernel_definitions.h"
 #endif
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 inline constexpr double EPS = 1e-12;
 inline constexpr double EPS2 = 1e-24;
@@ -23,4 +24,5 @@ template<typename T> using FVal = typename T::FVal;
 template<typename T> using IVal = typename T::IVal;
 template<typename T> using BVal = typename T::BVal;
 
+}
 }

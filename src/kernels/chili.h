@@ -2,7 +2,8 @@
 
 #include "definitions.h"
 
-namespace madevent_kernels {
+namespace madevent {
+namespace kernels {
 
 template<typename T>
 KERNELSPEC void kernel_chili_forward(
@@ -106,4 +107,5 @@ KERNELSPEC void kernel_chili_forward(
     det = where((x1 < 1.) & (x2 < 1.), det_tmp, 0.);
 }
 
+}
 }
