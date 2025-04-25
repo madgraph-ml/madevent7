@@ -213,11 +213,14 @@ void nested_for(std::size_t batch_size, V... views) {
     }
 }
 
+class CpuDevice;
+
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
 void tensor_foreach(
     std::array<const Tensor*, n_in>& inputs,
     std::array<Tensor*, n_out>& outputs,
-    std::size_t batch_size
+    std::size_t batch_size,
+    const CpuDevice& device
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
     auto views = std::apply(
@@ -265,27 +268,28 @@ template<auto scalar_func, auto vector_func, int n_in, int n_out>
 void tensor_foreach_dynamic(
     std::array<const Tensor*, n_in> inputs,
     std::array<Tensor*, n_out> outputs,
-    std::size_t batch_size
+    std::size_t batch_size,
+    const CpuDevice& device
 ) {
     switch (std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim) {
         case 1:
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 1>(
-                inputs, outputs, batch_size
+                inputs, outputs, batch_size, device
             );
             break;
         case 2:
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 2>(
-                inputs, outputs, batch_size
+                inputs, outputs, batch_size, device
             );
             break;
         case 3:
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 3>(
-                inputs, outputs, batch_size
+                inputs, outputs, batch_size, device
             );
             break;
         case 4:
             tensor_foreach<scalar_func, vector_func, n_in, n_out, 4>(
-                inputs, outputs, batch_size
+                inputs, outputs, batch_size, device
             );
             break;
         default:

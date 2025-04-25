@@ -43,35 +43,35 @@ Function madevent::optimize_constants(const Function& function) {
         double result;
         if (const_opt) {
             switch (instr.instruction->opcode()) {
-            case Opcode::add: {
+            case opcodes::add: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);
                 result = arg0 + arg1;
                 break;
-            } case Opcode::sub: {
+            } case opcodes::sub: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);
                 result = arg0 - arg1;
                 break;
-            } case Opcode::mul: {
+            } case opcodes::mul: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);
                 result = arg0 * arg1;
                 break;
-            } case Opcode::clip_min: {
+            } case opcodes::clip_min: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);
                 result = arg0 < arg1 ? arg1 : arg0;
                 break;
-            } case Opcode::sqrt: {
+            } case opcodes::sqrt: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 result = std::sqrt(arg0);
                 break;
-            } case Opcode::square: {
+            } case opcodes::square: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 result = arg0 * arg0;
                 break;
-            } case Opcode::pow: {
+            } case opcodes::pow: {
                 double arg0 = std::get<double>(inputs.at(0).literal_value);
                 double arg1 = std::get<double>(inputs.at(1).literal_value);
                 result = std::pow(arg0, arg1);
@@ -290,8 +290,8 @@ void MergeOptimizer::merge_if_compatible(
         instr1.dependencies[idx2] ||
         instr2.dependencies[idx1] ||
         instr1_first.instruction != instr2_first.instruction ||
-        instr1_first.instruction->opcode == Opcode::batch_cat ||
-        instr1_first.instruction->opcode == Opcode::batch_split ||
+        instr1_first.instruction->opcode == opcodes::batch_cat ||
+        instr1_first.instruction->opcode == opcodes::batch_split ||
         instr1_first.inputs.size() != instr2_first.inputs.size()
     ) return;
     for (

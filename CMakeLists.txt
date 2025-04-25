@@ -84,7 +84,7 @@ find_library(
 add_library(
     madevent
     SHARED
-    src/util.cpp
+    src/runtime/format.cpp
     src/runtime/tensor.cpp
     src/runtime/context.cpp
     src/runtime/generate.cpp
@@ -116,6 +116,7 @@ add_library(
     src/phasespace/discrete_sampler.cpp
     include/madevent/util.h
     include/madevent/runtime.h
+    include/madevent/runtime/format.h
     include/madevent/runtime/tensor.h
     include/madevent/runtime/context.h
     include/madevent/runtime/thread_pool.h

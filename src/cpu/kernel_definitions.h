@@ -13,10 +13,8 @@ namespace kernels {
 struct CpuTypes {
     template<int dim> using FIn = const TensorView<double, dim>;
     template<int dim> using IIn = const TensorView<int64_t, dim>;
-    template<int dim> using BIn = const TensorView<bool, dim>;
     template<int dim> using FOut = TensorView<double, dim>;
     template<int dim> using IOut = TensorView<int64_t, dim>;
-    template<int dim> using BOut = TensorView<bool, dim>;
     using FVal = double;
     using IVal = int64_t;
     using BVal = bool;
@@ -52,10 +50,8 @@ using std::isnan;
 struct SimdTypes {
     template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
     template<int dim> using IIn = const VectorizedTensorView<IVec, int64_t, dim, false>;
-    template<int dim> using BIn = const VectorizedTensorView<BVec, bool, dim, false>;
     template<int dim> using FOut = VectorizedTensorView<FVec, double, dim, false>;
     template<int dim> using IOut = VectorizedTensorView<IVec, int64_t, dim, false>;
-    template<int dim> using BOut = VectorizedTensorView<BVec, bool, dim, false>;
     using FVal = FVec;
     using IVal = IVec;
     using BVal = BVec;

@@ -33,7 +33,7 @@ public:
     }
 
 private:
-    CpuDevice() {}
+    CpuDevice() = default;
 };
 
 extern "C" DevicePtr get_device();

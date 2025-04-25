@@ -1,5 +1,6 @@
 #pragma once
 
+#include "runtime/format.h"
 #include "runtime/tensor.h"
 #include "runtime/context.h"
 #include "runtime/thread_pool.h"

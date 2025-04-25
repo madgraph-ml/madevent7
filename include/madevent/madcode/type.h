@@ -11,14 +11,13 @@
 namespace madevent {
 
 enum class DataType {
-    dt_bool,
     dt_int,
     dt_float,
     batch_sizes
 };
 
 template<typename T>
-concept ScalarType = std::same_as<T, bool> || std::same_as<T, int64_t> || std::same_as<T, double>;
+concept ScalarType = std::same_as<T, int64_t> || std::same_as<T, double>;
 
 class BatchSize {
 public:
@@ -96,26 +95,14 @@ using TypeVec = std::vector<Type>;
 
 const Type single_float{DataType::dt_float, BatchSize::One{}, {}};
 const Type single_int{DataType::dt_int, BatchSize::One{}, {}};
-const Type single_bool{DataType::dt_bool, BatchSize::One{}, {}};
 inline Type single_int_array(int count) {
     return {DataType::dt_int, BatchSize::one, {count}};
 }
 
 const BatchSize batch_size = BatchSize("batch_size");
-inline Type multichannel_batch_size(int count) {
-    std::vector<BatchSize> batch_sizes;
-    BatchSize remaining = batch_size;
-    for (std::size_t i = 0; i < count - 1; ++i) {
-        BatchSize batch_size_i(std::format("channel_size_{}", i));
-        batch_sizes.push_back(batch_size_i);
-        remaining = remaining - batch_size_i;
-    }
-    batch_sizes.push_back(remaining);
-    return batch_sizes;
-}
+Type multichannel_batch_size(int count);
 const Type batch_float{DataType::dt_float, batch_size, {}};
 const Type batch_int{DataType::dt_int, batch_size, {}};
-const Type batch_bool{DataType::dt_bool, batch_size, {}};
 const Type batch_four_vec{DataType::dt_float, batch_size, {4}};
 inline Type batch_float_array(int count) {
     return {DataType::dt_float, batch_size, {count}};
@@ -127,10 +114,10 @@ inline Type batch_four_vec_array(int count) {
 
 using TensorValue = std::tuple<
     std::vector<int>,
-    std::variant<std::vector<bool>, std::vector<int64_t>, std::vector<double>>
+    std::variant<std::vector<int64_t>, std::vector<double>>
 >; //TODO: make this a class
 
-using LiteralValue = std::variant<bool, int64_t, double, TensorValue, std::monostate>;
+using LiteralValue = std::variant<int64_t, double, TensorValue, std::monostate>;
 
 struct Value {
     Type type;
@@ -139,7 +126,6 @@ struct Value {
 
     Value() : type(single_float), literal_value(std::monostate{}) {}
 
-    Value(bool value) : type(single_bool), literal_value(value) {}
     Value(int64_t value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
 
@@ -168,7 +154,6 @@ struct Value {
     template<ScalarType T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
-            std::is_same_v<T, bool> ? DataType::dt_bool :
             std::is_same_v<T, int64_t> ? DataType::dt_int : DataType::dt_float,
             BatchSize::one,
             shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())} : shape

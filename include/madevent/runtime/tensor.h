@@ -1,6 +1,7 @@
 #pragma once
 
 #include "madevent/madcode/type.h"
+#include "madevent/util.h"
 
 #include <cstdint>
 #include <vector>
@@ -21,13 +22,13 @@ public:
     Sizes(std::size_t size) : _size(size) {
         std::fill(begin(), end(), 0);
     };
-    Sizes(const SizeVec& values) : _size(values.size()) {
+    Sizes(std::initializer_list<std::size_t> values) : _size(values.size()) {
         if (values.size() > max_size) {
             throw std::invalid_argument("maximum dimension exceeded");
         }
         std::copy(values.begin(), values.end(), begin());
     }
-    Sizes(std::initializer_list<std::size_t> values) : _size(values.size()) {
+    Sizes(const SizeVec& values) : _size(values.size()) {
         if (values.size() > max_size) {
             throw std::invalid_argument("maximum dimension exceeded");
         }
@@ -203,9 +204,7 @@ public:
     template<ScalarType T>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
-            std::is_same_v<T, bool> ? DataType::dt_bool :
-            std::is_same_v<T, int64_t> ? DataType::dt_int :
-            DataType::dt_float,
+            std::is_same_v<T, int64_t> ? DataType::dt_int : DataType::dt_float,
             {1},
             device
         })
@@ -213,6 +212,29 @@ public:
         auto size = init_stride();
         impl->data = device->allocate(size);
         device->memcpy(impl->data, &value, sizeof(value));
+    }
+
+    Tensor(TensorValue value, DevicePtr device) :
+        impl(new TensorImpl{
+            std::visit(Overloaded{
+                [](std::vector<int64_t>) { return DataType::dt_int; },
+                [](std::vector<double>) { return DataType::dt_float; },
+            }, std::get<1>(value)),
+            [&]{
+                auto& val_shape = std::get<0>(value);
+                Sizes full_shape(val_shape.size() + 1);
+                full_shape[0] = 1;
+                std::copy(val_shape.begin(), val_shape.end(), full_shape.begin() + 1);
+                return full_shape;
+            }(),
+            device
+        })
+    {
+        auto size = init_stride();
+        impl->data = device->allocate(size);
+        std::visit([&](auto& vec) {
+            device->memcpy(impl->data, vec.data(), size);
+        }, std::get<1>(value));
     }
 
     ~Tensor() {
@@ -267,11 +289,10 @@ public:
     std::size_t dtype_size() const {
         check_impl();
         switch (impl->dtype) {
-            case DataType::dt_bool: return sizeof(bool);
             case DataType::dt_int: return sizeof(int64_t);
             case DataType::dt_float: return sizeof(double);
             case DataType::batch_sizes: return 0;
-            default: std::unreachable();
+            default: throw std::logic_error("invalid data type");
         }
     }
 
@@ -309,7 +330,7 @@ public:
             return *this;
         } else {
             Tensor tensor(impl->dtype, impl->shape, impl->device);
-            device.tensor_cpu(*this, tensor);
+            device.tensor_cpu(contiguous(device), tensor);
             return tensor;
         }
     }

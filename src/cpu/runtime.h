@@ -44,9 +44,7 @@ private:
     ContextPtr context;
 };
 
-extern "C" Runtime* build_runtime(
-    const Function& function, ContextPtr context
-);
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context);
 
 }
 }

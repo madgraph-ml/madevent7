@@ -22,6 +22,7 @@ KERNELSPEC void kernel_add_inplace(FIn<T,0> in, FOut<T,0> out) {
 
 template<typename T>
 KERNELSPEC void kernel_add(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
+    out.size();
     out = in1 + in2;
 }
 

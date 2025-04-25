@@ -74,7 +74,6 @@ public:
 
 PYBIND11_MODULE(MODULE_NAME, m) {
     py::enum_<DataType>(m, "DataType")
-        .value("bool", DataType::dt_bool)
         .value("int", DataType::dt_int)
         .value("float", DataType::dt_float)
         .value("batch_sizes", DataType::batch_sizes)
@@ -99,10 +98,8 @@ PYBIND11_MODULE(MODULE_NAME, m) {
         .def("__repr__", &to_string<Type>);
     m.attr("single_float") = py::cast(single_float);
     m.attr("single_int") = py::cast(single_int);
-    m.attr("single_bool") = py::cast(single_bool);
     m.attr("batch_float") = py::cast(batch_float);
     m.attr("batch_int") = py::cast(batch_int);
-    m.attr("batch_bool") = py::cast(batch_bool);
     m.attr("batch_four_vec") = py::cast(batch_four_vec);
 
     py::class_<InstrCopy>(m, "Instruction")
@@ -111,7 +108,6 @@ PYBIND11_MODULE(MODULE_NAME, m) {
         .def_readonly("opcode", &InstrCopy::opcode);
 
     py::class_<Value>(m, "Value")
-        .def(py::init<bool>(), py::arg("value"))
         .def(py::init<int64_t>(), py::arg("value"))
         .def(py::init<double>(), py::arg("value"))
         .def("__str__", &to_string<Value>)
@@ -119,7 +115,6 @@ PYBIND11_MODULE(MODULE_NAME, m) {
         .def_readonly("type", &Value::type)
         .def_readonly("literal_value", &Value::literal_value)
         .def_readonly("local_index", &Value::local_index);
-    py::implicitly_convertible<bool, Value>();
     py::implicitly_convertible<int64_t, Value>();
     py::implicitly_convertible<double, Value>();
     py::implicitly_convertible<std::string, Value>();

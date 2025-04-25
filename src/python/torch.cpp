@@ -93,7 +93,6 @@ torch::Tensor madevent_py::tensor_to_torch(Tensor tensor) {
         switch(tensor.dtype()) {
             case DataType::dt_float: dtype = torch::kFloat64; break;
             case DataType::dt_int: dtype = torch::kInt64; break;
-            case DataType::dt_bool: dtype = torch::kBool; break;
             default: break;
         }
         return torch::from_blob(
@@ -137,9 +136,6 @@ Tensor madevent_py::torch_to_tensor(
     } else if (arg_dtype == torch::kInt64 || arg_dtype == torch::kInt32) {
         target_dtype = torch::kInt64;
         dtype_ok = expected_type.dtype == DataType::dt_int || is_batch_sizes;
-    } else if (arg_dtype == torch::kBool) {
-        target_dtype = torch::kBool;
-        dtype_ok = expected_type.dtype == DataType::dt_bool;
     }
     if (!dtype_ok) {
         throw std::invalid_argument(
@@ -187,8 +183,6 @@ Tensor madevent_py::torch_to_tensor(
             return {tensor.item<double>(), device};
         case DataType::dt_int:
             return {tensor.item<int64_t>(), device};
-        case DataType::dt_bool:
-            return {tensor.item<bool>(), device};
         default:
             std::unreachable();
         }
@@ -219,8 +213,6 @@ Tensor madevent_py::torch_to_tensor(
             data_ptr = tensor.data_ptr<double>();
         } else if (target_dtype == torch::kInt64) {
             data_ptr = tensor.data_ptr<int64_t>();
-        } else {
-            data_ptr = tensor.data_ptr<bool>();
         }
         return {
             expected_type.dtype, shape, device, data_ptr,
@@ -246,9 +238,6 @@ Tensor madevent_py::torch_to_tensor_unchecked(std::optional<torch::Tensor> torch
     } else if (torch_dtype == torch::kInt64 || torch_dtype == torch::kInt32) {
         target_dtype = torch::kInt64;
         dtype = DataType::dt_int;
-    } else if (torch_dtype == torch::kBool) {
-        target_dtype = torch::kBool;
-        dtype = DataType::dt_bool;
     } else {
         throw std::invalid_argument("dtype not accepted");
     }
@@ -263,8 +252,6 @@ Tensor madevent_py::torch_to_tensor_unchecked(std::optional<torch::Tensor> torch
         data_ptr = torch_tensor->data_ptr<double>();
     } else if (target_dtype == torch::kInt64) {
         data_ptr = torch_tensor->data_ptr<int64_t>();
-    } else {
-        data_ptr = torch_tensor->data_ptr<bool>();
     }
     SizeVec shape;
     for (std::size_t i = 0; i < n_dims; ++i) {

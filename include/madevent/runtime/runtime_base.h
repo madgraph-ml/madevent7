@@ -6,8 +6,6 @@
 
 namespace madevent {
 
-using TensorVec = std::vector<madevent::Tensor>;
-
 class Runtime {
 public:
     virtual ~Runtime() = default;

@@ -1,7 +1,6 @@
 #include "runtime.h"
 
 #include <tuple>
-#include <array>
 #include <algorithm>
 #include <ranges>
 
@@ -43,7 +42,7 @@ void op_matrix_element(
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
-    me_out = Tensor(DataType::dt_float, {batch_size});
+    me_out = Tensor(DataType::dt_float, {batch_size}, device);
     std::size_t me_index = locals[instruction.input_indices[1]].view<int64_t, 0>();
     instruction.context.matrix_element(me_index).call(
         locals[instruction.input_indices[0]], me_out
@@ -55,11 +54,11 @@ void op_matrix_element_multichannel(
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
-    me_out = Tensor(DataType::dt_float, {batch_size});
+    me_out = Tensor(DataType::dt_float, {batch_size}, device);
     auto& chan_weights_out = locals[instruction.output_indices[1]];
     std::size_t me_index = locals[instruction.input_indices[2]].view<int64_t, 0>();
     std::size_t channel_count = locals[instruction.input_indices[3]].view<int64_t, 0>();
-    chan_weights_out = Tensor(DataType::dt_float, {batch_size, channel_count});
+    chan_weights_out = Tensor(DataType::dt_float, {batch_size, channel_count}, device);
     instruction.context.matrix_element(me_index).call_multichannel(
         locals[instruction.input_indices[0]],
         locals[instruction.input_indices[1]],
@@ -73,7 +72,7 @@ void op_pdf(
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& output = locals[instruction.output_indices[0]];
-    output = Tensor(DataType::dt_float, {batch_size});
+    output = Tensor(DataType::dt_float, {batch_size}, device);
     instruction.context.pdf_set().call(
         locals[instruction.input_indices[0]],
         locals[instruction.input_indices[1]],
@@ -85,15 +84,15 @@ void op_pdf(
 void op_matmul(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
 ) {
-    auto input = locals[instruction.input_indices[0]].contiguous();
-    auto weight = locals[instruction.input_indices[1]].contiguous();
-    auto bias = locals[instruction.input_indices[2]].contiguous();
+    auto input = locals[instruction.input_indices[0]].contiguous(device);
+    auto weight = locals[instruction.input_indices[1]].contiguous(device);
+    auto bias = locals[instruction.input_indices[2]].contiguous(device);
     auto& output = locals[instruction.output_indices[0]];
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
-    output = Tensor(DataType::dt_float, {batch_size, dims_out});
-    output.copy_from(bias);
+    output = Tensor(DataType::dt_float, {batch_size, dims_out}, device);
+    output.copy_from(bias, device);
 
     char transa = 'N', transb = 'T';
     int m = batch_size, n = dims_out, k = dims_in;
@@ -108,11 +107,14 @@ void op_matmul(
 }
 
 void backward_op_matmul(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, TensorVec& local_grads
-, const CpuDevice& device) {
-    auto input = locals[instruction.input_indices[0]].contiguous();
-    auto weight = locals[instruction.input_indices[1]].contiguous();
-    auto output_grad = local_grads[instruction.output_indices[0]].contiguous();
+    const CpuRuntime::Instruction& instruction,
+    TensorVec& locals,
+    TensorVec& local_grads,
+    const CpuDevice& device
+) {
+    auto input = locals[instruction.input_indices[0]].contiguous(device);
+    auto weight = locals[instruction.input_indices[1]].contiguous(device);
+    auto output_grad = local_grads[instruction.output_indices[0]].contiguous(device);
     auto& input_grad = local_grads[instruction.input_indices[0]];
     auto& weight_grad = local_grads[instruction.input_indices[1]];
     auto& bias_grad = local_grads[instruction.input_indices[2]];
@@ -121,15 +123,15 @@ void backward_op_matmul(
     std::size_t dims_out = weight.size(1);
 
     if (!input_grad) {
-        input_grad = Tensor(DataType::dt_float, input.shape());
+        input_grad = Tensor(DataType::dt_float, input.shape(), device);
         input_grad.zero();
     }
     if (!weight_grad) {
-        weight_grad = Tensor(DataType::dt_float, weight.shape());
+        weight_grad = Tensor(DataType::dt_float, weight.shape(), device);
         weight_grad.zero();
     }
     if (!bias_grad) {
-        bias_grad = Tensor(DataType::dt_float, {1, dims_out});
+        bias_grad = Tensor(DataType::dt_float, {1, dims_out}, device);
         bias_grad.zero();
     }
 
@@ -199,11 +201,13 @@ void op_nonzero(
 }
 
 template<int dim>
-void batch_gather_impl(Tensor& indices, Tensor& values, Tensor& selection) {
+void batch_gather_impl(
+    Tensor& indices, Tensor& values, Tensor& selection, const CpuDevice& device
+) {
     auto batch_size = indices.size(0);
     Sizes out_shape = values.shape();
     out_shape[0] = batch_size;
-    selection = Tensor(DataType::dt_float, out_shape);
+    selection = Tensor(DataType::dt_float, out_shape, device);
     auto indices_view = indices.view<int64_t, 1>();
     auto values_view = values.view<double, dim>();
     auto selection_view = selection.view<double, dim>();
@@ -222,10 +226,10 @@ void op_batch_gather(
     auto& values = locals[instruction.input_indices[1]];
     auto& selection = locals[instruction.output_indices[0]];
     switch (values.shape().size()) {
-        case 1: batch_gather_impl<1>(indices, values, selection); break;
-        case 2: batch_gather_impl<2>(indices, values, selection); break;
-        case 3: batch_gather_impl<3>(indices, values, selection); break;
-        case 4: batch_gather_impl<4>(indices, values, selection); break;
+        case 1: batch_gather_impl<1>(indices, values, selection, device); break;
+        case 2: batch_gather_impl<2>(indices, values, selection, device); break;
+        case 3: batch_gather_impl<3>(indices, values, selection, device); break;
+        case 4: batch_gather_impl<4>(indices, values, selection, device); break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }
@@ -252,7 +256,7 @@ void op_scatter(
     auto& source = locals[instruction.input_indices[2]];
 
     auto& output = locals[instruction.output_indices[0]];
-    output = target.copy();
+    output = target.copy(device);
     switch (target.shape().size()) {
         case 1: scatter_impl<1>(indices, source, output); break;
         case 2: scatter_impl<2>(indices, source, output); break;
@@ -269,7 +273,7 @@ void op_random(
     auto batch_size = locals[instruction.input_indices[0]].batch_sizes()[0];
     auto& output = locals[instruction.output_indices[0]];
     auto dim = instruction.output_shapes[0][0];
-    output = Tensor(DataType::dt_float, {batch_size, dim});
+    output = Tensor(DataType::dt_float, {batch_size, dim}, device);
     auto output_view = output.view<double, 1>();
     auto& pool = ThreadPool::instance();
     pool.parallel_for<ThreadPool::pass_thread_id>(
@@ -379,27 +383,9 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
     for (auto& local : opt_function.locals()) {
         std::visit(Overloaded{
             [&](auto val) {
-                Tensor tensor(val, cpu_device());
+                Tensor tensor(val, &CpuDevice::instance());
                 locals_init[local.local_index] = tensor;
             },
-            [&](TensorValue val) {
-                auto& [shape, items] = val;
-                Sizes full_shape(shape.size() + 1);
-                full_shape[0] = 1;
-                std::copy(shape.begin(), shape.end(), full_shape.begin() + 1);
-                Tensor tensor(local.type.dtype, full_shape);
-                std::visit([&](auto items) {
-                    auto tview = tensor.template view<
-                        typename decltype(items)::value_type, 2>()[0];
-                    std::size_t i = 0;
-                    for (auto item : items) {
-                        tview[i] = item;
-                        ++i;
-                    }
-                }, items);
-                locals_init[local.local_index] = tensor;
-            },
-            [](std::string val){},
             [](std::monostate val){}
         }, local.literal_value);
     }
@@ -417,7 +403,7 @@ TensorVec CpuRuntime::run(const TensorVec& inputs) const {
     for (auto& instr : instructions) {
         switch (instr.opcode) {
             case -1: // free memory
-                locals[instr.input_indices[0]].reset();
+                locals[instr.input_indices[0]].reset(device);
                 break;
 #include "runtime_mixin.h"
         }
@@ -462,7 +448,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
             case -1: { // free memory
                 auto input_index = instr.input_indices[0];
                 if (!store_local[input_index]) {
-                    locals[input_index].reset();
+                    locals[input_index].reset(device);
                 }
                 break;
             }
@@ -516,9 +502,7 @@ std::tuple<
     return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
 }
 
-extern "C" Runtime* build_runtime(
-    const Function& function, ContextPtr context
-) {
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context) {
     return new CpuRuntime(function, context);
 }
 

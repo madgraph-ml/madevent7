@@ -1,6 +1,7 @@
 #pragma once
 
 #include "madevent/runtime/tensor.h"
+#include "madevent/runtime/runtime_base.h"
 #include "madevent/madcode/function.h"
 
 #include <memory>
@@ -10,12 +11,15 @@ namespace cuda {
 
 class CudaRuntime : public Runtime {
 public:
-    struct CudaInstruction {
+    struct Instruction {
         int opcode;
         SizeVec input_indices;
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
         std::vector<SizeVec> output_shapes;
+        std::size_t batch_size_index;
+        Context& context;
+        bool differentiable;
         cudaStream_t stream;
         cudaEvent_t event;
     };
@@ -34,12 +38,18 @@ public:
     ) const override;
 
 private:
-    std::vector<CudaInstruction> instructions;
+    std::vector<Instruction> instructions;
     SizeVec output_indices;
-    std::vector<Tensor> locals_init;
+    std::size_t input_count;
+    TensorVec locals_init;
+    std::vector<bool> requires_grad_init;
+    std::vector<std::tuple<std::string, std::size_t>> grad_global_indices;
+    ContextPtr context;
     std::vector<cudaStream_t> streams;
     std::vector<cudaEvent_t> events;
 };
+
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context);
 
 }
 }

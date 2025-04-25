@@ -7,7 +7,7 @@
 #include <ranges>
 #include <print>
 
-#include "madevent/util.h"
+#include "madevent/runtime/format.h"
 
 using namespace madevent;
 namespace fs = std::filesystem;

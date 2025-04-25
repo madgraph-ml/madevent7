@@ -1,6 +1,7 @@
 #pragma once
 
 #include "madevent/runtime/tensor.h"
+#include "madevent/util.h"
 
 namespace madevent {
 namespace kernels {
@@ -24,7 +25,7 @@ void batch_foreach(const I& instruction, TensorVec& locals, D& device) {
         outputs[i] = &output;
     }
 
-    foreach_func(inputs, outputs, batch_size);
+    foreach_func(inputs, outputs, batch_size, device);
 }
 
 template<
@@ -63,7 +64,7 @@ void backward_batch_foreach(
         input_grads[i] = &input_grad;
     }
 
-    foreach_func(args, input_grads, batch_size);
+    foreach_func(args, input_grads, batch_size, device);
 }
 
 template<typename I, typename D>
@@ -103,10 +104,7 @@ void backward_op_stack(
 template<typename I, typename D>
 void op_unstack(const I& instruction, TensorVec& locals, const D& device) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
-    for (
-        auto [tensor, output_index] :
-        std::views::zip(tensors, instruction.output_indices)
-    ) {
+    for (auto [tensor, output_index] : zip(tensors, instruction.output_indices)) {
         locals[output_index] = tensor;
     }
 }
@@ -122,10 +120,7 @@ void backward_op_unstack(
         input_grad.zero(device);
     }
     auto unstacked_grads = input_grad.unstack(1);
-    for (
-        auto [grad, output_index] :
-        std::views::zip(unstacked_grads, instruction.output_indices)
-    ) {
+    for (auto [grad, output_index] : zip(unstacked_grads, instruction.output_indices)) {
         grad.add(local_grads[output_index], device);
     }
 }
@@ -203,7 +198,7 @@ template<typename I, typename D>
 void op_batch_split(const I& instruction, TensorVec& locals, const D& device) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
-    for (auto [tensor, output_index] : std::views::zip(tensors, instruction.output_indices)) {
+    for (auto [tensor, output_index] : zip(tensors, instruction.output_indices)) {
         locals[output_index] = tensor;
     }
 }
@@ -220,10 +215,7 @@ void backward_op_batch_split(
         input_grad.zero(device);
     }
     auto split_grads = input_grad.split(0, sizes);
-    for (
-        auto [tensor, output_index] :
-        std::views::zip(split_grads, instruction.output_indices)
-    ) {
+    for (auto [tensor, output_index] : zip(split_grads, instruction.output_indices)) {
         tensor.add(locals[output_index], device);
     }
 

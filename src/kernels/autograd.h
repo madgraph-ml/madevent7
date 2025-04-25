@@ -7,6 +7,16 @@ namespace kernels {
 
 constexpr std::size_t max_instr = 150;
 
+template<typename T, std::size_t n>
+struct AutogradArray {
+    KERNELSPEC T& operator[](std::size_t i) { return arr[i]; }
+    KERNELSPEC const T& operator[](std::size_t i) const { return arr[i]; }
+    KERNELSPEC void fill(const T& value) {
+        for (std::size_t i = 0; i < n; ++i) arr[i] = value;
+    }
+    T arr[n];
+};
+
 enum class AutogradOp {
     nop, load, store, literal, assign, copy, where,
     eq, neq, gt, lt, ge, le, band, bor, bnot,
@@ -18,10 +28,10 @@ union AutogradScalar {
     double f;
     bool b;
     //int64_t i;
-    constexpr AutogradScalar() = default;
-    constexpr AutogradScalar(double val) : f(val) {}
-    constexpr AutogradScalar(bool val) : b(val) {}
-    //constexpr AutogradScalar(int64_t val) : i(val) {}
+    KERNELSPEC AutogradScalar() {};
+    KERNELSPEC AutogradScalar(double val) : f(val) {}
+    KERNELSPEC AutogradScalar(bool val) : b(val) {}
+    //KERNELSPEC AutogradScalar(int64_t val) : i(val) {}
 };
 
 template<typename T>
@@ -29,10 +39,10 @@ union AutogradEvalScalar {
     FVal<T> f;
     BVal<T> b;
     //IVal<T> i;
-    constexpr AutogradEvalScalar() = default;
-    constexpr AutogradEvalScalar(double val) : f(val) {}
-    constexpr AutogradEvalScalar(bool val) : b(val) {}
-    //constexpr AutogradEvalScalar(int64_t val) : i(val) {}
+    KERNELSPEC AutogradEvalScalar() = default;
+    KERNELSPEC AutogradEvalScalar(double val) : f(val) {}
+    KERNELSPEC AutogradEvalScalar(bool val) : b(val) {}
+    //KERNELSPEC AutogradEvalScalar(int64_t val) : i(val) {}
 };
 
 struct AutogradInstruction {
@@ -44,11 +54,11 @@ struct AutogradInstruction {
 };
 
 struct Graph {
-    std::array<AutogradInstruction, max_instr> instructions;
+    AutogradArray<AutogradInstruction, max_instr> instructions;
     std::size_t size = 0;
 
     template<typename... V>
-    constexpr void append(V... args) {
+    KERNELSPEC void append(V... args) {
         instructions[size] = {args...};
         ++size;
     }
@@ -56,7 +66,7 @@ struct Graph {
 
 template<typename T>
 struct AutogradInput {
-    constexpr AutogradInput(Graph& _graph, std::size_t _index) :
+    KERNELSPEC AutogradInput(Graph& _graph, std::size_t _index) :
         graph(_graph), index(_index) {}
 
     Graph& graph;
@@ -65,15 +75,15 @@ struct AutogradInput {
 
 template<typename T>
 struct AutogradValue {
-    constexpr AutogradValue(AutogradInput<T> input) :
+    KERNELSPEC AutogradValue(AutogradInput<T> input) :
         graph(&input.graph), index(input.graph.size)
     {
         graph->append(AutogradOp::load, AutogradScalar{}, input.index);
     }
 
-    constexpr AutogradValue(T literal) : graph(nullptr), index(0), literal(literal) {}
+    KERNELSPEC AutogradValue(T literal) : graph(nullptr), index(0), literal(literal) {}
 
-    constexpr AutogradValue(AutogradValue& val) : graph(val.graph) {
+    KERNELSPEC AutogradValue(AutogradValue& val) : graph(val.graph) {
         if (graph == nullptr) {
             literal = val.literal;
         } else {
@@ -82,16 +92,16 @@ struct AutogradValue {
         }
     }
 
-    constexpr AutogradValue(AutogradValue&& val) = default;
+    KERNELSPEC AutogradValue(AutogradValue&& val) = default;
 
-    constexpr AutogradValue(Graph* _graph, std::size_t _index) :
+    KERNELSPEC AutogradValue(Graph* _graph, std::size_t _index) :
         graph(_graph), index(_index) {};
 
-    constexpr AutogradValue(Graph* _graph, std::size_t _index, AutogradScalar _literal) :
+    KERNELSPEC AutogradValue(Graph* _graph, std::size_t _index, AutogradScalar _literal) :
         graph(_graph), index(_index), literal(_literal) {};
 
     template<typename... V>
-    constexpr AutogradValue(AutogradOp op, V&... args) {
+    KERNELSPEC AutogradValue(AutogradOp op, V&... args) {
         ([&]{
             if (args.graph != nullptr) {
                 graph = args.graph;
@@ -108,7 +118,7 @@ struct AutogradValue {
         graph->append(op, AutogradScalar{}, args.index...);
     }
 
-    constexpr AutogradValue<T> operator=(AutogradValue<T> arg) {
+    KERNELSPEC AutogradValue<T> operator=(AutogradValue<T> arg) {
         return {AutogradOp::assign, *this, arg};
     }
 
@@ -119,7 +129,7 @@ struct AutogradValue {
 
 template<typename T>
 struct AutogradOutput {
-    constexpr AutogradOutput<T>& operator=(AutogradValue<T> value) {
+    KERNELSPEC AutogradOutput<T>& operator=(AutogradValue<T> value) {
         graph.append(AutogradOp::store, AutogradScalar{}, index, value.index);
         return *this;
     }
@@ -128,124 +138,124 @@ struct AutogradOutput {
     std::size_t index;
 };
 
-constexpr AutogradValue<double> where(
+inline KERNELSPEC AutogradValue<double> where(
     AutogradValue<bool> arg1, AutogradValue<double> arg2, AutogradValue<double> arg3
 ) {
     return {AutogradOp::where, arg1, arg2, arg3};
 }
 
-constexpr AutogradValue<bool> operator==(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator==(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::eq, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator!=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator!=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::neq, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator>(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator>(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::gt, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator<(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator<(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::lt, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator>=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator>=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::ge, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator<=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator<=(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::le, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator&(AutogradValue<bool> arg1, AutogradValue<bool> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator&(AutogradValue<bool> arg1, AutogradValue<bool> arg2) {
     return {AutogradOp::band, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator|(AutogradValue<bool> arg1, AutogradValue<bool> arg2) {
+inline KERNELSPEC AutogradValue<bool> operator|(AutogradValue<bool> arg1, AutogradValue<bool> arg2) {
     return {AutogradOp::bor, arg1, arg2};
 }
 
-constexpr AutogradValue<bool> operator!(AutogradValue<bool> arg1) {
+inline KERNELSPEC AutogradValue<bool> operator!(AutogradValue<bool> arg1) {
     return {AutogradOp::bnot, arg1};
 }
 
-constexpr AutogradValue<double> operator-(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> operator-(AutogradValue<double> arg1) {
     return {AutogradOp::neg, arg1};
 }
 
-constexpr AutogradValue<double> operator+(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> operator+(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::add, arg1, arg2};
 }
 
-constexpr AutogradValue<double> operator-(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> operator-(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::sub, arg1, arg2};
 }
 
-constexpr AutogradValue<double> operator*(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> operator*(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::mul, arg1, arg2};
 }
 
-constexpr AutogradValue<double> operator/(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> operator/(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::div, arg1, arg2};
 }
 
-constexpr AutogradValue<double> sqrt(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> sqrt(AutogradValue<double> arg1) {
     return {AutogradOp::sqrt, arg1};
 }
 
-constexpr AutogradValue<double> sin(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> sin(AutogradValue<double> arg1) {
     return {AutogradOp::sin, arg1};
 }
 
-constexpr AutogradValue<double> cos(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> cos(AutogradValue<double> arg1) {
     return {AutogradOp::cos, arg1};
 }
 
-constexpr AutogradValue<double> sinh(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> sinh(AutogradValue<double> arg1) {
     return {AutogradOp::sinh, arg1};
 }
 
-constexpr AutogradValue<double> cosh(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> cosh(AutogradValue<double> arg1) {
     return {AutogradOp::cosh, arg1};
 }
 
-constexpr AutogradValue<double> atan2(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> atan2(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::atan2, arg1, arg2};
 }
 
-constexpr AutogradValue<double> pow(AutogradValue<double> arg1, AutogradValue<double> arg2) {
+inline KERNELSPEC AutogradValue<double> pow(AutogradValue<double> arg1, AutogradValue<double> arg2) {
     return {AutogradOp::pow, arg1, arg2};
 }
 
-constexpr AutogradValue<double> fabs(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> fabs(AutogradValue<double> arg1) {
     return {AutogradOp::fabs, arg1};
 }
 
-constexpr AutogradValue<double> log(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> log(AutogradValue<double> arg1) {
     return {AutogradOp::log, arg1};
 }
 
-constexpr AutogradValue<double> tan(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> tan(AutogradValue<double> arg1) {
     return {AutogradOp::tan, arg1};
 }
 
-constexpr AutogradValue<double> atan(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> atan(AutogradValue<double> arg1) {
     return {AutogradOp::atan, arg1};
 }
 
-constexpr AutogradValue<double> exp(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> exp(AutogradValue<double> arg1) {
     return {AutogradOp::exp, arg1};
 }
 
-constexpr AutogradValue<double> log1p(AutogradValue<double> arg1) {
+inline KERNELSPEC AutogradValue<double> log1p(AutogradValue<double> arg1) {
     return {AutogradOp::log1p, arg1};
 }
 
 template<typename T, const Graph& graph, std::size_t instr_index, std::size_t in_arg_count>
-constexpr void eval_rec(
-    std::array<AutogradEvalScalar<T>, max_instr>& locals,
-    std::array<FIn<T,0>, in_arg_count> in_args
+inline KERNELSPEC void eval_rec(
+    AutogradArray<AutogradEvalScalar<T>, max_instr>& locals,
+    AutogradArray<FIn<T,0>, in_arg_count> in_args
 ) {
     if constexpr (instr_index < max_instr) {
         auto& instr = graph.instructions[instr_index];
@@ -360,7 +370,7 @@ constexpr void eval_rec(
 }
 
 template<typename U, typename V>
-constexpr void accumulate_grad(bool& is_init, U& grad, V val) {
+inline KERNELSPEC void accumulate_grad(bool& is_init, U& grad, V val) {
     grad = is_init ? grad + val : val;
     is_init = true;
 }
@@ -373,13 +383,13 @@ template<
     std::size_t out_arg_count
 >
 __attribute__((always_inline))
-constexpr void backward_rec(
-    std::array<AutogradEvalScalar<T>, max_instr>& locals,
-    std::array<AutogradEvalScalar<T>, max_instr>& local_grads,
-    std::array<bool, max_instr>& local_grads_init,
-    std::array<FIn<T,0>, in_arg_count>& in_args,
-    std::array<FOut<T,0>, in_arg_count>& in_grads,
-    std::array<FIn<T,0>, out_arg_count>& out_grads
+inline KERNELSPEC void backward_rec(
+    AutogradArray<AutogradEvalScalar<T>, max_instr>& locals,
+    AutogradArray<AutogradEvalScalar<T>, max_instr>& local_grads,
+    AutogradArray<bool, max_instr>& local_grads_init,
+    AutogradArray<FIn<T,0>, in_arg_count>& in_args,
+    AutogradArray<FOut<T,0>, in_arg_count>& in_grads,
+    AutogradArray<FIn<T,0>, out_arg_count>& out_grads
 ) {
     if constexpr (rev_instr_index < max_instr) {
         auto instr_index = max_instr - rev_instr_index - 1;
@@ -598,17 +608,17 @@ constexpr void backward_rec(
 }
 
 template<std::size_t... i>
-constexpr auto in_args(Graph& graph, std::index_sequence<i...>) {
+inline KERNELSPEC auto in_args(Graph& graph, std::index_sequence<i...>) {
     return std::make_tuple(AutogradInput<double>(graph, i)...);
 }
 
 template<std::size_t... i>
-constexpr auto out_args(Graph& graph, std::index_sequence<i...>) {
+inline KERNELSPEC auto out_args(Graph& graph, std::index_sequence<i...>) {
     return std::make_tuple(AutogradOutput<double>(graph, i)...);
 }
 
 template<auto func, int in_arg_count, int out_arg_count>
-constexpr Graph func_graph() {
+inline KERNELSPEC Graph func_graph() {
     Graph graph;
     std::apply(
         func,
@@ -620,19 +630,22 @@ constexpr Graph func_graph() {
     return graph;
 }
 
+template<auto func, int in_arg_count, int out_arg_count>
+KERNELSPEC Graph autograd_graph = func_graph<func, in_arg_count, out_arg_count>();
+
 template<typename T, auto func, int in_arg_count, int out_arg_count>
-constexpr void backward(
-    std::array<FIn<T,0>, in_arg_count> input_args,
-    std::array<FIn<T,0>, out_arg_count> output_grads,
-    std::array<FOut<T,0>, in_arg_count> input_grads
+inline KERNELSPEC void backward(
+    AutogradArray<FIn<T,0>, in_arg_count> input_args,
+    AutogradArray<FIn<T,0>, out_arg_count> output_grads,
+    AutogradArray<FOut<T,0>, in_arg_count> input_grads
 ) {
-    static constexpr Graph graph = func_graph<func, in_arg_count, out_arg_count>();
-    std::array<AutogradEvalScalar<T>, max_instr> locals;
-    std::array<AutogradEvalScalar<T>, max_instr> local_grads;
-    std::array<bool, max_instr> local_grads_init;
+    //static constexpr Graph graph = func_graph<func, in_arg_count, out_arg_count>();
+    AutogradArray<AutogradEvalScalar<T>, max_instr> locals;
+    AutogradArray<AutogradEvalScalar<T>, max_instr> local_grads;
+    AutogradArray<bool, max_instr> local_grads_init;
     local_grads_init.fill(false);
-    eval_rec<T, graph, 0, in_arg_count>(locals, input_args);
-    backward_rec<T, graph, 0, in_arg_count, out_arg_count>(
+    eval_rec<T, autograd_graph<func, in_arg_count, out_arg_count>, 0, in_arg_count>(locals, input_args);
+    backward_rec<T, autograd_graph<func, in_arg_count, out_arg_count>, 0, in_arg_count, out_arg_count>(
         locals, local_grads, local_grads_init, input_args, input_grads, output_grads
     );
 }

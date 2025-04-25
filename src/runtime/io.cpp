@@ -20,9 +20,6 @@ std::string dtype_to_str(DataType dtype) {
     case DataType::dt_int:
         return "<i8";
         break;
-    case DataType::dt_bool:
-        return "|b1";
-        break;
     default:
         throw std::invalid_argument("Unsupported data type");
     }
@@ -33,8 +30,6 @@ DataType str_to_dtype(std::string dtype) {
         return DataType::dt_float;
     } else if (dtype == "<i8") {
         return DataType::dt_int;
-    } else if (dtype == "|b1") {
-        return DataType::dt_bool;
     } else {
         throw std::invalid_argument("Unsupported data type");
     }

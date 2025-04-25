@@ -10,7 +10,17 @@ constexpr double INV_GEV2_TO_PB = 0.38937937217186e9;
 // Helper functions
 
 template<typename T>
-using FourMom = std::array<FVal<T>, 4>;
+struct FourMom {
+    KERNELSPEC FVal<T>& operator[](int i) { return p[i]; }
+    KERNELSPEC FVal<T>& operator[](int i) const { return p[i]; }
+    FVal<T> p[4];
+};
+
+template<typename F, typename S>
+struct Pair {
+    F first;
+    S second;
+};
 
 template<typename T>
 KERNELSPEC FourMom<T> load_mom(FIn<T,1> p) {
@@ -83,7 +93,7 @@ KERNELSPEC void boost_beam(
 }
 
 template<typename T>
-KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_decay(
+KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_decay(
     FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> m0, FVal<T> m1, FVal<T> m2
 ) {
     auto phi = PI * (2. * r_phi - 1.);
@@ -112,7 +122,7 @@ KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_decay(
 #define NANCHECK(name) if (isnan(name)) std::println("nan: {}", #name);
 
 template<typename T>
-KERNELSPEC std::pair<FourMom<T>, FVal<T>> two_particle_scattering(
+KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
     FVal<T> r_phi, FourMom<T> pa_com, FVal<T> s_tot, FVal<T> t,
     FVal<T> m1, FVal<T> m2, FVal<T> ma_2, FVal<T> mb_2
 ) {
@@ -221,7 +231,9 @@ KERNELSPEC void kernel_two_particle_decay_com(
     FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
-    auto [p1_tmp, det_tmp] = two_particle_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
+    auto decay_out = two_particle_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
+    auto p1_tmp = decay_out.first;
+    auto det_tmp = decay_out.second;
     store_mom<T>(p1, p1_tmp);
     det = det_tmp;
     auto e2 = m0 - p1_tmp[0];
@@ -236,7 +248,9 @@ KERNELSPEC void kernel_two_particle_decay(
     FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,1> p0,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
-    auto [p1_tmp, det_tmp] = two_particle_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
+    auto decay_out = two_particle_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
+    auto p1_tmp = decay_out.first;
+    auto det_tmp = decay_out.second;
     store_mom<T>(p1, boost<T>(p1_tmp, load_mom<T>(p0), 1.));
     det = det_tmp;
     auto e2 = p0[0] - p1[0];
@@ -255,9 +269,11 @@ KERNELSPEC void kernel_two_particle_scattering_com(
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
-    auto [p1_com, det_tmp] = two_particle_scattering<T>(
+    auto scatter_out = two_particle_scattering<T>(
         r_phi, load_mom<T>(pa), s_tot, t, m1, m2, ma_2, mb_2
     );
+    auto p1_com = scatter_out.first;
+    auto det_tmp = scatter_out.second;
     store_mom<T>(p1, p1_com);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_com[i];
     det = det_tmp;
@@ -286,9 +302,11 @@ KERNELSPEC void kernel_two_particle_scattering(
     //auto pb_com = boost<T>(load_mom<T>(pb), p_tot, -1.);//TODO:remove
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
-    auto [p1_com, det_tmp] = two_particle_scattering<T>(
+    auto scatter_out = two_particle_scattering<T>(
         r_phi, pa_com, s_tot, t, m1, m2, ma_2, mb_2
     );
+    auto p1_com = scatter_out.first;
+    auto det_tmp = scatter_out.second;
     //auto m1_test_com = sqrt(lsquare<T>(p1_com));
     auto p1_rot = rotate<T>(p1_com, pa_com);
     //auto m1_test_rot = sqrt(lsquare<T>(p1_rot));

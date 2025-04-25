@@ -13,9 +13,11 @@
 
 namespace madevent {
 
+namespace opcodes {
 enum Opcode {
 #include "opcode_mixin.h"
 };
+}
 
 class Instruction {
 public:
