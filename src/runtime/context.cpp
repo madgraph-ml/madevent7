@@ -195,15 +195,8 @@ void MatrixElement::call_multichannel(
     }
 }
 
-PdfSet::PdfSet(const std::string& name, int index) {
-    LHAPDF::setVerbosity(0);
-    pdf = std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(name, index));
-    if (pdf == nullptr) {
-        throw std::invalid_argument(std::format(
-            "Could not load PDF {}, member {}", name, index
-        ));
-    }
-}
+PdfSet::PdfSet(const std::string& name, int index) :
+    pdf(name.c_str(), index) {}
 
 void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const {
     auto x_view = x_in.view<double, 1>();
@@ -211,7 +204,7 @@ void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) cons
     auto pid_view = pid_in.view<int64_t, 1>();
     auto pdf_view = pdf_out.view<double, 1>();
     ThreadPool::instance().parallel_for([&](std::size_t i) {
-        pdf_view[i] = pdf->xfxQ2(pid_view[i], x_view[i], q2_view[i]);
+        pdf_view[i] = pdf.xfxQ2(pid_view[i], x_view[i], q2_view[i]);
     }, x_view.size());
 }
 

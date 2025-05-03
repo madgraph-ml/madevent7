@@ -87,6 +87,7 @@ add_library(
     src/runtime/format.cpp
     src/runtime/tensor.cpp
     src/runtime/context.cpp
+    src/runtime/pdf_wrapper.cpp
     src/runtime/generate.cpp
     src/runtime/thread_pool.cpp
     src/runtime/io.cpp
@@ -119,6 +120,7 @@ add_library(
     include/madevent/runtime/format.h
     include/madevent/runtime/tensor.h
     include/madevent/runtime/context.h
+    include/madevent/runtime/pdf_wrapper.h
     include/madevent/runtime/thread_pool.h
     include/madevent/runtime/generate.h
     include/madevent/runtime/io.h
@@ -278,9 +280,4 @@ if(TORCH_FOUND)
     )
     install(TARGETS _madevent_py_torch DESTINATION madevent7)
 endif()
-
-
-############################################################################################
-# Installation settings                                                                    #
-############################################################################################
 

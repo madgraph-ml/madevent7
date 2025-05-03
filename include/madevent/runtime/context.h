@@ -5,7 +5,7 @@
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
-#include "LHAPDF/LHAPDF.h"
+#include "madevent/runtime/pdf_wrapper.h"
 
 namespace madevent {
 
@@ -59,22 +59,15 @@ private:
 class PdfSet {
 public:
     PdfSet(const std::string& name, int index);
-    PdfSet(PdfSet&& other) noexcept = default;/* : pdf(other.pdf) {
-        other.pdf = nullptr;
-    }*/
-    PdfSet& operator=(PdfSet&& other) noexcept = default; /* {
-        pdf = other.pdf;
-        other.pdf = nullptr;
-        return *this;
-    }*/
+    PdfSet(PdfSet&& other) noexcept = default;
+    PdfSet& operator=(PdfSet&& other) noexcept = default;
     PdfSet(const PdfSet&) = delete;
     PdfSet& operator=(const PdfSet&) = delete;
-    //~PdfSet() { delete pdf; }
     void call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const;
-    double alpha_s(double q2) const { return pdf->alphasQ2(q2); }
+    double alpha_s(double q2) const { return pdf.alphasQ2(q2); }
 
 private:
-    std::unique_ptr<LHAPDF::PDF> pdf;
+    PdfWrapper pdf;
 };
 
 class Context {
