@@ -172,7 +172,6 @@ install(
 
 set(
     KERNEL_SRC
-    src/kernels/autograd.h
     src/kernels/invariants.h
     src/kernels/kernels.h
     src/kernels/kinematics.h

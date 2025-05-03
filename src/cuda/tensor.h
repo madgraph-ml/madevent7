@@ -24,8 +24,7 @@ public:
         }
     }
 
-    __host__ __device__ CudaTensorView(const CudaTensorView<T, _dim, packed>& view)
-        = default;
+    CudaTensorView(const CudaTensorView<T, _dim, packed>& view) = default;
 
     __host__ __device__ CudaTensorView(const CudaTensorView<T, _dim, true>& view)
     requires (!packed) :
