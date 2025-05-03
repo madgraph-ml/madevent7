@@ -48,5 +48,7 @@ private:
     cudaStream_t _stream;
 };
 
+extern "C" DevicePtr get_device();
+
 }
 }

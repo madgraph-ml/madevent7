@@ -36,6 +36,12 @@ void CudaDevice::tensor_zero(Tensor& tensor) const {
     cudaDeviceSynchronize();
 }
 
+void CudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
+    tensor_foreach_dynamic<kernel_add_inplace<CudaTypes>, 1, 1>(
+        {&source}, {&target}, target.size(0), AsyncCudaDevice(0)
+    );
+}
+
 void CudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
     cudaMemcpy(target.data(), source.data(), source.byte_size(), cudaMemcpyDefault);
 }
@@ -79,3 +85,8 @@ void AsyncCudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
         target.data(), source.data(), source.byte_size(), cudaMemcpyDefault, _stream
     );
 }
+
+extern "C" DevicePtr get_device() {
+    return &CudaDevice::instance();
+}
+

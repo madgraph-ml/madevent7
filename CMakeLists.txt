@@ -13,6 +13,7 @@ if(CMAKE_CUDA_COMPILER)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
+add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
 
 ############################################################################################
@@ -205,6 +206,9 @@ if(COMPILE_CUDA)
         src/cuda/device.h
         ${KERNEL_SRC}
     )
+    set_target_properties(
+        madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
+    )
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
@@ -271,6 +275,7 @@ if(TORCH_FOUND)
         src/python/torch.h
         WITH_SOABI
     )
+
     target_link_libraries(_madevent_py_torch PRIVATE pybind11::headers)
     target_link_libraries(_madevent_py_torch PUBLIC madevent)
 
