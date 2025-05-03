@@ -2,6 +2,7 @@
 
 #include "madevent/madcode/type.h"
 #include "madevent/runtime/tensor.h"
+#include "device.h"
 
 #include <algorithm>
 
@@ -164,8 +165,6 @@ __global__ void run_kernel(std::size_t batch_size, V... views) {
         func(views.get(i, j, k, l)...);
     }
 }
-
-class AsyncCudaDevice;
 
 template<auto func, int n_in, int n_out, int dims>
 void tensor_foreach(

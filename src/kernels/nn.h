@@ -244,7 +244,9 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto log1pd = log1p(expd);
     auto log1pdpo = log1p(expdpo);
     auto spd = where(derivative_unorm > 20., derivative_unorm, log1pd);
-    auto spdpo = where(derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo);
+    auto spdpo = where(
+        derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo
+    );
     auto spd_md = spd + MIN_DERIVATIVE;
     auto spdpo_md = spdpo + MIN_DERIVATIVE;
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
@@ -303,7 +305,7 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto grad_cumheight = output_grad;
     auto grad_tmp7 = output_grad;
     auto grad_numerator = grad_tmp7 / denominator;
-    grad_denominator -= numerator * grad_tmp7 / (denominator * denominator);
+    grad_denominator += - numerator * grad_tmp7 / (denominator * denominator);
     grad_delta += grad_denominator;
     auto grad_tmp6 = grad_denominator;
     auto grad_tmp5 = theta_one_minus_theta * grad_tmp6;
@@ -331,7 +333,7 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto grad_cumwidth = -grad_input_diff;
 
     grad_height += grad_delta / width;
-    grad_width -= height * grad_delta / (width * width);
+    grad_width += - height * grad_delta / (width * width);
 
     auto grad_spdpo_md = grad_derivative_plus_one / softplus_scale;
     auto grad_spd_md = grad_derivative / softplus_scale;
@@ -423,7 +425,9 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     auto log1pd = log1p(expd);
     auto log1pdpo = log1p(expdpo);
     auto spd = where(derivative_unorm > 20., derivative_unorm, log1pd);
-    auto spdpo = where(derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo);
+    auto spdpo = where(
+        derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo
+    );
     auto spd_md = spd + MIN_DERIVATIVE;
     auto spdpo_md = spdpo + MIN_DERIVATIVE;
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
@@ -535,7 +539,7 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     auto grad_input = grad_input_diff;
     auto grad_cumheight = -grad_input_diff;
     auto grad_tmp1 = grad_tmp2;
-    grad_two_delta -= grad_tmp2;
+    grad_two_delta += - grad_tmp2;
     grad_delta += 2. * grad_two_delta;
     grad_derivative += grad_tmp1;
     grad_derivative_plus_one += grad_tmp1;
