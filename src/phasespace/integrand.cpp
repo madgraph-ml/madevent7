@@ -147,12 +147,12 @@ ValueVec Integrand::build_function_impl(
     Value chan_index, chan_det;
     ValueVec mapping_conditions;
     if (_diff_xs.channel_count() > 1) {
-        Value chan_random;
-        std::tie(r, chan_random) = fb.pop(r);
-        Value chan_index_in_group;
-        std::tie(chan_index_in_group, chan_det) = fb.sample_discrete(
+        auto [r_new, chan_random] = fb.pop(r);
+        auto [chan_index_in_group, chan_det_new] = fb.sample_discrete(
             chan_random, static_cast<int64_t>(_channel_indices.size())
         );
+        r = r_new;
+        chan_det = chan_det_new;
         chan_index = fb.gather_int(chan_index_in_group, _channel_indices);
         mapping_conditions.push_back(chan_index_in_group);
     }

@@ -8,6 +8,7 @@
 #include <functional>
 #include <random>
 #include <iostream>
+#include <optional>
 
 namespace madevent {
 

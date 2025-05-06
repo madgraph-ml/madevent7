@@ -3,6 +3,7 @@
 #include <numeric>
 #include <iostream>
 #include <algorithm>
+#include <optional>
 
 using namespace madevent;
 

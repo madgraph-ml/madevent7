@@ -54,17 +54,18 @@ Mapping::Result FastRamboMapping::build_forward_impl(
 
     auto [u, det_u] = fb.fast_rambo_r_to_u(fb.stack(r_u));
 
-    Value e_cm_massless, ps, qs, massive_det;
+    std::array<Value, 4> rambo_four_vectors;
     if (massless) {
-        std::tie(ps, qs) = fb.rambo_four_vectors_massless(
+        auto [ps, qs] = fb.rambo_four_vectors_massless(
             u, e_cm, fb.stack(cos_theta), fb.stack(phi)
         );
-        e_cm_massless = e_cm;
+        rambo_four_vectors = {ps, qs, e_cm, Value{}};
     } else {
-        std::tie(ps, qs, e_cm_massless, massive_det) = fb.rambo_four_vectors_massive(
+        rambo_four_vectors = fb.rambo_four_vectors_massive(
             u, e_cm, fb.stack(cos_theta), fb.stack(phi), fb.stack(m_out)
         );
     }
+    auto [ps, qs, e_cm_massless, massive_det] = rambo_four_vectors;
 
     auto q = com ? fb.com_momentum(e_cm) : inputs.back();
     ValueVec p_out;
