@@ -297,17 +297,17 @@ void op_unweight(
     Tensor uw_weights_tmp(DataType::dt_float, {batch_size});
 
     auto weights_view = weights.view<double, 1>();
-    double max_weight_val = max_weight.view<double, 0>();
+    auto max_weight_view = max_weight.view<double, 1>();
     auto indices_view = indices_tmp.view<int64_t, 1>();
     auto uw_weights_view = uw_weights_tmp.view<double, 1>();
     auto& pool = ThreadPool::instance();
 
     std::size_t count = 0;
     for (std::size_t i = 0; i < batch_size; ++i) {
-        double w = weights_view[i];
-        if (w != 0. && w / max_weight_val > pool.random(0)) {
+        double w = weights_view[i], w_max = max_weight_view[i];
+        if (w != 0. && w > pool.random(0) * w_max) {
             indices_view[count] = i;
-            uw_weights_view[count] = w > max_weight_val ? w : max_weight_val;
+            uw_weights_view[count] = w > w_max ? w : w_max;
             ++count;
         }
     }

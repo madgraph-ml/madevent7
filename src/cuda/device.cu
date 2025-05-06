@@ -8,16 +8,16 @@ using namespace madevent::kernels;
 
 void* CudaDevice::allocate(std::size_t size) const {
     void* ptr;
-    cudaMalloc(&ptr, size);
+    check_error(cudaMalloc(&ptr, size));
     return ptr;
 }
 
 void CudaDevice::free(void* ptr) const {
-    cudaFree(ptr);
+    check_error(cudaFree(ptr));
 }
 
 void CudaDevice::memcpy(void* to, void* from, std::size_t size) const {
-    cudaMemcpy(to, from, size, cudaMemcpyDefault);
+    check_error(cudaMemcpy(to, from, size, cudaMemcpyDefault));
 }
 
 void CudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
@@ -25,7 +25,7 @@ void CudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
     tensor_foreach_dynamic<kernel_copy<CudaTypes>, 1, 1>(
         {&source}, {&target}, target.size(0), AsyncCudaDevice(0)
     );
-    cudaDeviceSynchronize();
+    check_error(cudaDeviceSynchronize());
 }
 
 void CudaDevice::tensor_zero(Tensor& tensor) const {
@@ -33,7 +33,7 @@ void CudaDevice::tensor_zero(Tensor& tensor) const {
     tensor_foreach_dynamic<kernel_zero<CudaTypes>, 1, 1>(
         {&tensor}, {&tensor}, tensor.size(0), AsyncCudaDevice(0)
     );
-    cudaDeviceSynchronize();
+    check_error(cudaDeviceSynchronize());
 }
 
 void CudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
@@ -43,21 +43,23 @@ void CudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
 }
 
 void CudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
-    cudaMemcpy(target.data(), source.data(), source.byte_size(), cudaMemcpyDefault);
+    check_error(
+        cudaMemcpy(target.data(), source.data(), source.byte_size(), cudaMemcpyDefault)
+    );
 }
 
 void* AsyncCudaDevice::allocate(std::size_t size) const {
     void* ptr;
-    cudaMallocAsync(&ptr, size, _stream);
+    check_error(cudaMallocAsync(&ptr, size, _stream));
     return ptr;
 }
 
 void AsyncCudaDevice::free(void* ptr) const {
-    cudaFreeAsync(ptr, _stream);
+    check_error(cudaFreeAsync(ptr, _stream));
 }
 
 void AsyncCudaDevice::memcpy(void* to, void* from, std::size_t size) const {
-    cudaMemcpyAsync(to, from, size, cudaMemcpyDefault, _stream);
+    check_error(cudaMemcpyAsync(to, from, size, cudaMemcpyDefault, _stream));
 }
 
 void AsyncCudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
@@ -81,9 +83,9 @@ void AsyncCudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
 }
 
 void AsyncCudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
-    cudaMemcpyAsync(
+    check_error(cudaMemcpyAsync(
         target.data(), source.data(), source.byte_size(), cudaMemcpyDefault, _stream
-    );
+    ));
 }
 
 extern "C" DevicePtr get_device() {

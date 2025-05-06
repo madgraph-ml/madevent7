@@ -9,6 +9,9 @@
 namespace madevent {
 namespace cuda {
 
+constexpr std::size_t THREADS_MULTIPLE = 32;
+constexpr std::size_t MAX_THREADS_PER_BLOCK = 256;
+
 template<ScalarType T, int _dim, bool packed=false>
 class CudaTensorView {
 public:
@@ -127,6 +130,18 @@ struct get_views<void(*)(TParam...), dims> {
 };
 
 template<auto func, int dims, typename... V>
+__device__ void recursive_for(V... views) {
+    if constexpr (dims == 0) {
+        func(views...);
+    } else {
+        auto& first_view = [](auto& first, auto&... rest) -> auto& { return first; }(views...);
+        for (std::size_t i = 0; i < first_view.size(); ++i) {
+            recursive_for<func, dims-1>(views[i]...);
+        }
+    }
+}
+
+template<auto func, int dims, typename... V>
 __global__ void run_kernel(std::size_t batch_size, V... views) {
     auto& first_view = [](auto& first, auto&... rest) -> auto& { return first; }(views...);
     std::size_t index = blockDim.x * blockIdx.x + threadIdx.x;
@@ -166,6 +181,17 @@ __global__ void run_kernel(std::size_t batch_size, V... views) {
     }
 }
 
+template<typename F, typename... Args>
+void launch_kernel(F kernel, std::size_t total_count, cudaStream_t stream, Args... args) {
+    std::size_t n_threads = std::min(
+        MAX_THREADS_PER_BLOCK,
+        ((total_count + THREADS_MULTIPLE - 1) / THREADS_MULTIPLE) * THREADS_MULTIPLE
+    );
+    std::size_t n_blocks = (total_count + n_threads - 1) / n_threads;
+    kernel<<<n_blocks, n_threads, 0, stream>>>(args...);
+    check_error();
+}
+
 template<auto func, int n_in, int n_out, int dims>
 void tensor_foreach(
     std::array<const Tensor*, n_in>& inputs,
@@ -184,7 +210,10 @@ void tensor_foreach(
         total_count *= first_view.size(i);
     }
 
-    std::size_t n_threads = 512;
+    std::size_t n_threads = std::min(
+        MAX_THREADS_PER_BLOCK,
+        ((total_count + THREADS_MULTIPLE - 1) / THREADS_MULTIPLE) * THREADS_MULTIPLE
+    );
     std::size_t n_blocks = (total_count + n_threads - 1) / n_threads;
     std::apply([&](auto&... args) {
         run_kernel<func, dims><<<n_blocks, n_threads, 0, device.stream()>>>
