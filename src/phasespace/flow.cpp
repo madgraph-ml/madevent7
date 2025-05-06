@@ -122,18 +122,15 @@ Mapping::Result Flow::build_transform(
     std::iota(dim_positions.begin(), dim_positions.end(), 0);
 
     auto loop_body = [&](const CouplingBlock& block) {
-        auto half1 = fb.select(
-            x,
-            block.indices1
-                | std::views::transform([&](auto index) { return dim_positions[index]; })
-                | std::ranges::to<std::vector<int64_t>>()
-        );
-        auto half2 = fb.select(
-            x,
-            block.indices2
-                | std::views::transform([&](auto index) { return dim_positions[index]; })
-                | std::ranges::to<std::vector<int64_t>>()
-        );
+        std::vector<int64_t> half1_indices, half2_indices;
+        for (auto index : block.indices1) {
+            half1_indices.push_back(dim_positions[index]);
+        }
+        for (auto index : block.indices2) {
+            half2_indices.push_back(dim_positions[index]);
+        }
+        auto half1 = fb.select(x, half1_indices);
+        auto half2 = fb.select(x, half2_indices);
         Value det1, det2;
         bool spline_inv = _invert_spline ^ inverse;
         if (inverse) {

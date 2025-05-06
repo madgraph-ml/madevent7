@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "madevent/constants.h"
+#include "madevent/util.h"
 
 using namespace madevent;
 namespace views = std::views;
@@ -35,20 +36,21 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
 Mapping::Result FastRamboMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    auto r_u = inputs | views::take(n_particles - 2)
-                      | ranges::to<ValueVec>();
-    auto cos_theta = inputs | views::drop(n_particles - 2)
-                            | views::take(n_particles - 1)
-                            | views::transform([&fb](auto r) { return fb.uniform_costheta(r); })
-                            | ranges::to<ValueVec>();
-    auto phi = inputs | views::drop(2 * n_particles - 3)
-                      | views::take(n_particles - 1)
-                      | views::transform([&fb](auto r) { return fb.uniform_phi(r); })
-                      | ranges::to<ValueVec>();
-    auto e_cm = inputs.at(3 * n_particles - 4);
-    auto m_out = inputs | views::drop(3 * n_particles - 3)
-                        | views::take(n_particles)
-                        | ranges::to<ValueVec>();
+    ValueVec r_u, cos_theta, phi, m_out;
+    auto it = inputs.begin();
+    for (; it != inputs.begin() + n_particles - 2; ++it) {
+        r_u.push_back(*it);
+    }
+    for (; it != inputs.begin() + 2 * n_particles - 3; ++it) {
+        cos_theta.push_back(fb.uniform_costheta(*it));
+    }
+    for (; it != inputs.begin() + 3 * n_particles - 4; ++it) {
+        phi.push_back(fb.uniform_phi(*it));
+    }
+    Value e_cm = *(it++);
+    for (; it != inputs.end(); ++it) {
+        m_out.push_back(*it);
+    }
 
     auto [u, det_u] = fb.fast_rambo_r_to_u(fb.stack(r_u));
 
@@ -66,7 +68,7 @@ Mapping::Result FastRamboMapping::build_forward_impl(
 
     auto q = com ? fb.com_momentum(e_cm) : inputs.back();
     ValueVec p_out;
-    for (auto [p_i, q_i] : views::zip(fb.unstack(ps), fb.unstack(qs))) {
+    for (auto [p_i, q_i] : zip(fb.unstack(ps), fb.unstack(qs))) {
         p_out.push_back(fb.boost(p_i, q));
         q = fb.boost(q_i, q);
     }

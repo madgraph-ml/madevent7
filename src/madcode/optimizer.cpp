@@ -5,6 +5,8 @@
 #include <ranges>
 #include <unordered_map>
 
+#include "madevent/util.h"
+
 using namespace madevent;
 
 /*namespace {
@@ -12,7 +14,7 @@ using namespace madevent;
 std::vector<int> find_permutation(const std::vector<int>& from, const std::vector<int>& to) {
     auto indices = std::views::iota(from.size());
     std::unordered_map<int, int> from_location(
-        std::from_range, std::views::zip(from, indices)
+        std::from_range, zip(from, indices)
     );
     return indices | std::views::transform([&](int i) { return from_location[to.at(i)]; })
                    | std::ranges::to<std::vector<int>>();
@@ -85,7 +87,7 @@ Function madevent::optimize_constants(const Function& function) {
             new_locals.at(instr.outputs.at(0).local_index) = result;
         } else {
             auto outputs = fb.instruction(instr.instruction, inputs);
-            for (auto [instr_output, output] : std::views::zip(instr.outputs, outputs)) {
+            for (auto [instr_output, output] : zip(instr.outputs, outputs)) {
                 new_locals.at(instr_output.local_index) = output;
             }
         }
@@ -219,7 +221,7 @@ Function MergeOptimizer::build_function() {
         input_local_indices.assign(input_count, {});
         int sub_instr_index = 0;
         for (auto& sub_instr : instr.instructions) {
-            for (auto&& [input, isrc, iloc] : std::views::zip(
+            for (auto&& [input, isrc, iloc] : zip(
                 sub_instr.inputs, input_source_instr, input_local_indices
             )) {
                 isrc.push_back(local_source_indices[input.local_index]);
@@ -238,7 +240,7 @@ Function MergeOptimizer::build_function() {
         permutation.clear();
         arg_source_locals.clear();
         arg_locals.clear();
-        for (auto&& [isrc, iloc] : std::views::zip(input_source_instr, input_local_indices)) {
+        for (auto&& [isrc, iloc] : zip(input_source_instr, input_local_indices)) {
             if (std::adjacent_find(isrc.begin(), isrc.end(), [](auto& a, auto& b) {
                 return a.instr != b.instr || a.output != b.output;
             }) == isrc.end()) {

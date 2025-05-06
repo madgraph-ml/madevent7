@@ -177,7 +177,7 @@ void madevent::from_json(const json& j, Function& func) {
         auto instr_outputs = fb.instruction(
             j_instr.at("name").get<std::string>(), instr_inputs
         );
-        for (auto [j_output, output] : std::views::zip(
+        for (auto [j_output, output] : zip(
             j_instr.at("outputs"), instr_outputs
         )) {
             locals[j_output.get<std::size_t>()] = output;

@@ -119,8 +119,6 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_decay(
     return {p1, det};
 }
 
-#define NANCHECK(name) if (isnan(name)) std::println("nan: {}", #name);
-
 template<typename T>
 KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
     FVal<T> r_phi, FourMom<T> pa_com, FVal<T> s_tot, FVal<T> t,
@@ -147,7 +145,6 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
     auto phi = PI * (2. * r_phi - 1.);
     p1_com[1] = pt * cos(phi);
     p1_com[2] = pt * sin(phi);
-    //if (p1_com[3] > pp) std::println("FALSCH!!!");
 
     auto det = PI / (2. * sqrt(kaellen<T>(s_tot, ma_2, mb_2)));
     return {p1_com, det};
@@ -277,16 +274,6 @@ KERNELSPEC void kernel_two_particle_scattering_com(
     store_mom<T>(p1, p1_com);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_com[i];
     det = det_tmp;
-    /*auto s_tot_test = sqrt(s_tot);
-    std::println("COM pa = {} ma = {}", load_mom<T>(pa), sqrt(lsquare<T>(load_mom<T>(pa))));
-    std::println("COM pb = {} mb = {}", load_mom<T>(pb), sqrt(lsquare<T>(load_mom<T>(pb))));
-    std::println("COM p1 = {} m1 = {}", load_mom<T>(p1), sqrt(lsquare<T>(load_mom<T>(p1))));
-    std::println("COM p2 = {} m2 = {}", load_mom<T>(p2), sqrt(lsquare<T>(load_mom<T>(p2))));
-    auto m1_test = sqrt(lsquare<T>(load_mom<T>(p1)));
-    auto m2_test = sqrt(lsquare<T>(load_mom<T>(p2)));
-    if (s_tot_test < m1 + m2) __builtin_trap();
-    if (abs(m1_test - m1) > 0.5) __builtin_trap();
-    if (abs(m2_test - m2) > 0.5) __builtin_trap();*/
 }
 
 template<typename T>
@@ -314,16 +301,6 @@ KERNELSPEC void kernel_two_particle_scattering(
     store_mom<T>(p1, p1_lab);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_lab[i];
     det = det_tmp;
-    /*std::println("LAB pa = {} ma = {}", load_mom<T>(pa), sqrt(lsquare<T>(load_mom<T>(pa))));
-    std::println("LAB pb = {} mb = {}", load_mom<T>(pb), sqrt(lsquare<T>(load_mom<T>(pb))));
-    std::println("LAB p1 = {} m1 = {}", load_mom<T>(p1), sqrt(lsquare<T>(load_mom<T>(p1))));
-    std::println("LAB p2 = {} m2 = {}", load_mom<T>(p2), sqrt(lsquare<T>(load_mom<T>(p2))));
-    auto s_tot_test = sqrt(s_tot);
-    auto m1_test = sqrt(lsquare<T>(p1_lab));
-    auto m2_test = sqrt(lsquare<T>(load_mom<T>(p2)));
-    if (s_tot_test < m1 + m2) __builtin_trap();
-    if (abs(m1_test - m1) > 0.5) __builtin_trap();
-    if (abs(m2_test - m2) > 0.5) __builtin_trap();*/
 }
 
 template<typename T>
@@ -352,8 +329,6 @@ KERNELSPEC void kernel_t_inv_min_max(
     auto t_max_tmp = - where(y1 < y2, y1, y2);
     t_min = where(t_min_tmp > 0., t_min_tmp, 0.);
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
-    //std::println("args {} {} {} {} {}", s, ma_2, mb_2, static_cast<double>(m1), static_cast<double>(m2));
-    //std::println("LIMIT {} {} {} {}", y1, y2, static_cast<double>(t_min), static_cast<double>(t_max));
 }
 
 }

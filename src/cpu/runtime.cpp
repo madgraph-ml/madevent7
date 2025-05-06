@@ -425,7 +425,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
     std::vector<bool> eval_grad(instructions.size());
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
-    for (auto [instr, instr_eval_grad] : std::views::zip(instructions, eval_grad)) {
+    for (auto [instr, instr_eval_grad] : zip(instructions, eval_grad)) {
         if (instr.differentiable) {
             for (auto input_index : instr.input_indices) {
                 if (requires_grad[input_index]) {
@@ -472,16 +472,16 @@ std::tuple<
     auto& device = CpuDevice::instance();
     TensorVec local_grads(stored_locals.size());
     TensorVec locals(stored_locals);
-    for (auto [index, grad] : std::views::zip(output_indices, output_grads)) {
+    for (auto [index, grad] : zip(output_indices, output_grads)) {
         local_grads[index] = grad;
     }
     for (
         auto [instr, instr_eval_grad] :
-        std::views::reverse(std::views::zip(instructions, eval_grad))
+        zip(std::views::reverse(instructions), std::views::reverse(eval_grad))
     ) {
         if (!instr_eval_grad) continue;
         bool needs_grad = true;
-        for (auto [output_index, output_dtype] : std::views::zip(
+        for (auto [output_index, output_dtype] : zip(
             instr.output_indices, instr.output_dtypes
         )) {
             if (!local_grads[output_index] && output_dtype == DataType::dt_float) {

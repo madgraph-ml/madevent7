@@ -1,7 +1,6 @@
 #include "madevent/phasespace/chili.h"
 
 #include <ranges>
-#include <print>
 
 using namespace madevent;
 
@@ -26,12 +25,17 @@ ChiliMapping::ChiliMapping(
 Mapping::Result ChiliMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    auto r = inputs | std::views::take(3 * n_particles - 2) | std::ranges::to<ValueVec>();
+    ValueVec r, m_out;
+    for (auto it = inputs.begin(); it != inputs.begin() + 3 * n_particles - 2; ++it) {
+        r.push_back(*it);
+    }
     auto e_cm = inputs.at(3 * n_particles - 2);
-    auto m_out = inputs | std::views::drop(3 * n_particles - 1)
-                        | std::views::take(n_particles)
-                        | std::ranges::to<ValueVec>();
-    auto [p_ext, x1, x2, det] = fb.chili_forward(fb.stack(r), e_cm, fb.stack(m_out), pt_min, y_max);
+    for (auto it = inputs.begin() + 3 * n_particles - 1; it != inputs.end(); ++it) {
+        m_out.push_back(*it);
+    }
+    auto [p_ext, x1, x2, det] = fb.chili_forward(
+        fb.stack(r), e_cm, fb.stack(m_out), pt_min, y_max
+    );
     auto outputs = fb.unstack(p_ext);
     outputs.push_back(x1);
     outputs.push_back(x2);

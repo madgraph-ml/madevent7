@@ -5,9 +5,9 @@
 #include <cmath>
 #include <random>
 #include <ranges>
-#include <print>
 
 #include "madevent/runtime/format.h"
+#include "madevent/util.h"
 
 using namespace madevent;
 namespace fs = std::filesystem;
@@ -43,11 +43,10 @@ EventGenerator::EventGenerator(
         }
         auto chan_path = temp_path / file_path.stem();
         chan_path += std::format(".channel{}.npy", i);
-        std::optional<VegasGridOptimizer> vegas_optimizer = channel
-            .vegas_grid_name()
-            .transform([&] (const std::string& name) {
-                return VegasGridOptimizer(context, name, config.vegas_damping);
-            });
+        std::optional<VegasGridOptimizer> vegas_optimizer;
+        if (const auto& name = channel.vegas_grid_name(); name) {
+            vegas_optimizer = VegasGridOptimizer(context, *name, config.vegas_damping);
+        }
         _channels.push_back({
             i,
             build_runtime(channel.function(), context),
@@ -324,7 +323,7 @@ void EventGenerator::unweight_and_write(ChannelState& channel, const std::vector
 }
 
 void EventGenerator::print_gen_init() {
-    std::println(
+    println(
         "Integration and unweighting\n"
         "--------------------------------------------------------------------------\n"
         " Result:\n"
@@ -336,20 +335,20 @@ void EventGenerator::print_gen_init() {
     );
 
     if (_channels.size() > 1) {
-        std::println(
+        println(
             "Individual channels: \n"
             "--------------------------------------------------------------------------\n"
             " #   integral        RSD      N      unweighted"
         );
         for (std::size_t i = 0; i < _channels.size(); ++i) {
             if (i == 20) {
-                std::println(" ..");
+                println(" ..");
                 break;
             } else {
-                std::println(" {}", i);
+                println(" {}", i);
             }
         }
-        std::println(
+        println(
             "--------------------------------------------------------------------------\n"
         );
     }
@@ -375,7 +374,7 @@ void EventGenerator::print_gen_update() {
             format_progress(_status_all.count_unweighted / _status_all.count_target, 36)
         );
     }
-    std::print(
+    madevent::print(
         "\0337\033[{}F" // save cursor position, go up {} lines
         "\033[2K Result:            {}\n"
         "\033[2K Rel. error:        {}\n"
@@ -402,7 +401,7 @@ void EventGenerator::print_gen_update() {
             }
         );
 
-        std::print("\n\n\n\n\n");
+        print("\n\n\n\n\n");
         for (auto& channel : channels | std::views::take(20)) {
             if (channel.index == 20) break;
             std::string int_str, rsd_str, count_str, unw_str;
@@ -423,7 +422,7 @@ void EventGenerator::print_gen_update() {
                     );
                 }
             }
-            std::println(
+            madevent::println(
                 "\033[2K {:<4}{:<16}{:<9}{:<7}{}",
                 channel.index,
                 int_str,
@@ -435,6 +434,6 @@ void EventGenerator::print_gen_update() {
     }
 
     // restore cursor position
-    std::print("\0338");
+    print("\0338");
     std::cout << std::flush;
 }

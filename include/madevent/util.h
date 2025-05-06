@@ -2,18 +2,27 @@
 
 #include <ranges>
 #include <tuple>
+#include <cstdio>
+#include <format>
 
 namespace madevent {
 
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
 
-#if __cplusplus != 202302L
 // Unfortunately nvcc does not support C++23 yet, so we implement our own zip function
 // here (based on https://github.com/alemuntoni/zip-views), otherwise use the standard
 // library function
 
 namespace detail {
+
+inline void print_impl(
+    std::FILE* stream, bool new_line, std::string_view fmt, std::format_args args
+) {
+    std::string str = std::vformat(fmt, args);
+    if (new_line) str.push_back('\n');
+    fwrite(str.data(), 1, str.size(), stream);
+}
 
 template <typename... Args, std::size_t... Index>
 bool any_match_impl(
@@ -101,13 +110,32 @@ auto zip(T&& ... t) {
     return detail::zipper<T...>{std::forward<T>(t)...};
 }
 
-#else //__cplusplus != 202302L
-
-template <std::ranges::viewable_range... T>
-auto zip(T&& ... t) {
-    return std::views::zip(std::forward<T>(t)...);
+template<typename... Args>
+inline void print(std::format_string<Args...> fmt, Args&&... args) {
+    detail::print_impl(
+        stdout, false, fmt.get(), std::make_format_args(args...)
+    );
 }
 
-#endif //__cplusplus != 202302L
+template<typename... Args>
+inline void print(std::FILE* stream, std::format_string<Args...> fmt, Args&&... args) {
+    detail::print_impl(
+        stream, false, fmt.get(), std::make_format_args(args...)
+    );
+}
+
+template<typename... Args>
+inline void println(std::format_string<Args...> fmt, Args&&... args) {
+    detail::print_impl(
+        stdout, true, fmt.get(), std::make_format_args(args...)
+    );
+}
+
+template<typename... Args>
+inline void println(std::FILE* stream, std::format_string<Args...> fmt, Args&&... args) {
+    detail::print_impl(
+        stream, true, fmt.get(), std::make_format_args(args...)
+    );
+}
 
 }

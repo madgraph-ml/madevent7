@@ -66,9 +66,11 @@ std::vector<torch::Tensor> call_torch_impl(
         }
         runtime = func_runtime.cuda_runtime.get();
     }
-    return run_func(inputs, runtime)
-        | std::views::transform(tensor_to_torch)
-        | std::ranges::to<std::vector<torch::Tensor>>();
+    std::vector<torch::Tensor> return_vec;
+    for (auto& tensor : run_func(inputs, runtime)) {
+        return_vec.push_back(tensor_to_torch(tensor));
+    }
+    return return_vec;
 }
 
 }
@@ -185,7 +187,7 @@ Tensor madevent_py::torch_to_tensor(
         case DataType::dt_int:
             return {tensor.item<int64_t>(), device};
         default:
-            std::unreachable();
+            throw std::logic_error("unreachable");
         }
     } else {
         bool is_batch = expected_type.batch_size != BatchSize::one;
@@ -217,7 +219,7 @@ Tensor madevent_py::torch_to_tensor(
         }
         return {
             expected_type.dtype, shape, device, data_ptr,
-            [tensor] mutable { tensor = torch::Tensor(); }
+            [tensor] () mutable { tensor = torch::Tensor(); }
         };
     }
 }
@@ -260,7 +262,7 @@ Tensor madevent_py::torch_to_tensor_unchecked(std::optional<torch::Tensor> torch
     }
     return {
         dtype, shape, cpu_device(), data_ptr,
-        [tensor] mutable { tensor = torch::Tensor(); }
+        [tensor] () mutable { tensor = torch::Tensor(); }
     };
 }
 
@@ -295,9 +297,9 @@ std::tuple<
             auto [out, loc_grad, ev_grad] = runtime->run_with_grad(
                 inputs, input_requires_grad
             );
-            local_grads = loc_grad
-                | std::views::transform(tensor_to_torch_opt)
-                | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
+            for (auto& grad : loc_grad) {
+                local_grads.push_back(tensor_to_torch_opt(grad));
+            }
             eval_grad = ev_grad;
             return out;
         }
@@ -313,25 +315,26 @@ std::tuple<
     const std::vector<std::optional<torch::Tensor>>& stored_locals,
     const std::vector<bool>& eval_grad
 ) {
-    auto arg_out = output_grads
-        | std::views::transform(torch_to_tensor_unchecked)
-        | std::ranges::to<std::vector<Tensor>>();
-    auto arg_locals = stored_locals
-        | std::views::transform(torch_to_tensor_unchecked)
-        | std::ranges::to<std::vector<Tensor>>();
+    std::vector<Tensor> arg_out;
+    for (auto& grad : output_grads) {
+        arg_out.push_back(torch_to_tensor_unchecked(grad));
+    }
+    std::vector<Tensor> arg_locals;
+    for (auto& local : stored_locals) {
+        arg_locals.push_back(torch_to_tensor_unchecked(local));
+    }
     // TODO: checks here
     // TODO: allow for cuda here
     auto [ret_in_grads, ret_glob_grads] = func_runtime.cpu_runtime->run_backward(
         arg_out, arg_locals, eval_grad
     );
-    auto input_grads = ret_in_grads
-        | std::views::transform(tensor_to_torch_opt)
-        | std::ranges::to<std::vector<std::optional<torch::Tensor>>>();
-    using STP = std::tuple<std::string, std::optional<torch::Tensor>>;
-    auto global_grads = ret_glob_grads
-        | std::views::transform([] (auto& item) -> STP {
-            return {std::get<0>(item), tensor_to_torch_opt(std::get<1>(item))};
-        })
-        | std::ranges::to<std::vector<STP>>();
+    std::vector<std::optional<torch::Tensor>> input_grads;
+    for (auto& grad : ret_in_grads) {
+        input_grads.push_back(tensor_to_torch_opt(grad));
+    }
+    std::vector<std::tuple<std::string, std::optional<torch::Tensor>>> global_grads;
+    for (auto& [name, grad] : ret_glob_grads) {
+        global_grads.push_back({name, tensor_to_torch_opt(grad)});
+    }
     return {input_grads, global_grads};
 }

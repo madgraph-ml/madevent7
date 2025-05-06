@@ -68,7 +68,9 @@ std::vector<py::array_t<double>> FunctionRuntime::call_numpy(std::vector<py::arr
             cpu_runtime = build_runtime(function, madevent::default_context());
         }
     }
-    return cpu_runtime->run(inputs)
-        | std::views::transform(tensor_to_numpy)
-        | std::ranges::to<std::vector<py::array_t<double>>>();
+    std::vector<py::array_t<double>> return_vec;
+    for (auto& tensor : cpu_runtime->run(inputs)) {
+        return_vec.push_back(tensor_to_numpy(tensor));
+    }
+    return return_vec;
 }

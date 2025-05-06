@@ -91,7 +91,6 @@ KERNELSPEC void kernel_stable_invariant_nu(
     auto _s = pow(r * qmaxpow + (1 - r) * qminpow, 1 / power) + m2;
 
     s = _s;
-    //std::println("SAMPLE {} {} {}", static_cast<double>(s_min), _s, static_cast<double>(s_max));
     gs = (qmaxpow - qminpow) * pow(_s - m2, nu) / power;
 }
 

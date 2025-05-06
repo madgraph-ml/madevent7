@@ -2,6 +2,8 @@
 
 #include <ranges>
 
+#include "madevent/util.h"
+
 using namespace madevent;
 
 namespace {
@@ -116,7 +118,7 @@ std::vector<double> Cuts::get_limits(
     std::vector<double> limits(pids.size(), default_value);
     for (auto& cut : cut_data) {
         if (cut.observable == observable && cut.limit_type == limit_type) {
-            for (auto [limit, pid] : std::views::zip(limits, pids)) {
+            for (auto [limit, pid] : zip(limits, pids)) {
                 if (
                     std::find(cut.pids.begin(), cut.pids.end(), pid) != cut.pids.end() &&
                     (

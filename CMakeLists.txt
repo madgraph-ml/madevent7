@@ -155,7 +155,7 @@ add_library(
 )
 
 target_include_directories(madevent PUBLIC include)
-target_compile_features(madevent PUBLIC cxx_std_23)
+target_compile_features(madevent PUBLIC cxx_std_20)
 target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
 target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
@@ -235,7 +235,7 @@ add_library(
     ${KERNEL_SRC}
 )
 target_include_directories(madevent_cpu PUBLIC include)
-target_compile_features(madevent_cpu PUBLIC cxx_std_23)
+target_compile_features(madevent_cpu PUBLIC cxx_std_20)
 target_link_libraries(madevent_cpu PRIVATE BLAS::BLAS)
 target_link_libraries(madevent_cpu PRIVATE madevent)
 #target_compile_options(madevent_cpu PRIVATE -ffast-math)

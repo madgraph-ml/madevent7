@@ -1,11 +1,12 @@
 #include "madevent/runtime/io.h"
 
 #include <algorithm>
-#include <print>
 #include <cctype>
 #include <filesystem>
 
 #include <nlohmann/json.hpp>
+
+#include "madevent/util.h"
 
 using namespace madevent;
 using json = nlohmann::json;
@@ -121,8 +122,7 @@ std::tuple<std::size_t, std::size_t> write_event_header(
     using namespace std::string_literals;
     file_stream << "\x93NUMPY\x01\x00\x00\x00{'descr':[('w','<f8'),"s;
     for (std::size_t i = 1; i <= particle_count; ++i) {
-        std::print(
-            file_stream,
+        file_stream << std::format(
             "('pid{}','<i8'),('e{}','<f8'),('px{}','<f8'),('py{}','<f8'),('pz{}','<f8'),",
             i, i, i, i, i
         );

@@ -1,5 +1,7 @@
 #include "madevent/phasespace/discrete_flow.h"
 
+#include "madevent/util.h"
+
 using namespace madevent;
 
 DiscreteFlow::DiscreteFlow(
@@ -53,7 +55,7 @@ Mapping::Result DiscreteFlow::build_forward_impl(
     std::size_t dim_index = 0;
     int64_t prev_option_count = 0;
     auto mlp_iter = _subnets.begin();
-    for (auto [option_count, random] : std::views::zip(_option_counts, random_inputs)) {
+    for (auto [option_count, random] : zip(_option_counts, random_inputs)) {
         Value probs;
         if (dim_index > 0) {
             subnet_input = fb.cat({
