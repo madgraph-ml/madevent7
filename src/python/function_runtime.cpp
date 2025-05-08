@@ -88,7 +88,13 @@ std::tuple<int, int> madevent_py::dlpack_device(Tensor tensor) {
     return {tensor.device() == cpu_device() ? kDLCPU : kDLCUDA, 0};
 }
 
-py::object madevent_py::tensor_to_dlpack(Tensor tensor) {
+py::object madevent_py::tensor_to_dlpack(
+    Tensor tensor,
+    std::optional<int> stream,
+    std::optional<std::tuple<int, int>> max_version,
+    std::optional<int> dl_device,
+    std::optional<bool> copy
+) {
     if (!tensor) return py::none();
 
     DLManagedTensor* dl_tensor;

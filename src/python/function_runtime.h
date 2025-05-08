@@ -17,7 +17,13 @@ using namespace madevent;
 namespace madevent_py {
 
 std::tuple<int, int> dlpack_device(Tensor tensor);
-py::object tensor_to_dlpack(Tensor tensor);
+py::object tensor_to_dlpack(
+    Tensor tensor,
+    std::optional<int> stream = std::nullopt,
+    std::optional<std::tuple<int, int>> max_version = std::nullopt,
+    std::optional<int> dl_device = std::nullopt,
+    std::optional<bool> copy = std::nullopt
+);
 Tensor dlpack_to_tensor(
     py::object tensor,
     std::optional<Type> expected_type = std::nullopt,

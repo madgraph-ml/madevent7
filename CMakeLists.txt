@@ -35,6 +35,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
+if(COMPILE_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    #find_package(Thrust REQUIRED)
+endif()
+
 if(USE_SIMD)
     find_package(sleef CONFIG REQUIRED)
 endif()
@@ -199,6 +204,9 @@ if(COMPILE_CUDA)
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
+    target_link_libraries(madevent_cuda PRIVATE CUDA::cublas)
+    target_link_libraries(madevent_cuda PRIVATE CUDA::curand)
+    #target_link_libraries(madevent_cuda PRIVATE Thrust)
     install(TARGETS madevent_cuda DESTINATION madevent7/lib)
 endif()
 

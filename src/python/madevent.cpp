@@ -177,7 +177,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("call_backward", &FunctionRuntime::call_backward);
 
     py::class_<Tensor>(m, "Tensor", py::dynamic_attr())
-        .def("__dlpack__", &tensor_to_dlpack)
+        .def("__dlpack__", &tensor_to_dlpack,
+             py::arg("stream")=std::nullopt,
+             py::arg("max_version")=std::nullopt,
+             py::arg("dl_device")=std::nullopt,
+             py::arg("copy")=std::nullopt)
         .def("__dlpack_device__", &dlpack_device);
 
     auto& fb = py::class_<FunctionBuilder>(m, "FunctionBuilder")
