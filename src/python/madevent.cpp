@@ -9,14 +9,6 @@
 #include "instruction_set.h"
 #include "function_runtime.h"
 
-#ifdef TORCH_FOUND
-#define MODULE_NAME _madevent_py_torch
-#include "torch.h"
-#else
-#define MODULE_NAME _madevent_py
-#endif
-
-
 namespace py = pybind11;
 using namespace madevent;
 using namespace madevent_py;
@@ -72,7 +64,7 @@ public:
 
 }
 
-PYBIND11_MODULE(MODULE_NAME, m) {
+PYBIND11_MODULE(_madevent_py, m) {
     py::enum_<DataType>(m, "DataType")
         .value("int", DataType::dt_int)
         .value("float", DataType::dt_float)
@@ -180,18 +172,13 @@ PYBIND11_MODULE(MODULE_NAME, m) {
     py::class_<FunctionRuntime>(m, "FunctionRuntime")
         .def(py::init<Function>(), py::arg("function"))
         .def(py::init<Function, ContextPtr>(), py::arg("function"), py::arg("context"))
-#ifdef TORCH_FOUND
-        .def("call", &call_torch)
-        .def("call_with_grad", &call_with_grad_torch)
-        .def("call_backward", &call_backward_torch)
-#endif
-        .def("call", &FunctionRuntime::call_numpy);
+        .def("call", &FunctionRuntime::call)
+        .def("call_with_grad", &FunctionRuntime::call_with_grad)
+        .def("call_backward", &FunctionRuntime::call_backward);
 
-    py::class_<Tensor>(m, "Tensor")
-#ifdef TORCH_FOUND
-        .def("torch", &tensor_to_torch)
-#endif
-        .def("numpy", &tensor_to_numpy);
+    py::class_<Tensor>(m, "Tensor", py::dynamic_attr())
+        .def("__dlpack__", &tensor_to_dlpack)
+        .def("__dlpack_device__", &dlpack_device);
 
     auto& fb = py::class_<FunctionBuilder>(m, "FunctionBuilder")
         .def(py::init<const std::vector<Type>, const std::vector<Type>>(),
@@ -458,14 +445,12 @@ PYBIND11_MODULE(MODULE_NAME, m) {
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
 
     py::class_<VegasGridOptimizer>(m, "VegasGridOptimizer")
-#ifdef TORCH_FOUND
-        .def("optimize", [](VegasGridOptimizer& opt, torch::Tensor weights, torch::Tensor inputs) {
+        .def("optimize", [](VegasGridOptimizer& opt, py::object weights, py::object inputs) {
                 opt.optimize(
-                    torch_to_tensor(weights, batch_float, 0),
-                    torch_to_tensor(inputs, batch_float_array(opt.input_dim()), 1)
+                    dlpack_to_tensor(weights, batch_float, 0),
+                    dlpack_to_tensor(inputs, batch_float_array(opt.input_dim()), 1)
                 );
              }, py::arg("weights"), py::arg("inputs"))
-#endif
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 

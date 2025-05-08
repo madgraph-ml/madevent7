@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd.function import FunctionCtx, once_differentiable
-from . import _madevent_py_torch as me
+from . import _madevent_py as me #TODO: can we import init here?
 
 class FunctionModule(nn.Module):
     def __init__(
@@ -26,7 +26,7 @@ class FunctionModule(nn.Module):
         if torch.is_grad_enabled():
             return AutogradWrapper.apply(self, self.dummy, *args)
         else:
-            return self.runtime.call(args)
+            return [torch.from_dlpack(out) for out in self.runtime.call(args)]
 
 
 class AutogradWrapper(torch.autograd.Function):
@@ -39,11 +39,14 @@ class AutogradWrapper(torch.autograd.Function):
         )
         ctx.module = module
         ctx.eval_grad = eval_grad
-        ctx.save_for_backward(*local_grads)
+        ctx.save_for_backward(*(
+            None if grad is None else torch.from_dlpack(grad)
+            for grad in local_grads
+        ))
         if len(outputs) == 1:
-            return outputs[0]
+            return torch.from_dlpack(outputs[0])
         else:
-            return tuple(outputs)
+            return tuple(torch.from_dlpack(out) for out in outputs)
 
     @staticmethod
     @once_differentiable
@@ -56,8 +59,8 @@ class AutogradWrapper(torch.autograd.Function):
             if grad is None:
                 continue
             if param.grad is None:
-                param.grad = grad
+                param.grad = torch.from_dlpack(grad)
             else:
-                param.grad += grad
-        return None, None, *input_grads
+                param.grad += torch.from_dlpack(grad)
+        return None, None, *(torch.from_dlpack(grad) for grad in input_grads)
 

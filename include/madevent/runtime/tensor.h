@@ -196,6 +196,33 @@ public:
         init_stride();
     }
 
+    Tensor(
+        DataType dtype,
+        const Sizes& shape,
+        const Sizes& stride,
+        DevicePtr device,
+        void* data,
+        std::function<void()> external_reset
+    ) :
+        impl(new TensorImpl{
+            dtype, shape, device, data, false, external_reset, nullptr, 1, stride
+        })
+    {
+        std::size_t stride_prod = 1;
+        bool first = true;
+        impl->contiguous_dims = 0;
+        for (auto [size_i, stride_i] : zip(shape, stride)) {
+            if (stride_i == stride_prod) {
+                ++impl->contiguous_dims;
+            }
+            if (first && size_i == 1) {
+                impl->stride[0] = 0;
+            }
+            stride_prod *= size_i;
+            first = false;
+        }
+    }
+
     Tensor(const SizeVec& batch_sizes) : impl(new TensorImpl{
         DataType::batch_sizes, {}, cpu_device(), nullptr, true, std::nullopt, nullptr,
         1, {}, 0, 0, batch_sizes
@@ -282,6 +309,7 @@ public:
     const Sizes& shape() const { check_impl(); return impl->shape; }
     const Sizes& stride() const { check_impl(); return impl->stride; }
     std::size_t size(std::size_t i) const { check_impl(); return impl->shape[i]; }
+    std::size_t offset() const { return impl->offset; }
     DataType dtype() const { check_impl(); return impl->dtype; }
     const SizeVec& batch_sizes() const { check_impl(); return impl->batch_sizes; }
     DevicePtr device() const { check_impl(); return impl->device; }

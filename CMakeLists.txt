@@ -13,7 +13,6 @@ if(CMAKE_CUDA_COMPILER)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
-add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 
 
 ############################################################################################
@@ -21,18 +20,6 @@ add_compile_definitions(_GLIBCXX_USE_CXX11_ABI=0)
 ############################################################################################
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
-execute_process(
-    COMMAND "${Python3_EXECUTABLE}" "-c" "import torch;print(torch.utils.cmake_prefix_path)"
-    OUTPUT_VARIABLE PT_CMAKE_PREFIX
-    COMMAND_ECHO STDOUT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
-)
-set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH};${PT_CMAKE_PREFIX})
-
-find_package(Torch CONFIG)
-find_library(TORCH_PYTHON_LIBRARY torch_python PATH "${TORCH_INSTALL_PREFIX}/lib")
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -262,27 +249,4 @@ python_add_library(
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
 target_link_libraries(_madevent_py PUBLIC madevent)
 install(TARGETS _madevent_py DESTINATION madevent7)
-
-if(TORCH_FOUND)
-    python_add_library(
-        _madevent_py_torch
-        MODULE
-        src/python/madevent.cpp
-        src/python/instruction_set.h
-        src/python/function_runtime.cpp
-        src/python/function_runtime.h
-        src/python/torch.cpp
-        src/python/torch.h
-        WITH_SOABI
-    )
-
-    target_link_libraries(_madevent_py_torch PRIVATE pybind11::headers)
-    target_link_libraries(_madevent_py_torch PUBLIC madevent)
-
-    target_compile_definitions(_madevent_py_torch PRIVATE TORCH_FOUND=1)
-    target_link_libraries(
-        _madevent_py_torch PRIVATE ${TORCH_LIBRARIES} ${TORCH_PYTHON_LIBRARY}
-    )
-    install(TARGETS _madevent_py_torch DESTINATION madevent7)
-endif()
 

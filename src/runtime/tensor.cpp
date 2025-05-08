@@ -72,19 +72,14 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) const {
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = 1;
     bool first = true;
-    std::size_t size_prod = 1;
     for (auto size : impl->shape) {
         if (first && size == 1) {
             impl->stride.push_back(0);
         } else {
             impl->stride.push_back(stride_prod);
         }
-        if (first) {
-            first = false;
-        } else {
-            size_prod *= size;
-        }
         stride_prod *= size;
+        first = false;
     }
     impl->contiguous_dims = impl->shape.size();
     return stride_prod * dtype_size();

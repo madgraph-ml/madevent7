@@ -12,16 +12,11 @@ ctypes.CDLL(
     mode=ctypes.RTLD_GLOBAL
 )
 
-try:
-    import torch
-    from ._madevent_py_torch import *
-except ImportError:
-    from ._madevent_py import *
-
+from ._madevent_py import *
 
 def _init():
     """
-    Monkey-patch Function and Mapping classes for a more pythonic experience.
+    Monkey-patch classes for a more pythonic experience.
     """
     set_lib_path(
         os.path.join(
@@ -29,39 +24,63 @@ def _init():
         )
     )
 
+    def call_and_convert(runtime, args):
+        if len(args) == 0:
+            tensorlib = "numpy"
+        else:
+            tensorlib = type(args[0]).__module__
+        outputs = runtime.call(args)
+        # Convert outputs, lazy-loading torch or numpy
+        if tensorlib == "torch":
+            import torch
+            return tuple(torch.from_dlpack(out) for out in outputs)
+        else:
+            import numpy
+            return tuple(numpy.from_dlpack(out) for out in outputs)
+
     def function_call(self, *args):
         if not hasattr(self, "runtime"):
             self.runtime = FunctionRuntime(self)
-        out = self.runtime.call(args)
-        if len(out) == 1:
-            return out[0]
+        outputs = call_and_convert(self.runtime, args)
+        if len(outputs) == 1:
+            return outputs[0]
         else:
-            return out
+            return outputs
 
     def function_generator_call(self, *args):
         if not hasattr(self, "runtime"):
             self.runtime = FunctionRuntime(self.function())
-        out = self.runtime.call(args)
-        if len(out) == 1:
-            return out[0]
+        outputs = call_and_convert(self.runtime, args)
+        if len(outputs) == 1:
+            return outputs[0]
         else:
-            return out
+            return outputs
 
     def map_forward(self, inputs, conditions=[]):
         if not hasattr(self, "forward_runtime"):
             self.forward_runtime = FunctionRuntime(self.forward_function())
-        outputs = self.forward_runtime.call([*inputs, *conditions])
+        outputs = call_and_convert(self.forward_runtime, [*inputs, *conditions])
         return outputs[:-1], outputs[-1]
 
     def map_inverse(self, inputs, conditions=[]):
         if not hasattr(self, "inverse_runtime"):
             self.inverse_runtime = FunctionRuntime(self.inverse_function())
-        outputs = self.inverse_runtime.call([*inputs, *conditions])
+        outputs = call_and_convert(self.inverse_runtime, [*inputs, *conditions])
         return outputs[:-1], outputs[-1]
+
+    def tensor_numpy(tensor):
+        import numpy # Lazy-load numpy, to make it optional dependency
+        return numpy.from_dlpack(tensor)
+
+    def tensor_torch(tensor):
+        import torch # Lazy-load torch, to make it optional dependency
+        return torch.from_dlpack(tensor)
 
     Function.__call__ = function_call
     FunctionGenerator.__call__ = function_generator_call
     Mapping.map_forward = map_forward
     Mapping.map_inverse = map_inverse
+    Tensor.numpy = tensor_numpy
+    Tensor.torch = tensor_torch
 
 _init()
