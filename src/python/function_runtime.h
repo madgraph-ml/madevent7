@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 #ifdef TORCH_FOUND
 #include <torch/extension.h>
 #endif
@@ -24,8 +23,6 @@ Tensor dlpack_to_tensor(
     std::size_t arg_index = 0,
     DevicePtr expected_device = nullptr
 );
-
-py::array_t<double> tensor_to_numpy(Tensor tensor);
 
 struct FunctionRuntime {
     FunctionRuntime(Function function) : function(function), context(nullptr) {}

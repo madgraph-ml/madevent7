@@ -363,20 +363,6 @@ Tensor madevent_py::dlpack_to_tensor(
     return ret_tensor;
 }
 
-py::array_t<double> madevent_py::tensor_to_numpy(Tensor tensor) {
-    auto data_raw = reinterpret_cast<double*>(tensor.data());
-    py::capsule destroy(
-        new Tensor(tensor),
-        [](void* ptr) { delete static_cast<Tensor*>(ptr); }
-    );
-    SizeVec stride;
-    std::size_t dtype_size = tensor.dtype_size();
-    for (auto stride_item : tensor.stride()) {
-        stride.push_back(dtype_size * stride_item);
-    }
-    return {tensor.shape(), stride, data_raw, destroy};
-}
-
 std::vector<Tensor> FunctionRuntime::call(std::vector<py::object> args) {
     auto [inputs, runtime] = check_and_convert_args(args, *this);
     return runtime->run(inputs);

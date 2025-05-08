@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.10", "torch"]
+requires = ["scikit-build-core>=0.10"]
 build-backend = "scikit_build_core.build"
 
 [project]
@@ -17,8 +17,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-  "numpy",
-  "torch",
+  #"numpy",
+  #"torch",
 ]
 
 [tool.scikit-build]
