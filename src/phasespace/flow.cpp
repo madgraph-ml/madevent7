@@ -68,7 +68,7 @@ Flow::Flow(
             }
             ++dim_index;
         }
-        _coupling_blocks.emplace_back(
+        _coupling_blocks.push_back({
             MLP(
                 indices2.size() + condition_dim,
                 indices1.size() * (3 * bin_count + 1),
@@ -87,7 +87,7 @@ Flow::Flow(
             ),
             indices1,
             indices2
-        );
+        });
     }
 }
 
