@@ -157,7 +157,7 @@ add_library(
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_20)
 #target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
-target_link_libraries(madevent PUBLIC lhapdf::lhapdf)
+target_link_libraries(madevent PRIVATE lhapdf::lhapdf)
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
 #target_link_libraries(madevent PRIVATE -static-libstdc++)
 
