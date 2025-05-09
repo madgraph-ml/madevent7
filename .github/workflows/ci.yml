@@ -25,14 +25,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install build dependencies
-        if: matrix.os == "ubuntu-latest"
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt install -y libopenblas-dev
           python -m pip install --upgrade pip
           python -m pip install scikit_build_core
 
       - name: Install build dependencies
-        if: matrix.os == "macos-latest"
+        if: matrix.os == 'macos-latest'
         run: |
           python -m pip install --upgrade pip
           python -m pip install scikit_build_core
