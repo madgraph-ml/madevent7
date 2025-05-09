@@ -43,6 +43,7 @@ jobs:
         id: cuda-toolkit
         with:
           log-file-suffix: '${{matrix.os}}.txt'
+          use-github-cache: false
 
       - name: Build package
         run: python -m pip install --no-build-isolation -Cbuild-dir=build .
