@@ -44,7 +44,8 @@ jobs:
         with:
           log-file-suffix: '${{matrix.os}}.txt'
           method: network
-          sub-packages: '["nvcc", "cudart", "cublas", "curand", "thrust"]'
+          sub-packages: '["nvcc", "cudart-dev", "thrust"]'
+          non-cuda-sub-packages: '["libcublas-dev", "libcurand-dev"]'
           use-github-cache: false
 
       - name: Build package
