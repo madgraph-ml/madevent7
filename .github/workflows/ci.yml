@@ -27,7 +27,7 @@ jobs:
       - name: Install build dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt install -y libopenblas-dev automake
+          sudo apt install -y libopenblas-dev
           python -m pip install --upgrade pip
           python -m pip install scikit_build_core
 
