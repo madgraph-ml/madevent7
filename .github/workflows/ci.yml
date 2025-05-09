@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
-        os: ["ubuntu-latest", "macos-latest"]
+        os: ["ubuntu-20.04", "macos-14"]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Install CUDA toolkit
         uses: Jimver/cuda-toolkit@v0.2.23
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-20.04'
         id: cuda-toolkit
         with:
           log-file-suffix: '${{matrix.os}}.txt'
