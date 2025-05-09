@@ -77,3 +77,5 @@ jobs:
 
       - name: Upload wheel to latest release
         run: "gh release upload --clobber latest *.whl"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
