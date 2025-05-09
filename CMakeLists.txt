@@ -51,8 +51,8 @@ set(BLA_SIZEOF_INTEGER 4)
 find_package(BLAS REQUIRED)
 
 set(
-    lhapdf_LIBRARY
-    ${CMAKE_INSTALL_FULL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
+    lhapdf_libname
+    ${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 ExternalProject_Add(
     lhapdf
@@ -62,6 +62,7 @@ ExternalProject_Add(
     BUILD_COMMAND make -j
     INSTALL_COMMAND make install
     TEST_COMMAND ""
+    INSTALL_BYPRODUCTS <INSTALL_DIR>/lib/${lhapdf_libname}
 )
 
 ExternalProject_Get_Property(lhapdf install_dir)
@@ -72,7 +73,7 @@ target_include_directories(lhapdf::lhapdf INTERFACE ${install_dir}/include)
 target_link_libraries(
     lhapdf::lhapdf
     INTERFACE
-    ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
+    ${install_dir}/lib/${lhapdf_libname}
 )
 
 
