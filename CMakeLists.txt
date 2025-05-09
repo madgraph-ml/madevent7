@@ -21,6 +21,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 include(FetchContent)
+include(ExternalProject)
 
 FetchContent_Declare(
     pybind11
@@ -49,26 +50,30 @@ set(BLA_STATIC ON)
 set(BLA_SIZEOF_INTEGER 4)
 find_package(BLAS REQUIRED)
 
-execute_process(
-    COMMAND "lhapdf-config" "--libdir"
-    OUTPUT_VARIABLE LHAPDF_LIBRARY_DIR
-    COMMAND_ECHO STDOUT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
+set(
+    lhapdf_LIBRARY
+    ${CMAKE_INSTALL_FULL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
-execute_process(
-    COMMAND "lhapdf-config" "--incdir"
-    OUTPUT_VARIABLE LHAPDF_INCLUDE_DIRS
-    COMMAND_ECHO STDOUT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY
+ExternalProject_Add(
+    lhapdf
+    URL https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.5.5.tar.gz
+    CONFIGURE_HANDLED_BY_BUILD true
+    CONFIGURE_COMMAND <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --with-pic
+    BUILD_COMMAND make -j
+    INSTALL_COMMAND make install
+    TEST_COMMAND ""
 )
-find_library(
-    LHAPDF_LIBRARIES
-    REQUIRED
-    PATHS ${LHAPDF_LIBRARY_DIR}
-    NAMES "libLHAPDF.a"
+
+ExternalProject_Get_Property(lhapdf install_dir)
+add_library(lhapdf::lhapdf INTERFACE IMPORTED GLOBAL)
+target_include_directories(lhapdf::lhapdf INTERFACE ${install_dir}/include)
+target_link_libraries(
+    lhapdf::lhapdf
+    INTERFACE
+    ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
+add_dependencies(lhapdf::lhapdf lhapdf)
+
 
 ############################################################################################
 # Main madevent module                                                                     #
@@ -148,8 +153,8 @@ add_library(
 
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_20)
-target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
-target_link_libraries(madevent PRIVATE ${LHAPDF_LIBRARIES})
+#target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
+target_link_libraries(madevent PUBLIC lhapdf::lhapdf)
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
 #target_link_libraries(madevent PRIVATE -static-libstdc++)
 

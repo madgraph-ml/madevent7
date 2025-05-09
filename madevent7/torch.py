@@ -62,5 +62,8 @@ class AutogradWrapper(torch.autograd.Function):
                 param.grad = torch.from_dlpack(grad)
             else:
                 param.grad += torch.from_dlpack(grad)
-        return None, None, *(torch.from_dlpack(grad) for grad in input_grads)
+        input_grads_opt = (
+            None if grad is None else torch.from_dlpack(grad) for grad in input_grads
+        )
+        return None, None, *input_grads_opt
 
