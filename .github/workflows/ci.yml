@@ -28,16 +28,12 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install build dependencies
-        if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt install -y libopenblas-dev
-          python -m pip install --upgrade pip
-          python -m pip install scikit_build_core
-
-      - name: Install build dependencies
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install automake libtool
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt install -y libopenblas-dev
+          else
+            brew install automake libtool
+          fi
           python -m pip install --upgrade pip
           python -m pip install scikit_build_core
 
@@ -45,7 +41,14 @@ jobs:
         run: python -m pip install --no-build-isolation -Cbuild-dir=build .
 
       - name: Install test dependencies
-        run: python -m pip install pytest numpy torch
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            apt install important_linux_software
+            python -m pip install pytest numpy
+            python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          else
+            python -m pip install pytest numpy torch
+          fi
 
       - name: Run tests
         run: pytest tests
@@ -73,10 +76,4 @@ jobs:
             })
 
       - name: Upload wheel to latest release
-        run: "gh release upload --clobber *.whl"
-
-#- name: Upload wheel
-#  uses: actions/upload-artifact@v4
-#  with:
-#    name: wheel-${{ matrix.python-version }}-${{ matrix.os }}
-#    path: "*.whl"
+        run: "gh release upload --clobber latest *.whl"
