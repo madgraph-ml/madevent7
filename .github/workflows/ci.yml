@@ -43,6 +43,8 @@ jobs:
         id: cuda-toolkit
         with:
           log-file-suffix: '${{matrix.os}}.txt'
+          method: network
+          sub-packages: ["nvcc", "cudart", "cublas", "curand", "thrust"]
           use-github-cache: false
 
       - name: Build package
