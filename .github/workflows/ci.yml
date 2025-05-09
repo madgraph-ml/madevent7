@@ -34,7 +34,7 @@ jobs:
       - name: Install build dependencies
         if: matrix.os == 'macos-latest'
         run: |
-          brew install libtool
+          brew install automake libtool
           python -m pip install --upgrade pip
           python -m pip install scikit_build_core
 
