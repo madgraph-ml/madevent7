@@ -59,7 +59,7 @@ ExternalProject_Add(
     URL https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.5.5.tar.gz
     CONFIGURE_HANDLED_BY_BUILD true
     CONFIGURE_COMMAND autoreconf -f -i <SOURCE_DIR>
-        && <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --with-pic
+        && <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --with-pic --disable-python
     BUILD_COMMAND make -j
     INSTALL_COMMAND make install
     TEST_COMMAND ""
