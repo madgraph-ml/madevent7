@@ -66,13 +66,14 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(lhapdf install_dir)
 add_library(lhapdf::lhapdf INTERFACE IMPORTED GLOBAL)
+add_dependencies(lhapdf::lhapdf lhapdf)
+file(MAKE_DIRECTORY ${install_dir}/include)
 target_include_directories(lhapdf::lhapdf INTERFACE ${install_dir}/include)
 target_link_libraries(
     lhapdf::lhapdf
     INTERFACE
     ${install_dir}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
-add_dependencies(lhapdf::lhapdf lhapdf)
 
 
 ############################################################################################
