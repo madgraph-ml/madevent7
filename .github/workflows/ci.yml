@@ -51,7 +51,7 @@ jobs:
           use-github-cache: false
 
       - name: Build package
-        run: python -m pip install --no-build-isolation -Cbuild-dir=build -D CMAKE_C_COMPILER=/usr/bin/gcc-13 CMAKE_CXX_COMPILER=/usr/bin/g++-13 .
+        run: python -m pip install --no-build-isolation -Cbuild-dir=build -Ccmake.define.CMAKE_C_COMPILER=/usr/bin/gcc-13 -Ccmake.define.CMAKE_CXX_COMPILER=/usr/bin/g++-13 .
 
       - name: Install test dependencies
         run: |
