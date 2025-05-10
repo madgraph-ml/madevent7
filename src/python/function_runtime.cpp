@@ -23,27 +23,7 @@ void deleter(struct DLManagedTensor* self) {
     delete self;
 };
 
-std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
-    const std::vector<py::object>& args,
-    FunctionRuntime& func_runtime
-) {
-    //TODO: check batch sizes
-    auto n_args = func_runtime.function.inputs().size();
-    if (args.size() != n_args) {
-        throw std::invalid_argument(std::format(
-            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
-        ));
-    }
-    std::vector<Tensor> inputs;
-    DevicePtr expected_device = nullptr;
-    for (int i = 0; i < n_args; ++i) {
-        auto& arg = args.at(i);
-        auto& input_type = func_runtime.function.inputs().at(i).type;
-        auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device);
-        if (i == 0) expected_device = tensor.device();
-        inputs.push_back(tensor);
-    }
-
+Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
     Runtime* runtime;
     if (expected_device == cpu_device()) {
         if (!func_runtime.cpu_runtime) {
@@ -79,7 +59,30 @@ std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
         }
         runtime = func_runtime.cuda_runtime.get();
     }
-    return {inputs, runtime};
+    return runtime;
+}
+
+std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
+    const std::vector<py::object>& args,
+    FunctionRuntime& func_runtime
+) {
+    //TODO: check batch sizes
+    auto n_args = func_runtime.function.inputs().size();
+    if (args.size() != n_args) {
+        throw std::invalid_argument(std::format(
+            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
+        ));
+    }
+    std::vector<Tensor> inputs;
+    DevicePtr expected_device = nullptr;
+    for (int i = 0; i < n_args; ++i) {
+        auto& arg = args.at(i);
+        auto& input_type = func_runtime.function.inputs().at(i).type;
+        auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device);
+        if (i == 0) expected_device = tensor.device();
+        inputs.push_back(tensor);
+    }
+    return {inputs, get_runtime(func_runtime, expected_device)};
 }
 
 }
@@ -407,16 +410,21 @@ std::tuple<
     const std::vector<bool>& eval_grad
 ) {
     std::vector<Tensor> arg_out;
+    DevicePtr expected_device = nullptr;
     for (auto& grad : output_grads) {
-        arg_out.push_back(dlpack_to_tensor(grad));
+        auto tensor = dlpack_to_tensor(grad, std::nullopt, 0, expected_device);
+        if (expected_device == nullptr && tensor) expected_device = tensor.device();
+        arg_out.push_back(tensor);
     }
     std::vector<Tensor> arg_locals;
     for (auto& local : stored_locals) {
-        arg_locals.push_back(dlpack_to_tensor(local));
+        auto tensor = dlpack_to_tensor(local, std::nullopt, 0, expected_device);
+        if (expected_device == nullptr && tensor) expected_device = tensor.device();
+        arg_locals.push_back(tensor);
     }
     // TODO: checks here
-    // TODO: allow for cuda here
-    auto [ret_in_grads, ret_glob_grads] = cpu_runtime->run_backward(
+    Runtime* runtime = get_runtime(*this, expected_device);
+    auto [ret_in_grads, ret_glob_grads] = runtime->run_backward(
         arg_out, arg_locals, eval_grad
     );
     std::vector<std::optional<Tensor>> input_grads;

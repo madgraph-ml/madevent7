@@ -402,12 +402,13 @@ public:
     Tensor copy() const { return copy(*impl->device); }
 
     bool is_contiguous() const {
-        return impl->contiguous_dims < impl->shape.size();
+        return impl->contiguous_dims == impl->shape.size();
     }
+
     template<typename D>
     Tensor contiguous(const D& device) const {
         check_impl();
-        return is_contiguous() ? copy(device) : *this;
+        return is_contiguous() ? *this : copy(device);
     }
     Tensor contiguous() const { return contiguous(*impl->device); }
 

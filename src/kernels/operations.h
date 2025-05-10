@@ -74,7 +74,7 @@ void op_stack(const I& instruction, TensorVec& locals, const D& device) {
     shape[0] = locals[instruction.batch_size_index].size(0);
     shape[1] = instruction.input_indices.size();
     std::copy(first_shape.begin() + 1, first_shape.end(), shape.begin() + 2);
-    Tensor output(instruction.output_dtypes.front(), shape);
+    Tensor output(instruction.output_dtypes.front(), shape, device);
     std::size_t index = 0;
     for (auto input_index : instruction.input_indices) {
         output.select(1, index).copy_from(locals[input_index], device);
@@ -163,7 +163,7 @@ void op_batch_cat(const I& instruction, TensorVec& locals, const D& device) {
     }
     auto shape = locals[instruction.input_indices.front()].shape();
     shape[0] = batch_size;
-    Tensor output(instruction.output_dtypes.front(), shape);
+    Tensor output(instruction.output_dtypes.front(), shape, device);
     std::size_t offset = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input = locals[input_index];
@@ -234,7 +234,7 @@ void op_cat(const I& instruction, TensorVec& locals, const D& device) {
     shape[1] = cat_size;
     std::copy(first_shape.begin() + 2, first_shape.end(), shape.begin() + 2);
 
-    Tensor output(instruction.output_dtypes.front(), shape);
+    Tensor output(instruction.output_dtypes.front(), shape, device);
     std::size_t offset = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input = locals[input_index];
