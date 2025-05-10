@@ -33,6 +33,10 @@ jobs:
             sudo add-apt-repository ppa:ubuntu-toolchain-r/test
             sudo apt update
             sudo apt install -y libopenblas-dev gcc-13 g++-13
+            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+            sudo update-alternatives --auto gcc
+            sudo update-alternatives --auto g++
           else
             brew install automake libtool
           fi
@@ -52,11 +56,7 @@ jobs:
 
       - name: Build package
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            python -m pip install --no-build-isolation -Cbuild-dir=build -Ccmake.define.CMAKE_C_COMPILER=/usr/bin/gcc-13 -Ccmake.define.CMAKE_CXX_COMPILER=/usr/bin/g++-13 .
-          else
-            python -m pip install --no-build-isolation -Cbuild-dir=build .
-          fi
+          python -m pip install --no-build-isolation -Cbuild-dir=build .
 
       - name: Install test dependencies
         run: |
