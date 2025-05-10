@@ -36,9 +36,13 @@ KERNELSPEC void kernel_rqs_activation(
     for (std::size_t j = 0; j < n_dims; ++j) {
         std::size_t offset = j * n_cond;
         auto w_out = widths[j];
-        FVal<T> w_norm(0.);
+        FVal<T> w_norm(0.), w_in_max(0.);
         for (std::size_t i = 0; i < n_bins; ++i) {
-            auto w = exp(input[offset + i]);
+            auto w_in = input[offset + i];
+            w_in_max = where(w_in > w_in_max, w_in, w_in_max);
+        }
+        for (std::size_t i = 0; i < n_bins; ++i) {
+            auto w = exp(input[offset + i] - w_in_max);
             w_norm = w_norm + w;
             w_out[i] = w;
         }
@@ -48,9 +52,13 @@ KERNELSPEC void kernel_rqs_activation(
 
         offset += n_bins;
         auto h_out = heights[j];
-        FVal<T> h_norm(0.);
+        FVal<T> h_norm(0.), h_in_max(0.);
         for (std::size_t i = 0; i < n_bins; ++i) {
-            auto h = exp(input[offset + i]);
+            auto h_in = input[offset + i];
+            h_in_max = where(h_in > h_in_max, h_in, h_in_max);
+        }
+        for (std::size_t i = 0; i < n_bins; ++i) {
+            auto h = exp(input[offset + i] - h_in_max);
             h_norm = h_norm + h;
             h_out[i] = h;
         }
@@ -180,6 +188,7 @@ KERNELSPEC void backward_kernel_rqs_find_bin(
     derivatives_grad.scatter_add(selected_bin, derivative_unorm_grad);
     derivatives_grad.scatter_add(selected_bin + 1, derivative_plus_one_unorm_grad);
 }
+
 
 template<typename T>
 KERNELSPEC void kernel_rqs_forward(
@@ -573,9 +582,13 @@ KERNELSPEC void backward_kernel_rqs_inverse(
 
 template<typename T>
 KERNELSPEC void kernel_softmax(FIn<T,1> input, FOut<T,1> output) {
-    FVal<T> norm(0.);
+    FVal<T> norm(0.), in_max(0.);
     for (std::size_t i = 0; i < input.size(); ++i) {
-        auto exp_in = exp(input[i]);
+        auto in = input[i];
+        in_max = where(in > in_max, in, in_max);
+    }
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        auto exp_in = exp(input[i] - in_max);
         norm = norm + exp_in;
         output[i] = exp_in;
     }
@@ -601,6 +614,7 @@ KERNELSPEC void backward_kernel_softmax(
 template<typename T>
 KERNELSPEC void kernel_softmax_prior(FIn<T,1> input, FIn<T,1> prior, FOut<T,1> output) {
     FVal<T> norm(0.);
+    //TODO: solve exp->inf issue
     for (std::size_t i = 0; i < input.size(); ++i) {
         auto unnorm_prob = exp(input[i]) * prior[i];
         norm = norm + unnorm_prob;
