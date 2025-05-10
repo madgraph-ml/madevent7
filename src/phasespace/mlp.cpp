@@ -48,12 +48,21 @@ void initialize_layer(
     std::uniform_real_distribution<double> rand_dist(-bound, bound);
     auto weight_name = std::format("{}layer{}_weight", prefix, layer_index);
     auto bias_name = std::format("{}layer{}_bias", prefix, layer_index);
-    auto weight_tensor = context->define_global(
+    auto weight_tensor_global = context->define_global(
         weight_name, DataType::dt_float, {output_dim, input_dim}, true
     );
-    auto bias_tensor = context->define_global(
+    auto bias_tensor_global = context->define_global(
         bias_name, DataType::dt_float, {output_dim}, true
     );
+    Tensor weight_tensor, bias_tensor;
+    bool is_cpu = context->device() == cpu_device();
+    if (is_cpu) {
+        weight_tensor = weight_tensor_global;
+        bias_tensor = bias_tensor_global;
+    } else {
+        weight_tensor = Tensor(DataType::dt_float, {1, output_dim, input_dim});
+        bias_tensor = Tensor(DataType::dt_float, {1, output_dim});
+    }
 
     auto weight_view = weight_tensor.view<double, 3>()[0];
     for (std::size_t i = 0; i < output_dim; ++i) {
@@ -64,6 +73,11 @@ void initialize_layer(
     auto bias_view = bias_tensor.view<double, 2>()[0];
     for (std::size_t i = 0; i < output_dim; ++i) {
         bias_view[i] = zeros ? 0. : rand_dist(rand_gen);
+    }
+
+    if (!is_cpu) {
+        weight_tensor_global.copy_from(weight_tensor);
+        bias_tensor_global.copy_from(bias_tensor);
     }
 }
 

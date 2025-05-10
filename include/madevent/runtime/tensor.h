@@ -374,7 +374,14 @@ public:
     template<typename D>
     void copy_from(const Tensor& source, const D& device) {
         check_impl();
-        device.tensor_copy(source, *this);
+        if (source.device() == this->device()) {
+            device.tensor_copy(source, *this);
+        } else if (is_contiguous()) {
+            auto contig_source = source.contiguous();
+            device.memcpy(data(), contig_source.data(), byte_size());
+        } else {
+            throw std::runtime_error("tensor must be contiguous for copy across devices");
+        }
     }
     void copy_from(const Tensor& source) { copy_from(source, *impl->device); }
 
@@ -394,10 +401,13 @@ public:
     }
     Tensor copy() const { return copy(*impl->device); }
 
+    bool is_contiguous() const {
+        return impl->contiguous_dims < impl->shape.size();
+    }
     template<typename D>
     Tensor contiguous(const D& device) const {
         check_impl();
-        return impl->contiguous_dims < impl->shape.size() ? copy(device) : *this;
+        return is_contiguous() ? copy(device) : *this;
     }
     Tensor contiguous() const { return contiguous(*impl->device); }
 
