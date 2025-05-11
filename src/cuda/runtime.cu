@@ -425,16 +425,15 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
 {
     locals_init.resize(function.locals().size());
     requires_grad_init.resize(function.locals().size());
-    auto opt_function = optimize_constants(function);
     std::size_t instr_index = 0;
-    LastUseOfLocals last_use(opt_function);
+    LastUseOfLocals last_use(function);
 
     check_error(curandCreateGenerator(&_curand_generator, CURAND_RNG_PSEUDO_DEFAULT));
     std::random_device rand_dev;
     check_error(curandSetPseudoRandomGeneratorSeed(_curand_generator, rand_dev()));
     check_error(cublasCreate(&_cublas_handle));
 
-    for (auto& instr : opt_function.instructions()) {
+    for (auto& instr : function.instructions()) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
         for (auto& in : instr.inputs) {
@@ -469,7 +468,7 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
         ++instr_index;
     }
 
-    for (auto& [name, value] : opt_function.globals()) {
+    for (auto& [name, value] : function.globals()) {
         Tensor global = context->global(name);
         auto& global_shape = value.type.shape;
         Sizes full_shape(global_shape.size() + 1);
@@ -487,7 +486,7 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
         }
     }
 
-    for (auto& local : opt_function.locals()) {
+    for (auto& local : function.locals()) {
         std::visit(Overloaded{
             [&](auto val) {
                 Tensor tensor(val, &CudaDevice::instance());
@@ -497,7 +496,7 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
         }, local.literal_value);
     }
 
-    for (auto& out : opt_function.outputs()) {
+    for (auto& out : function.outputs()) {
         output_indices.push_back(out.local_index);
     }
 }

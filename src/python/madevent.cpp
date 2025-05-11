@@ -334,9 +334,6 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
-    /*py::class_<MergeOptimizer>(m, "MergeOptimizer")
-        .def(py::init<Function&>(), py::arg("function"))
-        .def("optimize", &MergeOptimizer::optimize);*/
     py::class_<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<PhaseSpaceMapping>&>(), py::arg("mappings"));
 
@@ -458,7 +455,6 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 
-    m.def("optimize_constants", &optimize_constants, py::arg("function"));
     m.def("set_thread_count", &ThreadPool::set_thread_count, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));

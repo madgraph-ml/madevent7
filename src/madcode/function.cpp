@@ -226,6 +226,7 @@ ValueVec FunctionBuilder::instruction(const std::string& name, const ValueVec& a
 ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec& args) {
     auto params = args;
     int arg_index = -1;
+    bool const_opt = true;
     for (auto& arg : params) {
         ++arg_index;
 
@@ -244,13 +245,48 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
                     instruction->name(), arg_index
                 ));
             }
-            continue;
-        }
-        if (std::holds_alternative<std::monostate>(arg.literal_value)) {
+            const_opt = false;
+        } else if (std::holds_alternative<std::monostate>(arg.literal_value)) {
             throw std::invalid_argument(std::format(
                 "{}, argument {}: undefined value", instruction->name(), arg_index
             ));
         }
+    }
+
+    if (const_opt) {
+        switch (instruction->opcode()) {
+        case opcodes::add: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 + arg1};
+        } case opcodes::sub: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 - arg1};
+        } case opcodes::mul: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 * arg1};
+        } case opcodes::clip_min: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 < arg1 ? arg1 : arg0};
+        } case opcodes::sqrt: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            return {std::sqrt(arg0)};
+        } case opcodes::square: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            return {arg0 * arg0};
+        } case opcodes::pow: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {std::pow(arg0, arg1)};
+        }}
+    }
+
+    for (auto& arg : params) {
+        if (arg.local_index != -1) continue;
+
         auto find_literal = literals.find(arg.literal_value);
         if (find_literal == literals.end()) {
             int local_index = locals.size();

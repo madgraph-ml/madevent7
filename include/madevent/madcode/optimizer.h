@@ -6,8 +6,6 @@
 
 namespace madevent {
 
-Function optimize_constants(const Function& function);
-
 class InstructionDependencies {
 public:
     InstructionDependencies(const Function& function);
