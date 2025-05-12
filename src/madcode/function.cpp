@@ -224,6 +224,7 @@ ValueVec FunctionBuilder::instruction(const std::string& name, const ValueVec& a
 }
 
 ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec& args) {
+    // check argument types and determine if all arguments are constant
     auto params = args;
     int arg_index = -1;
     bool const_opt = true;
@@ -253,8 +254,10 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
         }
     }
 
+    // perform simple arithmetic operations on constant arguments
+    int opcode = instruction->opcode();
     if (const_opt) {
-        switch (instruction->opcode()) {
+        switch (opcode) {
         case opcodes::add: {
             double arg0 = std::get<double>(args.at(0).literal_value);
             double arg1 = std::get<double>(args.at(1).literal_value);
@@ -284,28 +287,48 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
         }}
     }
 
+    // create local variables for constants
+    std::vector<std::size_t> opcode_and_input_locals;
+    opcode_and_input_locals.push_back(opcode);
     for (auto& arg : params) {
-        if (arg.local_index != -1) continue;
+        if (arg.local_index == -1) {
+            auto find_literal = literals.find(arg.literal_value);
+            if (find_literal == literals.end()) {
+                int local_index = locals.size();
+                arg = Value(arg.type, arg.literal_value, local_index);
+                locals.push_back(arg);
+                literals[arg.literal_value] = arg;
+            } else {
+                arg = find_literal->second;
+            }
+        }
+        opcode_and_input_locals.push_back(arg.local_index);
+    }
 
-        auto find_literal = literals.find(arg.literal_value);
-        if (find_literal == literals.end()) {
-            int local_index = locals.size();
-            arg = Value(arg.type, arg.literal_value, local_index);
-            locals.push_back(arg);
-            literals[arg.literal_value] = arg;
-        } else {
-            arg = find_literal->second;
+    // check for cached result (for deterministic instructions)
+    if (opcode != opcodes::random && opcode != opcodes::unweight) {
+        auto find_instr = instruction_cache.find(opcode_and_input_locals);
+        if (find_instr != instruction_cache.end()) {
+            ValueVec call_outputs;
+            for (auto output_local_index : find_instr->second) {
+                call_outputs.push_back(locals.at(output_local_index));
+            }
+            return call_outputs;
         }
     }
 
+    // generate instruction and create local variables for output
     auto output_types = instruction->signature(params);
     ValueVec call_outputs;
+    std::vector<std::size_t> output_locals;
     for (const auto& type : output_types) {
         Value value(type, locals.size());
         locals.push_back(value);
         call_outputs.push_back(value);
+        output_locals.push_back(value.local_index);
     }
     instructions.push_back(InstructionCall{instruction, params, call_outputs});
+    instruction_cache[opcode_and_input_locals] = output_locals;
     return call_outputs;
 }
 

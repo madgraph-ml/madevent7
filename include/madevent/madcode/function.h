@@ -88,6 +88,7 @@ private:
     ValueVec locals;
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
+    std::map<std::vector<std::size_t>, std::vector<std::size_t>> instruction_cache;
 };
 
 }
