@@ -23,7 +23,11 @@ public:
         CudaRuntime& runtime;
         bool differentiable;
         cudaStream_t stream;
-        cudaEvent_t event;
+        cudaStream_t backward_stream;
+        std::vector<cudaEvent_t> wait_events;
+        cudaEvent_t record_event;
+        std::vector<cudaEvent_t> backward_wait_events;
+        cudaEvent_t backward_record_event;
     };
 
     CudaRuntime(const Function& function, ContextPtr context);

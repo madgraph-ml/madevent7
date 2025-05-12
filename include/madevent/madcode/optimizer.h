@@ -14,7 +14,6 @@ public:
     }
 
 private:
-    friend class MergeOptimizer;
     std::size_t size;
     std::vector<bool> matrix;
     std::vector<int> ranks;
@@ -31,25 +30,5 @@ public:
 private:
     std::vector<std::vector<int>> last_used;
 };
-
-/*class MergeOptimizer {
-public:
-    MergeOptimizer(const Function& _function);
-    Function optimize();
-private:
-    struct MergedInstruction {
-        std::vector<InstructionCall> instructions;
-        int rank;
-        std::vector<bool> dependencies;
-        bool active = true;
-    };
-    std::vector<MergedInstruction> instructions;
-    const Function& function;
-
-    void merge_if_compatible(
-        std::size_t idx1, MergedInstruction& instr1, std::size_t idx2, MergedInstruction& instr2
-    );
-    Function build_function();
-};*/
 
 }

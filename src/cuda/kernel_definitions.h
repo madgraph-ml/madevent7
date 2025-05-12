@@ -24,6 +24,12 @@ inline __device__ double where(bool condition, double val_true, double val_false
 inline __device__ int64_t where(bool condition, int64_t val_true, int64_t val_false) {
     return condition ? val_true : val_false;
 }
+inline __device__ double min(double arg1, double arg2) {
+    return arg1 < arg2 ? arg1 : arg2;
+}
+inline __device__ double max(double arg1, double arg2) {
+    return arg1 > arg2 ? arg1 : arg2;
+}
 inline __device__ std::size_t single_index(int64_t arg) {
     return arg;
 }

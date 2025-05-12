@@ -31,7 +31,7 @@ KERNELSPEC void kernel_chili_forward(
         // get first n-1 rapidities and phi
         auto pt2 = pt * pt;
         auto y_max_calc = log(sqrt(e_cm2 / 4. / pt2) + sqrt(e_cm2 / 4. / pt2 - 1.0));
-        y_max_calc = where(y_max_i < y_max_calc, y_max_i, y_max_calc);
+        y_max_calc = min(y_max_i, y_max_calc);
         auto y = y_max_calc * (2. * r_y - 1.0);
         auto phi = 2. * PI * r_phi;
 
@@ -67,11 +67,11 @@ KERNELSPEC void kernel_chili_forward(
     auto ptj2 = px_sum * px_sum + py_sum * py_sum;
     auto m2 = m_out_n * m_out_n;
     auto qt = sqrt(ptj2 + m2);
-    auto mt = sqrt(ptj2 + where(mj2 > 0., mj2, 0.));
+    auto mt = sqrt(ptj2 + max(mj2, 0.));
     auto y_min_calc = -log(_e_cm / qt * (1.0 - mt / _e_cm * exp(-yj)));
-    y_min_calc = where(y_min_calc > -y_max_n, y_min_calc, -y_max_n); // apply potential cuts
+    y_min_calc = max(y_min_calc, -y_max_n); // apply potential cuts
     auto y_max_calc = log(_e_cm / qt * (1.0 - mt / _e_cm * exp(yj)));
-    y_max_calc = where(y_max_calc < y_max_n, y_max_calc, y_max_n); // apply potential cuts
+    y_max_calc = min(y_max_calc, y_max_n); // apply potential cuts
     auto dely = y_max_calc - y_min_calc;
     auto yn = y_min_calc + r_y * dely;
     det_tmp = det_tmp * dely / e_cm2;

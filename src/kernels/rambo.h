@@ -110,8 +110,7 @@ KERNELSPEC void kernel_rambo_four_vectors_massive(
         } else {
             cum_u = cum_u * u[i];
             cum_k = e_cm_massless * cum_u;
-            total_mass = total_mass - mass;
-            total_mass = where(total_mass < 0., 0., total_mass);
+            total_mass = max(total_mass - mass, 0.);
             cum_m = cum_k + total_mass;
         }
 

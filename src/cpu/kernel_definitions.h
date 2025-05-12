@@ -26,6 +26,12 @@ inline double where(bool condition, double val_true, double val_false) {
 inline int64_t where(bool condition, int64_t val_true, int64_t val_false) {
     return condition ? val_true : val_false;
 }
+inline double min(double arg1, double arg2) {
+    return arg1 < arg2 ? arg1 : arg2;
+}
+inline double max(double arg1, double arg2) {
+    return arg1 > arg2 ? arg1 : arg2;
+}
 inline std::size_t single_index(int64_t arg) {
     return arg;
 }
@@ -48,10 +54,10 @@ using std::isnan;
 
 #ifdef USE_SIMD
 struct SimdTypes {
-    template<int dim> using FIn = const VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IIn = const VectorizedTensorView<IVec, int64_t, dim, false>;
-    template<int dim> using FOut = VectorizedTensorView<FVec, double, dim, false>;
-    template<int dim> using IOut = VectorizedTensorView<IVec, int64_t, dim, false>;
+    template<int dim> using FIn = const cpu::VectorizedTensorView<FVec, double, dim, false>;
+    template<int dim> using IIn = const cpu::VectorizedTensorView<IVec, int64_t, dim, false>;
+    template<int dim> using FOut = cpu::VectorizedTensorView<FVec, double, dim, false>;
+    template<int dim> using IOut = cpu::VectorizedTensorView<IVec, int64_t, dim, false>;
     using FVal = FVec;
     using IVal = IVec;
     using BVal = BVec;

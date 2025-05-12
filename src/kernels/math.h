@@ -64,7 +64,7 @@ KERNELSPEC void backward_kernel_product(FIn<T,1> in, FIn<T,0> out_grad, FOut<T,1
 
 template<typename T>
 KERNELSPEC void kernel_clip_min(FIn<T,0> x, FIn<T,0> min, FOut<T,0> out) {
-    out = where(x < min, min, x);
+    out = max(min, x);
 }
 
 template<typename T>

@@ -62,7 +62,7 @@ KERNELSPEC FourMom<T> boost(FourMom<T> k, FourMom<T> p_boost, FVal<T> sign) {
     // Perform the boost
     // This is in fact a numerically more stable implementation than often used
     auto p2_boost = lsquare<T>(p_boost);
-    auto rsq = sqrt(where(p2_boost < EPS2, EPS2, p2_boost));
+    auto rsq = sqrt(max(EPS2, p2_boost));
     auto k_dot_p = k[1] * p_boost[1] + k[2] * p_boost[2] + k[3] * p_boost[3];
     auto e = (k[0] * p_boost[0] + sign * k_dot_p) / rsq;
     auto c1 = sign * (k[0] + e) / (rsq + p_boost[0]);
@@ -98,18 +98,18 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_decay(
 ) {
     auto phi = PI * (2. * r_phi - 1.);
     auto cos_theta = 2. * r_cos_theta - 1.;
-    auto m0_clip = where(m0 >= EPS, m0, EPS);
+    auto m0_clip = max(m0, EPS);
 
     // this part is based on the mom2cx subroutine from HELAS used in MG5 (aloha_functions.f)
     auto ed = (m1 - m2) * (m1 + m2) / m0_clip;
     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + m0 * m0;
     auto pp = 0.5 * where(
-        m1 * m2 == 0., m0 - fabs(ed), sqrt(where(pp2 >= EPS, pp2, EPS))
+        m1 * m2 == 0., m0 - fabs(ed), sqrt(max(pp2, EPS))
     );
     auto sin_theta = sqrt((1. - cos_theta) * (1 + cos_theta));
     auto e1 = 0.5 * (m0 + ed);
     FourMom<T> p1{
-        where(e1 > 0., e1, 0.),
+        max(e1, 0.),
         pp * sin_theta * cos(phi),
         pp * sin_theta * sin(phi),
         pp * cos_theta
@@ -130,7 +130,7 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
     auto ed = (m1 - m2) * (m1 + m2) / m_tot;
     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + s_tot;
     auto pp = 0.5 * where(
-        m1 * m2 == 0., m_tot - fabs(ed), sqrt(where(pp2 >= EPS, pp2, EPS))
+        m1 * m2 == 0., m_tot - fabs(ed), sqrt(max(pp2, EPS))
     );
 
     auto pa_com_mag = sqrt(
@@ -138,10 +138,10 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
     );
     FourMom<T> p1_com;
     auto e1_com = 0.5 * (m_tot + ed);
-    p1_com[0] = where(e1_com >= 0., e1_com, 0.);
+    p1_com[0] = max(e1_com, 0.);
     p1_com[3] = -(m1 * m1 + ma_2 + t - 2. * p1_com[0] * pa_com[0]) / (2.0 * pa_com_mag);
     auto pt2 = pp * pp - p1_com[3] * p1_com[3];
-    auto pt = sqrt(where(pt2 > 0., pt2, 0.));
+    auto pt = sqrt(max(pt2, 0.));
     auto phi = PI * (2. * r_phi - 1.);
     p1_com[1] = pt * cos(phi);
     p1_com[2] = pt * sin(phi);
@@ -234,7 +234,7 @@ KERNELSPEC void kernel_two_particle_decay_com(
     store_mom<T>(p1, p1_tmp);
     det = det_tmp;
     auto e2 = m0 - p1_tmp[0];
-    p2[0] = where(e2 >= 0., e2, 0.);
+    p2[0] = max(e2, 0.);
     p2[1] = -p1_tmp[1];
     p2[2] = -p1_tmp[2];
     p2[3] = -p1_tmp[3];
@@ -251,7 +251,7 @@ KERNELSPEC void kernel_two_particle_decay(
     store_mom<T>(p1, boost<T>(p1_tmp, load_mom<T>(p0), 1.));
     det = det_tmp;
     auto e2 = p0[0] - p1[0];
-    p2[0] = where(e2 >= 0., e2, 0.);
+    p2[0] = max(e2, 0.);
     p2[1] = p0[1] - p1[1];
     p2[2] = p0[2] - p1[2];
     p2[3] = p0[3] - p1[3];
@@ -325,9 +325,9 @@ KERNELSPEC void kernel_t_inv_min_max(
     auto s_eps = s + EPS;
     auto y1 = m_sum - 0.5 * (prod - yr) / s_eps;
     auto y2 = m_sum - 0.5 * (prod + yr) / s_eps;
-    auto t_min_tmp = - where(y1 < y2, y2, y1);
-    auto t_max_tmp = - where(y1 < y2, y1, y2);
-    t_min = where(t_min_tmp > 0., t_min_tmp, 0.);
+    auto t_min_tmp = - max(y2, y1);
+    auto t_max_tmp = - min(y1, y2);
+    t_min = max(t_min_tmp, 0.);
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
 }
 

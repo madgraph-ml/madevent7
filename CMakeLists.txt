@@ -223,30 +223,48 @@ endif()
 # CPU runtime                                                                              #
 ############################################################################################
 
-add_library(
-    madevent_cpu
-    SHARED
-    src/cpu/runtime.h
-    src/cpu/device.h
-    src/cpu/runtime.cpp
-    src/cpu/device.cpp
-    src/cpu/kernel_definitions.h
-    src/cpu/runtime_mixin.h
-    src/cpu/tensor.h
-    src/cpu/simd.h
-    src/cpu/simd_arm.h
-    ${KERNEL_SRC}
-)
-target_include_directories(madevent_cpu PUBLIC include)
-target_compile_features(madevent_cpu PUBLIC cxx_std_20)
-target_link_libraries(madevent_cpu PRIVATE BLAS::BLAS)
-target_link_libraries(madevent_cpu PRIVATE madevent)
-#target_compile_options(madevent_cpu PRIVATE -ffast-math)
-if(USE_SIMD)
-    target_link_libraries(madevent_cpu PRIVATE sleef::sleef)
-    target_compile_definitions(madevent_cpu PRIVATE USE_SIMD=1)
+if(NOT USE_SIMD)
+    set(CPU_TARGETS madevent_cpu)
+    set(SIMD_FLAGS "")
+    set(SIMD_DEFINES "")
+elseif(APPLE)
+    set(CPU_TARGETS madevent_cpu madevent_cpu_neon)
+    set(SIMD_FLAGS "" "")
+    set(SIMD_DEFINES "" "USE_SIMD_NEON=1")
+else()
+    set(CPU_TARGETS madevent_cpu madevent_cpu_avx2 madevent_cpu_avx512)
+    set(SIMD_FLAGS "" "-mavx2" "-mavx512")
+    set(SIMD_DEFINES "" "USE_SIMD_AVX2=1" "USE_SIMD_AVX512=1")
 endif()
-install(TARGETS madevent_cpu DESTINATION madevent7/lib)
+
+foreach(cpu_target simd_flag simd_define IN ZIP_LISTS CPU_TARGETS SIMD_FLAGS SIMD_DEFINES)
+    add_library(
+        ${cpu_target}
+        SHARED
+        src/cpu/runtime.h
+        src/cpu/device.h
+        src/cpu/runtime.cpp
+        src/cpu/device.cpp
+        src/cpu/kernel_definitions.h
+        src/cpu/runtime_mixin.h
+        src/cpu/tensor.h
+        src/cpu/simd.h
+        src/cpu/simd_arm.h
+        src/cpu/simd_x86_256.h
+        ${KERNEL_SRC}
+    )
+    target_include_directories(${cpu_target} PUBLIC include)
+    target_compile_features(${cpu_target} PUBLIC cxx_std_20)
+    target_link_libraries(${cpu_target} PRIVATE BLAS::BLAS)
+    target_link_libraries(${cpu_target} PRIVATE madevent)
+    if(NOT cpu_target STREQUAL "madevent_cpu")
+        target_link_libraries(${cpu_target} PRIVATE sleef::sleef)
+        target_compile_definitions(${cpu_target} PRIVATE ${simd_define})
+        target_compile_options(${cpu_target} PRIVATE ${simd_flag})
+        target_compile_definitions(${cpu_target} PRIVATE USE_SIMD=1)
+    endif()
+    install(TARGETS ${cpu_target} DESTINATION madevent7/lib)
+endforeach()
 
 
 ############################################################################################

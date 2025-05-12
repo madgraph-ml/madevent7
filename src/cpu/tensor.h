@@ -59,35 +59,18 @@ public:
     }
 
     operator V() const requires (_dim == 0) {
-        // This is somewhat ugly but needs to be done such that broadcasting from
-        // batch size 1 -> n works. Maybe there is a better way
-        T buffer[simd_vec_size];
-        for (int i = 0; i < simd_vec_size; ++i) {
-            buffer[i] = _data[i * _batch_stride];
-        }
-        return vload(&buffer[0]);
+        return vload(_data, _batch_stride);
     }
 
     V operator=(V value) requires (_dim == 0) {
-        // This is somewhat ugly but needs to be done such that broadcasting from
-        // batch size 1 -> n works. Maybe there is a better way
-        T buffer[simd_vec_size];
-        vstore(&buffer[0], value);
-        for (int i = 0; i < simd_vec_size; ++i) {
-            _data[i * _batch_stride] = buffer[i];
-        }
+        vstore(_data, _batch_stride, value);
         return value;
     }
 
     V operator+=(V value) requires (_dim == 0) {
-        // This is somewhat ugly but needs to be done such that broadcasting from
-        // batch size 1 -> n works. Maybe there is a better way
-        T buffer[simd_vec_size];
-        vstore(&buffer[0], value);
-        for (int i = 0; i < simd_vec_size; ++i) {
-            _data[i * _batch_stride] += buffer[i];
-        }
-        return value;
+        V new_value = vload(_data, _batch_stride) + value;
+        vstore(_data, _batch_stride, new_value);
+        return new_value;
     }
 
     VectorizedTensorView<V, T, _dim, is_batch>& operator=(
@@ -104,22 +87,13 @@ public:
 
     template<typename IVec>
     V gather(IVec indices) const requires (_dim == 1) {
-        T buffer[simd_vec_size];
-        int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
-        for (int i = 0; i < simd_vec_size; ++i) {
-            buffer[i] = _data[index_ptr[i] * _stride[0] + i * _batch_stride];
-        }
-        return vload(&buffer[0]);
+        return vgather(_data, _batch_stride, _stride[0], indices);
     }
 
     template<typename IVec>
     void scatter_add(IVec indices, V values) requires (_dim == 1) {
-        T buffer[simd_vec_size];
-        vstore(&buffer[0], values);
-        int64_t* index_ptr = reinterpret_cast<int64_t*>(&indices);
-        for (int i = 0; i < simd_vec_size; ++i) {
-            _data[index_ptr[i] * _stride[0] + i * _batch_stride] += buffer[i];
-        }
+        V old_values = vgather(_data, _batch_stride, _stride[0], indices);
+        vscatter(_data, _batch_stride, _stride[0], indices, old_values + values);
     }
 
 private:

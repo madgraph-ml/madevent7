@@ -423,23 +423,35 @@ void op_unweight(
 CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
     _context(context), input_count(function.inputs().size())
 {
-    locals_init.resize(function.locals().size());
-    requires_grad_init.resize(function.locals().size());
-    std::size_t instr_index = 0;
-    LastUseOfLocals last_use(function);
-
     check_error(curandCreateGenerator(&_curand_generator, CURAND_RNG_PSEUDO_DEFAULT));
     std::random_device rand_dev;
     check_error(curandSetPseudoRandomGeneratorSeed(_curand_generator, rand_dev()));
     check_error(cublasCreate(&_cublas_handle));
 
+    locals_init.resize(function.locals().size());
+    requires_grad_init.resize(function.locals().size());
+    LastUseOfLocals last_use(function);
+    InstructionDependencies dependencies(function);
+
+    std::size_t instr_index = 0;
+    std::vector<int> forward_streams;
+    std::vector<int> backward_streams;
+    std::vector<int> local_sources(function.locals().size(), -1);
     for (auto& instr : function.instructions()) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
+        int forward_stream_index = -1, backward_stream_index = -1;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
+            }
+            int local_source = local_sources.at(in.local_index);
+            if (local_source != -1) {
+                if (forward_streams.at(local_source)) {
+
+                }
+
             }
         }
         SizeVec output_indices;
@@ -449,7 +461,15 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             output_indices.push_back(out.local_index);
             output_dtypes.push_back(out.type.dtype);
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
+            local_sources.at(out.local_index) = instr_index;
         }
+
+        if (forward_stream_index >= streams.size() || backward_stream_index >= streams.size()) {
+            cudaStream_t new_stream;
+            check_error(cudaStreamCreate(&new_stream));
+            streams.push_back(new_stream);
+        }
+
         instructions.push_back({
             instr.instruction->opcode(),
             input_indices,
@@ -458,7 +478,9 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             output_shapes,
             batch_size_index,
             *this,
-            instr.instruction->differentiable()
+            instr.instruction->differentiable(),
+            streams.at(forward_stream_index),
+            streams.at(backward_stream_index),
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({
@@ -504,6 +526,12 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
 CudaRuntime::~CudaRuntime() {
     check_error(curandDestroyGenerator(_curand_generator));
     check_error(cublasDestroy(_cublas_handle));
+    for (auto event : events) {
+        cudaEventDestroy(event);
+    }
+    for (auto stream : streams) {
+        cudaStreamDestroy(stream);
+    }
 }
 
 TensorVec CudaRuntime::run(const TensorVec& inputs) const {
@@ -512,17 +540,17 @@ TensorVec CudaRuntime::run(const TensorVec& inputs) const {
 
     for (auto& instr : instructions) {
         AsyncCudaDevice device(instr.stream);
+        for (auto event : instr.wait_events) {
+            check_error(cudaStreamWaitEvent(instr.stream, event));
+        }
         switch (instr.opcode) {
-            case -3: // record event
-                check_error(cudaEventRecord(instr.event, instr.stream));
-                break;
-            case -2: // wait for event
-                check_error(cudaStreamWaitEvent(instr.stream, instr.event));
-                break;
             case -1: // free memory
                 locals[instr.input_indices[0]].reset(device);
                 break;
 #include "runtime_mixin.h"
+        }
+        if (instr.record_event) {
+            check_error(cudaEventRecord(instr.record_event, instr.stream));
         }
     }
     TensorVec outputs;
@@ -562,13 +590,10 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
                 }
             }
         }
+        for (auto event : instr.wait_events) {
+            check_error(cudaStreamWaitEvent(instr.stream, event));
+        }
         switch (instr.opcode) {
-            case -3: // record event
-                check_error(cudaEventRecord(instr.event, instr.stream));
-                break;
-            case -2: // wait for event
-                check_error(cudaStreamWaitEvent(instr.stream, instr.event));
-                break;
             case -1: { // free memory
                 auto input_index = instr.input_indices[0];
                 if (!store_local[input_index]) {
@@ -577,6 +602,9 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
                 break;
             }
 #include "runtime_mixin.h"
+        }
+        if (instr.record_event) {
+            check_error(cudaEventRecord(instr.record_event, instr.stream));
         }
     }
     TensorVec outputs;
@@ -613,11 +641,17 @@ std::tuple<
                 break;
             }
         }
+        for (auto event : instr.backward_wait_events) {
+            check_error(cudaStreamWaitEvent(instr.backward_stream, event));
+        }
         if (needs_grad) {
-            AsyncCudaDevice device(instr.stream);
+            AsyncCudaDevice device(instr.backward_stream);
             switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
             }
+        }
+        if (instr.backward_record_event) {
+            check_error(cudaEventRecord(instr.backward_record_event, instr.backward_stream));
         }
     }
     std::vector<std::tuple<std::string, Tensor>> global_grads;

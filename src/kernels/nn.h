@@ -39,7 +39,7 @@ KERNELSPEC void kernel_rqs_activation(
         FVal<T> w_norm(0.), w_in_max(0.);
         for (std::size_t i = 0; i < n_bins; ++i) {
             auto w_in = input[offset + i];
-            w_in_max = where(w_in > w_in_max, w_in, w_in_max);
+            w_in_max = max(w_in, w_in_max);
         }
         for (std::size_t i = 0; i < n_bins; ++i) {
             auto w = exp(input[offset + i] - w_in_max);
@@ -55,7 +55,7 @@ KERNELSPEC void kernel_rqs_activation(
         FVal<T> h_norm(0.), h_in_max(0.);
         for (std::size_t i = 0; i < n_bins; ++i) {
             auto h_in = input[offset + i];
-            h_in_max = where(h_in > h_in_max, h_in, h_in_max);
+            h_in_max = max(h_in, h_in_max);
         }
         for (std::size_t i = 0; i < n_bins; ++i) {
             auto h = exp(input[offset + i] - h_in_max);
@@ -585,7 +585,7 @@ KERNELSPEC void kernel_softmax(FIn<T,1> input, FOut<T,1> output) {
     FVal<T> norm(0.), in_max(0.);
     for (std::size_t i = 0; i < input.size(); ++i) {
         auto in = input[i];
-        in_max = where(in > in_max, in, in_max);
+        in_max = max(in, in_max);
     }
     for (std::size_t i = 0; i < input.size(); ++i) {
         auto exp_in = exp(input[i] - in_max);
