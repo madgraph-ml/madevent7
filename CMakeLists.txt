@@ -38,12 +38,33 @@ FetchContent_MakeAvailable(json)
 
 if(COMPILE_CUDA)
     find_package(CUDAToolkit REQUIRED)
-    #find_package(Thrust REQUIRED)
 endif()
 
 if(USE_SIMD)
-    find_package(sleef CONFIG REQUIRED)
+    set(
+        sleef_libname
+        ${CMAKE_STATIC_LIBRARY_PREFIX}sleef${CMAKE_STATIC_LIBRARY_SUFFIX}
+    )
+    ExternalProject_Add(libsleef
+        GIT_REPOSITORY https://github.com/shibatch/sleef
+        GIT_TAG 3.9.0
+        UPDATE_DISCONNECTED true
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DSLEEF_BUILD_TESTS=OFF
+        INSTALL_BYPRODUCTS <INSTALL_DIR>/lib/${sleef_libname}
+    )
+    ExternalProject_Get_Property(libsleef install_dir)
+    add_library(sleef::sleef INTERFACE IMPORTED GLOBAL)
+    add_dependencies(sleef::sleef libsleef)
+    file(MAKE_DIRECTORY ${install_dir}/include)
+    target_include_directories(sleef::sleef INTERFACE ${install_dir}/include)
+    target_link_libraries(
+        sleef::sleef
+        INTERFACE
+        ${install_dir}/lib/${sleef_libname}
+    )
+    #find_package(sleef CONFIG REQUIRED)
 endif()
+
 #find_package(OpenBLAS REQUIRED)
 #set(BLA_VENDOR OpenBLAS)
 set(BLA_STATIC ON)
@@ -65,7 +86,6 @@ ExternalProject_Add(
     TEST_COMMAND ""
     INSTALL_BYPRODUCTS <INSTALL_DIR>/lib/${lhapdf_libname}
 )
-
 ExternalProject_Get_Property(lhapdf install_dir)
 add_library(lhapdf::lhapdf INTERFACE IMPORTED GLOBAL)
 add_dependencies(lhapdf::lhapdf lhapdf)
