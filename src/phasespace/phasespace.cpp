@@ -14,6 +14,8 @@ struct DecayData {
     std::optional<Value> max_mass;
     std::vector<Value> max_mass_subtract;
     std::optional<Value> momentum;
+
+    DecayData(const Topology::Decay& decay) : decay(decay) {}
 };
 
 void update_mass_min_max(
