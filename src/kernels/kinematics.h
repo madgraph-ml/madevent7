@@ -331,5 +331,47 @@ KERNELSPEC void kernel_t_inv_min_max(
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
 }
 
+template<typename T>
+KERNELSPEC void kernel_invariants_from_momenta(
+    FIn<T,2> p_ext, FIn<T,2> factors, FOut<T,1> invariants
+) {
+    for (std::size_t i = 0; i < invariants.size(); ++i) {
+        auto factors_i = factors[i];
+        FourMom<T> p_sum {0., 0., 0., 0.};
+        for (std::size_t j = 0; j < p_ext.size(); ++j) {
+            auto p_j = p_ext[j];
+            auto factor_ij = factors_i[j];
+            p_sum[0] = p_sum[0] + factor_ij * p_j[0];
+            p_sum[1] = p_sum[1] + factor_ij * p_j[1];
+            p_sum[2] = p_sum[2] + factor_ij * p_j[2];
+            p_sum[3] = p_sum[3] + factor_ij * p_j[3];
+        }
+        invariants[i] = lsquare<T>(p_sum);
+    }
+}
+
+template<typename T>
+KERNELSPEC void kernel_sde2_channel_weights(
+    FIn<T,1> invariants, FIn<T,2> masses, FIn<T,2> widths, IIn<T,2> indices,
+    FOut<T,1> channel_weights
+) {
+    // TODO: MG has a special case here if tprid != 0. check what that is and if we need it...
+    for (std::size_t i = 0; i < channel_weights.size(); ++i) {
+        auto masses_i = masses[i];
+        auto widths_i = widths[i];
+        auto indices_i = indices[i];
+        FVal<T> prop_product(1.);
+        for (std::size_t j = 0; j < indices_i.size(); ++j) {
+            auto invar = invariants.gather(indices_i[j]);
+            auto mass = masses_i[j];
+            auto width = widths_i[j];
+            auto tmp = invar - mass * mass;
+            auto tmp2 = mass * width;
+            prop_product = prop_product * (tmp * tmp + tmp2 * tmp2);
+        }
+        channel_weights[i] = 1. / prop_product;
+    }
+}
+
 }
 }

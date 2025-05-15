@@ -139,6 +139,14 @@ std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
     return {output_vector[0], output_vector[1]};
 }
 
+Value invariants_from_momenta(Value p_ext, Value factors) {
+    return instruction("invariants_from_momenta", {p_ext, factors})[0];
+}
+
+Value sde2_channel_weights(Value invariants, Value masses, Value widths, Value indices) {
+    return instruction("sde2_channel_weights", {invariants, masses, widths, indices})[0];
+}
+
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {
     auto output_vector = instruction("uniform_invariant", {r, s_min, s_max});
     return {output_vector[0], output_vector[1]};

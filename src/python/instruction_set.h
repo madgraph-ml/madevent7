@@ -45,6 +45,8 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("two_particle_scattering_com", &FunctionBuilder::two_particle_scattering_com, py::arg("r_phi"), py::arg("pa"), py::arg("pb"), py::arg("t"), py::arg("m1"), py::arg("m2"));
     fb.def("two_particle_scattering", &FunctionBuilder::two_particle_scattering, py::arg("r_phi"), py::arg("pa"), py::arg("pb"), py::arg("t"), py::arg("m1"), py::arg("m2"));
     fb.def("t_inv_min_max", &FunctionBuilder::t_inv_min_max, py::arg("pa"), py::arg("pb"), py::arg("m1"), py::arg("m2"));
+    fb.def("invariants_from_momenta", &FunctionBuilder::invariants_from_momenta, py::arg("p_ext"), py::arg("factors"));
+    fb.def("sde2_channel_weights", &FunctionBuilder::sde2_channel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"));
     fb.def("uniform_invariant", &FunctionBuilder::uniform_invariant, py::arg("r"), py::arg("s_min"), py::arg("s_max"));
     fb.def("uniform_invariant_inverse", &FunctionBuilder::uniform_invariant_inverse, py::arg("s"), py::arg("s_min"), py::arg("s_max"));
     fb.def("breit_wigner_invariant", &FunctionBuilder::breit_wigner_invariant, py::arg("r"), py::arg("mass"), py::arg("width"), py::arg("s_min"), py::arg("s_max"));

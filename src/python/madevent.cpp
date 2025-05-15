@@ -292,7 +292,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("decay_integration_order", &Topology::decay_integration_order)
         .def_property_readonly("outgoing_indices", &Topology::outgoing_indices)
         .def_property_readonly("incoming_masses", &Topology::incoming_masses)
-        .def_property_readonly("outgoing_masses", &Topology::outgoing_masses);
+        .def_property_readonly("outgoing_masses", &Topology::outgoing_masses)
+        .def("propagator_momentum_terms", &Topology::propagator_momentum_terms);
     py::class_<Topology::Decay>(m, "Decay")
         .def_readonly("index", &Topology::Decay::index)
         .def_readonly("parent_index", &Topology::Decay::parent_index)

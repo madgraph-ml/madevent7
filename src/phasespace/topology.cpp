@@ -281,3 +281,69 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
     }
 }
 
+std::vector<std::vector<int>> Topology::propagator_momentum_terms() const {
+    std::vector<std::vector<int>> ret;
+    std::vector<std::vector<std::size_t>> decay_indices(_decays.size());
+    std::size_t n_ext = _outgoing_masses.size() + 2;
+    std::size_t ext_index = 2;
+    for (std::size_t index : _outgoing_indices) {
+        decay_indices.at(index).push_back(ext_index);
+        ++ext_index;
+    }
+    for (auto& decay : std::views::reverse(_decays)) {
+        if (decay.index == 0) {
+            if (_t_integration_order.size() == 0) {
+                auto& ret_item = ret.emplace_back(n_ext);
+                ret_item.at(0) = 1;
+                ret_item.at(1) = 1;
+            }
+        } else if (decay.child_indices.size() != 0) {
+            auto& indices = decay_indices.at(decay.index);
+            for (std::size_t index : decay.child_indices) {
+                auto& child_indices = decay_indices.at(index);
+                indices.insert(indices.end(), child_indices.begin(), child_indices.end());
+            }
+            auto& ret_item = ret.emplace_back(n_ext);
+            for (std::size_t index : indices) {
+                ret_item.at(index) = 1;
+            }
+        }
+    }
+    if (_t_integration_order.size() > 0) {
+        std::size_t left_count = 0, right_count = 0;
+        auto& child_indices = _decays.at(0).child_indices;
+        for (std::size_t index : child_indices) {
+            std::size_t current_count = decay_indices.at(index).size();
+            if (left_count == 0) {
+                left_count = current_count;
+            } else {
+                right_count += current_count;
+            }
+        }
+        std::size_t child_count = 1;
+        for (std::size_t index : child_indices | std::views::drop(1)) {
+            std::size_t current_count = decay_indices.at(index).size();
+            auto& ret_item = ret.emplace_back(n_ext);
+            if (left_count <= right_count) {
+                ret_item.at(0) = 1;
+                for (std::size_t child_index : child_indices | std::views::take(child_count)) {
+                    for (std::size_t ext_index : decay_indices.at(child_index)) {
+                        ret_item.at(ext_index) = -1;
+                    }
+                }
+            } else {
+                ret_item.at(1) = 1;
+                for (std::size_t child_index : child_indices | std::views::drop(child_count)) {
+                    for (std::size_t ext_index : decay_indices.at(child_index)) {
+                        ret_item.at(ext_index) = -1;
+                    }
+                }
+
+            }
+            left_count += current_count;
+            right_count -= current_count;
+            ++child_count;
+        }
+    }
+    return ret;
+}

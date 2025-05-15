@@ -86,6 +86,7 @@ public:
     const std::vector<double>& outgoing_masses() const {
         return _outgoing_masses;
     }
+    std::vector<std::vector<int>> propagator_momentum_terms() const;
 
 private:
     std::vector<std::size_t> _t_integration_order;

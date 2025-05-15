@@ -507,6 +507,38 @@ t_inv_min_max:
       type: [float]
       desc:
 
+invariants_from_momenta:
+  inputs:
+    - name: p_ext
+      type: [float, n, 4]
+      desc:
+    - name: factors
+      type: [float, m, n]
+      desc:
+  outputs:
+    - name: invariants
+      type: [float, m]
+      desc:
+
+sde2_channel_weights:
+  inputs:
+    - name: invariants
+      type: [float, m]
+      desc:
+    - name: masses
+      type: [float, c, n]
+      desc:
+    - name: widths
+      type: [float, c, n]
+      desc:
+    - name: indices
+      type: [int, c, n]
+      desc:
+  outputs:
+    - name: channel_weights
+      type: [float, c]
+      desc:
+
 ---
 title: Invariants
 
