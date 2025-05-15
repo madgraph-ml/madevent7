@@ -90,7 +90,7 @@ ValueVec Cuts::build_function(
     return weights;
 }
 
-double Cuts::get_sqrt_s_min() const {
+double Cuts::sqrt_s_min() const {
     double sqrt_s_min = 0.;
     for (auto& cut : cut_data) {
         if (
@@ -104,15 +104,15 @@ double Cuts::get_sqrt_s_min() const {
     return sqrt_s_min;
 }
 
-std::vector<double> Cuts::get_eta_max() const {
-    return get_limits(Cuts::obs_eta, Cuts::max, std::numeric_limits<double>::infinity());
+std::vector<double> Cuts::eta_max() const {
+    return limits(Cuts::obs_eta, Cuts::max, std::numeric_limits<double>::infinity());
 }
 
-std::vector<double> Cuts::get_pt_min() const {
-    return get_limits(Cuts::obs_pt, Cuts::min, 0.);
+std::vector<double> Cuts::pt_min() const {
+    return limits(Cuts::obs_pt, Cuts::min, 0.);
 }
 
-std::vector<double> Cuts::get_limits(
+std::vector<double> Cuts::limits(
     CutObservable observable, LimitType limit_type, double default_value
 ) const {
     std::vector<double> limits(pids.size(), default_value);

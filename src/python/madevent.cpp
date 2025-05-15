@@ -238,9 +238,9 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("pids"), py::arg("cut_data"))
         .def("build_function", &Cuts::build_function,
              py::arg("builder"), py::arg("sqrt_s"), py::arg("momenta"))
-        .def("get_sqrt_s_min", &Cuts::get_sqrt_s_min)
-        .def("get_eta_max", &Cuts::get_eta_max)
-        .def("get_pt_min", &Cuts::get_pt_min)
+        .def("sqrt_s_min", &Cuts::sqrt_s_min)
+        .def("eta_max", &Cuts::eta_max)
+        .def("pt_min", &Cuts::pt_min)
         .def_readonly_static("jet_pids", &Cuts::jet_pids)
         .def_readonly_static("bottom_pids", &Cuts::bottom_pids)
         .def_readonly_static("lepton_pids", &Cuts::lepton_pids)
@@ -276,38 +276,29 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("outgoing_masses"),
              py::arg("propagators"),
              py::arg("vertices"))
-        .def_readonly("incoming_vertices", &Diagram::incoming_vertices)
-        .def_readonly("outgoing_vertices", &Diagram::outgoing_vertices)
-        .def_readonly("propagator_vertices", &Diagram::propagator_vertices)
-        .def_readonly("t_propagators", &Diagram::t_propagators)
-        .def_readonly("t_vertices", &Diagram::t_vertices)
-        .def_readonly("lines_after_t", &Diagram::lines_after_t)
-        .def_readonly("decays", &Diagram::decays);
+        .def_property_readonly("incoming_masses", &Diagram::incoming_masses)
+        .def_property_readonly("outgoing_masses", &Diagram::outgoing_masses)
+        .def_property_readonly("propagators", &Diagram::propagators)
+        .def_property_readonly("vertices", &Diagram::vertices)
+        .def_property_readonly("incoming_vertices", &Diagram::incoming_vertices)
+        .def_property_readonly("outgoing_vertices", &Diagram::outgoing_vertices)
+        .def_property_readonly("propagator_vertices", &Diagram::propagator_vertices);
     auto& topology = py::class_<Topology>(m, "Topology")
-        .def(py::init<Diagram&, Topology::DecayMode>(),
-             py::arg("diagram"), py::arg("decay_mode"))
-        .def("compare", &Topology::compare,
-             py::arg("other"), py::arg("compare_t_propagators"))
-        .def_readonly("incoming_masses", &Topology::incoming_masses)
-        .def_readonly("outgoing_masses", &Topology::outgoing_masses)
-        .def_readonly("t_propagators", &Topology::t_propagators)
-        .def_readonly("decays", &Topology::decays)
-        .def_readonly("permutation", &Topology::permutation)
-        .def_readonly("inverse_permutation", &Topology::inverse_permutation)
-        .def_readonly("decay_hash", &Topology::decay_hash);
-    py::enum_<Topology::DecayMode>(topology, "DecayMode")
-        .value("no_decays", Topology::no_decays)
-        .value("massive_decays", Topology::massive_decays)
-        .value("all_decays", Topology::all_decays)
-        .export_values();
-    py::enum_<Topology::ComparisonResult>(topology, "ComparisonResult")
-        .value("equal", Topology::equal)
-        .value("permuted", Topology::permuted)
-        .value("different", Topology::different)
-        .export_values();
+        .def(py::init<const Diagram&, bool>(),
+             py::arg("diagram"), py::arg("manual_integration_order")=false)
+        .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
+        .def_property_readonly("t_integration_order", &Topology::t_integration_order)
+        .def_property_readonly("decays", &Topology::decays)
+        .def_property_readonly("decay_integration_order", &Topology::decay_integration_order)
+        .def_property_readonly("outgoing_indices", &Topology::outgoing_indices)
+        .def_property_readonly("incoming_masses", &Topology::incoming_masses)
+        .def_property_readonly("outgoing_masses", &Topology::outgoing_masses);
     py::class_<Topology::Decay>(m, "Decay")
-        .def_readonly("propagator", &Topology::Decay::propagator)
-        .def_readonly("child_count", &Topology::Decay::child_count);
+        .def_readonly("index", &Topology::Decay::index)
+        .def_readonly("parent_index", &Topology::Decay::parent_index)
+        .def_readonly("child_indices", &Topology::Decay::child_indices)
+        .def_readonly("mass", &Topology::Decay::mass)
+        .def_readonly("width", &Topology::Decay::width);
     py::class_<PhaseSpaceMapping, Mapping> psmap(m, "PhaseSpaceMapping");
     py::enum_<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode")
         .value("propagator", PhaseSpaceMapping::propagator)
@@ -315,18 +306,18 @@ PYBIND11_MODULE(_madevent_py, m) {
         .value("chili", PhaseSpaceMapping::chili)
         .export_values();
     psmap
-        .def(py::init<const Topology&, double, bool, double, double,
+        .def(py::init<const Topology&, double, bool, double,
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
                       const std::vector<std::vector<std::size_t>>&>(),
              py::arg("topology"), py::arg("s_lab"),
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.8,
+             py::arg("leptonic")=false, py::arg("nu")=0.8,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
              py::arg("cuts")=std::nullopt,
              py::arg("permutations")=std::vector<Topology>{})
-        .def(py::init<const std::vector<double>&, double, bool, double, double,
+        .def(py::init<const std::vector<double>&, double, bool, double,
                       PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
              py::arg("masses"), py::arg("s_lab"),
-             py::arg("leptonic")=false, py::arg("s_min_epsilon")=1e-2, py::arg("nu")=0.8,
+             py::arg("leptonic")=false, py::arg("nu")=0.8,
              py::arg("mode")=PhaseSpaceMapping::rambo,
              py::arg("cuts")=std::nullopt)
         .def("random_dim", &PhaseSpaceMapping::random_dim)

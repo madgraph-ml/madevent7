@@ -18,6 +18,7 @@ public:
         {batch_four_vec, batch_four_vec},
         {}
     ), _com(com) {}
+    std::size_t random_dim() const { return 2; }
 
 private:
     Result build_forward_impl(

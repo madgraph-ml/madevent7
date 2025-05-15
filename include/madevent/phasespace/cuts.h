@@ -26,12 +26,12 @@ public:
     Cuts(std::vector<int> _pids, std::vector<CutItem> _cut_data) :
         pids(_pids), cut_data(_cut_data) {}
     ValueVec build_function(FunctionBuilder& fb, Value sqrt_s, Value momenta) const;
-    double get_sqrt_s_min() const;
-    std::vector<double> get_eta_max() const;
-    std::vector<double> get_pt_min() const;
+    double sqrt_s_min() const;
+    std::vector<double> eta_max() const;
+    std::vector<double> pt_min() const;
 
 private:
-    std::vector<double> get_limits(
+    std::vector<double> limits(
         CutObservable observable, LimitType limit_type, double default_value
     ) const;
     void process_single_cuts(

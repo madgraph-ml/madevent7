@@ -176,10 +176,8 @@ add_library(
 
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_20)
-#target_include_directories(madevent PUBLIC ${LHAPDF_INCLUDE_DIRS})
 target_link_libraries(madevent PRIVATE lhapdf::lhapdf)
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
-#target_link_libraries(madevent PRIVATE -static-libstdc++)
 
 install(TARGETS madevent DESTINATION madevent7/lib)
 install(
@@ -234,7 +232,6 @@ if(COMPILE_CUDA)
     target_link_libraries(madevent_cuda PRIVATE madevent)
     target_link_libraries(madevent_cuda PRIVATE CUDA::cublas)
     target_link_libraries(madevent_cuda PRIVATE CUDA::curand)
-    #target_link_libraries(madevent_cuda PRIVATE Thrust)
     install(TARGETS madevent_cuda DESTINATION madevent7/lib)
 endif()
 

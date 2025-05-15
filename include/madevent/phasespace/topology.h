@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-#include <array>
 #include <string>
+#include <array>
 #include <ostream>
 
 namespace madevent {
@@ -10,75 +10,90 @@ namespace madevent {
 struct Propagator {
     double mass;
     double width;
-    bool operator==(const Propagator& other) const {
-        return mass == other.mass && width == other.width;
-    }
+    int integration_order;
 };
 
-using IndexVec = std::vector<std::size_t>;
-
-struct Diagram {
+class Diagram {
+public:
     enum LineType { incoming, outgoing, propagator };
-    struct LineRef {
-        LineType type;
-        std::size_t index;
-        LineRef(LineType type, std::size_t index) : type(type), index(index) {}
+    class LineRef {
+    public:
+        LineRef(LineType type, std::size_t index) : _type(type), _index(index) {}
         LineRef(std::string str);
+        LineType type() const { return _type; }
+        std::size_t index() const { return _index; }
+    private:
+        LineType _type;
+        std::size_t _index;
     };
     using Vertex = std::vector<LineRef>;
 
-    std::vector<double> incoming_masses;
-    std::vector<double> outgoing_masses;
-    std::vector<Propagator> propagators;
-    std::vector<Vertex> vertices;
-    std::array<int, 2> incoming_vertices;
-    std::vector<int> outgoing_vertices;
-    std::vector<IndexVec> propagator_vertices;
-    IndexVec t_propagators;
-    IndexVec t_vertices;
-    std::vector<std::vector<LineRef>> lines_after_t;
-    std::vector<std::vector<LineRef>> decays;
-
     Diagram(
-        const std::vector<double>& _incoming_masses,
-        const std::vector<double>& _outgoing_masses,
-        const std::vector<Propagator>& _propagators,
-        const std::vector<Vertex>& _vertices
+        const std::vector<double>& incoming_masses,
+        const std::vector<double>& outgoing_masses,
+        const std::vector<Propagator>& propagators,
+        const std::vector<Vertex>& vertices
     );
 
+    const std::vector<double>& incoming_masses() const { return _incoming_masses; }
+    const std::vector<double>& outgoing_masses() const { return _outgoing_masses; }
+    const std::vector<Propagator>& propagators() const { return _propagators; }
+    const std::vector<Vertex>& vertices() const { return _vertices; }
+    const std::array<int, 2>& incoming_vertices() const { return _incoming_vertices; };
+    const std::vector<int>& outgoing_vertices() const { return _outgoing_vertices; };
+    const std::vector<std::vector<std::size_t>>& propagator_vertices() const {
+        return _propagator_vertices;
+    }
+
 private:
-    bool find_s_and_t(std::size_t current_index, int source_propagator);
+    std::vector<double> _incoming_masses;
+    std::vector<double> _outgoing_masses;
+    std::vector<Propagator> _propagators;
+    std::vector<Vertex> _vertices;
+    std::array<int, 2> _incoming_vertices;
+    std::vector<int> _outgoing_vertices;
+    std::vector<std::vector<std::size_t>> _propagator_vertices;
 };
 
 std::ostream& operator<<(std::ostream& out, const Diagram::LineRef& value);
 
-struct Topology {
-    enum DecayMode { no_decays, massive_decays, all_decays };
-    enum ComparisonResult { equal, permuted, different};
+class Topology {
+public:
     struct Decay {
-        Propagator propagator;
-        std::size_t child_count = 1;
-        bool operator==(const Decay& other) const {
-            return propagator == other.propagator && child_count == other.child_count;
-        }
+        std::size_t index;
+        std::size_t parent_index;
+        std::vector<std::size_t> child_indices;
+        double mass;
+        double width;
     };
 
-    std::vector<double> incoming_masses;
-    std::vector<double> outgoing_masses;
-    std::vector<Propagator> t_propagators;
-    std::vector<std::vector<Decay>> decays;
-    IndexVec permutation;
-    IndexVec inverse_permutation;
-    std::size_t decay_hash;
+    Topology(const Diagram& diagram, bool manual_integration_order = false);
 
-    Topology(const Diagram& diagram, DecayMode decay_mode);
-    ComparisonResult compare(const Topology& other, bool compare_t_propagators) const;
+    std::size_t t_propagator_count() const { return _t_integration_order.size(); }
+    const std::vector<std::size_t>& t_integration_order() const {
+        return _t_integration_order;
+    }
+    const std::vector<Decay>& decays() const { return _decays; }
+    const std::vector<std::size_t>& decay_integration_order() const {
+        return _decay_integration_order;
+    }
+    const std::vector<std::size_t>& outgoing_indices() const {
+        return _outgoing_indices;
+    }
+    const std::vector<double>& incoming_masses() const {
+        return _incoming_masses;
+    }
+    const std::vector<double>& outgoing_masses() const {
+        return _outgoing_masses;
+    }
 
 private:
-    std::tuple<std::size_t, std::size_t> build_decays(
-        const Diagram& diagram, DecayMode decay_mode, Diagram::LineRef line
-    );
-    void standardize_order(bool preserve_t_order);
+    std::vector<std::size_t> _t_integration_order;
+    std::vector<Decay> _decays;
+    std::vector<std::size_t> _decay_integration_order;
+    std::vector<std::size_t> _outgoing_indices;
+    std::vector<double> _incoming_masses;
+    std::vector<double> _outgoing_masses;
 };
 
 }
