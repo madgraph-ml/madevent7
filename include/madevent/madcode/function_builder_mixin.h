@@ -43,10 +43,6 @@ Value product(Value in) {
     return instruction("product", {in})[0];
 }
 
-Value clip_min(Value x, Value min) {
-    return instruction("clip_min", {x, min})[0];
-}
-
 Value sqrt(Value in) {
     return instruction("sqrt", {in})[0];
 }
@@ -55,44 +51,12 @@ Value square(Value in) {
     return instruction("square", {in})[0];
 }
 
-Value pow(Value in1, Value in2) {
-    return instruction("pow", {in1, in2})[0];
-}
-
-Value uniform_phi(Value in) {
-    return instruction("uniform_phi", {in})[0];
-}
-
-Value uniform_phi_inverse(Value in) {
-    return instruction("uniform_phi_inverse", {in})[0];
-}
-
-Value uniform_costheta(Value in) {
-    return instruction("uniform_costheta", {in})[0];
-}
-
-Value uniform_costheta_inverse(Value in) {
-    return instruction("uniform_costheta_inverse", {in})[0];
-}
-
-Value boost(Value p1, Value p2) {
-    return instruction("boost", {p1, p2})[0];
-}
-
-Value boost_inverse(Value p1, Value p2) {
-    return instruction("boost_inverse", {p1, p2})[0];
-}
-
 Value boost_beam(Value p1, Value x1, Value x2) {
     return instruction("boost_beam", {p1, x1, x2})[0];
 }
 
 Value boost_beam_inverse(Value p1, Value x1, Value x2) {
     return instruction("boost_beam_inverse", {p1, x1, x2})[0];
-}
-
-Value com_momentum(Value sqrt_s) {
-    return instruction("com_momentum", {sqrt_s})[0];
 }
 
 std::array<Value, 2> com_p_in(Value e_cm) {
@@ -187,19 +151,24 @@ std::array<Value, 2> stable_invariant_nu_inverse(Value s, Value mass, Value nu, 
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> fast_rambo_r_to_u(Value r) {
-    auto output_vector = instruction("fast_rambo_r_to_u", {r});
+std::array<Value, 2> fast_rambo_massless(Value r, Value e_cm, Value p0) {
+    auto output_vector = instruction("fast_rambo_massless", {r, e_cm, p0});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> rambo_four_vectors_massless(Value u, Value e_cm, Value cos_theta, Value phi) {
-    auto output_vector = instruction("rambo_four_vectors_massless", {u, e_cm, cos_theta, phi});
+std::array<Value, 2> fast_rambo_massless_com(Value r, Value e_cm) {
+    auto output_vector = instruction("fast_rambo_massless_com", {r, e_cm});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 4> rambo_four_vectors_massive(Value u, Value e_cm, Value cos_theta, Value phi, Value masses) {
-    auto output_vector = instruction("rambo_four_vectors_massive", {u, e_cm, cos_theta, phi, masses});
-    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
+std::array<Value, 2> fast_rambo_massive(Value r, Value e_cm, Value masses, Value p0) {
+    auto output_vector = instruction("fast_rambo_massive", {r, e_cm, masses, p0});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> fast_rambo_massive_com(Value r, Value e_cm, Value masses) {
+    auto output_vector = instruction("fast_rambo_massive_com", {r, e_cm, masses});
+    return {output_vector[0], output_vector[1]};
 }
 
 Value cut_unphysical(Value w_in, Value p, Value x1, Value x2) {

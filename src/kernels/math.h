@@ -63,11 +63,6 @@ KERNELSPEC void backward_kernel_product(FIn<T,1> in, FIn<T,0> out_grad, FOut<T,1
 }
 
 template<typename T>
-KERNELSPEC void kernel_clip_min(FIn<T,0> x, FIn<T,0> min, FOut<T,0> out) {
-    out = max(min, x);
-}
-
-template<typename T>
 KERNELSPEC void kernel_sqrt(FIn<T,0> in, FOut<T,0> out) {
     out = sqrt(in);
 }
@@ -75,31 +70,6 @@ KERNELSPEC void kernel_sqrt(FIn<T,0> in, FOut<T,0> out) {
 template<typename T>
 KERNELSPEC void kernel_square(FIn<T,0> in, FOut<T,0> out) {
     out = in * in;
-}
-
-template<typename T>
-KERNELSPEC void kernel_pow(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
-    out = pow(in1, in2);
-}
-
-template<typename T>
-KERNELSPEC void kernel_uniform_phi(FIn<T,0> in, FOut<T,0> out) {
-    out = 2 * PI * (in - 0.5);
-}
-
-template<typename T>
-KERNELSPEC void kernel_uniform_phi_inverse(FIn<T,0> in, FOut<T,0> out) {
-    out = in / (2 * PI) + 0.5;
-}
-
-template<typename T>
-KERNELSPEC void kernel_uniform_costheta(FIn<T,0> in, FOut<T,0> out) {
-    out = 2 * (in - 0.5);
-}
-
-template<typename T>
-KERNELSPEC void kernel_uniform_costheta_inverse(FIn<T,0> in, FOut<T,0> out) {
-    out = in / 2 + 0.5;
 }
 
 }

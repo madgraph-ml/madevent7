@@ -1,14 +1,10 @@
 #include "madevent/phasespace/rambo.h"
 
-#include <ranges>
 #include <cmath>
 
 #include "madevent/constants.h"
-#include "madevent/util.h"
 
 using namespace madevent;
-namespace views = std::views;
-namespace ranges = std::ranges;
 
 FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
     Mapping(
@@ -36,53 +32,28 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
 Mapping::Result FastRamboMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    ValueVec r_u, cos_theta, phi, m_out;
-    auto it = inputs.begin();
-    for (; it != inputs.begin() + n_particles - 2; ++it) {
-        r_u.push_back(*it);
-    }
-    for (; it != inputs.begin() + 2 * n_particles - 3; ++it) {
-        cos_theta.push_back(fb.uniform_costheta(*it));
-    }
-    for (; it != inputs.begin() + 3 * n_particles - 4; ++it) {
-        phi.push_back(fb.uniform_phi(*it));
-    }
-    Value e_cm = *(it++);
-    for (; it != inputs.end(); ++it) {
-        m_out.push_back(*it);
-    }
+    Value r = fb.stack(ValueVec(inputs.begin(), inputs.begin() + random_dim()));
+    Value e_cm = inputs.at(random_dim());
 
-    auto [u, det_u] = fb.fast_rambo_r_to_u(fb.stack(r_u));
-
-    std::array<Value, 4> rambo_four_vectors;
+    std::array<Value, 2> output;
     if (massless) {
-        auto [ps, qs] = fb.rambo_four_vectors_massless(
-            u, e_cm, fb.stack(cos_theta), fb.stack(phi)
-        );
-        rambo_four_vectors = {ps, qs, e_cm, Value{}};
+        if (com) {
+            output = fb.fast_rambo_massless_com(r, e_cm);
+        } else {
+            Value p0 = inputs.back();
+            output = fb.fast_rambo_massless(r, e_cm, p0);
+        }
     } else {
-        rambo_four_vectors = fb.rambo_four_vectors_massive(
-            u, e_cm, fb.stack(cos_theta), fb.stack(phi), fb.stack(m_out)
-        );
+        if (com) {
+            ValueVec masses(inputs.begin() + random_dim(), inputs.end());
+            output = fb.fast_rambo_massive_com(r, e_cm, fb.stack(masses));
+        } else {
+            ValueVec masses(inputs.begin() + random_dim(), inputs.end() - 1);
+            Value p0 = inputs.back();
+            output = fb.fast_rambo_massive(r, e_cm, fb.stack(masses), p0);
+        }
     }
-    auto [ps, qs, e_cm_massless, massive_det] = rambo_four_vectors;
-
-    auto q = com ? fb.com_momentum(e_cm) : inputs.back();
-    ValueVec p_out;
-    for (auto [p_i, q_i] : zip(fb.unstack(ps), fb.unstack(qs))) {
-        p_out.push_back(fb.boost(p_i, q));
-        q = fb.boost(q_i, q);
-    }
-    p_out.push_back(q);
-
-    auto det = fb.product(fb.stack(
-        {fb.pow(e_cm_massless, e_cm_power), massless_weight, det_u}
-    ));
-    if (!massless) {
-        det = fb.mul(det, massive_det);
-    }
-
-    return {p_out, det};
+    return {fb.unstack(output[0]), output[1]};
 }
 
 Mapping::Result FastRamboMapping::build_inverse_impl(

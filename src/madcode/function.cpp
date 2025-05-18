@@ -270,20 +270,12 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
             double arg0 = std::get<double>(args.at(0).literal_value);
             double arg1 = std::get<double>(args.at(1).literal_value);
             return {arg0 * arg1};
-        } case opcodes::clip_min: {
-            double arg0 = std::get<double>(args.at(0).literal_value);
-            double arg1 = std::get<double>(args.at(1).literal_value);
-            return {arg0 < arg1 ? arg1 : arg0};
         } case opcodes::sqrt: {
             double arg0 = std::get<double>(args.at(0).literal_value);
             return {std::sqrt(arg0)};
         } case opcodes::square: {
             double arg0 = std::get<double>(args.at(0).literal_value);
             return {arg0 * arg0};
-        } case opcodes::pow: {
-            double arg0 = std::get<double>(args.at(0).literal_value);
-            double arg1 = std::get<double>(args.at(1).literal_value);
-            return {std::pow(arg0, arg1)};
         }}
     }
 

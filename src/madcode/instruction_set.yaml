@@ -128,19 +128,6 @@ product:
       desc:
   differentiable: True
 
-clip_min:
-  inputs:
-    - name: x
-      type: [float]
-      desc:
-    - name: min
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
 sqrt:
   inputs:
     - name: in
@@ -161,87 +148,8 @@ square:
       type: [float]
       desc:
 
-pow:
-  inputs:
-    - name: in1
-      type: [float]
-      desc:
-    - name: in2
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_phi:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_phi_inverse:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_costheta:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_costheta_inverse:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
 ---
 title: Kinematics
-
-boost:
-  inputs:
-    - name: p1
-      type: [float, 4]
-      desc:
-    - name: p2
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: p_out
-      type: [float, 4]
-      desc:
-
-boost_inverse:
-  inputs:
-    - name: p1
-      type: [float, 4]
-      desc:
-    - name: p2
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: p_out
-      type: [float, 4]
-      desc:
 
 boost_beam:
   inputs:
@@ -273,16 +181,6 @@ boost_beam_inverse:
   outputs:
     - name: p_out
       type: [float, n, 4]
-      desc:
-
-com_momentum:
-  inputs:
-    - name: sqrt_s
-      type: [float]
-      desc:
-  outputs:
-    - name: p
-      type: [float, 4]
       desc:
 
 com_p_in:
@@ -727,67 +625,77 @@ stable_invariant_nu_inverse:
 ---
 title: Fast RAMBO on diet
 
-fast_rambo_r_to_u:
+fast_rambo_massless:
   inputs:
     - name: r
-      type: [float, n]
+      type: [float, 3n-4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
       desc:
   outputs:
-    - name: u
-      type: [float, n]
+    - name: p_out
+      type: [float, n, 4]
       desc:
     - name: det
       type: [float]
       desc:
 
-rambo_four_vectors_massless:
+fast_rambo_massless_com:
   inputs:
-    - name: u
-      type: [float, n]
+    - name: r
+      type: [float, 3n-4]
       desc:
     - name: e_cm
       type: [float]
       desc:
-    - name: cos_theta
-      type: [float, n+1]
-      desc:
-    - name: phi
-      type: [float, n+1]
-      desc:
   outputs:
-    - name: ps
-      type: [float, n+1, 4]
+    - name: p_out
+      type: [float, n, 4]
       desc:
-    - name: qs
-      type: [float, n+1, 4]
+    - name: det
+      type: [float]
       desc:
 
-rambo_four_vectors_massive:
+fast_rambo_massive:
   inputs:
-    - name: u
-      type: [float, n]
+    - name: r
+      type: [float, 3n-4]
       desc:
     - name: e_cm
       type: [float]
       desc:
-    - name: cos_theta
-      type: [float, n+1]
-      desc:
-    - name: phi
-      type: [float, n+1]
-      desc:
     - name: masses
-      type: [float, n+2]
+      type: [float, n]
+      desc:
+    - name: p0
+      type: [float, 4]
       desc:
   outputs:
-    - name: ps
-      type: [float, n+1, 4]
+    - name: p_out
+      type: [float, n, 4]
       desc:
-    - name: qs
-      type: [float, n+1, 4]
-      desc:
-    - name: e_cm_massless
+    - name: det
       type: [float]
+      desc:
+
+fast_rambo_massive_com:
+  inputs:
+    - name: r
+      type: [float, 3n-4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+    - name: masses
+      type: [float, n]
+      desc:
+  outputs:
+    - name: p_out
+      type: [float, n, 4]
       desc:
     - name: det
       type: [float]

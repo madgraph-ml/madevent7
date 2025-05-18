@@ -292,8 +292,15 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
                 args.push_back(decay_data.at(index).mass.value());
             }
             auto [t_result, det] = t_mapping.build_forward(fb, args, {});
-            p_ext = {t_result.at(0), t_result.at(1)};
-            std::size_t result_index = 2;
+            std::size_t result_index;
+            if constexpr (std::is_same_v<decltype(t_mapping), FastRamboMapping>) {
+                auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
+                p_ext = {p1, p2};
+                result_index = 0;
+            } else {
+                p_ext = {t_result.at(0), t_result.at(1)};
+                result_index = 2;
+            }
             for (std::size_t index : decay_data.at(0).decay.child_indices) {
                 decay_data.at(index).momentum = t_result.at(result_index);
                 ++result_index;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "definitions.h"
+#include "kinematics.h"
 
 namespace madevent {
 namespace kernels {
@@ -13,22 +14,28 @@ KERNELSPEC double a_fit_vals[] {
 };
 
 template<typename T>
-KERNELSPEC void _map_fourvector_rambo_diet(FVal<T> q0, FVal<T> cos_theta, FVal<T> phi, FOut<T,1> q) {
+KERNELSPEC FourMom<T> map_fourvector_rambo_diet(
+    FVal<T> q0, FVal<T> r_cos_theta, FVal<T> r_phi
+) {
+    auto phi = PI * (2. * r_phi - 1.);
+    auto cos_theta = 2. * r_cos_theta - 1.;
     auto sin_theta = sqrt(1 - cos_theta * cos_theta);
-    q[0] = q0;
-    q[1] = q0 * sin_theta * cos(phi);
-    q[2] = q0 * sin_theta * sin(phi);
-    q[3] = q0 * cos_theta;
+    return {
+        q0,
+        q0 * sin_theta * cos(phi),
+        q0 * sin_theta * sin(phi),
+        q0 * cos_theta
+    };
 }
 
 template<typename T>
-KERNELSPEC FVal<T> _two_body_decay_factor_massless(FVal<T> cum_m_prev, FVal<T> cum_m) {
+KERNELSPEC FVal<T> two_body_decay_factor_massless(FVal<T> cum_m_prev, FVal<T> cum_m) {
     auto cum_m_prev_square = cum_m_prev * cum_m_prev;
     return 1.0 / (8 * cum_m_prev_square) * (cum_m_prev_square - cum_m * cum_m);
 }
 
 template<typename T>
-KERNELSPEC FVal<T> _two_body_decay_factor(FVal<T> cum_m_prev, FVal<T> cum_m, FVal<T> m_prev) {
+KERNELSPEC FVal<T> two_body_decay_factor(FVal<T> cum_m_prev, FVal<T> cum_m, FVal<T> m_prev) {
     auto cum_m_prev_square = cum_m_prev * cum_m_prev;
     auto mass_sum = cum_m + m_prev;
     auto mass_diff = cum_m - m_prev;
@@ -37,102 +44,134 @@ KERNELSPEC FVal<T> _two_body_decay_factor(FVal<T> cum_m_prev, FVal<T> cum_m, FVa
     );
 }
 
-// Kernels
-
 template<typename T>
-KERNELSPEC void kernel_fast_rambo_r_to_u(FIn<T,1> r, FOut<T,1> u, FOut<T,0> det) {
-    std::size_t n_particles = r.size() + 2;
-    FVal<T> jac = 1;
-    for (std::size_t i = 0, m = n_particles - 2; m > 0; ++i, --m) {
-        auto a = a_fit_vals[m - 1];
-        auto r_u = r[i];
-        auto b = a - r_u * (a - 2);
-        auto x = 2 * r_u / (b + sqrt(b * b + 4 * r_u * (1 - b)));
-        auto u_i = pow(x, 1.0 / (2 * m));
-        auto xr = 1 - x;
-        auto jac_denom = (1 + (a - 2) * x * xr);
-        auto jac_x = (2 * x * xr + a * xr * xr) / (jac_denom * jac_denom);
-        u[i] = u_i;
-        jac = jac * (1 - u_i * u_i) / jac_x;
-    }
-    det = jac;
+KERNELSPEC Pair<FVal<T>, FVal<T>> fast_rambo_r_to_u(FVal<T> r, std::size_t index) {
+    auto a = a_fit_vals[index]; // index = m-1, m = n_part-2, ... , 1
+    auto b = a - r * (a - 2.);
+    auto x = 2. * r / (b + sqrt(b * b + 4. * r * (1 - b)));
+    auto u = pow(x, 1.0 / (2 * index + 2));
+    auto xr = 1. - x;
+    auto det_denom = (1. + (a - 2.) * x * xr);
+    auto det_x = (2. * x * xr + a * xr * xr) / (det_denom * det_denom);
+    auto det = (1. - u * u) / det_x;
+    return {u, det};
 }
 
 template<typename T>
-KERNELSPEC void kernel_rambo_four_vectors_massless(
-    FIn<T,1> u, FIn<T,0> e_cm, FIn<T,1> cos_theta, FIn<T,1> phi,
-    FOut<T,2> ps, FOut<T,2> qs
+KERNELSPEC void fast_rambo_massless_body(
+    FIn<T,1> r, FIn<T,0> e_cm, FOut<T,2> p_out, FOut<T,0> det, FourMom<T> q
 ) {
+    std::size_t n_particles = p_out.size();
+    FVal<T> det_tmp = 1.;
     FVal<T> cum_u = 1.;
     FVal<T> cum_m_prev = e_cm;
-    for (std::size_t i = 0; i < ps.size(); ++i) {
+    for (std::size_t i = 0; i < n_particles - 1; ++i) {
         FVal<T> cum_m;
-        if (i == ps.size() - 1) {
+        if (i == n_particles - 2) {
             cum_m = 0;
         } else {
-            cum_u = cum_u * u[i];
+            auto [u, det_u] = fast_rambo_r_to_u<T>(r[3*i+2], n_particles - 3 - i);
+            det_tmp = det_tmp * det_u;
+            cum_u = cum_u * u;
             cum_m = e_cm * cum_u;
         }
 
-        auto e_massless = 4 * cum_m_prev * _two_body_decay_factor_massless<T>(cum_m_prev, cum_m);
-        auto q_i = qs[i], p_i = ps[i];
-        _map_fourvector_rambo_diet<T>(e_massless, cos_theta[i], phi[i], p_i);
-        q_i[0] = sqrt(e_massless * e_massless + cum_m * cum_m);
-        q_i[1] = -p_i[1];
-        q_i[2] = -p_i[2];
-        q_i[3] = -p_i[3];
+        auto e_massless = 4 * cum_m_prev * two_body_decay_factor_massless<T>(cum_m_prev, cum_m);
+        auto p_i = map_fourvector_rambo_diet<T>(e_massless, r[3*i], r[3*i+1]);
+        FourMom<T> q_i {
+            sqrt(e_massless * e_massless + cum_m * cum_m), -p_i[1], -p_i[2], -p_i[3]
+        };
+        store_mom<T>(p_out[i], boost<T>(p_i, q, 1.0));
+        q = boost<T>(q_i, q, 1.0);
 
         cum_m_prev = cum_m;
     }
+    store_mom<T>(p_out[n_particles - 1], q);
+    det = det_tmp * pow(e_cm, 2 * n_particles - 4);
 }
 
 template<typename T>
-KERNELSPEC void kernel_rambo_four_vectors_massive(
-    FIn<T,1> u, FIn<T,0> e_cm, FIn<T,1> cos_theta, FIn<T,1> phi, FIn<T,1> masses,
-    FOut<T,2> ps, FOut<T,2> qs, FOut<T,0> e_cm_massless, FOut<T,0> det
+KERNELSPEC void fast_rambo_massive_body(
+    FIn<T,1> r, FIn<T,0> e_cm, FIn<T,1> masses, FOut<T,2> p_out, FOut<T,0> det, FourMom<T> q
 ) {
-    FVal<T> total_mass = 0;
+    FVal<T> total_mass = 0.;
     for (std::size_t i = 0; i < masses.size(); ++i) {
         total_mass = total_mass + masses[i];
     }
-    e_cm_massless = e_cm - total_mass;
+    auto e_cm_massless = e_cm - total_mass;
 
+    std::size_t n_particles = p_out.size();
+    FVal<T> det_tmp = 1.;
     FVal<T> cum_u = 1.;
     FVal<T> cum_m_prev = e_cm;
     FVal<T> cum_k_prev = e_cm_massless;
-    FVal<T> cum_det = 1;
-    for (std::size_t i = 0; i < ps.size(); ++i) {
+    for (std::size_t i = 0; i < n_particles - 1; ++i) {
         FVal<T> cum_m, cum_k;
         auto mass = masses[i];
-        if (i == ps.size() - 1) {
+        if (i == n_particles - 2) {
             cum_k = 0;
             cum_m = masses[i+1];
         } else {
-            cum_u = cum_u * u[i];
+            auto [u, det_u] = fast_rambo_r_to_u<T>(r[3*i+2], n_particles - 3 - i);
+            det_tmp = det_tmp * det_u;
+            cum_u = cum_u * u;
             cum_k = e_cm_massless * cum_u;
             total_mass = max(total_mass - mass, 0.);
             cum_m = cum_k + total_mass;
         }
 
-        auto rho_k = _two_body_decay_factor_massless<T>(cum_k_prev, cum_k);
-        auto rho_m = _two_body_decay_factor<T>(cum_m_prev, cum_m, mass);
-        cum_det = cum_det * rho_m / rho_k;
-        if (i < ps.size() - 1) {
-            cum_det = cum_det * cum_m / cum_k;
+        auto rho_k = two_body_decay_factor_massless<T>(cum_k_prev, cum_k);
+        auto rho_m = two_body_decay_factor<T>(cum_m_prev, cum_m, mass);
+        det_tmp = det_tmp * rho_m / rho_k;
+        if (i < n_particles - 2) {
+            det_tmp = det_tmp * cum_m / cum_k;
         }
         auto e_massless = 4 * cum_m_prev * rho_m;
-        auto q_i = qs[i], p_i = ps[i];
-        _map_fourvector_rambo_diet<T>(e_massless, cos_theta[i], phi[i], p_i);
+        auto p_i = map_fourvector_rambo_diet<T>(e_massless, r[3*i], r[3*i+1]);
         p_i[0] = sqrt(e_massless * e_massless + mass * mass);
-        q_i[0] = sqrt(e_massless * e_massless + cum_m * cum_m);
-        q_i[1] = -p_i[1];
-        q_i[2] = -p_i[2];
-        q_i[3] = -p_i[3];
+        FourMom<T> q_i {
+            sqrt(e_massless * e_massless + cum_m * cum_m), -p_i[1], -p_i[2], -p_i[3]
+        };
+        store_mom<T>(p_out[i], boost<T>(p_i, q, 1.0));
+        q = boost<T>(q_i, q, 1.0);
 
         cum_k_prev = cum_k;
         cum_m_prev = cum_m;
     }
-    det = cum_det;
+    store_mom<T>(p_out[n_particles - 1], q);
+    det = det_tmp * pow(e_cm_massless, 2 * n_particles - 4);
+}
+
+// Kernels
+
+template<typename T>
+KERNELSPEC void kernel_fast_rambo_massless(
+    FIn<T,1> r, FIn<T,0> e_cm, FIn<T,1> p0, FOut<T,2> p_out, FOut<T,0> det
+) {
+    fast_rambo_massless_body<T>(r, e_cm, p_out, det, load_mom<T>(p0));
+}
+
+template<typename T>
+KERNELSPEC void kernel_fast_rambo_massless_com(
+    FIn<T,1> r, FIn<T,0> e_cm, FOut<T,2> p_out, FOut<T,0> det
+) {
+    FourMom<T> p0 {e_cm, 0., 0., 0.};
+    fast_rambo_massless_body<T>(r, e_cm, p_out, det, p0);
+}
+
+template<typename T>
+KERNELSPEC void kernel_fast_rambo_massive(
+    FIn<T,1> r, FIn<T,0> e_cm, FIn<T,1> masses, FIn<T,1> p0, FOut<T,2> p_out, FOut<T,0> det
+) {
+    fast_rambo_massive_body<T>(r, e_cm, masses, p_out, det, load_mom<T>(p0));
+}
+
+template<typename T>
+KERNELSPEC void kernel_fast_rambo_massive_com(
+    FIn<T,1> r, FIn<T,0> e_cm, FIn<T,1> masses, FOut<T,2> p_out, FOut<T,0> det
+) {
+    FourMom<T> p0 {e_cm, 0., 0., 0.};
+    fast_rambo_massive_body<T>(r, e_cm, masses, p_out, det, p0);
 }
 
 }

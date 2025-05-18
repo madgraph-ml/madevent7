@@ -153,16 +153,6 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_scattering(
 // Kernels
 
 template<typename T>
-KERNELSPEC void kernel_boost(FIn<T,1> p1, FIn<T,1> p2, FOut<T,1> p_out) {
-    store_mom<T>(p_out, boost<T>(load_mom<T>(p1), load_mom<T>(p2), 1.0));
-}
-
-template<typename T>
-KERNELSPEC void kernel_boost_inverse(FIn<T,1> p1, FIn<T,1> p2, FOut<T,1> p_out) {
-    store_mom<T>(p_out, boost<T>(load_mom<T>(p1), load_mom<T>(p2), -1.0));
-}
-
-template<typename T>
 KERNELSPEC void kernel_boost_beam(FIn<T,2> p1, FIn<T,0> x1, FIn<T,0> x2, FOut<T,2> p_out) {
     boost_beam<T>(p1, x1, x2, 1.0, p_out);
 }
@@ -170,14 +160,6 @@ KERNELSPEC void kernel_boost_beam(FIn<T,2> p1, FIn<T,0> x1, FIn<T,0> x2, FOut<T,
 template<typename T>
 KERNELSPEC void kernel_boost_beam_inverse(FIn<T,2> p1, FIn<T,0> x1, FIn<T,0> x2, FOut<T,2> p_out) {
     boost_beam<T>(p1, x1, x2, -1.0, p_out);
-}
-
-template<typename T>
-KERNELSPEC void kernel_com_momentum(FIn<T,0> sqrt_s, FOut<T,1> p) {
-    p[0] = sqrt_s;
-    p[1] = 0;
-    p[2] = 0;
-    p[3] = 0;
 }
 
 template<typename T>
