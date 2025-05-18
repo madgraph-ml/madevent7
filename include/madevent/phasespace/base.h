@@ -36,7 +36,9 @@ protected:
     virtual Result build_inverse_impl(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const = 0;
-    void check_types(const ValueVec& values, const TypeVec& types, const std::string& prefix) const;
+    void check_types(
+        const ValueVec& values, const TypeVec& types, const std::string& prefix
+    ) const;
 
 private:
     TypeVec _input_types;
@@ -55,7 +57,9 @@ public:
     const TypeVec& return_types() const { return _return_types; }
 
 protected:
-    virtual ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const = 0;
+    virtual ValueVec build_function_impl(
+        FunctionBuilder& fb, const ValueVec& args
+    ) const = 0;
     void check_types(
         const ValueVec& values, const TypeVec& types, const std::string& prefix
     ) const;

@@ -73,6 +73,12 @@ public:
     const std::vector<std::size_t>& t_integration_order() const {
         return _t_integration_order;
     }
+    const std::vector<double>& t_propagator_masses() const {
+        return _t_propagator_masses;
+    }
+    const std::vector<double>& t_propagator_widths() const {
+        return _t_propagator_widths;
+    }
     const std::vector<Decay>& decays() const { return _decays; }
     const std::vector<std::size_t>& decay_integration_order() const {
         return _decay_integration_order;
@@ -86,10 +92,14 @@ public:
     const std::vector<double>& outgoing_masses() const {
         return _outgoing_masses;
     }
-    std::vector<std::vector<int>> propagator_momentum_terms() const;
+    std::vector<std::tuple<
+        std::vector<int>, double, double
+    >> propagator_momentum_terms() const;
 
 private:
     std::vector<std::size_t> _t_integration_order;
+    std::vector<double> _t_propagator_masses;
+    std::vector<double> _t_propagator_widths;
     std::vector<Decay> _decays;
     std::vector<std::size_t> _decay_integration_order;
     std::vector<std::size_t> _outgoing_indices;

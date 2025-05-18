@@ -162,8 +162,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             t_channel_mode == PhaseSpaceMapping::propagator ||
             topology.t_propagator_count() < 2
         ) {
-            std::vector<Propagator> propagators(_topology.t_propagator_count());
-            _t_mapping = TPropagatorMapping(propagators, nu);
+            _t_mapping = TPropagatorMapping(_topology.t_integration_order(), nu);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
             _t_mapping = FastRamboMapping(_topology.t_propagator_count() + 1, false);
@@ -367,5 +366,5 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 Mapping::Result PhaseSpaceMapping::build_inverse_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-
+    throw std::logic_error("inverse mapping not implemented");
 }

@@ -13,12 +13,11 @@ namespace madevent {
 class TPropagatorMapping : public Mapping {
 public:
     TPropagatorMapping(
-        const std::vector<Propagator>& propagators,
-        double nu=0.,
-        bool map_resonances=false
+        const std::vector<std::size_t>& integration_order,
+        double nu=0.8
     );
     std::size_t random_dim() const {
-        return 3 * t_invariants.size() - 1;
+        return 3 * _integration_order.size() - 1;
     }
 
 private:
@@ -29,8 +28,11 @@ private:
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
-    std::vector<TwoParticleScattering> t_invariants;
-    std::vector<Invariant> s_pseudo_invariants;
+    std::vector<std::size_t> _integration_order;
+    std::vector<bool> _sample_sides;
+    Invariant _uniform_invariant;
+    TwoParticleScattering _com_scattering;
+    TwoParticleScattering _lab_scattering;
 };
 
 }

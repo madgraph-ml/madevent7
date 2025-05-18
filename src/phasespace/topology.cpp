@@ -15,6 +15,8 @@ bool find_t_vertices(
     std::vector<std::size_t>& t_vertices,
     std::vector<Diagram::LineRef>& lines_after_t,
     std::vector<int>& integration_order,
+    std::vector<double>& _t_propagator_masses,
+    std::vector<double>& _t_propagator_widths,
     std::size_t current_index,
     int source_propagator
 ) {
@@ -44,6 +46,8 @@ bool find_t_vertices(
                     t_vertices,
                     lines_after_t,
                     integration_order,
+                    _t_propagator_masses,
+                    _t_propagator_widths,
                     vertices.at(0) == current_index ?
                         vertices.at(1) : vertices.at(0),
                     line_ref.index()
@@ -51,6 +55,9 @@ bool find_t_vertices(
                     is_t_vertex = true;
                     t_integ_order = diagram.propagators()
                         .at(line_ref.index()).integration_order;
+                    auto& propagator = diagram.propagators().at(line_ref.index());
+                    _t_propagator_masses.push_back(propagator.mass);
+                    _t_propagator_widths.push_back(propagator.width);
                 } else {
                     out_lines.push_back(line_ref);
                 }
@@ -221,12 +228,15 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
         t_vertices,
         lines_after_t,
         integration_order,
+        _t_propagator_masses,
+        _t_propagator_widths,
         diagram.incoming_vertices().at(1),
         -1
     );
 
     _t_integration_order.resize(integration_order.size() - 1);
     std::iota(_t_integration_order.begin(), _t_integration_order.end(), 0);
+    //std::reverse(_t_integration_order.begin(), _t_integration_order.end()); // TODO: only call sometimes
     if (manual_integration_order) {
         std::stable_sort(
             _t_integration_order.begin(),
@@ -281,8 +291,10 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
     }
 }
 
-std::vector<std::vector<int>> Topology::propagator_momentum_terms() const {
-    std::vector<std::vector<int>> ret;
+std::vector<std::tuple<
+    std::vector<int>, double, double
+>> Topology::propagator_momentum_terms() const {
+    std::vector<std::tuple<std::vector<int>, double, double>> ret;
     std::vector<std::vector<std::size_t>> decay_indices(_decays.size());
     std::size_t n_ext = _outgoing_masses.size() + 2;
     std::size_t ext_index = 2;
@@ -293,9 +305,10 @@ std::vector<std::vector<int>> Topology::propagator_momentum_terms() const {
     for (auto& decay : std::views::reverse(_decays)) {
         if (decay.index == 0) {
             if (_t_integration_order.size() == 0) {
-                auto& ret_item = ret.emplace_back(n_ext);
-                ret_item.at(0) = 1;
-                ret_item.at(1) = 1;
+                std::vector<int> factors(n_ext);
+                factors.at(0) = 1;
+                factors.at(1) = 1;
+                ret.push_back({factors, decay.mass, decay.width});
             }
         } else if (decay.child_indices.size() != 0) {
             auto& indices = decay_indices.at(decay.index);
@@ -303,10 +316,11 @@ std::vector<std::vector<int>> Topology::propagator_momentum_terms() const {
                 auto& child_indices = decay_indices.at(index);
                 indices.insert(indices.end(), child_indices.begin(), child_indices.end());
             }
-            auto& ret_item = ret.emplace_back(n_ext);
+            std::vector<int> factors(n_ext);
             for (std::size_t index : indices) {
-                ret_item.at(index) = 1;
+                factors.at(index) = 1;
             }
+            ret.push_back({factors, decay.mass, decay.width});
         }
     }
     if (_t_integration_order.size() > 0) {
@@ -321,25 +335,34 @@ std::vector<std::vector<int>> Topology::propagator_momentum_terms() const {
             }
         }
         std::size_t child_count = 1;
-        for (std::size_t index : child_indices | std::views::drop(1)) {
+        for (auto [index, mass, width] : zip(
+            child_indices | std::views::drop(1), _t_propagator_masses, _t_propagator_widths
+        )) {
             std::size_t current_count = decay_indices.at(index).size();
-            auto& ret_item = ret.emplace_back(n_ext);
+            std::vector<int> factors(n_ext);
             if (left_count <= right_count) {
-                ret_item.at(0) = 1;
-                for (std::size_t child_index : child_indices | std::views::take(child_count)) {
+                factors.at(0) = 1;
+                for (
+                    std::size_t child_index :
+                    child_indices | std::views::take(child_count)
+                ) {
                     for (std::size_t ext_index : decay_indices.at(child_index)) {
-                        ret_item.at(ext_index) = -1;
+                        factors.at(ext_index) = -1;
                     }
                 }
             } else {
-                ret_item.at(1) = 1;
-                for (std::size_t child_index : child_indices | std::views::drop(child_count)) {
+                factors.at(1) = 1;
+                for (
+                    std::size_t child_index :
+                    child_indices | std::views::drop(child_count)
+                ) {
                     for (std::size_t ext_index : decay_indices.at(child_index)) {
-                        ret_item.at(ext_index) = -1;
+                        factors.at(ext_index) = -1;
                     }
                 }
 
             }
+            ret.push_back({factors, mass, width});
             left_count += current_count;
             right_count -= current_count;
             ++child_count;

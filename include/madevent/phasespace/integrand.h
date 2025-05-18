@@ -50,7 +50,7 @@ public:
         const DifferentialCrossSection& diff_xs,
         const AdaptiveMapping& adaptive_map,
         int flags = 0,
-        const std::vector<std::size_t>& channel_indices = {{}}
+        const std::vector<std::size_t>& channel_indices = {}
     );
     std::size_t particle_count() const { return _mapping.particle_count(); }
     int flags() const { return _flags; }

@@ -1,93 +1,116 @@
 #include "madevent/phasespace/t_propagator_mapping.h"
 
+#include "madevent/util.h"
+
 using namespace madevent;
 
 TPropagatorMapping::TPropagatorMapping(
-    const std::vector<Propagator>& propagators, double nu, bool map_resonances
+    const std::vector<std::size_t>& integration_order,
+    double nu
 ) :
     Mapping(
-        TypeVec(4 * propagators.size() + 1, batch_float),
-        TypeVec(propagators.size() + 3, batch_four_vec),
+        TypeVec(4 * integration_order.size() + 1, batch_float),
+        TypeVec(integration_order.size() + 3, batch_four_vec),
         {}
     ),
-    s_pseudo_invariants(propagators.size() - 1)
+    _integration_order(integration_order),
+    _com_scattering(true, nu),
+    _lab_scattering(false, nu)
 {
-    // TODO: maybe allow to change integration order
-
-    bool com = true;
-    for (auto prop = propagators.rbegin(); prop != propagators.rend(); ++prop) {
-        t_invariants.emplace_back(com, nu); //, prop->mass, map_resonances ? prop->width : 0.);
-        com = false;
+    std::size_t next_index_low = 0;
+    std::size_t next_index_high = integration_order.size() - 1;
+    for (std::size_t index : integration_order) {
+        if (index == next_index_high) {
+            _sample_sides.push_back(true);
+            --next_index_high;
+        } else if (index == next_index_low) {
+            _sample_sides.push_back(false);
+            ++next_index_low;
+        } else {
+            throw std::invalid_argument("Invalid integration order");
+        }
     }
 }
 
 Mapping::Result TPropagatorMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    // TODO: document inputs somewhere
-    // nti = len(t_invariants)
-    // N = 4 * nti + 1
-    // nti - 1     0
-    // 2 * nti     nti - 1
-    // 1           3 * nti - 1
-    // nti + 1     3 * nti
-    auto n_invariants = t_invariants.size();
-    auto n_particles = n_invariants + 1;
-    auto t_inv_offset = n_invariants - 1;
-    auto m_out_offset = 3 * n_invariants;
-    auto e_cm = inputs.at(m_out_offset - 1);
+    ValueVec random(inputs.begin(), inputs.begin() + random_dim());
+    Value e_cm = inputs.at(random_dim());
+    ValueVec m_out(inputs.begin() + random_dim() + 1, inputs.end());
+    auto r = random.begin();
+    auto next_random = [&]() { return *(r++); };
     ValueVec dets;
+
+    ValueVec mass_sum_invariants;
+    if (_integration_order.size() > 1) {
+        // compute sums of outgoing masses, starting from those sampled last
+        std::size_t last_index = _integration_order.back();
+        ValueVec min_masses{fb.add(m_out.at(last_index), m_out.at(last_index + 1))};
+        ValueVec max_masses_subtract;
+        for (std::size_t i = _integration_order.size() - 2; i > 0; --i) {
+            Value next_mass = m_out.at(_integration_order.at(i) + _sample_sides.at(i));
+            min_masses.push_back(fb.add(min_masses.back(), next_mass));
+            max_masses_subtract.push_back(next_mass);
+        }
+        max_masses_subtract.push_back(
+            m_out.at(_integration_order.at(0) + _sample_sides.at(0))
+        );
+
+        // sample intermediate invariant masses
+        auto max_mass = e_cm;
+        for (auto [min_mass, max_mass_subtract] : zip(
+            std::views::reverse(min_masses), std::views::reverse(max_masses_subtract)
+        )) {
+            auto s_max = fb.square(min_mass);
+            auto s_min = fb.square(fb.sub(max_mass, max_mass_subtract));
+            auto [s_vec, det] = _uniform_invariant.build_forward(
+                fb, {next_random()}, {s_min, s_max}
+            );
+            auto mass = fb.sqrt(s_vec.at(0));
+            mass_sum_invariants.push_back(mass);
+            dets.push_back(det);
+            max_mass = mass;
+        }
+    }
+    mass_sum_invariants.push_back(m_out.at(_integration_order.back()));
 
     // construct initial state momenta
     auto [p1, p2] = fb.com_p_in(e_cm);
-
-    // sample s-invariants from the t-channel part of the diagram
-    auto sqs_max = e_cm;
-    ValueVec sqrt_s_max;
-    for (int i = n_particles - 1; i > 1; --i) {
-        auto sqrt_s = inputs.at(m_out_offset + i);
-        sqs_max = fb.sub(sqs_max, sqrt_s);
-        sqrt_s_max.push_back(sqs_max);
-    }
-    ValueVec cumulated_m_out {inputs.at(m_out_offset)};
-    for (int i = 0; i < n_particles - 2; ++i) {
-        auto invariant = s_pseudo_invariants.at(i);
-        auto r = inputs.at(i);
-        auto sqrt_s = inputs.at(m_out_offset + 1 + i);
-        auto sqrt_s_rev = sqrt_s_max.at(n_particles - 3 - i);
-
-        auto s_max = fb.square(sqrt_s_rev);
-        auto s_min = fb.square(fb.add(cumulated_m_out.at(i), sqrt_s));
-        auto [s_vec, det] = invariant.build_forward(fb, {r}, {s_min, s_max});
-        cumulated_m_out.push_back(fb.sqrt(s_vec.at(0)));
-        dets.push_back(det);
-    }
+    ValueVec p_ext(_integration_order.size() + 3);
+    p_ext.at(0) = p1;
+    p_ext.at(1) = p2;
+    auto p1_rest = p1, p2_rest = p2;
 
     // sample t-invariants and build momenta of t-channel part of the diagram
-    ValueVec p_out;
-    auto p2_rest = p2;
     Value k_rest;
-    for (int i = 0; i < n_particles - 1; ++i) {
-        auto invariant = t_invariants[i];
-        auto cum_m_out = cumulated_m_out[n_particles - 2 - i];
-        auto mass = inputs[m_out_offset + n_particles - 1 - i];
-        auto r1 = inputs[t_inv_offset + 2 * i];
-        auto r2 = inputs[t_inv_offset + 2 * i + 1];
-
-        auto [ks, det] = invariant.build_forward(
-            fb, {r1, r2, cum_m_out, mass}, {p1, p2_rest}
+    bool first = true;
+    for (auto [index, side, mass_sum] : zip(
+        _integration_order, _sample_sides, mass_sum_invariants
+    )) {
+        auto& scattering = first ? _com_scattering : _lab_scattering;
+        first = false;
+        std::size_t sampled_index = index + side;
+        auto mass = m_out.at(sampled_index);
+        auto [ks, det] = scattering.build_forward(
+            fb,
+            {next_random(), next_random(), mass_sum, mass},
+            {side ? p1_rest : p2_rest, side ? p2_rest : p1_rest}
         );
-        k_rest = ks[0];
-        auto k = ks[1];
-        p_out.push_back(k);
-        p2_rest = fb.sub(p2_rest, k);
+        k_rest = ks.at(0);
+        auto k = ks.at(1);
+        p_ext.at(sampled_index + 2) = k;
         dets.push_back(det);
+        if (side) {
+            p2_rest = fb.sub(p2_rest, k);
+        } else {
+            p1_rest = fb.sub(p1_rest, k);
+        }
     }
-    p_out.push_back(k_rest);
+    p_ext.at(_integration_order.back() + 2) = k_rest;
+    auto det = dets.size() == 1 ? dets.at(0) : fb.product(fb.stack(dets));
 
-    ValueVec outputs {p1, p2};
-    outputs.insert(outputs.end(), p_out.rbegin(), p_out.rend());
-    return {outputs, fb.product(fb.stack(dets))};
+    return {p_ext, det};
 }
 
 Mapping::Result TPropagatorMapping::build_inverse_impl(

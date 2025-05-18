@@ -91,7 +91,7 @@ public:
     zip_type begin() {
         return std::apply([](auto && ... args){
             return zip_type(std::ranges::begin(args)...);
-            }, _args);
+        }, _args);
     }
     zip_type end() {
         return std::apply([](auto && ... args){

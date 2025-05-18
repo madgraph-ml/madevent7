@@ -356,20 +356,28 @@ KERNELSPEC void kernel_sde2_channel_weights(
     FOut<T,1> channel_weights
 ) {
     // TODO: MG has a special case here if tprid != 0. check what that is and if we need it...
+    FVal<T> channel_weights_norm(0.);
     for (std::size_t i = 0; i < channel_weights.size(); ++i) {
         auto masses_i = masses[i];
         auto widths_i = widths[i];
         auto indices_i = indices[i];
         FVal<T> prop_product(1.);
         for (std::size_t j = 0; j < indices_i.size(); ++j) {
-            auto invar = invariants.gather(indices_i[j]);
+            auto indices_ij = indices_i[j];
+            auto mask = indices_ij == -1;
+            auto invar = invariants.gather(where(mask, 0, indices_ij));
             auto mass = masses_i[j];
             auto width = widths_i[j];
             auto tmp = invar - mass * mass;
             auto tmp2 = mass * width;
-            prop_product = prop_product * (tmp * tmp + tmp2 * tmp2);
+            prop_product = prop_product * where(mask, 1., tmp * tmp + tmp2 * tmp2);
         }
-        channel_weights[i] = 1. / prop_product;
+        auto channel_weight = 1. / prop_product;
+        channel_weights[i] = channel_weight;
+        channel_weights_norm = channel_weights_norm + channel_weight;
+    }
+    for (std::size_t i = 0; i < channel_weights.size(); ++i) {
+        channel_weights[i] = channel_weights[i] / channel_weights_norm;
     }
 }
 

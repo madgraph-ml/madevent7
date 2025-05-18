@@ -223,8 +223,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("mass", &Propagator::mass)
         .def_readonly("width", &Propagator::width);
     py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
-        .def(py::init<std::vector<Propagator>, double, bool>(),
-             py::arg("propagators"), py::arg("nu")=0., py::arg("map_resonances")=false);
+        .def(py::init<std::vector<std::size_t>, double>(),
+             py::arg("integration_order"), py::arg("nu")=0.);
     py::class_<Cuts::CutItem>(m, "CutItem")
         .def(py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
              py::arg("observable"), py::arg("limit_type"),
@@ -288,6 +288,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("diagram"), py::arg("manual_integration_order")=false)
         .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
         .def_property_readonly("t_integration_order", &Topology::t_integration_order)
+        .def_property_readonly("t_propagator_masses", &Topology::t_propagator_masses)
+        .def_property_readonly("t_propagator_widths", &Topology::t_propagator_widths)
         .def_property_readonly("decays", &Topology::decays)
         .def_property_readonly("decay_integration_order", &Topology::decay_integration_order)
         .def_property_readonly("outgoing_indices", &Topology::outgoing_indices)
@@ -379,7 +381,6 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("output_dim", &MLP::output_dim)
         .def("initialize_globals", &MLP::initialize_globals, py::arg("context"));
 
-
     py::class_<Flow, Mapping>(m, "Flow")
         .def(py::init<std::size_t, std::size_t, const std::string&, std::size_t, std::size_t,
                       std::size_t, MLP::Activation, bool>(),
@@ -394,6 +395,13 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("input_dim", &Flow::input_dim)
         .def("output_dim", &Flow::condition_dim)
         .def("initialize_globals", &Flow::initialize_globals, py::arg("context"));
+
+
+    py::class_<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
+        .def(py::init<const std::vector<Topology>&,
+                      const std::vector<std::vector<std::vector<std::size_t>>>&,
+                      const std::vector<std::vector<std::size_t>>>(),
+             py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())
