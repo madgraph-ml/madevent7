@@ -5,7 +5,7 @@
 
 #include <cmath>
 
-#define KERNELSPEC constexpr
+#define KERNELSPEC
 
 namespace madevent {
 namespace kernels {

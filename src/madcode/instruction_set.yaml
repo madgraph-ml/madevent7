@@ -70,6 +70,14 @@ cat:
   custom_op: True
   differentiable: True
 
+batch_size:
+  inputs: any
+  outputs:
+    - name: batch_size
+      desc:
+  class: BatchSizeInstruction
+  custom_op: True
+
 ---
 title: Math
 
@@ -817,7 +825,7 @@ chili_forward:
       desc:
   outputs:
     - name: p_ext
-      type: [float, n+2]
+      type: [float, n+2, 4]
       desc:
     - name: x1
       type: [float]
@@ -837,6 +845,12 @@ matrix_element:
     - name: momenta
       type: [float, n, 4]
       desc:
+    - name: flavor
+      type: [int]
+      desc:
+    - name: mirror
+      type: [int]
+      desc:
     - name: index
       type: [int, single]
       desc:
@@ -850,6 +864,18 @@ matrix_element_multichannel:
   inputs:
     - name: momenta
       type: [float, n, 4]
+      desc:
+    - name: alpha_s
+      type: [float]
+      desc:
+    - name: random
+      type: [float, 2]
+      desc:
+    - name: flavor
+      type: [int]
+      desc:
+    - name: mirror
+      type: [int]
       desc:
     - name: amp2_remap
       type: [int, single, m]
@@ -866,6 +892,12 @@ matrix_element_multichannel:
       desc:
     - name: channel_weights
       type: [float, c]
+      desc:
+    - name: color_id
+      type: [int]
+      desc:
+    - name: diagram_id
+      type: [int]
       desc:
   custom_op: True
 

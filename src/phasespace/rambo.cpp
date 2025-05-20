@@ -20,9 +20,7 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
     ),
     n_particles(_n_particles),
     massless(_massless),
-    com(_com),
-    e_cm_power(2 * _n_particles - 4),
-    massless_weight(std::pow(PI / 2.0, _n_particles - 1) / std::tgamma(_n_particles - 1))
+    com(_com)
 {
     if (n_particles < 3 || n_particles > 12) {
         throw std::invalid_argument("The number of particles must be between 3 and 12");
@@ -45,10 +43,10 @@ Mapping::Result FastRamboMapping::build_forward_impl(
         }
     } else {
         if (com) {
-            ValueVec masses(inputs.begin() + random_dim(), inputs.end());
+            ValueVec masses(inputs.begin() + random_dim() + 1, inputs.end());
             output = fb.fast_rambo_massive_com(r, e_cm, fb.stack(masses));
         } else {
-            ValueVec masses(inputs.begin() + random_dim(), inputs.end() - 1);
+            ValueVec masses(inputs.begin() + random_dim() + 1, inputs.end() - 1);
             Value p0 = inputs.back();
             output = fb.fast_rambo_massive(r, e_cm, fb.stack(masses), p0);
         }

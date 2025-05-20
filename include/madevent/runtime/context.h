@@ -10,47 +10,52 @@
 namespace madevent {
 
 struct SubProcessInfo {
-    uint64_t matrix_element_count;
     uint8_t on_gpu;
     uint64_t particle_count;
-    uint64_t* diagram_counts;
+    uint64_t diagram_count;
+    uint64_t amplitude_count;
+    uint64_t helicity_count;
 };
 
 class MatrixElement {
 public:
-    MatrixElement(
-        const std::string& file,
-        const std::string& param_card,
-        std::size_t process_index,
-        double alpha_s
-    );
+    MatrixElement(const std::string& file, const std::string& param_card);
     MatrixElement(MatrixElement&&) noexcept = default;
     MatrixElement& operator=(MatrixElement&&) noexcept = default;
     MatrixElement(const MatrixElement&) = delete;
     MatrixElement& operator=(const MatrixElement&) = delete;
     //~MatrixElement();
-    void call(Tensor momenta_in, Tensor matrix_element_out) const;
+    void call(
+        Tensor momenta_in, Tensor flavor_in, Tensor mirror_in, Tensor matrix_element_out
+    ) const;
     void call_multichannel(
         Tensor momenta_in,
+        Tensor alpha_s_in,
+        Tensor random_in,
+        Tensor flavor_in,
+        Tensor mirror_in,
         Tensor amp2_remap_in,
         Tensor matrix_element_out,
-        Tensor channel_weights_out
+        Tensor channel_weights_out,
+        Tensor color_out,
+        Tensor diagram_out
     ) const;
-    bool on_gpu() const { return _on_gpu; }
-    std::size_t particle_count() const { return _particle_count; }
-    std::size_t diagram_count() const { return _diagram_count; }
+    bool on_gpu() const { return _subprocess_info.on_gpu; }
+    std::size_t particle_count() const { return _subprocess_info.particle_count; }
+    std::size_t diagram_count() const { return _subprocess_info.diagram_count; }
+    std::size_t amplitude_count() const { return _subprocess_info.amplitude_count; }
+    std::size_t helicity_count() const { return _subprocess_info.helicity_count; }
 
 private:
     std::unique_ptr<void, std::function<void(void*)>> _shared_lib;
-    bool _on_gpu;
-    std::size_t _particle_count;
-    std::size_t _diagram_count;
-    void* (*_init_subprocess)(uint64_t, const char*, double);
+    SubProcessInfo _subprocess_info;
+    void* (*_init_subprocess)(const char*);
     void (*_compute_matrix_element)(
-        void*, uint64_t, uint64_t, const double*, double*
+        void*, uint64_t, uint64_t, const double*, const int64_t*, const int64_t*, double*
     );
     void (*_compute_matrix_element_multichannel)(
-        void*, uint64_t, uint64_t, uint64_t, const double*, const int64_t*, double*, double*
+        void*, uint64_t, uint64_t, uint64_t, const double*, const double*, const double*,
+        const int64_t*, const int64_t*, const int64_t*, double*, double*, int64_t*, int64_t*
     );
     void (*_free_subprocess)(void*);
     std::vector<std::unique_ptr<void, std::function<void(void*)>>> _process_instances;
@@ -82,10 +87,7 @@ public:
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
     std::size_t load_matrix_element(
-        const std::string& file,
-        const std::string& param_card,
-        std::size_t process_index,
-        double alpha_s
+        const std::string& file, const std::string& param_card
     );
     void load_pdf(const std::string& name, int index=0);
     Tensor define_global(

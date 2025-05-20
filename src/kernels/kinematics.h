@@ -45,7 +45,8 @@ KERNELSPEC FVal<T> lsquare(FourMom<T> p) {
 
 template<typename T>
 KERNELSPEC FourMom<T> rotate(FourMom<T> p, FourMom<T> q) {
-    // this function is based on the rotxxx subroutine from HELAS used in MG5 (aloha_functions.f)
+    // this function is based on the rotxxx subroutine from HELAS
+    // used in MG5 (aloha_functions.f)
     auto qt2 = q[1] * q[1] + q[2] * q[2];
     auto qq = sqrt(qt2 + q[3] * q[3]);
     auto qt = sqrt(qt2);
@@ -100,7 +101,8 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_particle_decay(
     auto cos_theta = 2. * r_cos_theta - 1.;
     auto m0_clip = max(m0, EPS);
 
-    // this part is based on the mom2cx subroutine from HELAS used in MG5 (aloha_functions.f)
+    // this part is based on the mom2cx subroutine from HELAS
+    // used in MG5 (aloha_functions.f)
     auto ed = (m1 - m2) * (m1 + m2) / m0_clip;
     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + m0 * m0;
     auto pp = 0.5 * where(

@@ -6,12 +6,7 @@
 
 using namespace madevent;
 
-MatrixElement::MatrixElement(
-    const std::string& file,
-    const std::string& param_card,
-    std::size_t process_index,
-    double alpha_s
-) {
+MatrixElement::MatrixElement(const std::string& file, const std::string& param_card) {
     _shared_lib = std::unique_ptr<void, std::function<void(void*)>>(
         dlopen(file.c_str(), RTLD_NOW), [](void* lib) { dlclose(lib); }
     );
@@ -29,13 +24,7 @@ MatrixElement::MatrixElement(
             "Did not find symbol subprocess_info in shared object {}", file
         ));
     }
-    const SubProcessInfo* info = subprocess_info();
-    if (process_index >= info->matrix_element_count) {
-        throw std::invalid_argument("Process index out of range");
-    }
-    _on_gpu = info->on_gpu;
-    _particle_count = info->particle_count;
-    _diagram_count = info->diagram_counts[process_index];
+    _subprocess_info = *subprocess_info();
 
     _init_subprocess = reinterpret_cast<decltype(_init_subprocess)>(
         dlsym(_shared_lib.get(), "init_subprocess")
@@ -60,7 +49,8 @@ MatrixElement::MatrixElement(
     >(dlsym(_shared_lib.get(), "compute_matrix_element_multichannel"));
     if (_compute_matrix_element_multichannel == nullptr) {
         throw std::runtime_error(std::format(
-            "Did not find symbol compute_matrix_element_multichannel in shared object {}", file
+            "Did not find symbol compute_matrix_element_multichannel in shared object {}",
+            file
         ));
     }
 
@@ -77,66 +67,36 @@ MatrixElement::MatrixElement(
     for (int i = 0; i == 0 || i < thread_count; ++i) {
         _process_instances.push_back(
             std::unique_ptr<void, std::function<void(void*)>>(
-                _init_subprocess(process_index, param_card.c_str(), alpha_s),
+                _init_subprocess(param_card.c_str()),
                 [this](void* proc) { _free_subprocess(proc); }
             )
         );
     }
 }
 
-/*MatrixElement::MatrixElement(MatrixElement&& other) noexcept :
-    _shared_lib(other._shared_lib),
-    _on_gpu(other._on_gpu),
-    _particle_count(other._particle_count),
-    _diagram_count(other._diagram_count),
-    _init_subprocess(other._init_subprocess),
-    _compute_matrix_element(other._compute_matrix_element),
-    _compute_matrix_element_multichannel(other._compute_matrix_element_multichannel),
-    _free_subprocess(other._free_subprocess),
-    _process_instances(std::move(other._process_instances))
-{
-    other._shared_lib = nullptr;
-}
-
-MatrixElement& MatrixElement::operator=(MatrixElement&& other) noexcept {
-    _shared_lib = other._shared_lib;
-    _on_gpu = other._on_gpu;
-    _particle_count = other._particle_count;
-    _diagram_count = other._diagram_count;
-    _init_subprocess = other._init_subprocess;
-    _compute_matrix_element = other._compute_matrix_element;
-    _compute_matrix_element_multichannel = other._compute_matrix_element_multichannel;
-    _free_subprocess = other._free_subprocess;
-    _process_instances = std::move(other._process_instances);
-
-    other._shared_lib = nullptr;
-    return *this;
-}*/
-
-/*MatrixElement::~MatrixElement() {
-    if (!_shared_lib) return;
-    for (auto inst : _process_instances) {
-        _free_subprocess(inst);
-    }
-    dlclose(_shared_lib);
-}*/
-
-void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
+void MatrixElement::call(
+    Tensor momenta_in, Tensor flavor_in, Tensor mirror_in, Tensor matrix_element_out
+) const {
     // TODO: maybe copy can be avoided sometimes
     momenta_in = momenta_in.contiguous();
+    flavor_in = flavor_in.contiguous();
+    mirror_in = mirror_in.contiguous();
     // TODO: move to backend
     auto batch_size = momenta_in.size(0);
     auto input_particle_count = momenta_in.size(1);
-    if (input_particle_count != _particle_count) {
+    if (input_particle_count != particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
     auto& pool = ThreadPool::instance();
     auto thread_count = pool.get_thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
     auto me_ptr = static_cast<double*>(matrix_element_out.data());
     if (thread_count == 0 || batch_size < thread_count * 100) {
         _compute_matrix_element(
-            _process_instances[0].get(), batch_size, batch_size, mom_ptr, me_ptr
+            _process_instances[0].get(), batch_size, batch_size,
+            mom_ptr, flavor_ptr, mirror_ptr, me_ptr
         );
     } else {
         auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
@@ -145,7 +105,8 @@ void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
             _compute_matrix_element(
                 _process_instances[thread_id].get(),
                 std::min(batch_size - offset, count_per_thread),
-                batch_size, mom_ptr + offset, me_ptr + offset
+                batch_size, mom_ptr + offset, flavor_ptr + offset,
+                mirror_ptr + offset, me_ptr + offset
             );
         });
     }
@@ -153,33 +114,51 @@ void MatrixElement::call(Tensor momenta_in, Tensor matrix_element_out) const {
 
 void MatrixElement::call_multichannel(
     Tensor momenta_in,
+    Tensor alpha_s_in,
+    Tensor random_in,
+    Tensor flavor_in,
+    Tensor mirror_in,
     Tensor amp2_remap_in,
     Tensor matrix_element_out,
-    Tensor channel_weights_out
+    Tensor channel_weights_out,
+    Tensor color_out,
+    Tensor diagram_out
 ) const {
     // TODO: maybe copy can be avoided sometimes
     momenta_in = momenta_in.contiguous();
+    alpha_s_in = alpha_s_in.contiguous();
+    random_in = random_in.contiguous();
+    flavor_in = flavor_in.contiguous();
+    mirror_in = mirror_in.contiguous();
+    amp2_remap_in = amp2_remap_in.contiguous();
     // TODO: move to backend
     auto batch_size = momenta_in.size(0);
     auto input_particle_count = momenta_in.size(1);
     auto input_diagram_count = amp2_remap_in.size(1);
     auto channel_count = channel_weights_out.size(1);
-    if (input_particle_count != _particle_count) {
+    if (input_particle_count != particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
-    if (input_diagram_count != _diagram_count) {
+    if (input_diagram_count != diagram_count()) {
         throw std::runtime_error("Incompatible diagram count");
     }
     auto& pool = ThreadPool::instance();
     auto thread_count = pool.get_thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
+    auto random_ptr = static_cast<double*>(random_in.data());
+    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
     auto remap_ptr = static_cast<int64_t*>(amp2_remap_in.data());
     auto me_ptr = static_cast<double*>(matrix_element_out.data());
     auto cw_ptr = static_cast<double*>(channel_weights_out.data());
+    auto color_ptr = static_cast<int64_t*>(color_out.data());
+    auto diag_ptr = static_cast<int64_t*>(diagram_out.data());
     if (thread_count == 0 || batch_size < thread_count * 100) {
         _compute_matrix_element_multichannel(
             _process_instances[0].get(), batch_size, batch_size, channel_count,
-            mom_ptr, remap_ptr, me_ptr, cw_ptr
+            mom_ptr, alpha_ptr, random_ptr, flavor_ptr, mirror_ptr, remap_ptr,
+            me_ptr, cw_ptr, color_ptr, diag_ptr
         );
     } else {
         auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
@@ -189,7 +168,9 @@ void MatrixElement::call_multichannel(
                 _process_instances[thread_id].get(),
                 std::min(batch_size - offset, count_per_thread),
                 batch_size, channel_count,
-                mom_ptr + offset, remap_ptr, me_ptr + offset, cw_ptr + offset
+                mom_ptr + offset, alpha_ptr + offset, random_ptr + offset,
+                flavor_ptr + offset, mirror_ptr + offset, remap_ptr + offset,
+                me_ptr + offset, cw_ptr + offset, color_ptr + offset, diag_ptr + offset
             );
         });
     }
@@ -209,12 +190,9 @@ void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) cons
 }
 
 std::size_t Context::load_matrix_element(
-    const std::string& file,
-    const std::string& param_card,
-    std::size_t process_index,
-    double alpha_s
+    const std::string& file, const std::string& param_card
 ) {
-    matrix_elements.emplace_back(file, param_card, process_index, alpha_s);
+    matrix_elements.emplace_back(file, param_card);
     return matrix_elements.size() - 1;
 }
 

@@ -27,6 +27,10 @@ Value cat(ValueVec args) {
     return instruction("cat", args)[0];
 }
 
+Value batch_size(ValueVec args) {
+    return instruction("batch_size", args)[0];
+}
+
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
 }
@@ -200,13 +204,13 @@ std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_mi
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-Value matrix_element(Value momenta, Value index) {
-    return instruction("matrix_element", {momenta, index})[0];
+Value matrix_element(Value momenta, Value flavor, Value mirror, Value index) {
+    return instruction("matrix_element", {momenta, flavor, mirror, index})[0];
 }
 
-std::array<Value, 2> matrix_element_multichannel(Value momenta, Value amp2_remap, Value index, Value channel_count) {
-    auto output_vector = instruction("matrix_element_multichannel", {momenta, amp2_remap, index, channel_count});
-    return {output_vector[0], output_vector[1]};
+std::array<Value, 4> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value amp2_remap, Value index, Value channel_count) {
+    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, amp2_remap, index, channel_count});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
 Value pdf(Value x, Value q2, Value pid) {

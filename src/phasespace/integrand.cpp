@@ -9,6 +9,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     std::size_t matrix_element_index,
     double e_cm2,
     double q2,
+    bool simple_matrix_element,
     std::size_t channel_count,
     const std::vector<int64_t>& amp2_remap
 ) :
@@ -17,18 +18,21 @@ DifferentialCrossSection::DifferentialCrossSection(
             TypeVec arg_types {
                 batch_four_vec_array(pid_options.at(0).size()),
                 batch_float,
-                batch_float
+                batch_float,
+                batch_int,
+                batch_int
             };
-            if (pid_options.size() > 1) {
-                arg_types.push_back(batch_int);
+            if (!simple_matrix_element) {
+                arg_types.push_back(batch_float);
             }
             return arg_types;
         }(),
-        channel_count == 1 ?
+        simple_matrix_element ?
             TypeVec{batch_float} :
-            TypeVec{batch_float, batch_float_array(channel_count)}
+            TypeVec{batch_float_array(channel_count), batch_int, batch_int}
     ),
     _pid_options(pid_options),
+    _simple_matrix_element(simple_matrix_element),
     _matrix_element_index(matrix_element_index),
     _e_cm2(e_cm2),
     _q2(q2),
@@ -42,6 +46,8 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto momenta = args.at(0);
     auto x1 = args.at(1);
     auto x2 = args.at(2);
+    auto flavor_id = args.at(3);
+    auto mirror_id = args.at(4);
 
     auto& pids = _pid_options.at(0);
     Value pid1, pid2;
@@ -52,7 +58,6 @@ ValueVec DifferentialCrossSection::build_function_impl(
             pid1_options.push_back(option.at(0));
             pid2_options.push_back(option.at(1));
         }
-        auto flavor_id = args.at(3);
         pid1 = fb.batch_gather(flavor_id, pid1_options);
         pid2 = fb.batch_gather(flavor_id, pid2_options);
     } else {
@@ -61,16 +66,20 @@ ValueVec DifferentialCrossSection::build_function_impl(
     }
     auto pdf1 = fb.pdf(x1, _q2, pid1);
     auto pdf2 = fb.pdf(x2, _q2, pid2);
-    if (_channel_count == 1) {
-        auto me2 = fb.matrix_element(momenta, _matrix_element_index);
+    if (_simple_matrix_element) {
+        auto me2 = fb.matrix_element(momenta, flavor_id, mirror_id, _matrix_element_index);
         auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
         return {xs};
     } else {
-        auto [me2, chan_weights] = fb.matrix_element_multichannel(
-            momenta, _amp2_remap, _matrix_element_index, _channel_count
+        auto alpha_s = args.at(5);
+        auto batch_size = fb.batch_size({momenta, alpha_s, flavor_id, mirror_id});
+        auto random = fb.random(batch_size, 2LL);
+        auto [me2, chan_weights, color_id, diagram_id] = fb.matrix_element_multichannel(
+            momenta, alpha_s, random, flavor_id, mirror_id,
+            _amp2_remap, _matrix_element_index, _channel_count
         );
         auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);
-        return {xs, chan_weights};
+        return {xs, chan_weights, color_id, diagram_id};
     }
 }
 

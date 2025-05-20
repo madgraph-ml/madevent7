@@ -43,9 +43,12 @@ void op_matrix_element(
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size}, device);
-    std::size_t me_index = locals[instruction.input_indices[1]].view<int64_t, 0>();
+    std::size_t me_index = locals[instruction.input_indices[3]].view<int64_t, 0>();
     instruction.context.matrix_element(me_index).call(
-        locals[instruction.input_indices[0]], me_out
+        locals[instruction.input_indices[0]],
+        locals[instruction.input_indices[1]],
+        locals[instruction.input_indices[2]],
+        me_out
     );
 }
 
@@ -53,17 +56,29 @@ void op_matrix_element_multichannel(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    std::size_t me_index = locals[instruction.input_indices[2]].view<int64_t, 0>();
+    std::size_t channel_count = locals[instruction.input_indices[3]].view<int64_t, 0>();
+
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size}, device);
     auto& chan_weights_out = locals[instruction.output_indices[1]];
-    std::size_t me_index = locals[instruction.input_indices[2]].view<int64_t, 0>();
-    std::size_t channel_count = locals[instruction.input_indices[3]].view<int64_t, 0>();
     chan_weights_out = Tensor(DataType::dt_float, {batch_size, channel_count}, device);
+    auto& color_out = locals[instruction.output_indices[2]];
+    color_out = Tensor(DataType::dt_int, {batch_size}, device);
+    auto& diagram_out = locals[instruction.output_indices[3]];
+    diagram_out = Tensor(DataType::dt_int, {batch_size}, device);
+
     instruction.context.matrix_element(me_index).call_multichannel(
         locals[instruction.input_indices[0]],
         locals[instruction.input_indices[1]],
+        locals[instruction.input_indices[2]],
+        locals[instruction.input_indices[3]],
+        locals[instruction.input_indices[4]],
+        locals[instruction.input_indices[5]],
         me_out,
-        chan_weights_out
+        chan_weights_out,
+        color_out,
+        diagram_out
     );
 }
 

@@ -13,6 +13,7 @@ public:
         std::size_t matrix_element_index,
         double e_cm2,
         double q2,
+        bool simple_matrix_element = true,
         std::size_t channel_count = 1,
         const std::vector<int64_t>& amp2_remap = {}
     );
@@ -23,6 +24,7 @@ private:
 
     std::vector<std::vector<int64_t>> _pid_options;
     int64_t _matrix_element_index;
+    bool _simple_matrix_element;
     double _e_cm2;
     double _q2;
     int64_t _channel_count;

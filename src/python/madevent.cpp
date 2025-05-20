@@ -136,12 +136,13 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("cuda_device", &cuda_device);
 
     py::class_<MatrixElement>(m, "MatrixElement")
-        .def(py::init<const std::string&, const std::string&, std::size_t, double>(),
-             py::arg("file"), py::arg("param_card"),
-             py::arg("process_index"), py::arg("alpha_s"))
+        .def(py::init<const std::string&, const std::string&>(),
+             py::arg("file"), py::arg("param_card"))
         .def("on_gpu", &MatrixElement::on_gpu)
         .def("particle_count", &MatrixElement::particle_count)
-        .def("diagram_count", &MatrixElement::diagram_count);
+        .def("diagram_count", &MatrixElement::diagram_count)
+        .def("amplitude_count", &MatrixElement::amplitude_count)
+        .def("helicity_count", &MatrixElement::helicity_count);
 
     py::class_<PdfSet>(m, "PdfSet")
         .def("alpha_s", &PdfSet::alpha_s, py::arg("q2"));
@@ -150,8 +151,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
         .def("load_matrix_element", &Context::load_matrix_element,
-             py::arg("file"), py::arg("param_card"),
-             py::arg("process_index"), py::arg("alpha_s"))
+             py::arg("file"), py::arg("param_card"))
         .def("load_pdf", &Context::load_pdf, py::arg("name"), py::arg("index")=0)
         .def("define_global", &Context::define_global,
              py::arg("name"), py::arg("dtype"), py::arg("shape"),
@@ -339,10 +339,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("build_function", &FunctionGenerator::build_function,
              py::arg("builder"), py::arg("args"));
     py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<int64_t>>&, int64_t,
-                      double, double, std::size_t, std::vector<int64_t>>(),
+        .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t, double, double, bool,
+                      std::size_t, const std::vector<int64_t>&>(),
              py::arg("pid_options"), py::arg("matrix_element_index"),
-             py::arg("e_cm2"), py::arg("q2"),
+             py::arg("e_cm2"), py::arg("q2"), py::arg("simple_matrix_element")=true,
              py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{})
         .def("pid_options", &DifferentialCrossSection::pid_options);
     py::class_<Unweighter, FunctionGenerator>(m, "Unweighter")

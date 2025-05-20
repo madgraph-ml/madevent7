@@ -105,6 +105,13 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
+class BatchSizeInstruction : public Instruction {
+public:
+    BatchSizeInstruction(int opcode, bool differentiable) :
+        Instruction("batch_size", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int opcode, bool differentiable) :

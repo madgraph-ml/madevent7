@@ -25,7 +25,7 @@ KERNELSPEC void kernel_chili_forward(
         // get the pts
         auto ptc = where(m_out_i > 0.0, m_out_i, pt_min_i);
         auto delta_pt = pt_max - pt_min_i;
-        auto pt_denom = 2. * ptc + pt_max * (1 - r_pt);
+        auto pt_denom = 2. * ptc + pt_max * (1. - r_pt);
         auto pt = pt_min_i + (2. * ptc * delta_pt * r_pt) / pt_denom;
 
         // get first n-1 rapidities and phi

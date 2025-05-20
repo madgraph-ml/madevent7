@@ -236,7 +236,7 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
 
     _t_integration_order.resize(integration_order.size() - 1);
     std::iota(_t_integration_order.begin(), _t_integration_order.end(), 0);
-    //std::reverse(_t_integration_order.begin(), _t_integration_order.end()); // TODO: only call sometimes
+    std::reverse(_t_integration_order.begin(), _t_integration_order.end()); // TODO: only call sometimes
     if (manual_integration_order) {
         std::stable_sort(
             _t_integration_order.begin(),

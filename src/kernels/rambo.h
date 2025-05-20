@@ -8,9 +8,19 @@ namespace kernels {
 
 // constants and helper functions
 
-KERNELSPEC double a_fit_vals[] {
+// fitted parameters of the rational quadratic function to approximate
+// the flat Rambo On Diet transformation
+constexpr KERNELSPEC double a_fit_vals[] {
     2.0, 2.7120013510837317, 3.0845206333631006, 3.313073324958275, 3.4675119658060622,
     3.57883262988432, 3.662872056324554, 3.7285606321733686, 3.781315678863016, 3.82461375901416
+};
+
+// weight prefactors computed as (pi/2)^(index+2) / Gamma(index+2)
+// with index = n_particles - 3 from 0 to 9
+constexpr KERNELSPEC double rambo_weight_factor[] {
+    2.4674011002723395, 1.9378922925187385, 1.014678031604192, 0.39846313123083515,
+    0.12518088458011775, 0.03277227894723081, 0.00735408219871541,
+    0.0014439706630862378, 0.00025202042373060593, 3.958727558733292e-05
 };
 
 template<typename T>
@@ -62,7 +72,7 @@ KERNELSPEC void fast_rambo_massless_body(
     FIn<T,1> r, FIn<T,0> e_cm, FOut<T,2> p_out, FOut<T,0> det, FourMom<T> q
 ) {
     std::size_t n_particles = p_out.size();
-    FVal<T> det_tmp = 1.;
+    FVal<T> det_tmp = rambo_weight_factor[n_particles - 3];
     FVal<T> cum_u = 1.;
     FVal<T> cum_m_prev = e_cm;
     for (std::size_t i = 0; i < n_particles - 1; ++i) {
@@ -101,7 +111,7 @@ KERNELSPEC void fast_rambo_massive_body(
     auto e_cm_massless = e_cm - total_mass;
 
     std::size_t n_particles = p_out.size();
-    FVal<T> det_tmp = 1.;
+    FVal<T> det_tmp = rambo_weight_factor[n_particles - 3];
     FVal<T> cum_u = 1.;
     FVal<T> cum_m_prev = e_cm;
     FVal<T> cum_k_prev = e_cm_massless;

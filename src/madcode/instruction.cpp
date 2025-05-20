@@ -440,6 +440,33 @@ TypeVec CatInstruction::signature(const ValueVec& args) const {
     return {{type.dtype, batch_size, out_shape}};
 }
 
+TypeVec BatchSizeInstruction::signature(const ValueVec& args) const {
+    if (args.size() == 0) {
+        throw std::invalid_argument("batch_size has to be called with at least one argument");
+    }
+    BatchSize batch_size = BatchSize::one;
+    std::size_t cat_dim = 0;
+    std::size_t i = 1;
+    for (auto& arg : args) {
+        if (arg.type.dtype == DataType::batch_sizes) {
+            throw std::invalid_argument(std::format(
+                "batch_size, argument {}: batch size list not accepted as argument", i
+            ));
+        }
+        if (batch_size == BatchSize::one) {
+            batch_size = arg.type.batch_size;
+        } else if (
+            arg.type.batch_size != BatchSize::one && batch_size != arg.type.batch_size
+        ) {
+            throw std::invalid_argument(std::format(
+                "batch_size, argument {}: incompatible batch size", i
+            ));
+        }
+        ++i;
+    }
+    return {{{batch_size}}};
+}
+
 TypeVec RqsActivationInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& bin_count_arg = args.at(1);

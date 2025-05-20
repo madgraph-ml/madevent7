@@ -23,8 +23,6 @@ private:
     std::size_t n_particles;
     bool massless;
     double com;
-    double e_cm_power;
-    double massless_weight;
 };
 
 }

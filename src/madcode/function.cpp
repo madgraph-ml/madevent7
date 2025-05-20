@@ -283,17 +283,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
     std::vector<std::size_t> opcode_and_input_locals;
     opcode_and_input_locals.push_back(opcode);
     for (auto& arg : params) {
-        if (arg.local_index == -1) {
-            auto find_literal = literals.find(arg.literal_value);
-            if (find_literal == literals.end()) {
-                int local_index = locals.size();
-                arg = Value(arg.type, arg.literal_value, local_index);
-                locals.push_back(arg);
-                literals[arg.literal_value] = arg;
-            } else {
-                arg = find_literal->second;
-            }
-        }
+        register_local(arg);
         opcode_and_input_locals.push_back(arg.local_index);
     }
 
@@ -377,6 +367,7 @@ void FunctionBuilder::output(int index, Value value) {
     if (out_type.dtype != value.type.dtype || out_type.shape != value.type.shape) {
         throw std::invalid_argument(std::format("Wrong output type for output {}", index));
     }
+    register_local(value);
     outputs.at(index) = value;
 }
 
@@ -387,7 +378,11 @@ void FunctionBuilder::output_range(int start_index, const ValueVec& values) {
             outputs.size() - values.size(), start_index
         ));
     }
-    std::copy(values.begin(), values.end(), outputs.begin() + start_index);
+    int index = start_index;
+    for (auto& value : values) {
+        output(index, value);
+        ++index;
+    }
 }
 
 Value FunctionBuilder::global(
@@ -421,6 +416,20 @@ Value FunctionBuilder::sum(const ValueVec& values) {
         result = add(result, *value);
     }
     return result;
+}
+
+void FunctionBuilder::register_local(Value& val) {
+    if (val.local_index != -1) return;
+
+    auto find_literal = literals.find(val.literal_value);
+    if (find_literal == literals.end()) {
+        int local_index = locals.size();
+        val = Value(val.type, val.literal_value, local_index);
+        locals.push_back(val);
+        literals[val.literal_value] = val;
+    } else {
+        val = find_literal->second;
+    }
 }
 
 /*Value FunctionBuilder::product(const ValueVec& values) {

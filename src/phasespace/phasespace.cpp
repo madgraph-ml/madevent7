@@ -293,7 +293,8 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             }
             auto [t_result, det] = t_mapping.build_forward(fb, args, {});
             std::size_t result_index;
-            if constexpr (std::is_same_v<decltype(t_mapping), FastRamboMapping>) {
+            using TMapping = std::decay_t<decltype(t_mapping)>;
+            if constexpr (std::is_same_v<TMapping, FastRamboMapping>) {
                 auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
                 p_ext = {p1, p2};
                 result_index = 0;
@@ -307,7 +308,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
             }
             dets.push_back(det);
 
-            if constexpr (std::is_same_v<decltype(t_mapping), ChiliMapping>) {
+            if constexpr (std::is_same_v<TMapping, ChiliMapping>) {
                 auto out_size = t_result.size();
                 x1 = t_result.at(out_size - 2);
                 x2 = t_result.at(out_size - 1);
@@ -366,7 +367,9 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto p_ext_lab = _luminosity ? fb.boost_beam(p_ext_stack, x1, x2) : p_ext_stack;
     auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
     dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());
-    auto ps_weight = fb.cut_unphysical(fb.product(fb.stack(dets)), p_ext_lab, x1, x2);
+    Value det_product = dets.size() == 2 ?
+        fb.mul(dets.at(0), dets.at(1)) : fb.product(fb.stack(dets));
+    auto ps_weight = fb.cut_unphysical(det_product, p_ext_lab, x1, x2);
     return {{p_ext_lab, x1, x2}, ps_weight};
 }
 

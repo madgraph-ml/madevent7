@@ -263,5 +263,11 @@ void backward_op_cat(
     }
 }
 
+template<typename I, typename D>
+void op_batch_size(const I& instruction, TensorVec& locals, const D& device) {
+    SizeVec batch_size{locals[instruction.batch_size_index].size(0)};
+    locals[instruction.output_indices[0]] = Tensor(batch_size);
+}
+
 }
 }

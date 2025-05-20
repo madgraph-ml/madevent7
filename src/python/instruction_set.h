@@ -19,6 +19,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("batch_cat", &FunctionBuilder::batch_cat, py::arg("args"));
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
     fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
+    fb.def("batch_size", &FunctionBuilder::batch_size, py::arg("args"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
@@ -57,8 +58,8 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("cut_m_inv", &FunctionBuilder::cut_m_inv, py::arg("p"), py::arg("indices"), py::arg("min_max"));
     fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("min_max"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
-    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("index"));
-    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
+    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("flavor"), py::arg("mirror"), py::arg("index"));
+    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("mirror"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
     fb.def("pdf", &FunctionBuilder::pdf, py::arg("x"), py::arg("q2"), py::arg("pid"));
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
     fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));

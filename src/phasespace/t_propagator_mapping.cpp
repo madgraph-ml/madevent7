@@ -62,8 +62,8 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
         for (auto [min_mass, max_mass_subtract] : zip(
             std::views::reverse(min_masses), std::views::reverse(max_masses_subtract)
         )) {
-            auto s_max = fb.square(min_mass);
-            auto s_min = fb.square(fb.sub(max_mass, max_mass_subtract));
+            auto s_min = fb.square(min_mass);
+            auto s_max = fb.square(fb.sub(max_mass, max_mass_subtract));
             auto [s_vec, det] = _uniform_invariant.build_forward(
                 fb, {next_random()}, {s_min, s_max}
             );
