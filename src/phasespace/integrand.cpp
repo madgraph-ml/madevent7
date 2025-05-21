@@ -73,7 +73,7 @@ ValueVec DifferentialCrossSection::build_function_impl(
     } else {
         auto alpha_s = args.at(5);
         auto batch_size = fb.batch_size({momenta, alpha_s, flavor_id, mirror_id});
-        auto random = fb.random(batch_size, 2LL);
+        auto random = fb.random(batch_size, static_cast<int64_t>(2));
         auto [me2, chan_weights, color_id, diagram_id] = fb.matrix_element_multichannel(
             momenta, alpha_s, random, flavor_id, mirror_id,
             _amp2_remap, _matrix_element_index, _channel_count

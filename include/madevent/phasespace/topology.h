@@ -67,7 +67,7 @@ public:
         double width;
     };
 
-    Topology(const Diagram& diagram, bool manual_integration_order = false);
+    Topology(const Diagram& diagram);
 
     std::size_t t_propagator_count() const { return _t_integration_order.size(); }
     const std::vector<std::size_t>& t_integration_order() const {

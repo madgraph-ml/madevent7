@@ -219,9 +219,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("nu")=0., py::arg("mass")=0., py::arg("width")=0.);
     py::class_<Propagator>(m, "Propagator")
-        .def(py::init<double, double>(), py::arg("mass"), py::arg("width"))
+        .def(py::init<double, double, int>(),
+             py::arg("mass")=0., py::arg("width")=0., py::arg("integration_order")=0)
         .def_readonly("mass", &Propagator::mass)
-        .def_readonly("width", &Propagator::width);
+        .def_readonly("width", &Propagator::width)
+        .def_readonly("integration_order", &Propagator::integration_order);
     py::class_<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<std::size_t>, double>(),
              py::arg("integration_order"), py::arg("nu")=0.);
@@ -284,8 +286,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("outgoing_vertices", &Diagram::outgoing_vertices)
         .def_property_readonly("propagator_vertices", &Diagram::propagator_vertices);
     auto& topology = py::class_<Topology>(m, "Topology")
-        .def(py::init<const Diagram&, bool>(),
-             py::arg("diagram"), py::arg("manual_integration_order")=false)
+        .def(py::init<const Diagram&>(), py::arg("diagram"))
         .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
         .def_property_readonly("t_integration_order", &Topology::t_integration_order)
         .def_property_readonly("t_propagator_masses", &Topology::t_propagator_masses)

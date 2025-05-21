@@ -211,7 +211,7 @@ std::ostream& madevent::operator<<(std::ostream& out, const Diagram::LineRef& va
     return out;
 }
 
-Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
+Topology::Topology(const Diagram& diagram) :
     _outgoing_indices(diagram.outgoing_masses().size()),
     _incoming_masses(diagram.incoming_masses()),
     _outgoing_masses(diagram.outgoing_masses())
@@ -236,17 +236,23 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
 
     _t_integration_order.resize(integration_order.size() - 1);
     std::iota(_t_integration_order.begin(), _t_integration_order.end(), 0);
-    std::reverse(_t_integration_order.begin(), _t_integration_order.end()); // TODO: only call sometimes
-    if (manual_integration_order) {
-        std::stable_sort(
-            _t_integration_order.begin(),
-            _t_integration_order.end(),
-            [&] (std::size_t index1, std::size_t index2) {
-                return integration_order.at(index1 + 1)
-                    < integration_order.at(index2 + 1);
-            }
-        );
-    }
+    std::sort(
+        _t_integration_order.begin(),
+        _t_integration_order.end(),
+        [&](std::size_t i, std::size_t j) {
+            //TODO: maybe smarter heuristic here?
+            return _t_propagator_masses.at(i) < _t_propagator_masses.at(j);
+        }
+    );
+    // stable sort used so that the default integration order is preserved
+    // if propagators have the same integration order argument
+    std::stable_sort(
+        _t_integration_order.begin(),
+        _t_integration_order.end(),
+        [&] (std::size_t i, std::size_t j) {
+            return integration_order.at(i + 1) < integration_order.at(j + 1);
+        }
+    );
 
     integration_order.clear();
     // check if diagram is pure s-channel
@@ -279,16 +285,13 @@ Topology::Topology(const Diagram& diagram, bool manual_integration_order) :
     }
 
     std::reverse(_decay_integration_order.begin(), _decay_integration_order.end());
-    if (manual_integration_order) {
-        std::stable_sort(
-            _decay_integration_order.begin(),
-            _decay_integration_order.end(),
-            [&] (std::size_t index1, std::size_t index2) {
-                return integration_order.at(index1)
-                    < integration_order.at(index2);
-            }
-        );
-    }
+    std::stable_sort(
+        _decay_integration_order.begin(),
+        _decay_integration_order.end(),
+        [&] (std::size_t i, std::size_t j) {
+            return integration_order.at(i) < integration_order.at(j);
+        }
+    );
 }
 
 std::vector<std::tuple<
