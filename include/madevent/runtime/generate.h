@@ -6,7 +6,7 @@
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
 #include "madevent/runtime/io.h"
-#include "madevent/runtime/vegas.h"
+#include "madevent/runtime/vegas_optimizer.h"
 #include "madevent/runtime/runtime_base.h"
 
 namespace madevent {

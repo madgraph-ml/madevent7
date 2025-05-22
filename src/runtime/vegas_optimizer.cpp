@@ -1,4 +1,4 @@
-#include "madevent/runtime/vegas.h"
+#include "madevent/runtime/vegas_optimizer.h"
 
 using namespace madevent;
 

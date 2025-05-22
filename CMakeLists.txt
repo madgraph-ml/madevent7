@@ -112,7 +112,8 @@ add_library(
     src/runtime/generate.cpp
     src/runtime/thread_pool.cpp
     src/runtime/io.cpp
-    src/runtime/vegas.cpp
+    src/runtime/vegas_optimizer.cpp
+    src/runtime/discrete_optimizer.cpp
     src/runtime/runtime_base.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
@@ -147,7 +148,8 @@ add_library(
     include/madevent/runtime/thread_pool.h
     include/madevent/runtime/generate.h
     include/madevent/runtime/io.h
-    include/madevent/runtime/vegas.h
+    include/madevent/runtime/vegas_optimizer.h
+    include/madevent/runtime/discrete_optimizer.h
     include/madevent/runtime/runtime_base.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
