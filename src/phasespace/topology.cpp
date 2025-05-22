@@ -252,7 +252,7 @@ Topology::Topology(const Diagram& diagram) :
         [&] (std::size_t i, std::size_t j) {
             return integration_order.at(i + 1) < integration_order.at(j + 1);
         }
-    );
+    ); //TODO: prevent impossible integration order here
 
     integration_order.clear();
     // check if diagram is pure s-channel

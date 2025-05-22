@@ -432,13 +432,17 @@ void FunctionBuilder::register_local(Value& val) {
     }
 }
 
-/*Value FunctionBuilder::product(const ValueVec& values) {
-    if (values.size() == 0) {
+Value FunctionBuilder::product(const ValueVec& values) {
+    switch (values.size()) {
+    case 0:
         return 1.;
+    case 1:
+        return values.at(0);
+    case 2:
+        return mul(values.at(0), values.at(1));
+    case 3:
+        return mul(mul(values.at(0), values.at(1)), values.at(2));
+    default:
+        return reduce_product(stack(values));
     }
-    auto result = values.at(0);
-    for (auto value = values.begin() + 1; value != values.end(); ++value) {
-        result = mul(result, *value);
-    }
-    return result;
-}*/
+}

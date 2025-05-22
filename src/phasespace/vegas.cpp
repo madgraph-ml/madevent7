@@ -11,7 +11,7 @@ Mapping::Result VegasMapping::build_forward_impl(
         {static_cast<int>(_dimension), static_cast<int>(_bin_count)}
     );
     auto [output, dets] = fb.vegas_forward(inputs.at(0), grid);
-    return {{output}, fb.product(dets)};
+    return {{output}, fb.reduce_product(dets)};
 }
 
 Mapping::Result VegasMapping::build_inverse_impl(
@@ -23,7 +23,7 @@ Mapping::Result VegasMapping::build_inverse_impl(
         {static_cast<int>(_dimension), static_cast<int>(_bin_count)}
     );
     auto [output, dets] = fb.vegas_inverse(inputs.at(0), grid);
-    return {{output}, fb.product(dets)};
+    return {{output}, fb.reduce_product(dets)};
 }
 
 void VegasMapping::initialize_global(ContextPtr context) const {

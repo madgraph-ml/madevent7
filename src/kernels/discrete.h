@@ -17,17 +17,54 @@ KERNELSPEC void kernel_sample_discrete(
 }
 
 template<typename T>
+KERNELSPEC void kernel_sample_discrete_inverse(
+    IIn<T,0> index, IIn<T,0> option_count, FOut<T,0> r, FOut<T,0> det
+) {
+    IVal<T> opt_count_i(option_count), index_i(index);
+    FVal<T> opt_count_f(opt_count_i), index_f(index_i);
+    r = (index_f + 0.5) / opt_count_f;
+    det = 1. / opt_count_f;
+}
+
+template<typename T>
 KERNELSPEC void kernel_sample_discrete_probs(
     FIn<T,0> r, FIn<T,1> probs, IOut<T,0> output, FOut<T,0> det
 ) {
-    FVal<T> cum_prob(0.);
+    FVal<T> prob_norm(0.);
+    for (std::size_t i = 0; i < probs.size(); ++i) {
+        prob_norm = prob_norm + probs[i];
+    }
+    FVal<T> cum_prob(0.), prob_out(0.);
     IVal<T> option(0);
     for (std::size_t i = 0; i < probs.size(); ++i) {
-        cum_prob = cum_prob + probs[i];
-        option = where(r < cum_prob, IVal<T>(i), option);
+        auto prob = probs[i] / prob_norm;
+        cum_prob = cum_prob + prob;
+        auto mask = r < cum_prob;
+        option = where(mask, IVal<T>(i), option);
+        prob_out = where(mask, prob, prob_out);
     }
     output = option;
-    det = 1. / probs.gather(option);
+    det = 1. / prob_out;
+}
+
+template<typename T>
+KERNELSPEC void kernel_sample_discrete_probs_inverse(
+    IIn<T,0> index, FIn<T,1> probs, FOut<T,0> r, FOut<T,0> det
+) {
+    FVal<T> prob_norm(0.);
+    for (std::size_t i = 0; i < probs.size(); ++i) {
+        prob_norm = prob_norm + probs[i];
+    }
+    FVal<T> cum_prob(0.), random(0.), prob_out(0.);
+    for (std::size_t i = 0; i < probs.size(); ++i) {
+        auto prob = probs[i] / prob_norm;
+        cum_prob = cum_prob + prob;
+        auto mask = index == i;
+        random = where(mask, cum_prob + 0.5 * prob, random);
+        prob_out = where(mask, prob, prob_out);
+    }
+    r = random;
+    det = prob_out;
 }
 
 template<typename T>

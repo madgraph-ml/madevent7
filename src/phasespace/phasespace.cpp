@@ -367,9 +367,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto p_ext_lab = _luminosity ? fb.boost_beam(p_ext_stack, x1, x2) : p_ext_stack;
     auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
     dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());
-    Value det_product = dets.size() == 2 ?
-        fb.mul(dets.at(0), dets.at(1)) : fb.product(fb.stack(dets));
-    auto ps_weight = fb.cut_unphysical(det_product, p_ext_lab, x1, x2);
+    auto ps_weight = fb.cut_unphysical(fb.product(dets), p_ext_lab, x1, x2);
     return {{p_ext_lab, x1, x2}, ps_weight};
 }
 

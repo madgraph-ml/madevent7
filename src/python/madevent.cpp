@@ -196,6 +196,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("get_global", &FunctionBuilder::global,
              py::arg("name"), py::arg("dtype"), py::arg("shape"))
         //.def("instruction", &FunctionBuilder::instruction, py::arg("name"), py::arg("args"))
+        .def("product", &FunctionBuilder::product, py::arg("values"))
         .def("function", &FunctionBuilder::function);
     add_instructions(fb);
 
@@ -394,15 +395,54 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("subnet_activation") = MLP::leaky_relu,
              py::arg("invert_spline") = true)
         .def("input_dim", &Flow::input_dim)
-        .def("output_dim", &Flow::condition_dim)
+        .def("condition_dim", &Flow::condition_dim)
         .def("initialize_globals", &Flow::initialize_globals, py::arg("context"));
-
 
     py::class_<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
         .def(py::init<const std::vector<Topology>&,
                       const std::vector<std::vector<std::vector<std::size_t>>>&,
                       const std::vector<std::vector<std::size_t>>>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
+
+    py::class_<MomentumPreprocessing, FunctionGenerator>(m, "MomentumPreprocessing")
+        .def(py::init<std::size_t>(), py::arg("particle_count"))
+        .def("output_dim", &MomentumPreprocessing::output_dim);
+
+    py::class_<ChannelWeightNetwork, FunctionGenerator>(m, "ChannelWeightNetwork")
+        .def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
+                      MLP::Activation, const std::string&>(),
+             py::arg("channel_count"),
+             py::arg("particle_count"),
+             py::arg("hidden_dim") = 32,
+             py::arg("layers") = 3,
+             py::arg("activation") = MLP::leaky_relu,
+             py::arg("prefix") = "")
+        .def("mlp", &ChannelWeightNetwork::mlp)
+        .def("preprocessing", &ChannelWeightNetwork::preprocessing);
+
+    py::class_<DiscreteSampler, Mapping>(m, "DiscreteSampler")
+        .def(py::init<const std::vector<std::size_t>&, const std::string&,
+                      const std::vector<std::size_t>&>(),
+             py::arg("option_counts"), py::arg("prefix") = "",
+             py::arg("dims_with_prior") = std::vector<std::size_t>{})
+        .def("initialize_globals", &DiscreteSampler::initialize_globals,
+             py::arg("context"));
+
+    py::class_<DiscreteFlow, Mapping>(m, "DiscreteFlow")
+        .def(py::init<const std::vector<std::size_t>&, const std::string&,
+                      const std::vector<std::size_t>&, std::size_t, std::size_t,
+                      std::size_t, MLP::Activation>(),
+             py::arg("option_counts"),
+             py::arg("prefix") = "",
+             py::arg("dims_with_prior") = std::vector<std::size_t>{},
+             py::arg("condition_dim") = 0,
+             py::arg("subnet_hidden_dim") = 32,
+             py::arg("subnet_layers") = 3,
+             py::arg("subnet_activation") = MLP::leaky_relu)
+        .def("option_counts", &DiscreteFlow::option_counts)
+        .def("condition_dim", &DiscreteFlow::condition_dim)
+        .def("initialize_globals", &DiscreteFlow::initialize_globals,
+             py::arg("context"));
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())

@@ -23,7 +23,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
-    fb.def("product", &FunctionBuilder::product, py::arg("in"));
+    fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in"));
     fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in"));
     fb.def("square", &FunctionBuilder::square, py::arg("in"));
     fb.def("boost_beam", &FunctionBuilder::boost_beam, py::arg("p1"), py::arg("x1"), py::arg("x2"));
@@ -39,6 +39,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("t_inv_min_max", &FunctionBuilder::t_inv_min_max, py::arg("pa"), py::arg("pb"), py::arg("m1"), py::arg("m2"));
     fb.def("invariants_from_momenta", &FunctionBuilder::invariants_from_momenta, py::arg("p_ext"), py::arg("factors"));
     fb.def("sde2_channel_weights", &FunctionBuilder::sde2_channel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"));
+    fb.def("pt_eta_phi_x", &FunctionBuilder::pt_eta_phi_x, py::arg("p_ext"), py::arg("x1"), py::arg("x2"));
     fb.def("uniform_invariant", &FunctionBuilder::uniform_invariant, py::arg("r"), py::arg("s_min"), py::arg("s_max"));
     fb.def("uniform_invariant_inverse", &FunctionBuilder::uniform_invariant_inverse, py::arg("s"), py::arg("s_min"), py::arg("s_max"));
     fb.def("breit_wigner_invariant", &FunctionBuilder::breit_wigner_invariant, py::arg("r"), py::arg("mass"), py::arg("width"), py::arg("s_min"), py::arg("s_max"));
@@ -70,7 +71,9 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("softmax", &FunctionBuilder::softmax, py::arg("input"));
     fb.def("softmax_prior", &FunctionBuilder::softmax_prior, py::arg("input"), py::arg("prior"));
     fb.def("sample_discrete", &FunctionBuilder::sample_discrete, py::arg("r"), py::arg("option_count"));
+    fb.def("sample_discrete_inverse", &FunctionBuilder::sample_discrete_inverse, py::arg("index"), py::arg("option_count"));
     fb.def("sample_discrete_probs", &FunctionBuilder::sample_discrete_probs, py::arg("r"), py::arg("probs"));
+    fb.def("sample_discrete_probs_inverse", &FunctionBuilder::sample_discrete_probs_inverse, py::arg("index"), py::arg("probs"));
     fb.def("permute_momenta", &FunctionBuilder::permute_momenta, py::arg("momenta"), py::arg("permutations"), py::arg("index"));
     fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
     fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));

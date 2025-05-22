@@ -108,9 +108,7 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
         }
     }
     p_ext.at(_integration_order.back() + 2) = k_rest;
-    auto det = dets.size() == 1 ? dets.at(0) : fb.product(fb.stack(dets));
-
-    return {p_ext, det};
+    return {p_ext, fb.product(dets)};
 }
 
 Mapping::Result TPropagatorMapping::build_inverse_impl(

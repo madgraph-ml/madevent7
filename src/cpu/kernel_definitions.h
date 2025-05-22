@@ -42,6 +42,7 @@ using std::cos;
 using std::sinh;
 using std::cosh;
 using std::atan2;
+using std::atanh;
 using std::pow;
 using std::fabs;
 using std::log;

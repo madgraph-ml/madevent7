@@ -365,5 +365,19 @@ KERNELSPEC void kernel_sde2_channel_weights(
     }
 }
 
+template<typename T>
+KERNELSPEC void kernel_pt_eta_phi_x(FIn<T,2> p_ext, FIn<T,0> x1, FIn<T,0> x2, FOut<T,1> output) {
+    output[0] = x1;
+    output[1] = x2;
+    for (std::size_t i = 2; i < p_ext.size(); ++i) {
+        auto p_i = p_ext[i];
+        auto px = p_i[1], py = p_i[2], pz = p_i[3];
+        auto pt2 = px * px + py * py + 1e-6;
+        output[3*i-4] = 0.5 * log(pt2);
+        output[3*i-3] = atan2(py, px);
+        output[3*i-2] = atanh(pz / sqrt(pt2 + pz * pz));
+    }
+}
+
 }
 }

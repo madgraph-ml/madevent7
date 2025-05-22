@@ -8,7 +8,7 @@ namespace madevent {
 class DiscreteFlow : public Mapping {
 public:
     DiscreteFlow(
-        std::vector<std::size_t> option_counts,
+        const std::vector<std::size_t>& option_counts,
         const std::string& prefix = "",
         const std::vector<std::size_t>& dims_with_prior = {},
         std::size_t condition_dim = 0,
@@ -27,11 +27,18 @@ private:
     Result build_inverse_impl(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
+    Result build_transform(
+        FunctionBuilder& fb,
+        const ValueVec& inputs,
+        const ValueVec& conditions,
+        bool inverse
+    ) const;
+
     std::vector<std::size_t> _option_counts;
     std::size_t _condition_dim;
     std::optional<std::string> _first_prob_name;
     std::vector<MLP> _subnets;
-    std::vector<std::size_t> _dims_with_prior;
+    std::vector<bool> _dim_has_prior;
 };
 
 }

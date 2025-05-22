@@ -125,7 +125,7 @@ mul:
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
 
-product:
+reduce_product:
   inputs:
     - name: in
       type: [float, n]
@@ -443,6 +443,22 @@ sde2_channel_weights:
   outputs:
     - name: channel_weights
       type: [float, c]
+      desc:
+
+pt_eta_phi_x:
+  inputs:
+    - name: p_ext
+      type: [float, n+2, 4]
+      desc:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+  outputs:
+    - name: output
+      type: [float, 3n+2]
       desc:
 
 ---
@@ -1074,6 +1090,22 @@ sample_discrete:
       type: [float]
       desc:
 
+sample_discrete_inverse:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: option_count
+      type: [int, single]
+      desc:
+  outputs:
+    - name: r
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 sample_discrete_probs:
   inputs:
     - name: r
@@ -1085,6 +1117,22 @@ sample_discrete_probs:
   outputs:
     - name: output
       type: [int]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+sample_discrete_probs_inverse:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: probs
+      type: [float, n]
+      desc:
+  outputs:
+    - name: r
+      type: [float]
       desc:
     - name: det
       type: [float]

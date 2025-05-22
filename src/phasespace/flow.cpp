@@ -26,7 +26,7 @@ std::tuple<Value, Value> build_block(
     auto [out, det] = inverse ?
         fb.rqs_inverse(input, rqs_condition) :
         fb.rqs_forward(input, rqs_condition);
-    return {out, fb.product(det)};
+    return {out, fb.reduce_product(det)};
 }
 
 }
@@ -172,8 +172,5 @@ Mapping::Result Flow::build_transform(
         std::for_each(_coupling_blocks.begin(), _coupling_blocks.end(), loop_body);
     }
 
-    return {
-        {fb.select(x, dim_positions)},
-        fb.product(fb.stack(dets))
-    };
+    return {{fb.select(x, dim_positions)}, fb.product(dets)};
 }

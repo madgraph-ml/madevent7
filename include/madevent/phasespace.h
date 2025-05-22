@@ -14,4 +14,7 @@
 #include "phasespace/vegas.h"
 #include "phasespace/mlp.h"
 #include "phasespace/flow.h"
+#include "phasespace/discrete_sampler.h"
+#include "phasespace/discrete_flow.h"
 #include "phasespace/channel_weights.h"
+#include "phasespace/channel_weight_network.h"

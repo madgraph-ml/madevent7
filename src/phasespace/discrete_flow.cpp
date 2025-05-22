@@ -1,11 +1,12 @@
 #include "madevent/phasespace/discrete_flow.h"
 
 #include "madevent/util.h"
+#include "madevent/phasespace/discrete_sampler.h"
 
 using namespace madevent;
 
 DiscreteFlow::DiscreteFlow(
-    std::vector<std::size_t> option_counts,
+    const std::vector<std::size_t>& option_counts,
     const std::string& prefix,
     const std::vector<std::size_t>& dims_with_prior,
     std::size_t condition_dim,
@@ -16,10 +17,19 @@ DiscreteFlow::DiscreteFlow(
     Mapping(
         {batch_float_array(option_counts.size())},
         TypeVec(option_counts.size(), batch_float),
-        condition_dim == 0 ? TypeVec{} : TypeVec{batch_float_array(condition_dim)}
+        [&] {
+            TypeVec cond_types;
+            if (condition_dim > 0) {
+                cond_types.push_back(batch_float_array(condition_dim));
+            }
+            for (std::size_t dim : dims_with_prior) {
+                cond_types.push_back(batch_float_array(option_counts.at(dim)));
+            }
+            return cond_types;
+        }()
     ),
     _option_counts(option_counts),
-    _dims_with_prior(dims_with_prior),
+    _dim_has_prior(option_counts.size()),
     _condition_dim(condition_dim)
 {
     std::size_t option_sum = 0, dim_index = 0;
@@ -40,54 +50,84 @@ DiscreteFlow::DiscreteFlow(
         option_sum += option_count;
         ++dim_index;
     }
+    for (std::size_t dim : dims_with_prior) {
+        _dim_has_prior.at(dim) = true;
+    }
 }
 
 Mapping::Result DiscreteFlow::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    auto random_inputs = fb.unstack(inputs.at(0));
-
-    ValueVec sampled_indices, dets;
-    Value subnet_input;
-    if (_condition_dim != 0) {
-        subnet_input = conditions.at(0);
-    }
-    std::size_t dim_index = 0;
-    int64_t prev_option_count = 0;
-    auto mlp_iter = _subnets.begin();
-    for (auto [option_count, random] : zip(_option_counts, random_inputs)) {
-        Value probs;
-        if (dim_index > 0) {
-            subnet_input = fb.cat({
-                subnet_input, fb.one_hot(sampled_indices.back(), prev_option_count)
-            });
-        }
-        if (dim_index == 0 && _first_prob_name) {
-            probs = fb.global(
-                *_first_prob_name,
-                DataType::dt_float,
-                {static_cast<int>(option_count)}
-            );
-        } else {
-            probs = mlp_iter->build_function(fb, {subnet_input}).at(0);
-            mlp_iter++;
-        }
-        auto [index, det] = fb.sample_discrete_probs(random, probs);
-        sampled_indices.push_back(index);
-        dets.push_back(det);
-        prev_option_count = option_count;
-        ++dim_index;
-    }
-    Value det = dim_index == 1 ? dets.at(0) : fb.product(fb.stack(dets));
-    return {sampled_indices, det};
+    return build_transform(fb, inputs, conditions, false);
 }
 
 Mapping::Result DiscreteFlow::build_inverse_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
+    return build_transform(fb, inputs, conditions, true);
+}
 
+Mapping::Result DiscreteFlow::build_transform(
+    FunctionBuilder& fb,
+    const ValueVec& inputs,
+    const ValueVec& conditions,
+    bool inverse
+) const {
+    auto inputs_unstacked = fb.unstack(inputs.at(0));
+    Value subnet_input;
+    std::size_t dim_index = 0, mlp_index = 0, condition_index = 0;
+    int64_t prev_option_count = 0;
+    if (_condition_dim != 0) {
+        subnet_input = conditions.at(0);
+        ++condition_index;
+    }
+
+    Value prev_index;
+    ValueVec outputs, dets;
+    for (auto [option_count, input, has_prior] : zip(
+        _option_counts, inputs_unstacked, _dim_has_prior
+    )) {
+        if (dim_index > 0) {
+            subnet_input = fb.cat({
+                subnet_input, fb.one_hot(prev_index, prev_option_count)
+            });
+        }
+        Value probs;
+        if (dim_index == 0 && _first_prob_name) {
+            probs = fb.global(
+                _first_prob_name.value(),
+                DataType::dt_float,
+                {static_cast<int>(option_count)}
+            );
+        } else {
+            probs = fb.softmax(
+                _subnets.at(mlp_index).build_function(fb, {subnet_input}).at(0)
+            );
+            ++mlp_index;
+        }
+        if (has_prior) {
+            probs = fb.mul(probs, conditions.at(condition_index));
+            ++condition_index;
+        }
+        auto [output, det] = inverse ?
+            fb.sample_discrete_probs_inverse(input, probs) :
+            fb.sample_discrete_probs(input, probs);
+        outputs.push_back(output);
+        dets.push_back(det);
+        prev_option_count = option_count;
+        prev_index = inverse ? input : output;
+        ++dim_index;
+    }
+    return {outputs, fb.product(dets)};
 }
 
 void DiscreteFlow::initialize_globals(ContextPtr context) const {
-
+    if (_first_prob_name) {
+        initialize_uniform_probs(
+            context, _first_prob_name.value(), _option_counts.at(0)
+        );
+    }
+    for (auto& subnet : _subnets) {
+        subnet.initialize_globals(context);
+    }
 }

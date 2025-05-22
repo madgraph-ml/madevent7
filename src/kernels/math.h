@@ -37,7 +37,7 @@ KERNELSPEC void kernel_mul(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
 }
 
 template<typename T>
-KERNELSPEC void kernel_product(FIn<T,1> in, FOut<T,0> out) {
+KERNELSPEC void kernel_reduce_product(FIn<T,1> in, FOut<T,0> out) {
     FVal<T> product(1.);
     for (std::size_t i = 0; i < in.size(); ++i) {
         product = product * in[i];
@@ -46,7 +46,9 @@ KERNELSPEC void kernel_product(FIn<T,1> in, FOut<T,0> out) {
 }
 
 template<typename T>
-KERNELSPEC void backward_kernel_product(FIn<T,1> in, FIn<T,0> out_grad, FOut<T,1> in_grad) {
+KERNELSPEC void backward_kernel_reduce_product(
+    FIn<T,1> in, FIn<T,0> out_grad, FOut<T,1> in_grad
+) {
     FVal<T> product(1.);
     IVal<T> zero_count(0);
     for (std::size_t i = 0; i < in.size(); ++i) {

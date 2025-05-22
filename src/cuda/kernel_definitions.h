@@ -40,6 +40,7 @@ using ::cos;
 using ::sinh;
 using ::cosh;
 using ::atan2;
+using ::atanh;
 using ::pow;
 using ::fabs;
 using ::log;

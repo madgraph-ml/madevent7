@@ -76,7 +76,7 @@ public:
     Function function();
 
     Value sum(const ValueVec& values);
-    //Value product(const ValueVec& values);
+    Value product(const ValueVec& values);
 
 #include "function_builder_mixin.h"
 

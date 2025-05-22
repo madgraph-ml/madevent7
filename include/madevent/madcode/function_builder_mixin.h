@@ -43,8 +43,8 @@ Value mul(Value in1, Value in2) {
     return instruction("mul", {in1, in2})[0];
 }
 
-Value product(Value in) {
-    return instruction("product", {in})[0];
+Value reduce_product(Value in) {
+    return instruction("reduce_product", {in})[0];
 }
 
 Value sqrt(Value in) {
@@ -113,6 +113,10 @@ Value invariants_from_momenta(Value p_ext, Value factors) {
 
 Value sde2_channel_weights(Value invariants, Value masses, Value widths, Value indices) {
     return instruction("sde2_channel_weights", {invariants, masses, widths, indices})[0];
+}
+
+Value pt_eta_phi_x(Value p_ext, Value x1, Value x2) {
+    return instruction("pt_eta_phi_x", {p_ext, x1, x2})[0];
 }
 
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {
@@ -257,8 +261,18 @@ std::array<Value, 2> sample_discrete(Value r, Value option_count) {
     return {output_vector[0], output_vector[1]};
 }
 
+std::array<Value, 2> sample_discrete_inverse(Value index, Value option_count) {
+    auto output_vector = instruction("sample_discrete_inverse", {index, option_count});
+    return {output_vector[0], output_vector[1]};
+}
+
 std::array<Value, 2> sample_discrete_probs(Value r, Value probs) {
     auto output_vector = instruction("sample_discrete_probs", {r, probs});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> sample_discrete_probs_inverse(Value index, Value probs) {
+    auto output_vector = instruction("sample_discrete_probs_inverse", {index, probs});
     return {output_vector[0], output_vector[1]};
 }
 
