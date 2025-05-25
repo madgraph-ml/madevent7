@@ -22,7 +22,7 @@ DiscreteSampler::DiscreteSampler(
     _dim_has_prior(option_counts.size())
 {
     for (std::size_t i = 0; i < option_counts.size(); ++i) {
-        _prob_names.push_back(std::format("{}prob{}", prefix, i));
+        _prob_names.push_back(prefixed_name(prefix, std::format("prob{}", i)));
     }
     for (std::size_t dim : dims_with_prior) {
         _dim_has_prior.at(dim) = true;

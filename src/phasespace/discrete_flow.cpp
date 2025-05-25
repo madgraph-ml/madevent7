@@ -42,10 +42,10 @@ DiscreteFlow::DiscreteFlow(
                 subnet_hidden_dim,
                 subnet_layers,
                 subnet_activation,
-                std::format("{}subnet{}_", prefix, dim_index + 1)
+                prefixed_name(prefix, std::format("subnet{}_", dim_index + 1))
             );
         } else {
-            _first_prob_name = std::format("{}prob0", prefix);
+            _first_prob_name = prefixed_name(prefix, "prob0");
         }
         option_sum += option_count;
         ++dim_index;

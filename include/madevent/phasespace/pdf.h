@@ -1,0 +1,45 @@
+#pragma once
+
+#include "madevent/phasespace/base.h"
+#include "madevent/runtime/context.h"
+
+namespace madevent {
+
+struct PdfGrid {
+    std::vector<double> x;
+    std::vector<double> logx;
+    std::vector<double> q;
+    std::vector<double> logq2;
+    std::vector<int> pids;
+    std::vector<std::vector<double>> values;
+    std::vector<std::size_t> region_sizes;
+
+    PdfGrid(const std::string& file);
+    std::size_t grid_point_count() const;
+    std::size_t q_count() const;
+    void initialize_coefficients(Tensor tensor) const;
+    void initialize_logx(Tensor tensor) const;
+    void initialize_logq2(Tensor tensor) const;
+    std::vector<std::size_t> coefficients_shape(bool batch_dim = false) const;
+    std::vector<std::size_t> logx_shape(bool batch_dim = false) const;
+    std::vector<std::size_t> logq2_shape(bool batch_dim = false) const;
+};
+
+class PartonDensity : public FunctionGenerator {
+public:
+    PartonDensity(
+        const PdfGrid& grid, const std::vector<int>& pids, const std::string& prefix = ""
+    );
+    void initialize_globals(ContextPtr context, const PdfGrid& pdf_grid);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<int64_t> _pid_indices;
+    std::string _prefix;
+    std::vector<std::size_t> _logx_shape;
+    std::vector<std::size_t> _logq2_shape;
+    std::vector<std::size_t> _coeffs_shape;
+};
+
+}

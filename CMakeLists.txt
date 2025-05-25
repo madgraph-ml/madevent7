@@ -139,6 +139,7 @@ add_library(
     src/phasespace/discrete_sampler.cpp
     src/phasespace/channel_weights.cpp
     src/phasespace/channel_weight_network.cpp
+    src/phasespace/pdf.cpp
     include/madevent/util.h
     include/madevent/runtime.h
     include/madevent/runtime/format.h
@@ -178,6 +179,7 @@ add_library(
     include/madevent/phasespace/discrete_sampler.h
     include/madevent/phasespace/channel_weights.h
     include/madevent/phasespace/channel_weight_network.h
+    include/madevent/phasespace/pdf.h
 )
 
 target_include_directories(madevent PUBLIC include)

@@ -18,3 +18,4 @@
 #include "phasespace/discrete_flow.h"
 #include "phasespace/channel_weights.h"
 #include "phasespace/channel_weight_network.h"
+#include "phasespace/pdf.h"

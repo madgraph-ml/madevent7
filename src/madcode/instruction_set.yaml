@@ -934,6 +934,32 @@ pdf:
       desc:
   custom_op: True
 
+interpolate_pdf:
+  inputs:
+    - name: x
+      type: [float]
+      desc:
+    - name: q2
+      type: [float]
+      desc:
+    - name: pid_indices
+      type: [int, n]
+      desc:
+    - name: grid_logx
+      type: [float, single, a]
+      desc:
+    - name: grid_logq2
+      type: [float, single, b]
+      desc:
+    - name: grid_coeffs
+      type: [float, single, 16, c, d]
+      desc:
+  outputs:
+    - name: pdf
+      type: [float, n]
+      desc:
+  vectorized: False
+
 ---
 title: Normalizing flows and MLPs
 

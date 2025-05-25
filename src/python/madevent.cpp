@@ -496,6 +496,27 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 
+    py::class_<PdfGrid>(m, "PdfGrid")
+        .def(py::init<const std::string&>(), py::arg("file"))
+        .def_readonly("x", &PdfGrid::x)
+        .def_readonly("logx", &PdfGrid::logx)
+        .def_readonly("q", &PdfGrid::q)
+        .def_readonly("q2", &PdfGrid::logq2)
+        .def_readonly("pids", &PdfGrid::pids)
+        .def_readonly("values", &PdfGrid::values)
+        .def_readonly("region_sizes", &PdfGrid::region_sizes)
+        .def_property_readonly("grid_point_count", &PdfGrid::grid_point_count)
+        .def_property_readonly("q_count", &PdfGrid::q_count)
+        .def("coefficients_shape", &PdfGrid::coefficients_shape, py::arg("batch_dim")=false)
+        .def("logx_shape", &PdfGrid::logx_shape, py::arg("batch_dim")=false)
+        .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim")=false);
+
+    py::class_<PartonDensity, FunctionGenerator>(m, "PartonDensity")
+        .def(py::init<const PdfGrid&, const std::vector<int>&, const std::string&>(),
+             py::arg("grid"), py::arg("pids"), py::arg("prefix")="")
+        .def("initialize_globals", &PartonDensity::initialize_globals,
+             py::arg("context"), py::arg("pdf_grid"));
+
     m.def("set_thread_count", &ThreadPool::set_thread_count, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));

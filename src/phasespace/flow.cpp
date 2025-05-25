@@ -75,7 +75,7 @@ Flow::Flow(
                 subnet_hidden_dim,
                 subnet_layers,
                 subnet_activation,
-                std::format("{}subnet{}a_", prefix, block_index + 1)
+                prefixed_name(prefix, std::format("subnet{}a_", block_index + 1))
             ),
             MLP(
                 indices1.size() + condition_dim,
@@ -83,7 +83,7 @@ Flow::Flow(
                 subnet_hidden_dim,
                 subnet_layers,
                 subnet_activation,
-                std::format("{}subnet{}b_", prefix, block_index + 1)
+                prefixed_name(prefix, std::format("subnet{}b_", block_index + 1))
             ),
             indices1,
             indices2

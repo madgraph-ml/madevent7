@@ -9,4 +9,5 @@
 #include "nn.h"
 #include "discrete.h"
 #include "vegas.h"
+#include "pdf.h"
 

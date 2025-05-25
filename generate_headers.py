@@ -166,8 +166,13 @@ def runtime_mixin(commands, device):
                 n_inputs = len(cmd["inputs"])
                 n_outputs = len(cmd["outputs"])
                 dims = cmd.get("dims", 1)
+                vectorized = cmd.get("vectorized", True)
+
                 if device == "cpu":
-                    kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
+                    if vectorized:
+                        kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
+                    else:
+                        kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<CpuTypes>"
                 elif device == "cuda":
                     kernel = f"kernel_{name}<CudaTypes>"
                 foreach_func = (

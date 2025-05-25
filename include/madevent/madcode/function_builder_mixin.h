@@ -221,6 +221,10 @@ Value pdf(Value x, Value q2, Value pid) {
     return instruction("pdf", {x, q2, pid})[0];
 }
 
+Value interpolate_pdf(Value x, Value q2, Value pid_indices, Value grid_logx, Value grid_logq2, Value grid_coeffs) {
+    return instruction("interpolate_pdf", {x, q2, pid_indices, grid_logx, grid_logq2, grid_coeffs})[0];
+}
+
 Value matmul(Value x, Value weight, Value bias) {
     return instruction("matmul", {x, weight, bias})[0];
 }
