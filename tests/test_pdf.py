@@ -1,0 +1,41 @@
+import pytest
+from pytest import approx
+import madevent7 as me
+import numpy as np
+import os
+
+PDF_SET = "NNPDF40_nlo_as_01180"
+
+try:
+    import lhapdf
+    lhapdf.setVerbosity(0)
+    reference_pdf = lhapdf.mkPDF(PDF_SET, 0)
+except ImportError:
+    lhapdf = None
+except RuntimeError:
+    reference_pdf = None
+
+pytestmark = [
+    pytest.mark.skipif(lhapdf is None, reason="lhapdf required to run this test"),
+    pytest.mark.skipif(lhapdf is None, reason=f"pdf set {PDF_SET} required to run this test"),
+]
+
+def test_pdf():
+    ctx = me.default_context()
+    grid = me.PdfGrid(os.path.join(lhapdf.paths()[0], PDF_SET, f"{PDF_SET}_0000.dat"))
+    pids = [-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5]
+    pdf = me.PartonDensity(grid, pids)
+    pdf.initialize_globals(ctx, grid)
+
+    xs = np.logspace(
+        np.log10(reference_pdf.xMin) + 1e-6, np.log10(reference_pdf.xMax), 100
+    )
+    q2s = np.logspace(
+        np.log10(reference_pdf.q2Min) + 1e-6, np.log10(reference_pdf.q2Max), 100
+    )
+    x_grid, q2_grid = np.meshgrid(xs, q2s)
+    x, q2 = x_grid.flatten(), q2_grid.flatten()
+
+    result = pdf(x, q2)
+    reference = np.array(reference_pdf.xfxQ2(pids, x.tolist(), q2.tolist()))
+    assert result == approx(reference)

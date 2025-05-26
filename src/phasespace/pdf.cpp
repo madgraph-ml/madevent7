@@ -101,6 +101,9 @@ std::array<double, 16> compute_coeffs(
 
 PdfGrid::PdfGrid(const std::string& file) {
     std::ifstream grid_file(file);
+    if (!grid_file) {
+        throw std::runtime_error(std::format("could not open file '{}'", file));
+    }
     int line_type = 0;
     std::size_t expected_value_count = 0, x_index = 0, q_index = 0, q_start = 0;
     for (std::string line; std::getline(grid_file, line);) {
@@ -293,7 +296,7 @@ PartonDensity::PartonDensity(
     for (int pid : pids) {
         auto find_pid = std::find(grid.pids.begin(), grid.pids.end(), pid);
         if (find_pid == grid.pids.end()) {
-            throw std::invalid_argument("PID not found in pdf grid");
+            throw std::invalid_argument(std::format("PID {} not found in pdf grid", pid));
         }
         _pid_indices.push_back(find_pid - grid.pids.begin());
     }
