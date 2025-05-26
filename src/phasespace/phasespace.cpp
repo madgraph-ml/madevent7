@@ -87,8 +87,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     ),
     _s_lab(s_lab),
     _leptonic(leptonic),
-    _t_mapping(std::monostate{}),
-    _permutations(permutations)
+    _t_mapping(std::monostate{})
 {
     bool has_t_channel = _topology.t_propagator_count() > 0;
     struct DecayInfo {
@@ -176,6 +175,10 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         } else {
             _luminosity = Luminosity(_s_lab, s_hat_min);
         }
+    }
+
+    for (auto& perm : permutations) {
+        _permutations.emplace_back(perm.begin(), perm.end());
     }
 }
 
@@ -348,18 +351,9 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto p_ext_stack = fb.stack(p_ext);
 
     // permute momenta if permutations are given
-    if (_permutations.size() > 1) {
-        std::vector<std::vector<int64_t>> permutations;
-        for (auto& perm : _permutations) {
-            auto& new_perm = permutations.emplace_back();
-            new_perm.push_back(0); //TODO: maybe remove this
-            new_perm.push_back(1);
-            for (auto index : perm) {
-                new_perm.push_back(index + 2);
-            }
-        }
+    if (_permutations.size() > 0) {
         p_ext_stack = fb.permute_momenta(
-            p_ext_stack, permutations, conditions.at(0)
+            p_ext_stack, _permutations, conditions.at(0)
         );
     }
 

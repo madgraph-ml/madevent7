@@ -1,0 +1,86 @@
+import pytest
+from pytest import approx
+import madevent7 as me
+import numpy as np
+import math
+import json
+from glob import glob
+import os
+
+BATCH_SIZE = 1000
+S_LAB = 13000.**2
+rng = np.random.default_rng(1234)
+
+def load_processes():
+    proc_files = glob(os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "processes", "*.json"
+    ))
+    ret = []
+    for file in proc_files:
+        proc_name = os.path.splitext(os.path.basename(file))[0]
+        with open(file) as f:
+            diagrams = json.load(f)
+        ret.extend(
+            pytest.param(diagram, id=f"{proc_name}-{i}")
+            for i, diagram in enumerate(diagrams)
+        )
+    return ret
+
+@pytest.fixture(params=load_processes())
+def process(request):
+    return request.param
+
+@pytest.fixture
+def mapping(process):
+    diagram = me.Diagram(
+        process["incoming_masses"],
+        process["outgoing_masses"],
+        [me.Propagator(*prop) for prop in process["propagators"]],
+        process["vertices"],
+    )
+    topology = me.Topology(diagram)
+    return me.PhaseSpaceMapping(
+        topology, S_LAB, permutations=process["permutations"]
+    )
+
+@pytest.fixture
+def masses(process):
+    return process["incoming_masses"] + process["outgoing_masses"]
+
+@pytest.fixture
+def permutation_count(process):
+    return len(process["permutations"])
+
+def test_process_masses(mapping, masses, permutation_count):
+    r = rng.random((BATCH_SIZE, mapping.random_dim()))
+    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
+    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    m_ext_true = np.full((BATCH_SIZE, len(masses)), masses)
+    m_ext = np.sqrt(np.maximum(0, p_ext[:,:,0]**2 - np.sum(p_ext[:,:,1:]**2, axis=2)))
+    assert m_ext == approx(m_ext_true, abs=1e-3, rel=1e-3)
+
+def test_process_incoming(mapping, masses, permutation_count):
+    r = rng.random((BATCH_SIZE, mapping.random_dim()))
+    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
+    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    zeros = np.zeros(BATCH_SIZE)
+    p_a = p_ext[:,0]
+    p_b = p_ext[:,1]
+    e_beam = 0.5 * S_LAB**0.5
+
+    assert p_a[:,0] == approx(p_a[:,3]) and p_b[:,0] == approx(-p_b[:,3])
+    assert p_a[:,1] == approx(zeros) and p_a[:,2] == approx(zeros)
+    assert p_b[:,1] == approx(zeros) and p_b[:,2] == approx(zeros)
+    assert np.all(x1 >= 0) and np.all(x1 <= 1)
+    assert np.all(x2 >= 0) and np.all(x2 <= 1)
+    assert p_a[:,0] == approx(e_beam * x1)
+    assert p_b[:,0] == approx(e_beam * x2)
+
+def test_process_momentum_conservation(mapping, masses, permutation_count):
+    r = rng.random((BATCH_SIZE, mapping.random_dim()))
+    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
+    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    p_in = np.sum(p_ext[:, :2], axis=1)
+    p_out = np.sum(p_ext[:, 2:], axis=1)
+
+    assert p_out == approx(p_in, rel=1e-6, abs=1e-10)

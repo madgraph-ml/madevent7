@@ -234,33 +234,37 @@ Topology::Topology(const Diagram& diagram) :
         -1
     );
 
-    _t_integration_order.resize(integration_order.size() - 1);
-    std::iota(_t_integration_order.begin(), _t_integration_order.end(), 0);
-    std::sort(
-        _t_integration_order.begin(),
-        _t_integration_order.end(),
-        [&](std::size_t i, std::size_t j) {
-            //TODO: maybe smarter heuristic here?
-            return _t_propagator_masses.at(i) < _t_propagator_masses.at(j);
+    // sort by integration order and propagator mass, while preventing
+    // impossible integration orders
+    bool choose_low = false;
+    std::size_t index_low = 0, index_high = integration_order.size() - 1;
+    while (index_low != index_high) {
+        int order_low = integration_order.at(index_low);
+        int order_high = integration_order.at(index_high - 1);
+        double mass_low = _t_propagator_masses.at(index_low);
+        double mass_high = _t_propagator_masses.at(index_high - 1);
+        if (order_low != order_high) {
+            choose_low = order_low < order_high;
+        } else if (mass_low != mass_high) { //TODO: maybe smarter heuristic here?
+            choose_low = mass_low < mass_high;
         }
-    );
-    // stable sort used so that the default integration order is preserved
-    // if propagators have the same integration order argument
-    std::stable_sort(
-        _t_integration_order.begin(),
-        _t_integration_order.end(),
-        [&] (std::size_t i, std::size_t j) {
-            return integration_order.at(i + 1) < integration_order.at(j + 1);
+        if (choose_low) {
+            _t_integration_order.push_back(index_low);
+            ++index_low;
+        } else {
+            _t_integration_order.push_back(index_high - 1);
+            --index_high;
         }
-    ); //TODO: prevent impossible integration order here
+    }
 
     integration_order.clear();
+    std::vector<std::size_t> decay_indices;
     // check if diagram is pure s-channel
     if (lines_after_t.size() == 1) {
         build_decays(
             diagram,
             _decays,
-            _decay_integration_order,
+            decay_indices,
             integration_order,
             _outgoing_indices,
             t_vertices.at(0),
@@ -274,7 +278,7 @@ Topology::Topology(const Diagram& diagram) :
             build_decays(
                 diagram,
                 _decays,
-                _decay_integration_order,
+                decay_indices,
                 integration_order,
                 _outgoing_indices,
                 t_vertex,
@@ -284,14 +288,18 @@ Topology::Topology(const Diagram& diagram) :
         }
     }
 
-    std::reverse(_decay_integration_order.begin(), _decay_integration_order.end());
+    std::vector<std::size_t> decay_perm(integration_order.size());
+    std::iota(decay_perm.rbegin(), decay_perm.rend(), 0);
     std::stable_sort(
-        _decay_integration_order.begin(),
-        _decay_integration_order.end(),
+        decay_perm.begin(),
+        decay_perm.end(),
         [&] (std::size_t i, std::size_t j) {
             return integration_order.at(i) < integration_order.at(j);
         }
     );
+    for (std::size_t index : decay_perm) {
+        _decay_integration_order.push_back(decay_indices.at(index));
+    }
 }
 
 std::vector<std::tuple<
