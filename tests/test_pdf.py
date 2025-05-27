@@ -39,3 +39,17 @@ def test_pdf():
     result = pdf(x, q2)
     reference = np.array(reference_pdf.xfxQ2(pids, x.tolist(), q2.tolist()))
     assert result == approx(reference)
+
+def test_alpha_s():
+    ctx = me.default_context()
+    grid = me.AlphaSGrid(os.path.join(lhapdf.paths()[0], PDF_SET, f"{PDF_SET}.info"))
+    alpha_s = me.RunningCoupling(grid)
+    alpha_s.initialize_globals(ctx, grid)
+
+    q2 = np.logspace(
+        np.log10(reference_pdf.q2Min) + 1e-6, np.log10(reference_pdf.q2Max), 1000
+    )
+
+    result = alpha_s(q2)
+    reference = np.array([reference_pdf.alphasQ2(q2_item) for q2_item in q2])
+    assert result == approx(reference)

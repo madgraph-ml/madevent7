@@ -30,7 +30,7 @@ public:
     PartonDensity(
         const PdfGrid& grid, const std::vector<int>& pids, const std::string& prefix = ""
     );
-    void initialize_globals(ContextPtr context, const PdfGrid& pdf_grid);
+    void initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) const;
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
@@ -38,6 +38,33 @@ private:
     std::vector<int64_t> _pid_indices;
     std::string _prefix;
     std::vector<std::size_t> _logx_shape;
+    std::vector<std::size_t> _logq2_shape;
+    std::vector<std::size_t> _coeffs_shape;
+};
+
+struct AlphaSGrid {
+    std::vector<double> q;
+    std::vector<double> logq2;
+    std::vector<double> values;
+    std::vector<std::size_t> region_sizes;
+
+    AlphaSGrid(const std::string& file);
+    std::size_t q_count() const;
+    void initialize_coefficients(Tensor tensor) const;
+    void initialize_logq2(Tensor tensor) const;
+    std::vector<std::size_t> coefficients_shape(bool batch_dim = false) const;
+    std::vector<std::size_t> logq2_shape(bool batch_dim = false) const;
+};
+
+class RunningCoupling : public FunctionGenerator {
+public:
+    RunningCoupling(const AlphaSGrid& grid, const std::string& prefix = "");
+    void initialize_globals(ContextPtr context, const AlphaSGrid& grid) const;
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::string _prefix;
     std::vector<std::size_t> _logq2_shape;
     std::vector<std::size_t> _coeffs_shape;
 };

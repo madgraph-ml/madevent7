@@ -8,6 +8,17 @@ using namespace madevent;
 
 namespace {
 
+std::string trim(const std::string_view& str) {
+    return {
+        std::find_if(
+            str.begin(), str.end(), [](auto c) { return !std::isspace(c); }
+        ),
+        std::find_if(
+            str.rbegin(), str.rend(), [](auto c) { return !std::isspace(c); }
+        ).base()
+    };
+}
+
 std::vector<double> read_doubles(const std::string& str) {
     std::istringstream sstream(str);
     return {std::istream_iterator<double>(sstream), std::istream_iterator<double>{}};
@@ -97,6 +108,26 @@ std::array<double, 16> compute_coeffs(
     };
 }
 
+void init_logq2(
+    Tensor tensor, const std::vector<std::size_t>& region_sizes, const std::vector<double> logq2
+) {
+    //TODO: check shapes and device
+    auto tensor_view = tensor.view<double, 2>()[0];
+    std::size_t index_out = 1, index_in = 0;
+    tensor_view[0] = -std::numeric_limits<double>::max();
+    for (std::size_t region_size : region_sizes) {
+        for (
+            std::size_t i = index_in == 0 ? 0 : 1;
+            i < region_size + 1;
+            ++i, ++index_in, ++index_out
+        ) {
+            tensor_view[index_out] = logq2.at(index_in);
+        }
+        ++index_in;
+    }
+    tensor_view[index_out] = std::numeric_limits<double>::max();
+}
+
 }
 
 PdfGrid::PdfGrid(const std::string& file) {
@@ -107,16 +138,8 @@ PdfGrid::PdfGrid(const std::string& file) {
     int line_type = 0;
     std::size_t expected_value_count = 0, x_index = 0, q_index = 0, q_start = 0;
     for (std::string line; std::getline(grid_file, line);) {
-        // remove leading and trailing spaces
-        line = {
-            std::find_if(
-                line.begin(), line.end(), [](auto c) { return !std::isspace(c); }
-            ),
-            std::find_if(
-                line.rbegin(), line.rend(), [](auto c) { return !std::isspace(c); }
-            ).base()
-        };
-        // skip comments
+        // skip comments and remove leading and trailing spaces
+        line = trim(line);
         if (line.find("#") == 0 || line == "") continue;
 
         switch (line_type) {
@@ -243,21 +266,7 @@ void PdfGrid::initialize_logx(Tensor tensor) const {
 }
 
 void PdfGrid::initialize_logq2(Tensor tensor) const {
-    //TODO: check shapes and device
-    auto tensor_view = tensor.view<double, 2>()[0];
-    std::size_t index_out = 1, index_in = 0;
-    tensor_view[0] = -std::numeric_limits<double>::max();
-    for (std::size_t region_size : region_sizes) {
-        for (
-            std::size_t i = index_in == 0 ? 0 : 1;
-            i < region_size + 1;
-            ++i, ++index_in, ++index_out
-        ) {
-            tensor_view[index_out] = logq2.at(index_in);
-        }
-        ++index_in;
-    }
-    tensor_view[index_out] = std::numeric_limits<double>::max();
+    init_logq2(tensor, region_sizes, logq2);
 }
 
 std::vector<std::size_t> PdfGrid::coefficients_shape(bool batch_dim) const {
@@ -302,15 +311,15 @@ PartonDensity::PartonDensity(
     }
 }
 
-void PartonDensity::initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) {
+void PartonDensity::initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) const {
     auto logx_tensor_global = context->define_global(
-        prefixed_name(_prefix, "logx"), DataType::dt_float, pdf_grid.logx_shape()
+        prefixed_name(_prefix, "pdf_logx"), DataType::dt_float, pdf_grid.logx_shape()
     );
     auto q2_tensor_global = context->define_global(
-        prefixed_name(_prefix, "logq2"), DataType::dt_float, pdf_grid.logq2_shape()
+        prefixed_name(_prefix, "pdf_logq2"), DataType::dt_float, pdf_grid.logq2_shape()
     );
     auto coeffs_tensor_global = context->define_global(
-        prefixed_name(_prefix, "coefficients"),
+        prefixed_name(_prefix, "pdf_coefficients"),
         DataType::dt_float,
         pdf_grid.coefficients_shape()
     );
@@ -341,19 +350,197 @@ ValueVec PartonDensity::build_function_impl(
     auto x = args.at(0);
     auto q2 = args.at(1);
     auto grid_logx = fb.global(
-        prefixed_name(_prefix, "logx"),
+        prefixed_name(_prefix, "pdf_logx"),
         DataType::dt_float,
         {_logx_shape.begin(), _logx_shape.end()}
     );
     auto grid_logq2 = fb.global(
-        prefixed_name(_prefix, "logq2"),
+        prefixed_name(_prefix, "pdf_logq2"),
         DataType::dt_float,
         {_logq2_shape.begin(), _logq2_shape.end()}
     );
     auto grid_coeffs = fb.global(
-        prefixed_name(_prefix, "coefficients"),
+        prefixed_name(_prefix, "pdf_coefficients"),
         DataType::dt_float,
         {_coeffs_shape.begin(), _coeffs_shape.end()}
     );
     return {fb.interpolate_pdf(x, q2, _pid_indices, grid_logx, grid_logq2, grid_coeffs)};
+}
+
+AlphaSGrid::AlphaSGrid(const std::string& file) {
+    std::ifstream grid_file(file);
+    if (!grid_file) {
+        throw std::runtime_error(std::format("could not open file '{}'", file));
+    }
+    for (std::string line; std::getline(grid_file, line);) {
+        // skip comments and remove leading and trailing spaces
+        line = trim(line);
+
+        // minimalistic parser to read yaml-like data
+        // does the job in practice, but makes a lot of assumptions on the
+        // structure of the data
+        auto colon_pos = std::find(line.begin(), line.end(), ':');
+        if (colon_pos == line.end()) continue;
+        auto key = trim({line.begin(), colon_pos});
+        auto value = trim({colon_pos + 1, line.end()});
+        bool is_q;
+        if (key == "AlphaS_Qs") {
+            is_q = true;
+        } else if (key == "AlphaS_Vals") {
+            is_q = false;
+        } else {
+            continue;
+        }
+        auto list_begin = std::find(value.begin(), value.end(), '[');
+        if (list_begin == value.end()) {
+            throw std::runtime_error("expected list of values");
+        }
+        std::stringstream all_values;
+        all_values << std::string_view{list_begin + 1, value.end()};
+        for (; std::getline(grid_file, line);) {
+            auto list_end = std::find(line.begin(), line.end(), ']');
+            if (list_end == line.end()) {
+                all_values << line;
+            } else {
+                all_values << std::string_view{line.begin(), list_end};
+                break;
+            }
+        }
+        std::vector<double> val_list;
+        for (auto val_range : std::views::split(all_values.str(), ',')) {
+            auto val_str = trim({val_range.begin(), val_range.end()});
+            if (val_str.empty()) continue;
+            val_list.push_back(std::stod(val_str));
+        }
+        if (is_q) {
+            q = val_list;
+            region_sizes.push_back(0);
+            for (auto [q1, q2] : zip(q, q | std::views::drop(1))) {
+                if (q1 == q2) {
+                    region_sizes.push_back(0);
+                } else {
+                    ++region_sizes.back();
+                }
+            }
+            logq2.resize(q.size());
+            std::transform(
+                q.begin(), q.end(), logq2.begin(), [](auto qi) { return 2. * std::log(qi); }
+            );
+        } else {
+            values = val_list;
+        }
+    }
+}
+
+std::size_t AlphaSGrid::q_count() const {
+    return q.size() - region_sizes.size() + 1;
+}
+
+void AlphaSGrid::initialize_coefficients(Tensor tensor) const {
+    //TODO: check shapes and device
+    tensor.zero();
+    auto tensor_view = tensor.view<double, 3>()[0];
+    std::size_t grid_idx = 1, q_idx = 0;
+    for (std::size_t region_size : region_sizes) {
+        for (
+            std::size_t region_idx = 0;
+            region_idx < region_size;
+            ++region_idx, ++q_idx, ++grid_idx
+        ) {
+            auto diff = [&](std::size_t i) {
+                return (values.at(i+1) - values.at(i)) / (logq2.at(i+1) - logq2.at(i));
+            };
+            double diff0, diff1;
+            if (region_idx == 0) {
+                diff0 = diff(q_idx);
+                diff1 = 0.5 * (diff(q_idx + 1) + diff(q_idx));
+            } else if (region_idx == region_size - 1) {
+                diff0 = 0.5 * (diff(q_idx) + diff(q_idx - 1));
+                diff1 = diff(q_idx);
+            } else {
+                diff0 = 0.5 * (diff(q_idx) + diff(q_idx - 1));
+                diff1 = 0.5 * (diff(q_idx + 1) + diff(q_idx));
+            }
+            double dlogq2 = logq2.at(q_idx + 1) - logq2.at(q_idx);
+            tensor_view[0][grid_idx] = values.at(q_idx);
+            tensor_view[1][grid_idx] = values.at(q_idx + 1);
+            tensor_view[2][grid_idx] = diff0 * dlogq2;
+            tensor_view[3][grid_idx] = diff1 * dlogq2;
+        }
+        ++q_idx;
+    }
+}
+
+void AlphaSGrid::initialize_logq2(Tensor tensor) const {
+    init_logq2(tensor, region_sizes, logq2);
+}
+
+std::vector<std::size_t> AlphaSGrid::coefficients_shape(bool batch_dim) const {
+    if (batch_dim) {
+        return {1, 4, q_count() + 1};
+    } else {
+        return {4, q_count() + 1};
+    }
+
+}
+
+std::vector<std::size_t> AlphaSGrid::logq2_shape(bool batch_dim) const {
+    if (batch_dim) {
+        return {1, q_count() + 2};
+    } else {
+        return {q_count() + 2};
+    }
+}
+
+RunningCoupling::RunningCoupling(
+    const AlphaSGrid& grid, const std::string& prefix
+) :
+    FunctionGenerator({batch_float}, {batch_float}),
+    _prefix(prefix),
+    _logq2_shape(grid.logq2_shape()),
+    _coeffs_shape(grid.coefficients_shape())
+{}
+
+void RunningCoupling::initialize_globals(ContextPtr context, const AlphaSGrid& grid) const {
+    auto q2_tensor_global = context->define_global(
+        prefixed_name(_prefix, "alpha_s_logq2"), DataType::dt_float, grid.logq2_shape()
+    );
+    auto coeffs_tensor_global = context->define_global(
+        prefixed_name(_prefix, "alpha_s_coefficients"),
+        DataType::dt_float,
+        grid.coefficients_shape()
+    );
+    bool is_cpu = context->device() == cpu_device();
+    Tensor logx_tensor, q2_tensor, coeffs_tensor;
+    if (is_cpu) {
+        q2_tensor = q2_tensor_global;
+        coeffs_tensor = coeffs_tensor_global;
+    } else {
+        q2_tensor = Tensor(DataType::dt_float, grid.logq2_shape(true));
+        coeffs_tensor = Tensor(DataType::dt_float, grid.coefficients_shape(true));
+    }
+    grid.initialize_logq2(q2_tensor);
+    grid.initialize_coefficients(coeffs_tensor);
+    if (!is_cpu) {
+        q2_tensor_global.copy_from(q2_tensor);
+        coeffs_tensor_global.copy_from(coeffs_tensor);
+    }
+}
+
+ValueVec RunningCoupling::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
+) const {
+    auto q2 = args.at(0);
+    auto grid_logq2 = fb.global(
+        prefixed_name(_prefix, "alpha_s_logq2"),
+        DataType::dt_float,
+        {_logq2_shape.begin(), _logq2_shape.end()}
+    );
+    auto grid_coeffs = fb.global(
+        prefixed_name(_prefix, "alpha_s_coefficients"),
+        DataType::dt_float,
+        {_coeffs_shape.begin(), _coeffs_shape.end()}
+    );
+    return {fb.interpolate_alpha_s(q2, grid_logq2, grid_coeffs)};
+
 }

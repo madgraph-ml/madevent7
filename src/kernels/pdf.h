@@ -66,5 +66,30 @@ KERNELSPEC void kernel_interpolate_pdf(
     }
 }
 
+template<typename T>
+KERNELSPEC void kernel_interpolate_alpha_s(
+    FIn<T,0> q2, FIn<T,1> grid_logq2, FIn<T,2> grid_coeffs, FOut<T,0> alpha_s
+) {
+    auto logq2 = log(q2);
+    FVal<T> logq2_low, logq2_high;
+    std::size_t q2_index = binary_search<T>(logq2, grid_logq2, logq2_low, logq2_high);
+
+    auto t_logq2 = (logq2 - logq2_low) / (logq2_high - logq2_low);
+    auto t_logq2_2 = t_logq2 * t_logq2;
+    auto t_logq2_3 = t_logq2_2 * t_logq2;
+
+    auto vl_val = 2*t_logq2_3 - 3*t_logq2_2 + 1;
+    auto vdl_val = t_logq2_3 - 2*t_logq2_2 + t_logq2;
+    auto vh_val = -2*t_logq2_3 + 3*t_logq2_2;
+    auto vdh_val = t_logq2_3 - t_logq2_2;
+    FVal<T> values[4] = {vl_val, vh_val, vdl_val, vdh_val};
+
+    FVal<T> result(0.);
+    for (std::size_t j = 0; j < 4; ++j) {
+        result = result + values[j] * grid_coeffs.get(j, q2_index);
+    }
+    alpha_s = result;
+}
+
 }
 }

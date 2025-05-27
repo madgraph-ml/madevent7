@@ -501,7 +501,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("x", &PdfGrid::x)
         .def_readonly("logx", &PdfGrid::logx)
         .def_readonly("q", &PdfGrid::q)
-        .def_readonly("q2", &PdfGrid::logq2)
+        .def_readonly("logq2", &PdfGrid::logq2)
         .def_readonly("pids", &PdfGrid::pids)
         .def_readonly("values", &PdfGrid::values)
         .def_readonly("region_sizes", &PdfGrid::region_sizes)
@@ -516,6 +516,23 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("grid"), py::arg("pids"), py::arg("prefix")="")
         .def("initialize_globals", &PartonDensity::initialize_globals,
              py::arg("context"), py::arg("pdf_grid"));
+
+    py::class_<AlphaSGrid>(m, "AlphaSGrid")
+        .def(py::init<const std::string&>(), py::arg("file"))
+        .def_readonly("q", &AlphaSGrid::q)
+        .def_readonly("logq2", &AlphaSGrid::logq2)
+        .def_readonly("values", &AlphaSGrid::values)
+        .def_readonly("region_sizes", &AlphaSGrid::region_sizes)
+        .def_property_readonly("q_count", &AlphaSGrid::q_count)
+        .def("coefficients_shape", &AlphaSGrid::coefficients_shape,
+             py::arg("batch_dim")=false)
+        .def("logq2_shape", &AlphaSGrid::logq2_shape, py::arg("batch_dim")=false);
+
+    py::class_<RunningCoupling, FunctionGenerator>(m, "RunningCoupling")
+        .def(py::init<const AlphaSGrid&, const std::string&>(),
+             py::arg("grid"), py::arg("prefix")="")
+        .def("initialize_globals", &RunningCoupling::initialize_globals,
+             py::arg("context"), py::arg("grid"));
 
     m.def("set_thread_count", &ThreadPool::set_thread_count, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));

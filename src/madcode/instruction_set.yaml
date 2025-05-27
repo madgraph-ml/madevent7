@@ -960,6 +960,23 @@ interpolate_pdf:
       desc:
   vectorized: False
 
+interpolate_alpha_s:
+  inputs:
+    - name: q2
+      type: [float]
+      desc:
+    - name: grid_logq2
+      type: [float, single, b+1]
+      desc:
+    - name: grid_coeffs
+      type: [float, single, 4, b]
+      desc:
+  outputs:
+    - name: alpha_s
+      type: [float]
+      desc:
+  vectorized: False
+
 ---
 title: Normalizing flows and MLPs
 
