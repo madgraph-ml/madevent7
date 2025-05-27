@@ -217,10 +217,6 @@ std::array<Value, 4> matrix_element_multichannel(Value momenta, Value alpha_s, V
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-Value pdf(Value x, Value q2, Value pid) {
-    return instruction("pdf", {x, q2, pid})[0];
-}
-
 Value interpolate_pdf(Value x, Value q2, Value pid_indices, Value grid_logx, Value grid_logq2, Value grid_coeffs) {
     return instruction("interpolate_pdf", {x, q2, pid_indices, grid_logx, grid_logq2, grid_coeffs})[0];
 }

@@ -64,8 +64,10 @@ ValueVec DifferentialCrossSection::build_function_impl(
         pid1 = pids.at(0);
         pid2 = pids.at(1);
     }
-    auto pdf1 = fb.pdf(x1, _q2, pid1);
-    auto pdf2 = fb.pdf(x2, _q2, pid2);
+    //auto pdf1 = fb.pdf(x1, _q2, pid1);
+    //auto pdf2 = fb.pdf(x2, _q2, pid2);
+    //TODO: pdfs
+    Value pdf1, pdf2;
     if (_simple_matrix_element) {
         auto me2 = fb.matrix_element(momenta, flavor_id, mirror_id, _matrix_element_index);
         auto xs = fb.diff_cross_section(x1, x2, pdf1, pdf2, me2, _e_cm2);

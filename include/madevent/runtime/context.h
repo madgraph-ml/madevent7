@@ -5,7 +5,6 @@
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
-#include "madevent/runtime/pdf_wrapper.h"
 
 namespace madevent {
 
@@ -61,23 +60,9 @@ private:
     std::vector<std::unique_ptr<void, std::function<void(void*)>>> _process_instances;
 };
 
-class PdfSet {
-public:
-    PdfSet(const std::string& name, int index);
-    PdfSet(PdfSet&& other) noexcept = default;
-    PdfSet& operator=(PdfSet&& other) noexcept = default;
-    PdfSet(const PdfSet&) = delete;
-    PdfSet& operator=(const PdfSet&) = delete;
-    void call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const;
-    double alpha_s(double q2) const { return pdf.alphasQ2(q2); }
-
-private:
-    PdfWrapper pdf;
-};
-
 class Context {
     /**
-     * Contains global variables, loaded PDF set and matrix elements
+     * Contains global variables and matrix elements
      */
 public:
     Context() : _device(cpu_device()) {}
@@ -89,7 +74,6 @@ public:
     std::size_t load_matrix_element(
         const std::string& file, const std::string& param_card
     );
-    void load_pdf(const std::string& name, int index=0);
     Tensor define_global(
         const std::string& name,
         DataType dtype,
@@ -100,7 +84,6 @@ public:
     bool global_requires_grad(const std::string& name);
     bool global_exists(const std::string& name);
     const MatrixElement& matrix_element(std::size_t index) const;
-    const PdfSet& pdf_set() const;
     void save(const std::string& file) const;
     void load(const std::string& file);
     DevicePtr device() { return _device; }
@@ -109,7 +92,6 @@ private:
     DevicePtr _device;
     std::unordered_map<std::string, std::tuple<Tensor, bool>> globals;
     std::vector<MatrixElement> matrix_elements;
-    std::optional<PdfSet> _pdf_set;
 };
 
 using ContextPtr = std::shared_ptr<Context>;

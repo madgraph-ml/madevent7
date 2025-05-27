@@ -41,38 +41,6 @@ void op_matrix_element_multichannel(
     //TODO
 }
 
-void op_pdf(
-    const CudaRuntime::Instruction& instruction,
-    TensorVec& locals,
-    const AsyncCudaDevice& device
-) {
-    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    auto& output = locals[instruction.output_indices[0]];
-    struct PdfData {
-        ContextPtr context;
-        std::size_t batch_size;
-        Tensor arg0, arg1, arg2, output;
-    };
-    PdfData* data = new PdfData{
-        instruction.runtime.context(),
-        batch_size,
-        locals[instruction.input_indices[0]].cpu(device),
-        locals[instruction.input_indices[1]].cpu(device),
-        locals[instruction.input_indices[2]].cpu(device),
-        {}
-    };
-    check_error(cudaLaunchHostFunc(device.stream(), [](void* data_ptr) {
-        PdfData* data = static_cast<PdfData*>(data_ptr);
-        data->output = Tensor(DataType::dt_float, {data->batch_size}, cpu_device());
-        data->context->pdf_set().call(data->arg0, data->arg1, data->arg2, data->output);
-    }, &data));
-    output = Tensor(DataType::dt_float, {batch_size}, device);
-    device.memcpy(output.data(), data->output.data(), output.byte_size());
-    check_error(cudaLaunchHostFunc(device.stream(), [](void* data_ptr) {
-        delete static_cast<PdfData*>(data_ptr);
-    }, &data));
-}
-
 void op_matmul(
     const CudaRuntime::Instruction& instruction,
     TensorVec& locals,

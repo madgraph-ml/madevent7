@@ -71,33 +71,6 @@ set(BLA_STATIC ON)
 set(BLA_SIZEOF_INTEGER 4)
 find_package(BLAS REQUIRED)
 
-set(
-    lhapdf_libname
-    ${CMAKE_STATIC_LIBRARY_PREFIX}LHAPDF${CMAKE_STATIC_LIBRARY_SUFFIX}
-)
-ExternalProject_Add(
-    lhapdf
-    URL https://lhapdf.hepforge.org/downloads/?f=LHAPDF-6.5.5.tar.gz
-    CONFIGURE_HANDLED_BY_BUILD true
-    CONFIGURE_COMMAND autoreconf -f -i <SOURCE_DIR>
-        && <SOURCE_DIR>/configure --prefix=<INSTALL_DIR> --with-pic --disable-python
-    BUILD_COMMAND make -j
-    INSTALL_COMMAND make install
-    TEST_COMMAND ""
-    INSTALL_BYPRODUCTS <INSTALL_DIR>/lib/${lhapdf_libname}
-)
-ExternalProject_Get_Property(lhapdf install_dir)
-add_library(lhapdf::lhapdf INTERFACE IMPORTED GLOBAL)
-add_dependencies(lhapdf::lhapdf lhapdf)
-file(MAKE_DIRECTORY ${install_dir}/include)
-target_include_directories(lhapdf::lhapdf INTERFACE ${install_dir}/include)
-target_link_libraries(
-    lhapdf::lhapdf
-    INTERFACE
-    ${install_dir}/lib/${lhapdf_libname}
-)
-
-
 ############################################################################################
 # Main madevent module                                                                     #
 ############################################################################################
@@ -108,7 +81,6 @@ add_library(
     src/runtime/format.cpp
     src/runtime/tensor.cpp
     src/runtime/context.cpp
-    src/runtime/pdf_wrapper.cpp
     src/runtime/generate.cpp
     src/runtime/thread_pool.cpp
     src/runtime/io.cpp
@@ -145,7 +117,6 @@ add_library(
     include/madevent/runtime/format.h
     include/madevent/runtime/tensor.h
     include/madevent/runtime/context.h
-    include/madevent/runtime/pdf_wrapper.h
     include/madevent/runtime/thread_pool.h
     include/madevent/runtime/generate.h
     include/madevent/runtime/io.h
@@ -184,7 +155,6 @@ add_library(
 
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_20)
-target_link_libraries(madevent PRIVATE lhapdf::lhapdf)
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
 
 install(TARGETS madevent DESTINATION madevent7/lib)

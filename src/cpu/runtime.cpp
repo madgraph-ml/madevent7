@@ -82,20 +82,6 @@ void op_matrix_element_multichannel(
     );
 }
 
-void op_pdf(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
-) {
-    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    auto& output = locals[instruction.output_indices[0]];
-    output = Tensor(DataType::dt_float, {batch_size}, device);
-    instruction.context.pdf_set().call(
-        locals[instruction.input_indices[0]],
-        locals[instruction.input_indices[1]],
-        locals[instruction.input_indices[2]],
-        output
-    );
-}
-
 void op_matmul(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
 ) {

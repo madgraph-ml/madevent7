@@ -176,28 +176,11 @@ void MatrixElement::call_multichannel(
     }
 }
 
-PdfSet::PdfSet(const std::string& name, int index) :
-    pdf(name.c_str(), index) {}
-
-void PdfSet::call(Tensor x_in, Tensor q2_in, Tensor pid_in, Tensor pdf_out) const {
-    auto x_view = x_in.view<double, 1>();
-    auto q2_view = q2_in.view<double, 1>();
-    auto pid_view = pid_in.view<int64_t, 1>();
-    auto pdf_view = pdf_out.view<double, 1>();
-    ThreadPool::instance().parallel_for([&](std::size_t i) {
-        pdf_view[i] = pdf.xfxQ2(pid_view[i], x_view[i], q2_view[i]);
-    }, x_view.size());
-}
-
 std::size_t Context::load_matrix_element(
     const std::string& file, const std::string& param_card
 ) {
     matrix_elements.emplace_back(file, param_card);
     return matrix_elements.size() - 1;
-}
-
-void Context::load_pdf(const std::string& name, int index) {
-    _pdf_set.emplace(name, index);
 }
 
 Tensor Context::define_global(
@@ -245,13 +228,6 @@ const MatrixElement& Context::matrix_element(std::size_t index) const {
         throw std::runtime_error("Matrix element index out of bounds");
     }
     return matrix_elements[index];
-}
-
-const PdfSet& Context::pdf_set() const {
-    if (!_pdf_set) {
-        throw std::runtime_error("No PDF set was loaded");
-    }
-    return *_pdf_set;
 }
 
 void Context::save(const std::string& file) const {

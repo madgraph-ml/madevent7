@@ -917,23 +917,6 @@ matrix_element_multichannel:
       desc:
   custom_op: True
 
-pdf:
-  inputs:
-    - name: x
-      type: [float]
-      desc:
-    - name: q2
-      type: [float]
-      desc:
-    - name: pid
-      type: [int]
-      desc:
-  outputs:
-    - name: pdf
-      type: [float]
-      desc:
-  custom_op: True
-
 interpolate_pdf:
   inputs:
     - name: x

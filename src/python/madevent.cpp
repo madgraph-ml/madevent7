@@ -144,15 +144,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("amplitude_count", &MatrixElement::amplitude_count)
         .def("helicity_count", &MatrixElement::helicity_count);
 
-    py::class_<PdfSet>(m, "PdfSet")
-        .def("alpha_s", &PdfSet::alpha_s, py::arg("q2"));
-
     py::class_<Context, ContextPtr>(m, "Context")
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
         .def("load_matrix_element", &Context::load_matrix_element,
              py::arg("file"), py::arg("param_card"))
-        .def("load_pdf", &Context::load_pdf, py::arg("name"), py::arg("index")=0)
         .def("define_global", &Context::define_global,
              py::arg("name"), py::arg("dtype"), py::arg("shape"),
              py::arg("requires_grad")=false)
@@ -161,8 +157,6 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("global_exists", &Context::global_exists, py::arg("name"))
         .def("matrix_element", &Context::matrix_element,
              py::arg("index"), py::return_value_policy::reference_internal)
-        .def("pdf_set", &Context::pdf_set,
-             py::return_value_policy::reference_internal)
         .def("save", &Context::save, py::arg("file"))
         .def("load", &Context::load, py::arg("file"))
         .def("device", &Context::device);
