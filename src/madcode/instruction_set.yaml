@@ -885,7 +885,7 @@ matrix_element_multichannel:
       type: [float]
       desc:
     - name: random
-      type: [float, 2]
+      type: [float, 3]
       desc:
     - name: flavor
       type: [int]
@@ -893,26 +893,26 @@ matrix_element_multichannel:
     - name: mirror
       type: [int]
       desc:
-    - name: amp2_remap
-      type: [int, single, m]
-      desc:
     - name: index
       type: [int, single]
       desc:
-    - name: channel_count
+    - name: diagram_count
       type: [size, c]
       desc:
   outputs:
     - name: matrix_element
       type: [float]
       desc:
-    - name: channel_weights
+    - name: amp2
       type: [float, c]
+      desc:
+    - name: diagram_id
+      type: [int]
       desc:
     - name: color_id
       type: [int]
       desc:
-    - name: diagram_id
+    - name: helicity_id
       type: [int]
       desc:
   custom_op: True

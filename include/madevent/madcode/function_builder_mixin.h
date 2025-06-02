@@ -212,9 +212,9 @@ Value matrix_element(Value momenta, Value flavor, Value mirror, Value index) {
     return instruction("matrix_element", {momenta, flavor, mirror, index})[0];
 }
 
-std::array<Value, 4> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value amp2_remap, Value index, Value channel_count) {
-    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, amp2_remap, index, channel_count});
-    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
+std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value index, Value diagram_count) {
+    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, index, diagram_count});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3], output_vector[4]};
 }
 
 Value interpolate_pdf(Value x, Value q2, Value pid_indices, Value grid_logx, Value grid_logq2, Value grid_coeffs) {

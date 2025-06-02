@@ -135,14 +135,13 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("cpu_device", &cpu_device);
     m.def("cuda_device", &cuda_device);
 
-    py::class_<MatrixElement>(m, "MatrixElement")
+    py::class_<MatrixElementApi>(m, "MatrixElementApi")
         .def(py::init<const std::string&, const std::string&>(),
              py::arg("file"), py::arg("param_card"))
-        .def("on_gpu", &MatrixElement::on_gpu)
-        .def("particle_count", &MatrixElement::particle_count)
-        .def("diagram_count", &MatrixElement::diagram_count)
-        .def("amplitude_count", &MatrixElement::amplitude_count)
-        .def("helicity_count", &MatrixElement::helicity_count);
+        .def("on_gpu", &MatrixElementApi::on_gpu)
+        .def("particle_count", &MatrixElementApi::particle_count)
+        .def("diagram_count", &MatrixElementApi::diagram_count)
+        .def("helicity_count", &MatrixElementApi::helicity_count);
 
     py::class_<Context, ContextPtr>(m, "Context")
         .def(py::init<>())
@@ -334,6 +333,14 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("function", &FunctionGenerator::function)
         .def("build_function", &FunctionGenerator::build_function,
              py::arg("builder"), py::arg("args"));
+
+    py::class_<MatrixElement, FunctionGenerator>(m, "MatrixElement")
+        .def(py::init<std::size_t, std::size_t, bool, std::size_t, const std::vector<int64_t>&>(),
+             py::arg("matrix_element_index"), py::arg("particle_count"),
+             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
+             py::arg("amp2_remap")=std::vector<int64_t>{})
+        .def("channel_count", &MatrixElement::channel_count)
+        .def("particle_count", &MatrixElement::particle_count);
     py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
         .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t, double, double, bool,
                       std::size_t, const std::vector<int64_t>&>(),

@@ -12,38 +12,30 @@ struct SubProcessInfo {
     uint8_t on_gpu;
     uint64_t particle_count;
     uint64_t diagram_count;
-    uint64_t amplitude_count;
     uint64_t helicity_count;
 };
 
-class MatrixElement {
+class MatrixElementApi {
 public:
-    MatrixElement(const std::string& file, const std::string& param_card);
-    MatrixElement(MatrixElement&&) noexcept = default;
-    MatrixElement& operator=(MatrixElement&&) noexcept = default;
-    MatrixElement(const MatrixElement&) = delete;
-    MatrixElement& operator=(const MatrixElement&) = delete;
-    //~MatrixElement();
-    void call(
-        Tensor momenta_in, Tensor flavor_in, Tensor mirror_in, Tensor matrix_element_out
-    ) const;
-    void call_multichannel(
-        Tensor momenta_in,
-        Tensor alpha_s_in,
-        Tensor random_in,
-        Tensor flavor_in,
-        Tensor mirror_in,
-        Tensor amp2_remap_in,
-        Tensor matrix_element_out,
-        Tensor channel_weights_out,
-        Tensor color_out,
-        Tensor diagram_out
-    ) const;
+    MatrixElementApi(const std::string& file, const std::string& param_card);
+    MatrixElementApi(MatrixElementApi&&) noexcept = default;
+    MatrixElementApi& operator=(MatrixElementApi&&) noexcept = default;
+    MatrixElementApi(const MatrixElementApi&) = delete;
+    MatrixElementApi& operator=(const MatrixElementApi&) = delete;
     bool on_gpu() const { return _subprocess_info.on_gpu; }
     std::size_t particle_count() const { return _subprocess_info.particle_count; }
     std::size_t diagram_count() const { return _subprocess_info.diagram_count; }
-    std::size_t amplitude_count() const { return _subprocess_info.amplitude_count; }
     std::size_t helicity_count() const { return _subprocess_info.helicity_count; }
+
+    template<typename... T>
+    void call(T... args) const { _compute_matrix_element(std::forward<T>(args)...); }
+    template<typename... T>
+    void call_multichannel(T... args) const {
+        _compute_matrix_element_multichannel(std::forward<T>(args)...);
+    }
+    void* process_instance(std::size_t index) const {
+        return _process_instances.at(index).get();
+    }
 
 private:
     std::unique_ptr<void, std::function<void(void*)>> _shared_lib;
@@ -53,8 +45,8 @@ private:
         void*, uint64_t, uint64_t, const double*, const int64_t*, const int64_t*, double*
     );
     void (*_compute_matrix_element_multichannel)(
-        void*, uint64_t, uint64_t, uint64_t, const double*, const double*, const double*,
-        const int64_t*, const int64_t*, const int64_t*, double*, double*, int64_t*, int64_t*
+        void*, uint64_t, uint64_t, const double*, const double*, const double*,
+        const int64_t*, const int64_t*, double*, double*, int64_t*, int64_t*, int64_t*
     );
     void (*_free_subprocess)(void*);
     std::vector<std::unique_ptr<void, std::function<void(void*)>>> _process_instances;
@@ -83,7 +75,7 @@ public:
     Tensor global(const std::string& name);
     bool global_requires_grad(const std::string& name);
     bool global_exists(const std::string& name);
-    const MatrixElement& matrix_element(std::size_t index) const;
+    const MatrixElementApi& matrix_element(std::size_t index) const;
     void save(const std::string& file) const;
     void load(const std::string& file);
     DevicePtr device() { return _device; }
@@ -91,7 +83,7 @@ public:
 private:
     DevicePtr _device;
     std::unordered_map<std::string, std::tuple<Tensor, bool>> globals;
-    std::vector<MatrixElement> matrix_elements;
+    std::vector<MatrixElementApi> matrix_elements;
 };
 
 using ContextPtr = std::shared_ptr<Context>;

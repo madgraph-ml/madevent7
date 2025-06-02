@@ -410,7 +410,28 @@ public:
         check_impl();
         return is_contiguous() ? *this : copy(device);
     }
+
     Tensor contiguous() const { return contiguous(*impl->device); }
+
+    template<typename D>
+    Tensor contiguous(std::size_t batch_size, const D& device) const {
+        check_impl();
+        if (size(0) == batch_size) {
+            return contiguous(device);
+        } else if (size(0) == 1) {
+            auto shape = impl->shape;
+            shape[0] = batch_size;
+            Tensor tensor(impl->dtype, shape, impl->device);
+            device.tensor_copy(*this, tensor);
+            return tensor;
+        } else {
+            throw std::runtime_error("invalid batch size");
+        }
+    }
+
+    Tensor contiguous(std::size_t batch_size) const {
+        return contiguous(batch_size, *impl->device);
+    }
 
 private:
     struct TensorImpl {

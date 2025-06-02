@@ -44,42 +44,107 @@ void op_matrix_element(
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size}, device);
     std::size_t me_index = locals[instruction.input_indices[3]].view<int64_t, 0>();
-    instruction.context.matrix_element(me_index).call(
-        locals[instruction.input_indices[0]],
-        locals[instruction.input_indices[1]],
-        locals[instruction.input_indices[2]],
-        me_out
-    );
+    auto& matrix_element = instruction.context.matrix_element(me_index);
+    // TODO: maybe copy can be avoided sometimes
+    auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
+    auto flavor_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
+    auto mirror_in = locals[instruction.input_indices[2]].contiguous(batch_size, device);
+
+    auto input_particle_count = momenta_in.size(1);
+    if (input_particle_count != matrix_element.particle_count()) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    auto& pool = ThreadPool::instance();
+    auto thread_count = pool.get_thread_count();
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
+    auto me_ptr = static_cast<double*>(me_out.data());
+    if (thread_count == 0 || batch_size < thread_count * 100) {
+        matrix_element.call(
+            matrix_element.process_instance(0), batch_size, batch_size,
+            mom_ptr, flavor_ptr, mirror_ptr, me_ptr
+        );
+    } else {
+        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
+        pool.parallel([&](std::size_t thread_id) {
+            std::size_t offset = thread_id * count_per_thread;
+            matrix_element.call(
+                matrix_element.process_instance(thread_id),
+                std::min(batch_size - offset, count_per_thread),
+                batch_size, mom_ptr + offset, flavor_ptr + offset,
+                mirror_ptr + offset, me_ptr + offset
+            );
+        });
+    }
 }
 
 void op_matrix_element_multichannel(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    std::size_t me_index = locals[instruction.input_indices[2]].view<int64_t, 0>();
-    std::size_t channel_count = locals[instruction.input_indices[3]].view<int64_t, 0>();
+    std::size_t me_index = locals[instruction.input_indices[5]].view<int64_t, 0>();
+    std::size_t diagram_count = locals[instruction.input_indices[6]].view<int64_t, 0>();
 
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size}, device);
-    auto& chan_weights_out = locals[instruction.output_indices[1]];
-    chan_weights_out = Tensor(DataType::dt_float, {batch_size, channel_count}, device);
-    auto& color_out = locals[instruction.output_indices[2]];
-    color_out = Tensor(DataType::dt_int, {batch_size}, device);
-    auto& diagram_out = locals[instruction.output_indices[3]];
+    auto& amp2_out = locals[instruction.output_indices[1]];
+    amp2_out = Tensor(DataType::dt_float, {batch_size, diagram_count}, device);
+    auto& diagram_out = locals[instruction.output_indices[2]];
     diagram_out = Tensor(DataType::dt_int, {batch_size}, device);
+    auto& color_out = locals[instruction.output_indices[3]];
+    color_out = Tensor(DataType::dt_int, {batch_size}, device);
+    auto& helicity_out = locals[instruction.output_indices[4]];
+    helicity_out = Tensor(DataType::dt_int, {batch_size}, device);
 
-    instruction.context.matrix_element(me_index).call_multichannel(
-        locals[instruction.input_indices[0]],
-        locals[instruction.input_indices[1]],
-        locals[instruction.input_indices[2]],
-        locals[instruction.input_indices[3]],
-        locals[instruction.input_indices[4]],
-        locals[instruction.input_indices[5]],
-        me_out,
-        chan_weights_out,
-        color_out,
-        diagram_out
-    );
+    auto& matrix_element = instruction.context.matrix_element(me_index);
+
+    // TODO: maybe copy can be avoided sometimes
+    auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
+    auto alpha_s_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
+    auto random_in = locals[instruction.input_indices[2]].contiguous(batch_size, device);
+    auto flavor_in = locals[instruction.input_indices[3]].contiguous(batch_size, device);
+    auto mirror_in = locals[instruction.input_indices[4]].contiguous(batch_size, device);
+    auto input_particle_count = momenta_in.size(1);
+    if (input_particle_count != matrix_element.particle_count()) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    if (diagram_count != matrix_element.diagram_count()) {
+        throw std::runtime_error("Incompatible diagram count");
+    }
+
+    auto& pool = ThreadPool::instance();
+    auto thread_count = pool.get_thread_count();
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
+    auto random_ptr = static_cast<double*>(random_in.data());
+    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
+    auto me_ptr = static_cast<double*>(me_out.data());
+    auto amp2_ptr = static_cast<double*>(amp2_out.data());
+    auto diag_ptr = static_cast<int64_t*>(diagram_out.data());
+    auto color_ptr = static_cast<int64_t*>(color_out.data());
+    auto helicity_ptr = static_cast<int64_t*>(helicity_out.data());
+    if (thread_count == 0 || batch_size < thread_count * 100) {
+        matrix_element.call_multichannel(
+            matrix_element.process_instance(0), batch_size, batch_size,
+            mom_ptr, alpha_ptr, random_ptr, flavor_ptr, mirror_ptr,
+            me_ptr, amp2_ptr, diag_ptr, color_ptr, helicity_ptr
+        );
+    } else {
+        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
+        pool.parallel([&](std::size_t thread_id) {
+            std::size_t offset = thread_id * count_per_thread;
+            matrix_element.call_multichannel(
+                matrix_element.process_instance(thread_id),
+                std::min(batch_size - offset, count_per_thread), batch_size,
+                mom_ptr + offset, alpha_ptr + offset, random_ptr + offset,
+                flavor_ptr + offset, mirror_ptr + offset, me_ptr + offset,
+                amp2_ptr + offset, color_ptr + offset, diag_ptr + offset,
+                helicity_ptr + offset
+            );
+        });
+    }
 }
 
 void op_matmul(

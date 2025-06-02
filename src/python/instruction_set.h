@@ -60,7 +60,7 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("cut_sqrt_s", &FunctionBuilder::cut_sqrt_s, py::arg("p"), py::arg("min_max"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
     fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("flavor"), py::arg("mirror"), py::arg("index"));
-    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("mirror"), py::arg("amp2_remap"), py::arg("index"), py::arg("channel_count"));
+    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("mirror"), py::arg("index"), py::arg("diagram_count"));
     fb.def("interpolate_pdf", &FunctionBuilder::interpolate_pdf, py::arg("x"), py::arg("q2"), py::arg("pid_indices"), py::arg("grid_logx"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("interpolate_alpha_s", &FunctionBuilder::interpolate_alpha_s, py::arg("q2"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
