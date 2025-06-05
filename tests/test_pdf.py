@@ -17,7 +17,9 @@ except RuntimeError:
 
 pytestmark = [
     pytest.mark.skipif(lhapdf is None, reason="lhapdf required to run this test"),
-    pytest.mark.skipif(lhapdf is None, reason=f"pdf set {PDF_SET} required to run this test"),
+    pytest.mark.skipif(
+        reference_pdf is None, reason=f"pdf set {PDF_SET} required to run this test"
+    ),
 ]
 
 def test_pdf():
