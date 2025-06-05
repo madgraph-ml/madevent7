@@ -294,10 +294,21 @@ std::vector<std::size_t> PdfGrid::logq2_shape(bool batch_dim) const {
 }
 
 PartonDensity::PartonDensity(
-    const PdfGrid& grid, const std::vector<int>& pids, const std::string& prefix
+    const PdfGrid& grid,
+    const std::vector<int>& pids,
+    bool dynamic_pid,
+    const std::string& prefix
 ) :
-    FunctionGenerator({batch_float, batch_float}, {batch_float_array(pids.size())}),
+    FunctionGenerator(
+        dynamic_pid ?
+            TypeVec{batch_float, batch_float, batch_int} :
+            TypeVec{batch_float, batch_float},
+        dynamic_pid ?
+            TypeVec{batch_float} :
+            TypeVec{batch_float_array(pids.size())}
+    ),
     _prefix(prefix),
+    _dynamic_pid(dynamic_pid),
     _logx_shape(grid.logx_shape()),
     _logq2_shape(grid.logq2_shape()),
     _coeffs_shape(grid.coefficients_shape())
@@ -364,7 +375,14 @@ ValueVec PartonDensity::build_function_impl(
         DataType::dt_float,
         {_coeffs_shape.begin(), _coeffs_shape.end()}
     );
-    return {fb.interpolate_pdf(x, q2, _pid_indices, grid_logx, grid_logq2, grid_coeffs)};
+    if (_dynamic_pid) {
+        //TODO: stack/unstack always copy. add instructions to avoid that
+        auto indices = fb.stack({fb.gather_int(args.at(2), _pid_indices)});
+        auto pdf = fb.interpolate_pdf(x, q2, indices, grid_logx, grid_logq2, grid_coeffs);
+        return fb.unstack(pdf);
+    } else {
+        return {fb.interpolate_pdf(x, q2, _pid_indices, grid_logx, grid_logq2, grid_coeffs)};
+    }
 }
 
 AlphaSGrid::AlphaSGrid(const std::string& file) {

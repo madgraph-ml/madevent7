@@ -2,7 +2,11 @@
 
 using namespace madevent;
 
-void DiscreteOptimizer::optimize(Tensor weights, std::vector<Tensor>& inputs) {
+void DiscreteOptimizer::optimize(
+    Tensor weights,
+    const std::vector<Tensor>& inputs,
+    const std::vector<Tensor>& priors
+) {
     //TODO: check shapes
     auto weights_cpu = weights.cpu();
     auto weights_view = weights_cpu.view<double, 1>();

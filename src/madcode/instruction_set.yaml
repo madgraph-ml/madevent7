@@ -820,6 +820,49 @@ cut_sqrt_s:
       desc:
 
 ---
+title: Energy scale
+
+scale_transverse_energy:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_transverse_mass:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_half_transverse_mass:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_partonic_energy:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+---
 title: Chili
 
 chili_forward:
@@ -916,6 +959,22 @@ matrix_element_multichannel:
       type: [int]
       desc:
   custom_op: True
+
+collect_channel_weights:
+  inputs:
+    - name: amp2
+      type: [float, n]
+      desc:
+    - name: channel_indices
+      type: [int, single, n]
+      desc:
+    - name: channel_count
+      type: [size, c]
+      desc:
+  outputs:
+    - name: channel_weights
+      type: [float, c]
+      desc:
 
 interpolate_pdf:
   inputs:

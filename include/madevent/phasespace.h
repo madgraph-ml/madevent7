@@ -19,3 +19,6 @@
 #include "phasespace/channel_weights.h"
 #include "phasespace/channel_weight_network.h"
 #include "phasespace/pdf.h"
+#include "phasespace/scale.h"
+#include "phasespace/matrix_element.h"
+#include "phasespace/cross_section.h"

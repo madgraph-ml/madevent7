@@ -112,6 +112,9 @@ add_library(
     src/phasespace/channel_weights.cpp
     src/phasespace/channel_weight_network.cpp
     src/phasespace/pdf.cpp
+    src/phasespace/matrix_element.cpp
+    src/phasespace/cross_section.cpp
+    src/phasespace/scale.cpp
     include/madevent/util.h
     include/madevent/runtime.h
     include/madevent/runtime/format.h
@@ -151,6 +154,9 @@ add_library(
     include/madevent/phasespace/channel_weights.h
     include/madevent/phasespace/channel_weight_network.h
     include/madevent/phasespace/pdf.h
+    include/madevent/phasespace/matrix_element.h
+    include/madevent/phasespace/cross_section.h
+    include/madevent/phasespace/scale.h
 )
 
 target_include_directories(madevent PUBLIC include)

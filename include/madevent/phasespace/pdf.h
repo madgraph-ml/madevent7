@@ -28,7 +28,10 @@ struct PdfGrid {
 class PartonDensity : public FunctionGenerator {
 public:
     PartonDensity(
-        const PdfGrid& grid, const std::vector<int>& pids, const std::string& prefix = ""
+        const PdfGrid& grid,
+        const std::vector<int>& pids,
+        bool dynamic_pid=false,
+        const std::string& prefix = ""
     );
     void initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) const;
 
@@ -36,6 +39,7 @@ private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<int64_t> _pid_indices;
+    bool _dynamic_pid;
     std::string _prefix;
     std::vector<std::size_t> _logx_shape;
     std::vector<std::size_t> _logq2_shape;

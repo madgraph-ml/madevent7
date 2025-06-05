@@ -137,89 +137,104 @@ case 44:
     batch_foreach<tensor_foreach<kernel_cut_sqrt_s<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 45:
-    batch_foreach<tensor_foreach<kernel_chili_forward<CudaTypes>, 5, 4, 1>, 5, 4>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_transverse_energy<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 46:
-    op_matrix_element(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_transverse_mass<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 47:
-    op_matrix_element_multichannel(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_half_transverse_mass<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 48:
-    batch_foreach<tensor_foreach<kernel_interpolate_pdf<CudaTypes>, 6, 1, 1>, 6, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_partonic_energy<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 49:
-    batch_foreach<tensor_foreach<kernel_interpolate_alpha_s<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_chili_forward<CudaTypes>, 5, 4, 1>, 5, 4>(instr, locals, device);
     break;
 case 50:
-    op_matmul(instr, locals, device);
+    op_matrix_element(instr, locals, device);
     break;
 case 51:
-    batch_foreach<tensor_foreach<kernel_leaky_relu<CudaTypes>, 1, 1, 2>, 1, 1>(instr, locals, device);
+    op_matrix_element_multichannel(instr, locals, device);
     break;
 case 52:
-    batch_foreach<tensor_foreach<kernel_rqs_activation<CudaTypes>, 2, 3, 1>, 2, 3>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_collect_channel_weights<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
     break;
 case 53:
-    batch_foreach<tensor_foreach<kernel_rqs_find_bin<CudaTypes>, 4, 1, 2>, 4, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_interpolate_pdf<CudaTypes>, 6, 1, 1>, 6, 1>(instr, locals, device);
     break;
 case 54:
-    batch_foreach<tensor_foreach<kernel_rqs_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_interpolate_alpha_s<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
     break;
 case 55:
-    batch_foreach<tensor_foreach<kernel_rqs_inverse<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    op_matmul(instr, locals, device);
     break;
 case 56:
-    batch_foreach<tensor_foreach<kernel_softmax<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_leaky_relu<CudaTypes>, 1, 1, 2>, 1, 1>(instr, locals, device);
     break;
 case 57:
-    batch_foreach<tensor_foreach<kernel_softmax_prior<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_rqs_activation<CudaTypes>, 2, 3, 1>, 2, 3>(instr, locals, device);
     break;
 case 58:
-    batch_foreach<tensor_foreach<kernel_sample_discrete<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_rqs_find_bin<CudaTypes>, 4, 1, 2>, 4, 1>(instr, locals, device);
     break;
 case 59:
-    batch_foreach<tensor_foreach<kernel_sample_discrete_inverse<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_rqs_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;
 case 60:
-    batch_foreach<tensor_foreach<kernel_sample_discrete_probs<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_rqs_inverse<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;
 case 61:
-    batch_foreach<tensor_foreach<kernel_sample_discrete_probs_inverse<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_softmax<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 62:
-    batch_foreach<tensor_foreach<kernel_permute_momenta<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_softmax_prior<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 63:
-    batch_foreach<tensor_foreach<kernel_gather<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_sample_discrete<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
     break;
 case 64:
-    batch_foreach<tensor_foreach<kernel_gather_int<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_sample_discrete_inverse<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
     break;
 case 65:
-    batch_foreach<tensor_foreach<kernel_select<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_sample_discrete_probs<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
     break;
 case 66:
-    batch_foreach<tensor_foreach<kernel_one_hot<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_sample_discrete_probs_inverse<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
     break;
 case 67:
-    op_nonzero(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_permute_momenta<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
     break;
 case 68:
-    op_batch_gather(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_gather<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 69:
-    op_scatter(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_gather_int<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 70:
-    op_random(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 71:
-    op_unweight(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_one_hot<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 72:
-    batch_foreach<tensor_foreach<kernel_vegas_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    op_nonzero(instr, locals, device);
     break;
 case 73:
+    op_batch_gather(instr, locals, device);
+    break;
+case 74:
+    op_scatter(instr, locals, device);
+    break;
+case 75:
+    op_random(instr, locals, device);
+    break;
+case 76:
+    op_unweight(instr, locals, device);
+    break;
+case 77:
+    batch_foreach<tensor_foreach<kernel_vegas_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    break;
+case 78:
     batch_foreach<tensor_foreach<kernel_vegas_inverse<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;

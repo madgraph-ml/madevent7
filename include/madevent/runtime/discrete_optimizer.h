@@ -11,7 +11,11 @@ public:
     DiscreteOptimizer(
         ContextPtr context, const std::vector<std::string>& prob_names
     ) : _context(context), _prob_names(prob_names), _weight_sums(prob_names.size()) {}
-    void optimize(Tensor weights, std::vector<Tensor>& inputs);
+    void optimize(
+        Tensor weights,
+        const std::vector<Tensor>& inputs,
+        const std::vector<Tensor>& priors = {}
+    );
 
 private:
     ContextPtr _context;

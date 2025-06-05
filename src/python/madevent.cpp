@@ -342,9 +342,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("channel_count", &MatrixElement::channel_count)
         .def("particle_count", &MatrixElement::particle_count);
     py::class_<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t, double, double, bool,
-                      std::size_t, const std::vector<int64_t>&>(),
+        .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t,
+                      const RunningCoupling&, const std::optional<PdfGrid>&, double,
+                      double, bool, std::size_t, const std::vector<int64_t>&>(),
              py::arg("pid_options"), py::arg("matrix_element_index"),
+             py::arg("running_coupling"), py::arg("pdf_grid"),
              py::arg("e_cm2"), py::arg("q2"), py::arg("simple_matrix_element")=true,
              py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{})
         .def("pid_options", &DifferentialCrossSection::pid_options);
@@ -352,11 +354,26 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<const TypeVec&, std::size_t>(),
              py::arg("types"), py::arg("particle_count"));
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
-        .def(py::init<const PhaseSpaceMapping&, const DifferentialCrossSection&,
-                      const Integrand::AdaptiveMapping&, int,
+        .def(py::init<const PhaseSpaceMapping&,
+                      const DifferentialCrossSection&,
+                      const Integrand::AdaptiveMapping&,
+                      const Integrand::AdaptiveDiscrete&,
+                      const Integrand::AdaptiveDiscrete&,
+                      const std::optional<PdfGrid>&,
+                      const std::optional<EnergyScale>&,
+                      const std::optional<PropagatorChannelWeights>&,
+                      const std::optional<ChannelWeightNetwork>&,
+                      int,
                       const std::vector<std::size_t>&>(),
-             py::arg("mapping"), py::arg("diff_xs"),
+             py::arg("mapping"),
+             py::arg("diff_xs"),
              py::arg("adaptive_map")=std::monostate{},
+             py::arg("discrete_before")=std::monostate{},
+             py::arg("discrete_after")=std::monostate{},
+             py::arg("pdf_grid")=std::nullopt,
+             py::arg("energy_scale")=std::nullopt,
+             py::arg("prop_chan_weights")=std::nullopt,
+             py::arg("chan_weight_net")=std::nullopt,
              py::arg("flags")=0,
              py::arg("channel_indices")=std::vector<std::size_t>{})
         .def("particle_count", &Integrand::particle_count)
@@ -513,8 +530,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim")=false);
 
     py::class_<PartonDensity, FunctionGenerator>(m, "PartonDensity")
-        .def(py::init<const PdfGrid&, const std::vector<int>&, const std::string&>(),
-             py::arg("grid"), py::arg("pids"), py::arg("prefix")="")
+        .def(py::init<const PdfGrid&, const std::vector<int>&, bool, const std::string&>(),
+             py::arg("grid"), py::arg("pids"), py::arg("dynamic_pid")=false,
+             py::arg("prefix")="")
         .def("initialize_globals", &PartonDensity::initialize_globals,
              py::arg("context"), py::arg("pdf_grid"));
 

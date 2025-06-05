@@ -203,6 +203,22 @@ Value cut_sqrt_s(Value p, Value min_max) {
     return instruction("cut_sqrt_s", {p, min_max})[0];
 }
 
+Value scale_transverse_energy(Value momenta) {
+    return instruction("scale_transverse_energy", {momenta})[0];
+}
+
+Value scale_transverse_mass(Value momenta) {
+    return instruction("scale_transverse_mass", {momenta})[0];
+}
+
+Value scale_half_transverse_mass(Value momenta) {
+    return instruction("scale_half_transverse_mass", {momenta})[0];
+}
+
+Value scale_partonic_energy(Value momenta) {
+    return instruction("scale_partonic_energy", {momenta})[0];
+}
+
 std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_min, Value y_max) {
     auto output_vector = instruction("chili_forward", {r, e_cm, m_out, pt_min, y_max});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
@@ -215,6 +231,10 @@ Value matrix_element(Value momenta, Value flavor, Value mirror, Value index) {
 std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value index, Value diagram_count) {
     auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, index, diagram_count});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3], output_vector[4]};
+}
+
+Value collect_channel_weights(Value amp2, Value channel_indices, Value channel_count) {
+    return instruction("collect_channel_weights", {amp2, channel_indices, channel_count})[0];
 }
 
 Value interpolate_pdf(Value x, Value q2, Value pid_indices, Value grid_logx, Value grid_logq2, Value grid_coeffs) {

@@ -1,57 +1,18 @@
 #pragma once
 
 #include "madevent/phasespace/phasespace.h"
+#include "madevent/phasespace/matrix_element.h"
+#include "madevent/phasespace/cross_section.h"
 #include "madevent/phasespace/vegas.h"
+#include "madevent/phasespace/pdf.h"
+#include "madevent/phasespace/flow.h"
+#include "madevent/phasespace/discrete_sampler.h"
+#include "madevent/phasespace/discrete_flow.h"
+#include "madevent/phasespace/channel_weights.h"
+#include "madevent/phasespace/channel_weight_network.h"
 #include "madevent/util.h"
 
 namespace madevent {
-
-class MatrixElement : public FunctionGenerator {
-public:
-    MatrixElement(
-        std::size_t matrix_element_index,
-        std::size_t particle_count,
-        bool simple_matrix_element = true,
-        std::size_t channel_count = 1,
-        const std::vector<int64_t>& amp2_remap = {}
-    );
-    std::size_t channel_count() const { return _channel_count; }
-    std::size_t particle_count() const { return _particle_count; }
-
-private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-
-    int64_t _matrix_element_index;
-    std::size_t _particle_count;
-    bool _simple_matrix_element;
-    int64_t _channel_count;
-    std::vector<int64_t> _amp2_remap;
-};
-
-class DifferentialCrossSection : public FunctionGenerator {
-public:
-    DifferentialCrossSection(
-        const std::vector<std::vector<int64_t>>& pid_options,
-        std::size_t matrix_element_index,
-        double e_cm2,
-        double q2,
-        bool simple_matrix_element = true,
-        std::size_t channel_count = 1,
-        const std::vector<int64_t>& amp2_remap = {}
-    );
-    const std::vector<std::vector<int64_t>>& pid_options() const { return _pid_options; }
-    std::size_t channel_count() const { return _channel_count; }
-private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-
-    std::vector<std::vector<int64_t>> _pid_options;
-    int64_t _matrix_element_index;
-    bool _simple_matrix_element;
-    double _e_cm2;
-    double _q2;
-    int64_t _channel_count;
-    std::vector<int64_t> _amp2_remap;
-};
 
 class Unweighter : public FunctionGenerator {
 public:
@@ -62,17 +23,26 @@ private:
 
 class Integrand : public FunctionGenerator {
 public:
-    using AdaptiveMapping = std::variant<std::monostate, VegasMapping>;
+    using AdaptiveMapping = std::variant<std::monostate, VegasMapping, Flow>;
+    using AdaptiveDiscrete = std::variant<std::monostate, DiscreteSampler, DiscreteFlow>;
     inline static const int sample = 1;
     inline static const int unweight = 2;
     inline static const int return_momenta = 4;
     inline static const int return_x1_x2 = 8;
     inline static const int return_random = 16;
+    inline static const int return_latent = 32;
+    inline static const int return_discrete = 32;
 
     Integrand(
         const PhaseSpaceMapping& mapping,
         const DifferentialCrossSection& diff_xs,
-        const AdaptiveMapping& adaptive_map,
+        const AdaptiveMapping& adaptive_map = std::monostate{},
+        const AdaptiveDiscrete& discrete_before = std::monostate{},
+        const AdaptiveDiscrete& discrete_after = std::monostate{},
+        const std::optional<PdfGrid>& pdf_grid = std::nullopt,
+        const std::optional<EnergyScale>& energy_scale = std::nullopt,
+        const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
+        const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
         int flags = 0,
         const std::vector<std::size_t>& channel_indices = {}
     );
@@ -92,9 +62,19 @@ private:
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
     AdaptiveMapping _adaptive_map;
+    AdaptiveDiscrete _discrete_before;
+    AdaptiveDiscrete _discrete_after;
+    std::optional<PartonDensity> _pdf1;
+    std::optional<PartonDensity> _pdf2;
+    std::vector<int64_t> _pdf_indices1;
+    std::vector<int64_t> _pdf_indices2;
+    std::optional<EnergyScale> _energy_scale;
+    std::optional<PropagatorChannelWeights> _prop_chan_weights;
+    std::optional<ChannelWeightNetwork> _chan_weight_net;
     int _flags;
     std::vector<int64_t> _channel_indices;
     int64_t _random_dim;
+    std::size_t _latent_dim;
 };
 
 }

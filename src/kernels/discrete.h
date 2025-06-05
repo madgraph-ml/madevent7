@@ -99,7 +99,25 @@ template<typename T>
 KERNELSPEC void kernel_one_hot(
     IIn<T,0> index, IIn<T,0> option_count, FOut<T,1> output
 ) {
+    for (std::size_t i = 0; i < output.size(); ++i) {
+        output[i] = where(i == index, FVal<T>(1.), 0.);
+    }
+}
 
+template<typename T>
+KERNELSPEC void kernel_collect_channel_weights(
+    FIn<T,1> amp2, IIn<T,1> channel_indices, IIn<T,0> channel_count, FOut<T,1> channel_weights
+) {
+    FVal<T> norm(0.);
+    for (std::size_t i = 0; i < amp2.size(); ++i) {
+        std::size_t chan_index = single_index(channel_indices[i]);
+        auto amp2_val = amp2[i];
+        norm = norm + amp2_val;
+        channel_weights[chan_index] += amp2_val;
+    }
+    for (std::size_t i = 0; i < channel_weights.size(); ++i) {
+        channel_weights[i] = channel_weights[i] / norm;
+    }
 }
 
 }
