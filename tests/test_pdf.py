@@ -12,6 +12,7 @@ try:
     reference_pdf = lhapdf.mkPDF(PDF_SET, 0)
 except ImportError:
     lhapdf = None
+    reference_pdf = None
 except RuntimeError:
     reference_pdf = None
 
