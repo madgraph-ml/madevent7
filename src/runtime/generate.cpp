@@ -12,6 +12,8 @@
 using namespace madevent;
 namespace fs = std::filesystem;
 
+const EventGenerator::Config EventGenerator::default_config = {};
+
 EventGenerator::EventGenerator(
     ContextPtr context,
     const std::vector<Integrand>& channels,
