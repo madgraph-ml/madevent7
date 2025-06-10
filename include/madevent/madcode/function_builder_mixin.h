@@ -31,6 +31,18 @@ Value batch_size(ValueVec args) {
     return instruction("batch_size", args)[0];
 }
 
+Value full(ValueVec args) {
+    return instruction("full", args)[0];
+}
+
+Value squeeze(Value input) {
+    return instruction("squeeze", {input})[0];
+}
+
+Value unsqueeze(Value input) {
+    return instruction("unsqueeze", {input})[0];
+}
+
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
 }

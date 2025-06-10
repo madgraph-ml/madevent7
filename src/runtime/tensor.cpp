@@ -69,6 +69,31 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) const {
     return tensors;
 }
 
+Tensor Tensor::unsqueeze(std::size_t axis) const {
+    check_impl();
+    auto new_dim = impl->shape.size() + 1;
+    Sizes new_shape(new_dim), new_stride(new_dim);
+    std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
+    new_shape[axis] = 1;
+    std::copy(impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1);
+    std::copy(impl->stride.begin(), impl->stride.begin() + axis, new_stride.begin());
+    new_stride[axis] = axis == 0 ? 1 : impl->stride[axis - 1];
+    std::copy(impl->stride.begin() + axis, impl->stride.end(), new_stride.begin() + axis + 1);
+    return Tensor(new Tensor::TensorImpl{
+        impl->dtype,
+        new_shape,
+        impl->device,
+        impl->data,
+        false,
+        std::nullopt,
+        impl,
+        1,
+        new_stride,
+        impl->offset,
+        impl->contiguous_dims + (axis <= impl->contiguous_dims)
+    });
+}
+
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = 1;
     bool first = true;

@@ -26,8 +26,7 @@ EventGenerator::EventGenerator(
     _max_weight(0.),
     _unweighter(build_runtime(
         Unweighter(
-            {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)},
-            channels.at(0).particle_count()
+            {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)}
         ).function(),
         context
     )),

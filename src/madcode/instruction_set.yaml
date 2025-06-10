@@ -78,6 +78,36 @@ batch_size:
   class: BatchSizeInstruction
   custom_op: True
 
+full:
+  inputs: any
+  outputs:
+    - name: output
+      desc:
+  class: FullInstruction
+  custom_op: True
+
+squeeze:
+  inputs:
+    - name: input
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: SqueezeInstruction
+  custom_op: True
+  differentiable: True
+
+unsqueeze:
+  inputs:
+    - name: input
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: UnsqueezeInstruction
+  custom_op: True
+  differentiable: True
+
 ---
 title: Math
 

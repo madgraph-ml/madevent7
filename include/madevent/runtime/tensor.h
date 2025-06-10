@@ -350,6 +350,7 @@ public:
     Tensor slice(std::size_t axis, std::size_t start, std::size_t stop) const;
     std::vector<Tensor> split(std::size_t axis, const SizeVec& sizes) const;
     std::vector<Tensor> unstack(std::size_t axis) const;
+    Tensor unsqueeze(std::size_t axis) const;
 
     template<typename D>
     Tensor cpu(const D& device) const {

@@ -112,6 +112,27 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
+class FullInstruction : public Instruction {
+public:
+    FullInstruction(int opcode, bool differentiable) :
+        Instruction("full", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
+class SqueezeInstruction : public Instruction {
+public:
+    SqueezeInstruction(int opcode, bool differentiable) :
+        Instruction("squeeze", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
+class UnsqueezeInstruction : public Instruction {
+public:
+    UnsqueezeInstruction(int opcode, bool differentiable) :
+        Instruction("unsqueeze", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
 class RqsActivationInstruction : public Instruction {
 public:
     RqsActivationInstruction(int opcode, bool differentiable) :

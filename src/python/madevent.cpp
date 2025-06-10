@@ -499,8 +499,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
     py::class_<Unweighter, FunctionGenerator>(m, "Unweighter")
-        .def(py::init<const TypeVec&, std::size_t>(),
-             py::arg("types"), py::arg("particle_count"));
+        .def(py::init<const TypeVec&>(), py::arg("types"));
     py::class_<Integrand, FunctionGenerator>(m, "Integrand")
         .def(py::init<const PhaseSpaceMapping&,
                       const DifferentialCrossSection&,
@@ -531,6 +530,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_momenta", &Integrand::return_momenta)
         .def_readonly_static("return_x1_x2", &Integrand::return_x1_x2)
         .def_readonly_static("return_random", &Integrand::return_random);
+    py::class_<IntegrandProbability, FunctionGenerator>(m, "IntegrandProbability")
+        .def(py::init<const Integrand&>(), py::arg("integrand"));
 
     py::class_<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())

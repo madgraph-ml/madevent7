@@ -269,5 +269,38 @@ void op_batch_size(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[0]] = Tensor(batch_size);
 }
 
+template<typename I, typename D>
+void op_full(const I& instruction, TensorVec& locals, const D& device) {
+    //TODO: implement
+}
+
+template<typename I, typename D>
+void op_squeeze(const I& instruction, TensorVec& locals, const D& device) {
+    auto tensor = locals[instruction.input_indices[0]].select(1, 0);
+    locals[instruction.output_indices[0]] = tensor;
+}
+
+template<typename I, typename D>
+void backward_op_squeeze(
+    const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
+) {
+    auto grad = local_grads[instruction.output_indices[0]].unsqueeze(1);
+    local_grads[instruction.input_indices[0]] = grad;
+}
+
+template<typename I, typename D>
+void op_unsqueeze(const I& instruction, TensorVec& locals, const D& device) {
+    auto tensor = locals[instruction.input_indices[0]].unsqueeze(1);
+    locals[instruction.output_indices[0]] = tensor;
+}
+
+template<typename I, typename D>
+void backward_op_unsqueeze(
+    const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
+) {
+    auto grad = local_grads[instruction.output_indices[0]].select(1, 0);
+    local_grads[instruction.input_indices[0]] = grad;
+}
+
 }
 }

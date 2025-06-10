@@ -16,7 +16,7 @@ namespace madevent {
 
 class Unweighter : public FunctionGenerator {
 public:
-    Unweighter(const TypeVec& types, std::size_t particle_count);
+    Unweighter(const TypeVec& types);
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 };
@@ -31,7 +31,9 @@ public:
     inline static const int return_x1_x2 = 8;
     inline static const int return_random = 16;
     inline static const int return_latent = 32;
-    inline static const int return_discrete = 32;
+    inline static const int return_discrete = 64;
+    inline static const int return_chan_weights = 128;
+    inline static const int return_cwnet_input = 256;
 
     Integrand(
         const PhaseSpaceMapping& mapping,
@@ -75,6 +77,23 @@ private:
     std::vector<int64_t> _channel_indices;
     int64_t _random_dim;
     std::size_t _latent_dim;
+
+    friend class IntegrandProbability;
+};
+
+class IntegrandProbability : public FunctionGenerator {
+public:
+    IntegrandProbability(const Integrand& integrand);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    Integrand::AdaptiveMapping _adaptive_map;
+    Integrand::AdaptiveDiscrete _discrete_before;
+    Integrand::AdaptiveDiscrete _discrete_after;
+    std::size_t _permutation_count;
+    std::size_t _flavor_count;
+    bool _has_pdf_prior;
 };
 
 }

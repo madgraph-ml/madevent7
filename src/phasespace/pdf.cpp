@@ -377,9 +377,9 @@ ValueVec PartonDensity::build_function_impl(
     );
     if (_dynamic_pid) {
         //TODO: stack/unstack always copy. add instructions to avoid that
-        auto indices = fb.stack({fb.gather_int(args.at(2), _pid_indices)});
+        auto indices = fb.unsqueeze(fb.gather_int(args.at(2), _pid_indices));
         auto pdf = fb.interpolate_pdf(x, q2, indices, grid_logx, grid_logq2, grid_coeffs);
-        return fb.unstack(pdf);
+        return {fb.squeeze(pdf)};
     } else {
         return {fb.interpolate_pdf(x, q2, _pid_indices, grid_logx, grid_logq2, grid_coeffs)};
     }

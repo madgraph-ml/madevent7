@@ -467,6 +467,39 @@ TypeVec BatchSizeInstruction::signature(const ValueVec& args) const {
     return {{{batch_size}}};
 }
 
+TypeVec FullInstruction::signature(const ValueVec& args) const {
+    //TODO: implement
+}
+
+TypeVec SqueezeInstruction::signature(const ValueVec& args) const {
+    check_arg_count(args, 1);
+    auto arg = args.at(0);
+    if (arg.type.dtype == DataType::batch_sizes) {
+        throw std::invalid_argument("Batch size list not accepted as argument");
+    }
+    if (arg.type.shape.size() == 0) {
+        throw std::invalid_argument("Argument of squeeze must be at least one-dimensional");
+    }
+    std::vector<int> out_shape(arg.type.shape.begin() + 1, arg.type.shape.end());
+    return {{arg.type.dtype, arg.type.batch_size, out_shape}};
+}
+
+TypeVec UnsqueezeInstruction::signature(const ValueVec& args) const {
+    check_arg_count(args, 1);
+    auto arg = args.at(0);
+    if (arg.type.dtype == DataType::batch_sizes) {
+        throw std::invalid_argument("Batch size list not accepted as argument");
+    }
+    if (arg.type.shape.size() == 0) {
+        throw std::invalid_argument(
+            "Argument of unsqueeze must be at least one-dimensional"
+        );
+    }
+    std::vector<int> out_shape {1};
+    out_shape.insert(out_shape.end(), arg.type.shape.begin() + 1, arg.type.shape.end());
+    return {{arg.type.dtype, arg.type.batch_size, out_shape}};
+}
+
 TypeVec RqsActivationInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& bin_count_arg = args.at(1);
