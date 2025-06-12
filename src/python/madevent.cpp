@@ -494,8 +494,9 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const EnergyScale&, bool, std::size_t, const std::vector<int64_t>&>(),
              py::arg("pid_options"), py::arg("matrix_element_index"),
              py::arg("running_coupling"), py::arg("pdf_grid"),
-             py::arg("e_cm2"), py::arg("energy_scale"), py::arg("simple_matrix_element")=true,
-             py::arg("channel_count")=1, py::arg("amp2_remap")=std::vector<int64_t>{})
+             py::arg("e_cm2"), py::arg("energy_scale"),
+             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
+             py::arg("amp2_remap")=std::vector<int64_t>{})
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
     py::class_<Unweighter, FunctionGenerator>(m, "Unweighter")

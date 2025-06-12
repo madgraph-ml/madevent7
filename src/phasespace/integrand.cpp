@@ -301,7 +301,7 @@ ValueVec Integrand::build_function_impl(
         }
         if (has_multi_flavor && !std::holds_alternative<std::monostate>(_discrete_before)) {
             Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
-            auto zeros = fb.full({0ll, batch_size});
+            auto zeros = fb.full({static_cast<int64_t>(0), batch_size});
             outputs.push_back(fb.scatter(indices_acc, zeros, flavor_id));
             if (has_pdf_prior) {
                 auto flav_count = _diff_xs.pid_options().size();
@@ -344,8 +344,19 @@ IntegrandProbability::IntegrandProbability(const Integrand& integrand) :
     FunctionGenerator(
         [&] {
             TypeVec arg_types;
-
+            if (integrand._mapping.channel_count() > 1) {
+                arg_types.push_back(batch_int);
+            }
+            arg_types.push_back(batch_float_array(integrand._mapping.random_dim()));
+            auto flavor_count = integrand._diff_xs.pid_options().size();
+            if (flavor_count > 1) {
+                arg_types.push_back(batch_int);
+                if (integrand._pdf1 && integrand._energy_scale) {
+                    arg_types.push_back(batch_float_array(flavor_count));
+                }
+            }
             return arg_types;
+
         }(),
         {batch_float}
     ),
@@ -354,11 +365,7 @@ IntegrandProbability::IntegrandProbability(const Integrand& integrand) :
     _discrete_after(integrand._discrete_after),
     _permutation_count(integrand._mapping.channel_count()),
     _flavor_count(integrand._diff_xs.pid_options().size()),
-    _has_pdf_prior(
-        integrand._pdf1 &&
-        integrand._energy_scale &&
-        integrand._diff_xs.pid_options().size() > 1
-    )
+    _has_pdf_prior(integrand._pdf1 && integrand._energy_scale)
 {}
 
 ValueVec IntegrandProbability::build_function_impl(
@@ -392,7 +399,7 @@ ValueVec IntegrandProbability::build_function_impl(
         }
     }, _adaptive_map);
 
-    if (_flavor_count) {
+    if (_flavor_count > 1) {
         auto flavor = args.at(arg_index);
         ++arg_index;
         std::visit(Overloaded {

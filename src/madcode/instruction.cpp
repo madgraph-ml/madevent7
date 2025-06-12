@@ -490,11 +490,6 @@ TypeVec UnsqueezeInstruction::signature(const ValueVec& args) const {
     if (arg.type.dtype == DataType::batch_sizes) {
         throw std::invalid_argument("Batch size list not accepted as argument");
     }
-    if (arg.type.shape.size() == 0) {
-        throw std::invalid_argument(
-            "Argument of unsqueeze must be at least one-dimensional"
-        );
-    }
     std::vector<int> out_shape {1};
     out_shape.insert(out_shape.end(), arg.type.shape.begin() + 1, arg.type.shape.end());
     return {{arg.type.dtype, arg.type.batch_size, out_shape}};

@@ -20,7 +20,7 @@ public:
         ) {}
     EnergyScale(std::size_t particle_count, double fixed_scale) :
         EnergyScale(
-            particle_count, half_transverse_mass, false, false,
+            particle_count, half_transverse_mass, true, true,
             fixed_scale, fixed_scale, fixed_scale
         ) {}
     EnergyScale(

@@ -413,9 +413,9 @@ AlphaSGrid::AlphaSGrid(const std::string& file) {
         if (list_begin == value.end()) {
             throw std::runtime_error("expected list of values");
         }
+        line = {list_begin + 1, value.end()};
         std::stringstream all_values;
-        all_values << std::string_view{list_begin + 1, value.end()};
-        for (; std::getline(grid_file, line);) {
+        do {
             auto list_end = std::find(line.begin(), line.end(), ']');
             if (list_end == line.end()) {
                 all_values << line;
@@ -423,7 +423,7 @@ AlphaSGrid::AlphaSGrid(const std::string& file) {
                 all_values << std::string_view{line.begin(), list_end};
                 break;
             }
-        }
+        } while (std::getline(grid_file, line));
         std::vector<double> val_list;
         for (auto val_range : std::views::split(all_values.str(), ',')) {
             auto val_str = trim({val_range.begin(), val_range.end()});

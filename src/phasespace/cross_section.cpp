@@ -85,8 +85,12 @@ ValueVec DifferentialCrossSection::build_function_impl(
     Value pdf1, pdf2, ren_scale;
     if (_pdf1) {
         auto scales = _energy_scale.build_function(fb, {momenta});
-        pdf1 = _pdf1.value().build_function(fb, {x1, scales.at(1), flavor_id}).at(0);
-        pdf2 = _pdf2.value().build_function(fb, {x2, scales.at(2), flavor_id}).at(0);
+        pdf1 = _pdf1.value().build_function(
+            fb, {x1, fb.square(scales.at(1)), flavor_id}
+        ).at(0);
+        pdf2 = _pdf2.value().build_function(
+            fb, {x2, fb.square(scales.at(2)), flavor_id}
+        ).at(0);
         ren_scale = scales.at(0);
     } else {
         pdf1 = fb.gather(fb.gather_int(flavor_id, _pdf_indices1), args.at(5));
@@ -98,7 +102,7 @@ ValueVec DifferentialCrossSection::build_function_impl(
         auto me_result = _matrix_element.build_function(fb, {momenta, flavor_id, mirror_id});
         return {fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2)};
     } else {
-        auto alpha_s = _running_coupling.build_function(fb, {ren_scale}).at(0);
+        auto alpha_s = _running_coupling.build_function(fb, {fb.square(ren_scale)}).at(0);
         Value me2, chan_weights, color_id, diagram_id;
         auto me_result = _matrix_element.build_function(
             fb, {momenta, flavor_id, mirror_id, alpha_s}
