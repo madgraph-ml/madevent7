@@ -12,10 +12,11 @@ KERNELSPEC void kernel_vegas_forward(
     FVal<T> bin_count_f(grid.size() - 1);
     FVal<T> bin_index_f(input * bin_count_f);
     IVal<T> bin_index(bin_index_f);
+    FVal<T> bin_index_rounded(bin_index);
     auto left_edge = grid.gather(bin_index);
     auto right_edge = grid.gather(bin_index + 1);
     auto bin_size = right_edge - left_edge;
-    output = left_edge + (input * bin_count_f - bin_index_f) * bin_size;
+    output = left_edge + (input * bin_count_f - bin_index_rounded) * bin_size;
     det = bin_count_f * bin_size;
 }
 

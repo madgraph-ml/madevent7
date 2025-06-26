@@ -261,6 +261,7 @@ ValueVec Integrand::build_function_impl(
     xs_args.insert(xs_args.end(), xs_cache.begin(), xs_cache.end());
     auto dxs_vec = _diff_xs.build_function(fb, xs_args);
     auto diff_xs_acc = dxs_vec.at(0);
+    weights_after_cuts.push_back(diff_xs_acc);
     if (!_prop_chan_weights) {
         chan_weights_acc = dxs_vec.at(1);
     }
@@ -275,10 +276,16 @@ ValueVec Integrand::build_function_impl(
 
     // compute full phase-space weight
     if (has_multi_channel) {
-        auto chan_index_acc = fb.batch_gather(indices_acc, chan_index);
+        //TODO fixme
+        Value chan_index_acc;
+        if (has_permutations) {
+            chan_index_acc = fb.batch_gather(indices_acc, chan_index);
+        } else {
+            chan_index_acc = static_cast<int64_t>(_channel_indices.at(0));
+        }
         weights_after_cuts.push_back(fb.gather(chan_index_acc, chan_weights_acc));
     }
-    weight = fb.mul(fb.scatter(indices_acc, weight, fb.product(weights_after_cuts)), det);
+    weight = fb.mul(weight, fb.scatter(indices_acc, weight, fb.product(weights_after_cuts)));
 
     // return results based on _flags
     ValueVec outputs{weight};

@@ -109,8 +109,12 @@ KERNELSPEC void kernel_collect_channel_weights(
     FIn<T,1> amp2, IIn<T,1> channel_indices, IIn<T,0> channel_count, FOut<T,1> channel_weights
 ) {
     FVal<T> norm(0.);
+    for (std::size_t i = 0; i < channel_weights.size(); ++i) {
+        channel_weights[i] = 0.;
+    }
     for (std::size_t i = 0; i < amp2.size(); ++i) {
         std::size_t chan_index = single_index(channel_indices[i]);
+        if (chan_index >= channel_weights.size()) continue;
         auto amp2_val = amp2[i];
         norm = norm + amp2_val;
         channel_weights[chan_index] += amp2_val;

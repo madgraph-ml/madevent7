@@ -4,7 +4,7 @@ using namespace madevent;
 
 EnergyScale::EnergyScale(
     std::size_t particle_count,
-    DynamicScaleType dynamic_scale_type,
+    DynamicalScaleType dynamical_scale_type,
     bool ren_scale_fixed,
     bool fact_scale_fixed,
     double ren_scale,
@@ -15,7 +15,7 @@ EnergyScale::EnergyScale(
         {batch_four_vec_array(particle_count)},
         {batch_float, batch_float, batch_float}
     ),
-    _dynamic_scale_type(dynamic_scale_type),
+    _dynamical_scale_type(dynamical_scale_type),
     _ren_scale_fixed(ren_scale_fixed),
     _fact_scale_fixed(fact_scale_fixed),
     _ren_scale(ren_scale),
@@ -30,7 +30,7 @@ ValueVec EnergyScale::build_function_impl(
     }
     auto momenta = args.at(0);
     Value scale;
-    switch (_dynamic_scale_type) {
+    switch (_dynamical_scale_type) {
     case transverse_energy:
         scale = fb.scale_transverse_energy(momenta);
         break;
@@ -44,7 +44,7 @@ ValueVec EnergyScale::build_function_impl(
         scale = fb.scale_partonic_energy(momenta);
         break;
     default:
-        throw std::runtime_error("invalid dynamic scale type");
+        throw std::runtime_error("invalid dynamical scale type");
     }
     return {
         _ren_scale_fixed ? _ren_scale : scale,

@@ -293,6 +293,39 @@ std::vector<std::size_t> PdfGrid::logq2_shape(bool batch_dim) const {
     }
 }
 
+void PdfGrid::initialize_globals(ContextPtr context, const std::string& prefix) const {
+    auto logx_tensor_global = context->define_global(
+        prefixed_name(prefix, "pdf_logx"), DataType::dt_float, logx_shape()
+    );
+    auto q2_tensor_global = context->define_global(
+        prefixed_name(prefix, "pdf_logq2"), DataType::dt_float, logq2_shape()
+    );
+    auto coeffs_tensor_global = context->define_global(
+        prefixed_name(prefix, "pdf_coefficients"),
+        DataType::dt_float,
+        coefficients_shape()
+    );
+    bool is_cpu = context->device() == cpu_device();
+    Tensor logx_tensor, q2_tensor, coeffs_tensor;
+    if (is_cpu) {
+        logx_tensor = logx_tensor_global;
+        q2_tensor = q2_tensor_global;
+        coeffs_tensor = coeffs_tensor_global;
+    } else {
+        logx_tensor = Tensor(DataType::dt_float, logx_shape(true));
+        q2_tensor = Tensor(DataType::dt_float, logq2_shape(true));
+        coeffs_tensor = Tensor(DataType::dt_float, coefficients_shape(true));
+    }
+    initialize_logx(logx_tensor);
+    initialize_logq2(q2_tensor);
+    initialize_coefficients(coeffs_tensor);
+    if (!is_cpu) {
+        logx_tensor_global.copy_from(logx_tensor);
+        q2_tensor_global.copy_from(q2_tensor);
+        coeffs_tensor_global.copy_from(coeffs_tensor);
+    }
+}
+
 PartonDensity::PartonDensity(
     const PdfGrid& grid,
     const std::vector<int>& pids,
@@ -319,39 +352,6 @@ PartonDensity::PartonDensity(
             throw std::invalid_argument(std::format("PID {} not found in pdf grid", pid));
         }
         _pid_indices.push_back(find_pid - grid.pids.begin());
-    }
-}
-
-void PartonDensity::initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) const {
-    auto logx_tensor_global = context->define_global(
-        prefixed_name(_prefix, "pdf_logx"), DataType::dt_float, pdf_grid.logx_shape()
-    );
-    auto q2_tensor_global = context->define_global(
-        prefixed_name(_prefix, "pdf_logq2"), DataType::dt_float, pdf_grid.logq2_shape()
-    );
-    auto coeffs_tensor_global = context->define_global(
-        prefixed_name(_prefix, "pdf_coefficients"),
-        DataType::dt_float,
-        pdf_grid.coefficients_shape()
-    );
-    bool is_cpu = context->device() == cpu_device();
-    Tensor logx_tensor, q2_tensor, coeffs_tensor;
-    if (is_cpu) {
-        logx_tensor = logx_tensor_global;
-        q2_tensor = q2_tensor_global;
-        coeffs_tensor = coeffs_tensor_global;
-    } else {
-        logx_tensor = Tensor(DataType::dt_float, pdf_grid.logx_shape(true));
-        q2_tensor = Tensor(DataType::dt_float, pdf_grid.logq2_shape(true));
-        coeffs_tensor = Tensor(DataType::dt_float, pdf_grid.coefficients_shape(true));
-    }
-    pdf_grid.initialize_logx(logx_tensor);
-    pdf_grid.initialize_logq2(q2_tensor);
-    pdf_grid.initialize_coefficients(coeffs_tensor);
-    if (!is_cpu) {
-        logx_tensor_global.copy_from(logx_tensor);
-        q2_tensor_global.copy_from(q2_tensor);
-        coeffs_tensor_global.copy_from(coeffs_tensor);
     }
 }
 
@@ -510,6 +510,32 @@ std::vector<std::size_t> AlphaSGrid::logq2_shape(bool batch_dim) const {
     }
 }
 
+void AlphaSGrid::initialize_globals(ContextPtr context, const std::string& prefix) const {
+    auto q2_tensor_global = context->define_global(
+        prefixed_name(prefix, "alpha_s_logq2"), DataType::dt_float, logq2_shape()
+    );
+    auto coeffs_tensor_global = context->define_global(
+        prefixed_name(prefix, "alpha_s_coefficients"),
+        DataType::dt_float,
+        coefficients_shape()
+    );
+    bool is_cpu = context->device() == cpu_device();
+    Tensor logx_tensor, q2_tensor, coeffs_tensor;
+    if (is_cpu) {
+        q2_tensor = q2_tensor_global;
+        coeffs_tensor = coeffs_tensor_global;
+    } else {
+        q2_tensor = Tensor(DataType::dt_float, logq2_shape(true));
+        coeffs_tensor = Tensor(DataType::dt_float, coefficients_shape(true));
+    }
+    initialize_logq2(q2_tensor);
+    initialize_coefficients(coeffs_tensor);
+    if (!is_cpu) {
+        q2_tensor_global.copy_from(q2_tensor);
+        coeffs_tensor_global.copy_from(coeffs_tensor);
+    }
+}
+
 RunningCoupling::RunningCoupling(
     const AlphaSGrid& grid, const std::string& prefix
 ) :
@@ -518,32 +544,6 @@ RunningCoupling::RunningCoupling(
     _logq2_shape(grid.logq2_shape()),
     _coeffs_shape(grid.coefficients_shape())
 {}
-
-void RunningCoupling::initialize_globals(ContextPtr context, const AlphaSGrid& grid) const {
-    auto q2_tensor_global = context->define_global(
-        prefixed_name(_prefix, "alpha_s_logq2"), DataType::dt_float, grid.logq2_shape()
-    );
-    auto coeffs_tensor_global = context->define_global(
-        prefixed_name(_prefix, "alpha_s_coefficients"),
-        DataType::dt_float,
-        grid.coefficients_shape()
-    );
-    bool is_cpu = context->device() == cpu_device();
-    Tensor logx_tensor, q2_tensor, coeffs_tensor;
-    if (is_cpu) {
-        q2_tensor = q2_tensor_global;
-        coeffs_tensor = coeffs_tensor_global;
-    } else {
-        q2_tensor = Tensor(DataType::dt_float, grid.logq2_shape(true));
-        coeffs_tensor = Tensor(DataType::dt_float, grid.coefficients_shape(true));
-    }
-    grid.initialize_logq2(q2_tensor);
-    grid.initialize_coefficients(coeffs_tensor);
-    if (!is_cpu) {
-        q2_tensor_global.copy_from(q2_tensor);
-        coeffs_tensor_global.copy_from(coeffs_tensor);
-    }
-}
 
 ValueVec RunningCoupling::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args

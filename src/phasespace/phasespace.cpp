@@ -351,9 +351,16 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto p_ext_stack = fb.stack(p_ext);
 
     // permute momenta if permutations are given
-    if (_permutations.size() > 0) {
+    if (_permutations.size() > 1) {
         p_ext_stack = fb.permute_momenta(
             p_ext_stack, _permutations, conditions.at(0)
+        );
+    } else if (
+        _permutations.size() == 1 &&
+        !std::is_sorted(_permutations.at(0).begin(), _permutations.at(0).end())
+    ) {
+        p_ext_stack = fb.permute_momenta(
+            p_ext_stack, _permutations, static_cast<int64_t>(0)
         );
     }
 

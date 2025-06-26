@@ -26,9 +26,9 @@ pytestmark = [
 def test_pdf():
     ctx = me.default_context()
     grid = me.PdfGrid(os.path.join(lhapdf.paths()[0], PDF_SET, f"{PDF_SET}_0000.dat"))
+    grid.initialize_globals(ctx)
     pids = [-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5]
     pdf = me.PartonDensity(grid, pids)
-    pdf.initialize_globals(ctx, grid)
 
     xs = np.logspace(
         np.log10(reference_pdf.xMin) + 1e-6, np.log10(reference_pdf.xMax), 100
@@ -46,8 +46,8 @@ def test_pdf():
 def test_alpha_s():
     ctx = me.default_context()
     grid = me.AlphaSGrid(os.path.join(lhapdf.paths()[0], PDF_SET, f"{PDF_SET}.info"))
+    grid.initialize_globals(ctx)
     alpha_s = me.RunningCoupling(grid)
-    alpha_s.initialize_globals(ctx, grid)
 
     q2 = np.logspace(
         np.log10(reference_pdf.q2Min) + 1e-6, np.log10(reference_pdf.q2Max), 1000

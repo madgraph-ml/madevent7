@@ -132,8 +132,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("instructions", &Function::instructions);
 
     py::class_<Device> device(m, "Device");
-    m.def("cpu_device", &cpu_device);
-    m.def("cuda_device", &cuda_device);
+    m.def("cpu_device", &cpu_device, py::return_value_policy::reference);
+    m.def("cuda_device", &cuda_device, py::return_value_policy::reference);
 
     py::class_<MatrixElementApi>(m, "MatrixElementApi")
         .def(py::init<const std::string&, const std::string&>(),
@@ -443,14 +443,14 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("q_count", &PdfGrid::q_count)
         .def("coefficients_shape", &PdfGrid::coefficients_shape, py::arg("batch_dim")=false)
         .def("logx_shape", &PdfGrid::logx_shape, py::arg("batch_dim")=false)
-        .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim")=false);
+        .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim")=false)
+        .def("initialize_globals", &PdfGrid::initialize_globals,
+             py::arg("context"), py::arg("prefix")="");
 
     py::class_<PartonDensity, FunctionGenerator>(m, "PartonDensity")
         .def(py::init<const PdfGrid&, const std::vector<int>&, bool, const std::string&>(),
              py::arg("grid"), py::arg("pids"), py::arg("dynamic_pid")=false,
-             py::arg("prefix")="")
-        .def("initialize_globals", &PartonDensity::initialize_globals,
-             py::arg("context"), py::arg("pdf_grid"));
+             py::arg("prefix")="");
 
     py::class_<AlphaSGrid>(m, "AlphaSGrid")
         .def(py::init<const std::string&>(), py::arg("file"))
@@ -461,16 +461,16 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("q_count", &AlphaSGrid::q_count)
         .def("coefficients_shape", &AlphaSGrid::coefficients_shape,
              py::arg("batch_dim")=false)
-        .def("logq2_shape", &AlphaSGrid::logq2_shape, py::arg("batch_dim")=false);
+        .def("logq2_shape", &AlphaSGrid::logq2_shape, py::arg("batch_dim")=false)
+        .def("initialize_globals", &AlphaSGrid::initialize_globals,
+             py::arg("context"), py::arg("prefix")="");
 
     py::class_<RunningCoupling, FunctionGenerator>(m, "RunningCoupling")
         .def(py::init<const AlphaSGrid&, const std::string&>(),
-             py::arg("grid"), py::arg("prefix")="")
-        .def("initialize_globals", &RunningCoupling::initialize_globals,
-             py::arg("context"), py::arg("grid"));
+             py::arg("grid"), py::arg("prefix")="");
 
     py::class_<EnergyScale, FunctionGenerator> scale(m, "EnergyScale");
-    py::enum_<EnergyScale::DynamicScaleType>(scale, "DynamicScaleType")
+    py::enum_<EnergyScale::DynamicalScaleType>(scale, "DynamicalScaleType")
         .value("transverse_energy", EnergyScale::transverse_energy)
         .value("transverse_mass", EnergyScale::transverse_mass)
         .value("half_transverse_mass", EnergyScale::half_transverse_mass)
@@ -478,13 +478,13 @@ PYBIND11_MODULE(_madevent_py, m) {
         .export_values();
     scale
         .def(py::init<std::size_t>(), py::arg("particle_count"))
-        .def(py::init<std::size_t, EnergyScale::DynamicScaleType>(),
+        .def(py::init<std::size_t, EnergyScale::DynamicalScaleType>(),
              py::arg("particle_count"), py::arg("type"))
         .def(py::init<std::size_t, double>(),
              py::arg("particle_count"), py::arg("fixed_scale"))
-        .def(py::init<std::size_t, EnergyScale::DynamicScaleType, bool, bool,
+        .def(py::init<std::size_t, EnergyScale::DynamicalScaleType, bool, bool,
                       double, double, double>(),
-             py::arg("particle_count"), py::arg("dynamic_scale_type"), py::arg("ren_scale_fixed"),
+             py::arg("particle_count"), py::arg("dynamical_scale_type"), py::arg("ren_scale_fixed"),
              py::arg("fact_scale_fixed"), py::arg("ren_scale"), py::arg("fact_scale1"),
              py::arg("fact_scale2"));
 
@@ -585,4 +585,8 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("initialize_vegas_grid", &initialize_vegas_grid,
           py::arg("context"), py::arg("grid_name"));
     m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));
+
+    EventGenerator::set_abort_check_function([]{
+        if (PyErr_CheckSignals() != 0) throw py::error_already_set();
+    });
 }

@@ -23,6 +23,7 @@ struct PdfGrid {
     std::vector<std::size_t> coefficients_shape(bool batch_dim = false) const;
     std::vector<std::size_t> logx_shape(bool batch_dim = false) const;
     std::vector<std::size_t> logq2_shape(bool batch_dim = false) const;
+    void initialize_globals(ContextPtr context, const std::string& prefix="") const;
 };
 
 class PartonDensity : public FunctionGenerator {
@@ -33,7 +34,6 @@ public:
         bool dynamic_pid=false,
         const std::string& prefix = ""
     );
-    void initialize_globals(ContextPtr context, const PdfGrid& pdf_grid) const;
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
@@ -58,12 +58,12 @@ struct AlphaSGrid {
     void initialize_logq2(Tensor tensor) const;
     std::vector<std::size_t> coefficients_shape(bool batch_dim = false) const;
     std::vector<std::size_t> logq2_shape(bool batch_dim = false) const;
+    void initialize_globals(ContextPtr context, const std::string& prefix="") const;
 };
 
 class RunningCoupling : public FunctionGenerator {
 public:
     RunningCoupling(const AlphaSGrid& grid, const std::string& prefix = "");
-    void initialize_globals(ContextPtr context, const AlphaSGrid& grid) const;
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
