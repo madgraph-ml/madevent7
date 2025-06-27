@@ -4,7 +4,7 @@ using namespace madevent;
 
 
 Mapping::Result MultiChannelMapping::build_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions, bool inverse
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
 ) const {
     auto& counts = conditions.back();
 
@@ -18,7 +18,7 @@ Mapping::Result MultiChannelMapping::build_impl(
         split_conditions.push_back(fb.batch_split(condition, counts));
     }
 
-    std::vector<ValueVec> split_outputs(output_types.size());
+    std::vector<ValueVec> split_outputs(output_types().size());
     ValueVec split_dets;
     std::size_t index = 0;
     for (auto& mapping : mappings) {
@@ -29,7 +29,7 @@ Mapping::Result MultiChannelMapping::build_impl(
         for (auto& condition : split_conditions) {
             cond.push_back(condition[index]);
         }
-        auto [output, det] = 
+        auto [output, det] =
             inverse ?
             mapping.build_inverse(fb, in, cond) :
             mapping.build_forward(fb, in, cond);

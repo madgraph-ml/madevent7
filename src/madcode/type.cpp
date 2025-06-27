@@ -40,9 +40,6 @@ BatchSize BatchSize::add(const BatchSize& other, int factor) const {
 
 std::ostream& madevent::operator<<(std::ostream& out, const DataType& dtype) {
     switch (dtype) {
-    case DataType::dt_bool:
-        out << "bool";
-        break;
     case DataType::dt_float:
         out << "float";
         break;
@@ -107,6 +104,18 @@ std::ostream& madevent::operator<<(std::ostream& out, const Type& type) {
     return out;
 }
 
+Type madevent::multichannel_batch_size(int count) {
+    std::vector<BatchSize> batch_sizes;
+    BatchSize remaining = batch_size;
+    for (std::size_t i = 0; i < count - 1; ++i) {
+        BatchSize batch_size_i(std::format("channel_size_{}", i));
+        batch_sizes.push_back(batch_size_i);
+        remaining = remaining - batch_size_i;
+    }
+    batch_sizes.push_back(remaining);
+    return batch_sizes;
+}
+
 void madevent::to_json(json& j, const BatchSize& batch_size) {
     std::visit(Overloaded {
         [&](BatchSize::Named value) { j = value; },
@@ -153,7 +162,6 @@ void madevent::to_json(json& j, const Value& value) {
 
 void madevent::to_json(json& j, const DataType& dtype) {
     switch (dtype) {
-        case DataType::dt_bool: j = "bool"; break;
         case DataType::dt_int: j = "int"; break;
         case DataType::dt_float: j = "float"; break;
         case DataType::batch_sizes: j = "batch_sizes"; break;
@@ -188,12 +196,6 @@ void madevent::from_json(const json& j, Value& value) {
     auto shape = j.at("shape").get<std::vector<int>>();
     auto j_data = j.at("data");
     switch(dtype) {
-    case DataType::dt_bool:
-        if (shape.size() == 0) {
-            value = j_data.get<bool>();
-        } else {
-            value = Value(j_data.get<std::vector<bool>>(), shape);
-        }
     case DataType::dt_int:
         if (shape.size() == 0) {
             value = j_data.get<int64_t>();
@@ -214,9 +216,7 @@ void madevent::from_json(const json& j, Value& value) {
 
 void madevent::from_json(const json& j, DataType& dtype) {
     auto str = j.get<std::string>();
-    if (str == "bool") {
-        dtype = DataType::dt_bool;
-    } else if (str == "int") {
+    if (str == "int") {
         dtype = DataType::dt_int;
     } else if (str == "float") {
         dtype = DataType::dt_float;

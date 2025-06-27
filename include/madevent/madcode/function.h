@@ -76,7 +76,7 @@ public:
     Function function();
 
     Value sum(const ValueVec& values);
-    //Value product(const ValueVec& values);
+    Value product(const ValueVec& values);
 
 #include "function_builder_mixin.h"
 
@@ -88,6 +88,9 @@ private:
     ValueVec locals;
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
+    std::map<std::vector<std::size_t>, std::vector<std::size_t>> instruction_cache;
+
+    void register_local(Value& val);
 };
 
 }

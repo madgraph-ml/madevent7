@@ -16,8 +16,10 @@ def main():
     function_builder_mixin(commands)
     instruction_set_python(commands)
     instruction_set_mixin(commands)
-    cpu_runtime_mixin(commands)
-    cpu_runtime_backward_mixin(commands)
+    runtime_mixin(commands, "cpu")
+    runtime_backward_mixin(commands, "cpu")
+    runtime_mixin(commands, "cuda")
+    runtime_backward_mixin(commands, "cuda")
 
 
 def write_autogen(f):
@@ -115,22 +117,31 @@ def instruction_set_mixin(commands):
             "const auto mi = [](\n"
             "    std::string name,\n"
             "    int opcode,\n"
+            "    bool differentiable,\n"
             "    std::initializer_list<SigType> inputs,\n"
             "    std::initializer_list<SigType> outputs\n"
-            ") { return InstructionOwner(new SimpleInstruction(name, opcode, inputs, outputs)); };\n"
+            ") {\n"
+            "    return InstructionOwner(new SimpleInstruction(\n"
+            "        name, opcode, differentiable, inputs, outputs\n"
+            "    ));\n"
+            "};\n"
             "\n"
             "InstructionOwner instructions[] {\n"
         )
         first = True
         for name, cmd in commands.items():
             opcode = cmd["opcode"]
+            differentiable = "true" if cmd.get("differentiable", False) else "true"
             if "class" in cmd:
-                f.write(f"    InstructionOwner(new {cmd['class']}({opcode})),\n")
+                f.write(
+                    f"    InstructionOwner(new {cmd['class']}("
+                    f"{opcode}, {differentiable})),\n"
+                )
             else:
                 input_types = ", ".join(format_type(arg) for arg in cmd["inputs"])
                 output_types = ", ".join(format_type(ret) for ret in cmd["outputs"])
                 f.write(
-                    f"    mi(\"{name}\", {opcode}, "
+                    f"    mi(\"{name}\", {opcode}, {differentiable}, "
                     f"{{{input_types}}}, {{{output_types}}}),\n"
                 )
 
@@ -143,8 +154,8 @@ def instruction_set_mixin(commands):
         f_op.write("\n")
 
 
-def cpu_runtime_mixin(commands):
-    with open("src/backend/cpu/runtime_mixin.h", "w") as f:
+def runtime_mixin(commands, device):
+    with open(f"src/{device}/runtime_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
@@ -155,24 +166,32 @@ def cpu_runtime_mixin(commands):
                 n_inputs = len(cmd["inputs"])
                 n_outputs = len(cmd["outputs"])
                 dims = cmd.get("dims", 1)
-                cpu_kernel = f"kernel_{name}<CpuTypes>"
-                simd_kernel = (
-                    f"kernel_{name}<SimdTypes>"
-                    if cmd.get("vectorized", True)
-                    else cpu_kernel
+                vectorized = cmd.get("vectorized", True)
+
+                if device == "cpu":
+                    if vectorized:
+                        kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
+                    else:
+                        kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<CpuTypes>"
+                elif device == "cuda":
+                    kernel = f"kernel_{name}<CudaTypes>"
+                foreach_func = (
+                    f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}>"
+                    if dims == 0 else
+                    f"tensor_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}>"
                 )
                 func = (
-                    f"batch_foreach<{cpu_kernel}, {simd_kernel}, {n_inputs}, {n_outputs}, {dims}>"
+                    f"batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}>"
                 )
             f.write(
                 f"case {opcode}:\n"
-                f"    {func}(instr, locals);\n"
+                f"    {func}(instr, locals, device);\n"
                 f"    break;\n"
             )
 
 
-def cpu_runtime_backward_mixin(commands):
-    with open("src/backend/cpu/runtime_backward_mixin.h", "w") as f:
+def runtime_backward_mixin(commands, device):
+    with open(f"src/{device}/runtime_backward_mixin.h", "w") as f:
         write_autogen(f)
 
         for name, cmd in commands.items():
@@ -182,7 +201,7 @@ def cpu_runtime_backward_mixin(commands):
             if cmd.get("custom_op", False):
                 f.write(
                     f"case {opcode}:\n"
-                    f"    op_{name}(instr, locals);\n"
+                    f"    backward_op_{name}(instr, locals, local_grads, device);\n"
                     f"    break;\n"
                 )
             else:
@@ -201,16 +220,29 @@ def cpu_runtime_backward_mixin(commands):
                 in_stored_str = ",".join(str(i) for i in in_stored)
                 out_stored_str = ",".join(str(i) for i in out_stored)
 
+                if device == "cpu":
+                    kernel = (
+                        f"backward_kernel_{name}<CpuTypes>, "
+                        f"backward_kernel_{name}<SimdTypes>"
+                    )
+                elif device == "cuda":
+                    kernel = f"backward_kernel_{name}<CudaTypes>"
+
                 dims = cmd.get("dims", 1)
+                n_args = len(in_stored) + len(out_stored) + n_outputs
+                foreach_func = (
+                    f"tensor_foreach_dynamic<{kernel}, {n_args}, {n_inputs}>"
+                    if dims == 0 else
+                    f"tensor_foreach<{kernel}, {n_args}, {n_inputs}, {dims}>"
+                )
                 func = (
-                    f"backward_batch_foreach<"
-                    f"backward_kernel_{name}<CpuTypes>, backward_kernel_{name}<SimdTypes>, "
-                    f"{n_inputs}, {n_outputs}, {len(in_stored)}, {len(out_stored)}, {dims}>"
+                    f"backward_batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}, "
+                    f"{len(in_stored)}, {len(out_stored)}>"
                 )
                 f.write(
                     f"case {opcode}:\n"
                     f"    {func}(instr, locals, local_grads, "
-                    f"{{{in_stored_str}}}, {{{out_stored_str}}});\n"
+                    f"{{{in_stored_str}}}, {{{out_stored_str}}}, device);\n"
                     f"    break;\n"
                 )
 

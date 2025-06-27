@@ -177,7 +177,7 @@ void madevent::from_json(const json& j, Function& func) {
         auto instr_outputs = fb.instruction(
             j_instr.at("name").get<std::string>(), instr_inputs
         );
-        for (auto [j_output, output] : std::views::zip(
+        for (auto [j_output, output] : zip(
             j_instr.at("outputs"), instr_outputs
         )) {
             locals[j_output.get<std::size_t>()] = output;
@@ -224,8 +224,10 @@ ValueVec FunctionBuilder::instruction(const std::string& name, const ValueVec& a
 }
 
 ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec& args) {
+    // check argument types and determine if all arguments are constant
     auto params = args;
     int arg_index = -1;
+    bool const_opt = true;
     for (auto& arg : params) {
         ++arg_index;
 
@@ -244,32 +246,71 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
                     instruction->name(), arg_index
                 ));
             }
-            continue;
-        }
-        if (std::holds_alternative<std::monostate>(arg.literal_value)) {
+            const_opt = false;
+        } else if (std::holds_alternative<std::monostate>(arg.literal_value)) {
             throw std::invalid_argument(std::format(
                 "{}, argument {}: undefined value", instruction->name(), arg_index
             ));
         }
-        auto find_literal = literals.find(arg.literal_value);
-        if (find_literal == literals.end()) {
-            int local_index = locals.size();
-            arg = Value(arg.type, arg.literal_value, local_index);
-            locals.push_back(arg);
-            literals[arg.literal_value] = arg;
-        } else {
-            arg = find_literal->second;
+    }
+
+    // perform simple arithmetic operations on constant arguments
+    int opcode = instruction->opcode();
+    if (const_opt) {
+        switch (opcode) {
+        case opcodes::add: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 + arg1};
+        } case opcodes::sub: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 - arg1};
+        } case opcodes::mul: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {arg0 * arg1};
+        } case opcodes::sqrt: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            return {std::sqrt(arg0)};
+        } case opcodes::square: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            return {arg0 * arg0};
+        }}
+    }
+
+    // create local variables for constants
+    std::vector<std::size_t> opcode_and_input_locals;
+    opcode_and_input_locals.push_back(opcode);
+    for (auto& arg : params) {
+        register_local(arg);
+        opcode_and_input_locals.push_back(arg.local_index);
+    }
+
+    // check for cached result (for deterministic instructions)
+    if (opcode != opcodes::random && opcode != opcodes::unweight) {
+        auto find_instr = instruction_cache.find(opcode_and_input_locals);
+        if (find_instr != instruction_cache.end()) {
+            ValueVec call_outputs;
+            for (auto output_local_index : find_instr->second) {
+                call_outputs.push_back(locals.at(output_local_index));
+            }
+            return call_outputs;
         }
     }
 
+    // generate instruction and create local variables for output
     auto output_types = instruction->signature(params);
     ValueVec call_outputs;
+    std::vector<std::size_t> output_locals;
     for (const auto& type : output_types) {
         Value value(type, locals.size());
         locals.push_back(value);
         call_outputs.push_back(value);
+        output_locals.push_back(value.local_index);
     }
     instructions.push_back(InstructionCall{instruction, params, call_outputs});
+    instruction_cache[opcode_and_input_locals] = output_locals;
     return call_outputs;
 }
 
@@ -326,6 +367,7 @@ void FunctionBuilder::output(int index, Value value) {
     if (out_type.dtype != value.type.dtype || out_type.shape != value.type.shape) {
         throw std::invalid_argument(std::format("Wrong output type for output {}", index));
     }
+    register_local(value);
     outputs.at(index) = value;
 }
 
@@ -336,7 +378,11 @@ void FunctionBuilder::output_range(int start_index, const ValueVec& values) {
             outputs.size() - values.size(), start_index
         ));
     }
-    std::copy(values.begin(), values.end(), outputs.begin() + start_index);
+    int index = start_index;
+    for (auto& value : values) {
+        output(index, value);
+        ++index;
+    }
 }
 
 Value FunctionBuilder::global(
@@ -372,13 +418,31 @@ Value FunctionBuilder::sum(const ValueVec& values) {
     return result;
 }
 
-/*Value FunctionBuilder::product(const ValueVec& values) {
-    if (values.size() == 0) {
+void FunctionBuilder::register_local(Value& val) {
+    if (val.local_index != -1) return;
+
+    auto find_literal = literals.find(val.literal_value);
+    if (find_literal == literals.end()) {
+        int local_index = locals.size();
+        val = Value(val.type, val.literal_value, local_index);
+        locals.push_back(val);
+        literals[val.literal_value] = val;
+    } else {
+        val = find_literal->second;
+    }
+}
+
+Value FunctionBuilder::product(const ValueVec& values) {
+    switch (values.size()) {
+    case 0:
         return 1.;
+    case 1:
+        return values.at(0);
+    case 2:
+        return mul(values.at(0), values.at(1));
+    case 3:
+        return mul(mul(values.at(0), values.at(1)), values.at(2));
+    default:
+        return reduce_product(stack(values));
     }
-    auto result = values.at(0);
-    for (auto value = values.begin() + 1; value != values.end(); ++value) {
-        result = mul(result, *value);
-    }
-    return result;
-}*/
+}

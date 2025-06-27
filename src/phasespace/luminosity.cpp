@@ -3,7 +3,7 @@
 using namespace madevent;
 
 Mapping::Result Luminosity::build_forward_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto r_s = inputs[0], r_x = inputs[1];
     auto [s_hat_vec, det_s] = invariant.build_forward(fb, {r_s}, {s_hat_min, s_hat_max});
@@ -14,7 +14,7 @@ Mapping::Result Luminosity::build_forward_impl(
 }
 
 Mapping::Result Luminosity::build_inverse_impl(
-    FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
     auto x1 = inputs[0], x2 = inputs[1], s_hat = inputs[2];
     auto [r_s_vec, det_s] = invariant.build_inverse(fb, {s_hat}, {s_hat_min, s_hat_max});

@@ -9,6 +9,11 @@ ValueVec unstack(Value in) {
     return instruction("unstack", {in});
 }
 
+std::array<Value, 2> pop(Value in) {
+    auto output_vector = instruction("pop", {in});
+    return {output_vector[0], output_vector[1]};
+}
+
 std::array<Value, 2> batch_cat(ValueVec args) {
     auto output_vector = instruction("batch_cat", args);
     return {output_vector[0], output_vector[1]};
@@ -16,6 +21,26 @@ std::array<Value, 2> batch_cat(ValueVec args) {
 
 ValueVec batch_split(Value in, Value counts) {
     return instruction("batch_split", {in, counts});
+}
+
+Value cat(ValueVec args) {
+    return instruction("cat", args)[0];
+}
+
+Value batch_size(ValueVec args) {
+    return instruction("batch_size", args)[0];
+}
+
+Value full(ValueVec args) {
+    return instruction("full", args)[0];
+}
+
+Value squeeze(Value input) {
+    return instruction("squeeze", {input})[0];
+}
+
+Value unsqueeze(Value input) {
+    return instruction("unsqueeze", {input})[0];
 }
 
 Value add(Value in1, Value in2) {
@@ -30,12 +55,8 @@ Value mul(Value in1, Value in2) {
     return instruction("mul", {in1, in2})[0];
 }
 
-Value product(Value in) {
-    return instruction("product", {in})[0];
-}
-
-Value clip_min(Value x, Value min) {
-    return instruction("clip_min", {x, min})[0];
+Value reduce_product(Value in) {
+    return instruction("reduce_product", {in})[0];
 }
 
 Value sqrt(Value in) {
@@ -46,74 +67,16 @@ Value square(Value in) {
     return instruction("square", {in})[0];
 }
 
-Value pow(Value in1, Value in2) {
-    return instruction("pow", {in1, in2})[0];
+Value boost_beam(Value p1, Value x1, Value x2) {
+    return instruction("boost_beam", {p1, x1, x2})[0];
 }
 
-Value uniform_phi(Value in) {
-    return instruction("uniform_phi", {in})[0];
-}
-
-Value uniform_phi_inverse(Value in) {
-    return instruction("uniform_phi_inverse", {in})[0];
-}
-
-Value uniform_costheta(Value in) {
-    return instruction("uniform_costheta", {in})[0];
-}
-
-Value uniform_costheta_inverse(Value in) {
-    return instruction("uniform_costheta_inverse", {in})[0];
-}
-
-Value rotate_zy(Value p, Value phi, Value cos_theta) {
-    return instruction("rotate_zy", {p, phi, cos_theta})[0];
-}
-
-Value rotate_zy_inverse(Value p, Value phi, Value cos_theta) {
-    return instruction("rotate_zy_inverse", {p, phi, cos_theta})[0];
-}
-
-Value boost(Value p1, Value p2) {
-    return instruction("boost", {p1, p2})[0];
-}
-
-Value boost_inverse(Value p1, Value p2) {
-    return instruction("boost_inverse", {p1, p2})[0];
-}
-
-Value boost_beam(Value p1, Value rap) {
-    return instruction("boost_beam", {p1, rap})[0];
-}
-
-Value boost_beam_inverse(Value p1, Value rap) {
-    return instruction("boost_beam_inverse", {p1, rap})[0];
-}
-
-Value com_momentum(Value sqrt_s) {
-    return instruction("com_momentum", {sqrt_s})[0];
+Value boost_beam_inverse(Value p1, Value x1, Value x2) {
+    return instruction("boost_beam_inverse", {p1, x1, x2})[0];
 }
 
 std::array<Value, 2> com_p_in(Value e_cm) {
     auto output_vector = instruction("com_p_in", {e_cm});
-    return {output_vector[0], output_vector[1]};
-}
-
-std::array<Value, 2> com_angles(Value p) {
-    auto output_vector = instruction("com_angles", {p});
-    return {output_vector[0], output_vector[1]};
-}
-
-Value s(Value p) {
-    return instruction("s", {p})[0];
-}
-
-Value sqrt_s(Value p) {
-    return instruction("sqrt_s", {p})[0];
-}
-
-std::array<Value, 2> s_and_sqrt_s(Value p) {
-    auto output_vector = instruction("s_and_sqrt_s", {p});
     return {output_vector[0], output_vector[1]};
 }
 
@@ -127,42 +90,45 @@ std::array<Value, 2> x1x2_to_r(Value x1, Value x2, Value s_lab) {
     return {output_vector[0], output_vector[1]};
 }
 
-Value rapidity(Value x1, Value x2) {
-    return instruction("rapidity", {x1, x2})[0];
-}
-
 Value diff_cross_section(Value x1, Value x2, Value pdf1, Value pdf2, Value matrix_element, Value e_cm2) {
     return instruction("diff_cross_section", {x1, x2, pdf1, pdf2, matrix_element, e_cm2})[0];
 }
 
-std::array<Value, 2> decay_momentum(Value s, Value sqrt_s, Value m1, Value m2) {
-    auto output_vector = instruction("decay_momentum", {s, sqrt_s, m1, m2});
+std::array<Value, 3> two_particle_decay_com(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_decay_com", {r_phi, r_cos_theta, m0, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_decay(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2, Value p0) {
+    auto output_vector = instruction("two_particle_decay", {r_phi, r_cos_theta, m0, m1, m2, p0});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_scattering_com", {r_phi, pa, pb, t, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_particle_scattering(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
+    auto output_vector = instruction("two_particle_scattering", {r_phi, pa, pb, t, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
+    auto output_vector = instruction("t_inv_min_max", {pa, pb, m1, m2});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> invt_min_max(Value s, Value s_in1, Value s_in2, Value m1, Value m2) {
-    auto output_vector = instruction("invt_min_max", {s, s_in1, s_in2, m1, m2});
-    return {output_vector[0], output_vector[1]};
+Value invariants_from_momenta(Value p_ext, Value factors) {
+    return instruction("invariants_from_momenta", {p_ext, factors})[0];
 }
 
-Value invt_to_costheta(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Value t) {
-    return instruction("invt_to_costheta", {s, s_in1, s_in2, m1, m2, t})[0];
+Value sde2_channel_weights(Value invariants, Value masses, Value widths, Value indices) {
+    return instruction("sde2_channel_weights", {invariants, masses, widths, indices})[0];
 }
 
-Value costheta_to_invt(Value s, Value s_in1, Value s_in2, Value m1, Value m2, Value cos_theta) {
-    return instruction("costheta_to_invt", {s, s_in1, s_in2, m1, m2, cos_theta})[0];
-}
-
-Value two_particle_density_inverse(Value s, Value m1, Value m2) {
-    return instruction("two_particle_density_inverse", {s, m1, m2})[0];
-}
-
-Value tinv_two_particle_density(Value det_t, Value s, Value s_in1, Value s_in2) {
-    return instruction("tinv_two_particle_density", {det_t, s, s_in1, s_in2})[0];
-}
-
-Value tinv_two_particle_density_inverse(Value det_t, Value s, Value s_in1, Value s_in2) {
-    return instruction("tinv_two_particle_density_inverse", {det_t, s, s_in1, s_in2})[0];
+Value pt_eta_phi_x(Value p_ext, Value x1, Value x2) {
+    return instruction("pt_eta_phi_x", {p_ext, x1, x2})[0];
 }
 
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {
@@ -205,19 +171,28 @@ std::array<Value, 2> stable_invariant_nu_inverse(Value s, Value mass, Value nu, 
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> fast_rambo_r_to_u(Value r) {
-    auto output_vector = instruction("fast_rambo_r_to_u", {r});
+std::array<Value, 2> fast_rambo_massless(Value r, Value e_cm, Value p0) {
+    auto output_vector = instruction("fast_rambo_massless", {r, e_cm, p0});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> rambo_four_vectors_massless(Value u, Value e_cm, Value cos_theta, Value phi) {
-    auto output_vector = instruction("rambo_four_vectors_massless", {u, e_cm, cos_theta, phi});
+std::array<Value, 2> fast_rambo_massless_com(Value r, Value e_cm) {
+    auto output_vector = instruction("fast_rambo_massless_com", {r, e_cm});
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 4> rambo_four_vectors_massive(Value u, Value e_cm, Value cos_theta, Value phi, Value masses) {
-    auto output_vector = instruction("rambo_four_vectors_massive", {u, e_cm, cos_theta, phi, masses});
-    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
+std::array<Value, 2> fast_rambo_massive(Value r, Value e_cm, Value masses, Value p0) {
+    auto output_vector = instruction("fast_rambo_massive", {r, e_cm, masses, p0});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> fast_rambo_massive_com(Value r, Value e_cm, Value masses) {
+    auto output_vector = instruction("fast_rambo_massive_com", {r, e_cm, masses});
+    return {output_vector[0], output_vector[1]};
+}
+
+Value cut_unphysical(Value w_in, Value p, Value x1, Value x2) {
+    return instruction("cut_unphysical", {w_in, p, x1, x2})[0];
 }
 
 Value cut_pt(Value p, Value min_max) {
@@ -240,22 +215,46 @@ Value cut_sqrt_s(Value p, Value min_max) {
     return instruction("cut_sqrt_s", {p, min_max})[0];
 }
 
+Value scale_transverse_energy(Value momenta) {
+    return instruction("scale_transverse_energy", {momenta})[0];
+}
+
+Value scale_transverse_mass(Value momenta) {
+    return instruction("scale_transverse_mass", {momenta})[0];
+}
+
+Value scale_half_transverse_mass(Value momenta) {
+    return instruction("scale_half_transverse_mass", {momenta})[0];
+}
+
+Value scale_partonic_energy(Value momenta) {
+    return instruction("scale_partonic_energy", {momenta})[0];
+}
+
 std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_min, Value y_max) {
     auto output_vector = instruction("chili_forward", {r, e_cm, m_out, pt_min, y_max});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-Value matrix_element(Value momenta, Value index) {
-    return instruction("matrix_element", {momenta, index})[0];
+Value matrix_element(Value momenta, Value flavor, Value mirror, Value index) {
+    return instruction("matrix_element", {momenta, flavor, mirror, index})[0];
 }
 
-std::array<Value, 2> matrix_element_multichannel(Value momenta, Value amp2_remap, Value index, Value channel_count) {
-    auto output_vector = instruction("matrix_element_multichannel", {momenta, amp2_remap, index, channel_count});
-    return {output_vector[0], output_vector[1]};
+std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value index, Value diagram_count) {
+    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, index, diagram_count});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3], output_vector[4]};
 }
 
-Value pdf(Value x, Value q2, Value pid) {
-    return instruction("pdf", {x, q2, pid})[0];
+Value collect_channel_weights(Value amp2, Value channel_indices, Value channel_count) {
+    return instruction("collect_channel_weights", {amp2, channel_indices, channel_count})[0];
+}
+
+Value interpolate_pdf(Value x, Value q2, Value pid_indices, Value grid_logx, Value grid_logq2, Value grid_coeffs) {
+    return instruction("interpolate_pdf", {x, q2, pid_indices, grid_logx, grid_logq2, grid_coeffs})[0];
+}
+
+Value interpolate_alpha_s(Value q2, Value grid_logq2, Value grid_coeffs) {
+    return instruction("interpolate_alpha_s", {q2, grid_logq2, grid_coeffs})[0];
 }
 
 Value matmul(Value x, Value weight, Value bias) {
@@ -298,9 +297,35 @@ std::array<Value, 2> sample_discrete(Value r, Value option_count) {
     return {output_vector[0], output_vector[1]};
 }
 
+std::array<Value, 2> sample_discrete_inverse(Value index, Value option_count) {
+    auto output_vector = instruction("sample_discrete_inverse", {index, option_count});
+    return {output_vector[0], output_vector[1]};
+}
+
 std::array<Value, 2> sample_discrete_probs(Value r, Value probs) {
     auto output_vector = instruction("sample_discrete_probs", {r, probs});
     return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> sample_discrete_probs_inverse(Value index, Value probs) {
+    auto output_vector = instruction("sample_discrete_probs_inverse", {index, probs});
+    return {output_vector[0], output_vector[1]};
+}
+
+Value permute_momenta(Value momenta, Value permutations, Value index) {
+    return instruction("permute_momenta", {momenta, permutations, index})[0];
+}
+
+Value gather(Value index, Value choices) {
+    return instruction("gather", {index, choices})[0];
+}
+
+Value gather_int(Value index, Value choices) {
+    return instruction("gather_int", {index, choices})[0];
+}
+
+Value select(Value input, Value indices) {
+    return instruction("select", {input, indices})[0];
 }
 
 Value one_hot(Value index, Value option_count) {
@@ -311,8 +336,8 @@ Value nonzero(Value input) {
     return instruction("nonzero", {input})[0];
 }
 
-Value gather(Value indices, Value values) {
-    return instruction("gather", {indices, values})[0];
+Value batch_gather(Value indices, Value values) {
+    return instruction("batch_gather", {indices, values})[0];
 }
 
 Value scatter(Value indices, Value target, Value source) {

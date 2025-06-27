@@ -1,6 +1,6 @@
 #pragma once
 
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 #include "madevent/phasespace/invariants.h"
 
 
@@ -20,10 +20,10 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
     double s_lab, s_hat_min, s_hat_max;

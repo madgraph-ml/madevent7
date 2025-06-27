@@ -9,6 +9,8 @@ stack:
   desc: Combines input tensors
   class: StackInstruction
   custom_op: True
+  differentiable: True
+
 unstack:
   inputs:
     - name: in
@@ -17,6 +19,23 @@ unstack:
   desc: 
   class: UnstackInstruction
   custom_op: True
+  differentiable: True
+
+pop:
+  inputs:
+    - name: in
+      type: [float, n, ...]
+      desc:
+  outputs:
+    - name: rest
+      type: [float, n-1, ...]
+      desc:
+    - name: item
+      type: [float, ...]
+      desc:
+  custom_op: True
+  differentiable: True
+
 batch_cat:
   inputs: any
   outputs:
@@ -27,6 +46,8 @@ batch_cat:
   desc:
   class: BatchCatInstruction
   custom_op: True
+  differentiable: True
+
 batch_split:
   inputs:
     - name: in
@@ -37,6 +58,55 @@ batch_split:
   desc:
   class: BatchSplitInstruction
   custom_op: True
+  differentiable: True
+
+cat:
+  inputs: any
+  outputs:
+    - name: out
+      desc:
+  desc:
+  class: CatInstruction
+  custom_op: True
+  differentiable: True
+
+batch_size:
+  inputs: any
+  outputs:
+    - name: batch_size
+      desc:
+  class: BatchSizeInstruction
+  custom_op: True
+
+full:
+  inputs: any
+  outputs:
+    - name: output
+      desc:
+  class: FullInstruction
+  custom_op: True
+
+squeeze:
+  inputs:
+    - name: input
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: SqueezeInstruction
+  custom_op: True
+  differentiable: True
+
+unsqueeze:
+  inputs:
+    - name: input
+      desc:
+  outputs:
+    - name: output
+      desc:
+  class: UnsqueezeInstruction
+  custom_op: True
+  differentiable: True
 
 ---
 title: Math
@@ -85,7 +155,7 @@ mul:
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
 
-product:
+reduce_product:
   inputs:
     - name: in
       type: [float, n]
@@ -94,19 +164,7 @@ product:
     - name: out
       type: [float]
       desc:
-
-clip_min:
-  inputs:
-    - name: x
-      type: [float]
-      desc:
-    - name: min
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
+  differentiable: True
 
 sqrt:
   inputs:
@@ -128,127 +186,18 @@ square:
       type: [float]
       desc:
 
-pow:
-  inputs:
-    - name: in1
-      type: [float]
-      desc:
-    - name: in2
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_phi:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_phi_inverse:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_costheta:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-uniform_costheta_inverse:
-  inputs:
-    - name: in
-      type: [float]
-      desc:
-  outputs:
-    - name: out
-      type: [float]
-      desc:
-
-
 ---
 title: Kinematics
-
-rotate_zy:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: q
-      type: [float, 4]
-      desc:
-
-rotate_zy_inverse:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: q
-      type: [float, 4]
-      desc:
-
-boost:
-  inputs:
-    - name: p1
-      type: [float, 4]
-      desc:
-    - name: p2
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: p_out
-      type: [float, 4]
-      desc:
-
-boost_inverse:
-  inputs:
-    - name: p1
-      type: [float, 4]
-      desc:
-    - name: p2
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: p_out
-      type: [float, 4]
-      desc:
 
 boost_beam:
   inputs:
     - name: p1
       type: [float, n, 4]
       desc:
-    - name: rap
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
       type: [float]
       desc:
   outputs:
@@ -261,22 +210,15 @@ boost_beam_inverse:
     - name: p1
       type: [float, n, 4]
       desc:
-    - name: rap
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
       type: [float]
       desc:
   outputs:
     - name: p_out
       type: [float, n, 4]
-      desc:
-
-com_momentum:
-  inputs:
-    - name: sqrt_s
-      type: [float]
-      desc:
-  outputs:
-    - name: p
-      type: [float, 4]
       desc:
 
 com_p_in:
@@ -290,52 +232,6 @@ com_p_in:
       desc:
     - name: p2
       type: [float, 4]
-      desc:
-
-com_angles:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: phi
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-
-s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: s
-      type: [float]
-      desc:
-
-sqrt_s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: sqrt_s
-      type: [float]
-      desc:
-
-s_and_sqrt_s:
-  inputs:
-    - name: p
-      type: [float, 4]
-      desc:
-  outputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: sqrt_s
-      type: [float]
       desc:
 
 r_to_x1x2:
@@ -379,19 +275,6 @@ x1x2_to_r:
       type: [float]
       desc:
 
-rapidity:
-  inputs:
-    - name: x1
-      type: [float]
-      desc:
-    - name: x2
-      type: [float]
-      desc:
-  outputs:
-    - name: rap
-      type: [float]
-      desc:
-
 diff_cross_section:
   inputs:
     - name: x1
@@ -417,15 +300,15 @@ diff_cross_section:
       type: [float]
       desc:
 
----
-title: Two-body decays and scattering
-
-decay_momentum:
+two_particle_decay_com:
   inputs:
-    - name: s
+    - name: r_phi
       type: [float]
       desc:
-    - name: sqrt_s
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: m0
       type: [float]
       desc:
     - name: m1
@@ -435,23 +318,116 @@ decay_momentum:
       type: [float]
       desc:
   outputs:
-    - name: p
+    - name: p1
       type: [float, 4]
       desc:
-    - name: gs
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
       type: [float]
       desc:
 
-invt_min_max:
+two_particle_decay:
   inputs:
-    - name: s
+    - name: r_phi
       type: [float]
       desc:
-    - name: s_in1
+    - name: r_cos_theta
       type: [float]
       desc:
-    - name: s_in2
+    - name: m0
       type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_particle_scattering_com:
+  inputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: t
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_particle_scattering:
+  inputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: t
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+t_inv_min_max:
+  inputs:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
       desc:
     - name: m1
       type: [float]
@@ -467,124 +443,52 @@ invt_min_max:
       type: [float]
       desc:
 
-invt_to_costheta:
+invariants_from_momenta:
   inputs:
-    - name: s
+    - name: p_ext
+      type: [float, n, 4]
+      desc:
+    - name: factors
+      type: [float, m, n]
+      desc:
+  outputs:
+    - name: invariants
+      type: [float, m]
+      desc:
+
+sde2_channel_weights:
+  inputs:
+    - name: invariants
+      type: [float, m]
+      desc:
+    - name: masses
+      type: [float, c, n]
+      desc:
+    - name: widths
+      type: [float, c, n]
+      desc:
+    - name: indices
+      type: [int, c, n]
+      desc:
+  outputs:
+    - name: channel_weights
+      type: [float, c]
+      desc:
+
+pt_eta_phi_x:
+  inputs:
+    - name: p_ext
+      type: [float, n+2, 4]
+      desc:
+    - name: x1
       type: [float]
       desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-    - name: t
+    - name: x2
       type: [float]
       desc:
   outputs:
-    - name: cos_theta
-      type: [float]
-      desc:
-
-costheta_to_invt:
-  inputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-    - name: cos_theta
-      type: [float]
-      desc:
-  outputs:
-    - name: t
-      type: [float]
-      desc:
-
-        #two_particle_density:
-        #  inputs:
-        #    - name: s
-        #      type: [float]
-        #      desc:
-        #    - name: m1
-        #      type: [float]
-        #      desc:
-        #    - name: m2
-        #      type: [float]
-        #      desc:
-        #  outputs:
-        #    - name: gs
-        #      type: [float]
-        #      desc:
-
-two_particle_density_inverse:
-  inputs:
-    - name: s
-      type: [float]
-      desc:
-    - name: m1
-      type: [float]
-      desc:
-    - name: m2
-      type: [float]
-      desc:
-  outputs:
-    - name: gs
-      type: [float]
-      desc:
-
-tinv_two_particle_density:
-  inputs:
-    - name: det_t
-      type: [float]
-      desc:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-  outputs:
-    - name: det
-      type: [float]
-      desc:
-
-tinv_two_particle_density_inverse:
-  inputs:
-    - name: det_t
-      type: [float]
-      desc:
-    - name: s
-      type: [float]
-      desc:
-    - name: s_in1
-      type: [float]
-      desc:
-    - name: s_in2
-      type: [float]
-      desc:
-  outputs:
-    - name: det
-      type: [float]
+    - name: output
+      type: [float, 3n+2]
       desc:
 
 ---
@@ -775,67 +679,77 @@ stable_invariant_nu_inverse:
 ---
 title: Fast RAMBO on diet
 
-fast_rambo_r_to_u:
+fast_rambo_massless:
   inputs:
     - name: r
-      type: [float, n]
+      type: [float, 3n-4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
       desc:
   outputs:
-    - name: u
-      type: [float, n]
+    - name: p_out
+      type: [float, n, 4]
       desc:
     - name: det
       type: [float]
       desc:
 
-rambo_four_vectors_massless:
+fast_rambo_massless_com:
   inputs:
-    - name: u
-      type: [float, n]
+    - name: r
+      type: [float, 3n-4]
       desc:
     - name: e_cm
       type: [float]
       desc:
-    - name: cos_theta
-      type: [float, n+1]
-      desc:
-    - name: phi
-      type: [float, n+1]
-      desc:
   outputs:
-    - name: ps
-      type: [float, n+1, 4]
+    - name: p_out
+      type: [float, n, 4]
       desc:
-    - name: qs
-      type: [float, n+1, 4]
+    - name: det
+      type: [float]
       desc:
 
-rambo_four_vectors_massive:
+fast_rambo_massive:
   inputs:
-    - name: u
-      type: [float, n]
+    - name: r
+      type: [float, 3n-4]
       desc:
     - name: e_cm
       type: [float]
       desc:
-    - name: cos_theta
-      type: [float, n+1]
-      desc:
-    - name: phi
-      type: [float, n+1]
-      desc:
     - name: masses
-      type: [float, n+2]
+      type: [float, n]
+      desc:
+    - name: p0
+      type: [float, 4]
       desc:
   outputs:
-    - name: ps
-      type: [float, n+1, 4]
+    - name: p_out
+      type: [float, n, 4]
       desc:
-    - name: qs
-      type: [float, n+1, 4]
-      desc:
-    - name: e_cm_massless
+    - name: det
       type: [float]
+      desc:
+
+fast_rambo_massive_com:
+  inputs:
+    - name: r
+      type: [float, 3n-4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+    - name: masses
+      type: [float, n]
+      desc:
+  outputs:
+    - name: p_out
+      type: [float, n, 4]
       desc:
     - name: det
       type: [float]
@@ -843,6 +757,26 @@ rambo_four_vectors_massive:
 
 ---
 title: Cuts
+
+cut_unphysical:
+  inputs:
+    - name: w_in
+      type: [float]
+      desc:
+    - name: p
+      type: [float, n, 4]
+      desc:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+  outputs:
+    - name: w_out
+      type: [float]
+      desc:
+
 
 cut_pt:
   inputs:
@@ -916,6 +850,49 @@ cut_sqrt_s:
       desc:
 
 ---
+title: Energy scale
+
+scale_transverse_energy:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_transverse_mass:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_half_transverse_mass:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+scale_partonic_energy:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+  outputs:
+    - name: scale
+      type: [float]
+      desc:
+
+---
 title: Chili
 
 chili_forward:
@@ -937,7 +914,7 @@ chili_forward:
       desc:
   outputs:
     - name: p_ext
-      type: [float, n+2]
+      type: [float, n+2, 4]
       desc:
     - name: x1
       type: [float]
@@ -957,6 +934,12 @@ matrix_element:
     - name: momenta
       type: [float, n, 4]
       desc:
+    - name: flavor
+      type: [int]
+      desc:
+    - name: mirror
+      type: [int]
+      desc:
     - name: index
       type: [int, single]
       desc:
@@ -971,25 +954,59 @@ matrix_element_multichannel:
     - name: momenta
       type: [float, n, 4]
       desc:
-    - name: amp2_remap
-      type: [int, single, m]
+    - name: alpha_s
+      type: [float]
+      desc:
+    - name: random
+      type: [float, 3]
+      desc:
+    - name: flavor
+      type: [int]
+      desc:
+    - name: mirror
+      type: [int]
       desc:
     - name: index
       type: [int, single]
       desc:
-    - name: channel_count
+    - name: diagram_count
       type: [size, c]
       desc:
   outputs:
     - name: matrix_element
       type: [float]
       desc:
-    - name: channel_weights
+    - name: amp2
       type: [float, c]
+      desc:
+    - name: diagram_id
+      type: [int]
+      desc:
+    - name: color_id
+      type: [int]
+      desc:
+    - name: helicity_id
+      type: [int]
       desc:
   custom_op: True
 
-pdf:
+collect_channel_weights:
+  inputs:
+    - name: amp2
+      type: [float, n]
+      desc:
+    - name: channel_indices
+      type: [int, single, n]
+      desc:
+    - name: channel_count
+      type: [size, c]
+      desc:
+  outputs:
+    - name: channel_weights
+      type: [float, c]
+      desc:
+
+interpolate_pdf:
   inputs:
     - name: x
       type: [float]
@@ -997,14 +1014,40 @@ pdf:
     - name: q2
       type: [float]
       desc:
-    - name: pid
-      type: [int]
+    - name: pid_indices
+      type: [int, n]
+      desc:
+    - name: grid_logx
+      type: [float, single, a]
+      desc:
+    - name: grid_logq2
+      type: [float, single, b]
+      desc:
+    - name: grid_coeffs
+      type: [float, single, 16, c, d]
       desc:
   outputs:
     - name: pdf
+      type: [float, n]
+      desc:
+  vectorized: False
+
+interpolate_alpha_s:
+  inputs:
+    - name: q2
       type: [float]
       desc:
-  custom_op: True
+    - name: grid_logq2
+      type: [float, single, b+1]
+      desc:
+    - name: grid_coeffs
+      type: [float, single, 4, b]
+      desc:
+  outputs:
+    - name: alpha_s
+      type: [float]
+      desc:
+  vectorized: False
 
 ---
 title: Normalizing flows and MLPs
@@ -1096,7 +1139,7 @@ rqs_forward:
       type: [float, n]
       desc:
   differentiable: True
-  dim: 2
+  dims: 2
 
 rqs_inverse:
   inputs:
@@ -1114,7 +1157,7 @@ rqs_inverse:
       type: [float, n]
       desc:
   differentiable: True
-  dim: 2
+  dims: 2
 
 softmax:
   inputs:
@@ -1162,6 +1205,22 @@ sample_discrete:
       type: [float]
       desc:
 
+sample_discrete_inverse:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: option_count
+      type: [int, single]
+      desc:
+  outputs:
+    - name: r
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 sample_discrete_probs:
   inputs:
     - name: r
@@ -1178,44 +1237,78 @@ sample_discrete_probs:
       type: [float]
       desc:
 
-#gather:
-#  inputs:
-#    - name: index
-#      type: [int]
-#      desc:
-#    - name: choices
-#      type: [float, n]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [float]
-#      desc:
-#
-#gather_int:
-#  inputs:
-#    - name: index
-#      type: [int]
-#      desc:
-#    - name: choices
-#      type: [int, n]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [int]
-#      desc:
-#
-#select:
-#  inputs:
-#    - name: input
-#      type: [float, n]
-#      desc:
-#    - name: indices
-#      type: [int, single, m]
-#      desc:
-#  outputs:
-#    - name: output
-#      type: [float, m]
-#      desc:
+sample_discrete_probs_inverse:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: probs
+      type: [float, n]
+      desc:
+  outputs:
+    - name: r
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+permute_momenta:
+  inputs:
+    - name: momenta
+      type: [float, n, 4]
+      desc:
+    - name: permutations
+      type: [int, single, m, n]
+      desc:
+    - name: index
+      type: [int]
+      desc:
+  outputs:
+    - name: output
+      type: [float, n, 4]
+      desc: 
+
+gather:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [float, n]
+      desc:
+  outputs:
+    - name: output
+      type: [float]
+      desc:
+
+gather_int:
+  inputs:
+    - name: index
+      type: [int]
+      desc:
+    - name: choices
+      type: [int, n]
+      desc:
+  outputs:
+    - name: output
+      type: [int]
+      desc:
+
+select:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: indices
+      type: [int, single, m]
+      desc:
+      backward_arg: True
+  outputs:
+    - name: output
+      type: [float, m]
+      desc:
+  differentiable: True
 
 one_hot:
   inputs:
@@ -1243,7 +1336,7 @@ nonzero:
   class: NonzeroInstruction
   custom_op: True
 
-gather:
+batch_gather:
   inputs:
     - name: indices
       desc:
@@ -1252,7 +1345,7 @@ gather:
   outputs:
     - name: selection
       desc:
-  class: GatherInstruction
+  class: BatchGatherInstruction
   custom_op: True
 
 scatter:
@@ -1314,8 +1407,9 @@ vegas_forward:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
+  dims: 2
 
 vegas_inverse:
   inputs:
@@ -1330,6 +1424,7 @@ vegas_inverse:
       type: [float, n]
       desc:
     - name: det
-      type: [float]
+      type: [float, n]
       desc:
+  dims: 2
 

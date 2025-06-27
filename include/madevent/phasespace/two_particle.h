@@ -1,55 +1,56 @@
 #pragma once
 
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 #include "madevent/phasespace/invariants.h"
 
 namespace madevent {
 
-class TwoParticle : public Mapping {
+class TwoParticleDecay : public Mapping {
 public:
-    TwoParticle(bool _com) : Mapping(
+    TwoParticleDecay(bool com) : Mapping(
         [&] {
-            TypeVec input_types(6, batch_float);
-            if (!_com) {
+            TypeVec input_types(5, batch_float);
+            if (!com) {
                 input_types.push_back(batch_four_vec);
             }
             return input_types;
         }(),
         {batch_four_vec, batch_four_vec},
         {}
-    ), com(_com) {}
+    ), _com(com) {}
+    std::size_t random_dim() const { return 2; }
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
-    bool com;
+    bool _com;
 };
 
 
-class TInvariantTwoParticle : public Mapping {
+class TwoParticleScattering : public Mapping {
 public:
-    TInvariantTwoParticle(bool _com, double nu = 0, double mass = 0, double width = 0) :
+    TwoParticleScattering(bool com, double nu = 0, double mass = 0, double width = 0) :
         Mapping(
             {batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},
             {batch_four_vec, batch_four_vec}
-        ), com(_com), invariant(nu, mass, width) {}
+        ), _com(com), _invariant(nu, mass, width) {}
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
-    bool com;
-    Invariant invariant;
+    bool _com;
+    Invariant _invariant;
 };
 
 }

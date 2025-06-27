@@ -1,6 +1,6 @@
 #pragma once
 
-#include "madevent/phasespace/mapping.h"
+#include "madevent/phasespace/base.h"
 
 namespace madevent {
 
@@ -14,17 +14,15 @@ public:
 
 private:
     Result build_forward_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
     Result build_inverse_impl(
-        FunctionBuilder& fb, ValueVec inputs, ValueVec conditions
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
     std::size_t n_particles;
     bool massless;
     double com;
-    double e_cm_power;
-    double massless_weight;
 };
 
 }

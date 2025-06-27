@@ -1,0 +1,98 @@
+name: CI
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build-and-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+        os: ["ubuntu-22.04", "macos-14"]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install build dependencies
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+            sudo apt update
+            sudo apt install -y libopenblas-dev gcc-13 g++-13
+            sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
+            sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+            sudo update-alternatives --auto gcc
+            sudo update-alternatives --auto g++
+          else
+            brew install automake libtool
+          fi
+          python -m pip install --upgrade pip
+          python -m pip install scikit_build_core
+
+      - name: Install CUDA toolkit
+        uses: Jimver/cuda-toolkit@v0.2.23
+        if: matrix.os == 'ubuntu-22.04'
+        id: cuda-toolkit
+        with:
+          log-file-suffix: '${{matrix.os}}.txt'
+          method: network
+          sub-packages: '["nvcc", "cudart-dev", "thrust"]'
+          non-cuda-sub-packages: '["libcublas-dev", "libcurand-dev"]'
+          use-github-cache: false
+
+      - name: Build package
+        run: |
+          python -m pip install --no-build-isolation -Cbuild-dir=build .
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install pytest numpy
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          else
+            python -m pip install torch
+          fi
+
+      - name: Run tests
+        run: pytest tests
+
+      - name: Build wheel
+        run: python -m pip wheel --no-build-isolation -Cbuild-dir=build .
+
+      - name: Move latest tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/latest',
+              sha: context.sha
+            }).catch(err => {
+              if (err.status !== 422) throw err;
+              github.rest.git.updateRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'tags/latest',
+                sha: context.sha
+              });
+            })
+
+      - name: Upload wheel to latest release
+        run: "gh release upload --clobber latest *.whl"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

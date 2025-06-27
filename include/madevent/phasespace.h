@@ -1,6 +1,6 @@
 #pragma once
 
-#include "phasespace/mapping.h"
+#include "phasespace/base.h"
 #include "phasespace/invariants.h"
 #include "phasespace/two_particle.h"
 #include "phasespace/luminosity.h"
@@ -11,3 +11,14 @@
 #include "phasespace/rambo.h"
 #include "phasespace/cuts.h"
 #include "phasespace/integrand.h"
+#include "phasespace/vegas.h"
+#include "phasespace/mlp.h"
+#include "phasespace/flow.h"
+#include "phasespace/discrete_sampler.h"
+#include "phasespace/discrete_flow.h"
+#include "phasespace/channel_weights.h"
+#include "phasespace/channel_weight_network.h"
+#include "phasespace/pdf.h"
+#include "phasespace/scale.h"
+#include "phasespace/matrix_element.h"
+#include "phasespace/cross_section.h"

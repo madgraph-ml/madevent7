@@ -1,0 +1,64 @@
+import pytest
+from pytest import approx
+import madevent7 as me
+import numpy as np
+
+COUNT = 10000
+SQRT_S_MAX = 13000.
+
+@pytest.fixture
+def rng():
+    return np.random.default_rng(1234)
+
+@pytest.fixture
+def s_min(rng):
+    return rng.uniform(173., SQRT_S_MAX, COUNT)**2
+
+@pytest.fixture
+def s_max(rng, s_min):
+    return rng.uniform(np.sqrt(s_min), SQRT_S_MAX, COUNT)**2
+
+@pytest.fixture
+def r_in(rng):
+    return rng.random(COUNT)
+
+@pytest.fixture(params=[
+    {},
+    {"mass": 173., "width": 1.4},
+    {"mass": 173., "nu": 1.5},
+    {"mass": 173., "nu": 1.0},
+    {"mass": 173., "nu": 0.5},
+    {"nu": 1.5},
+    {"nu": 1.0},
+    {"nu": 0.5},
+], ids=[
+    "uniform",
+    "breit wigner",
+    "massive, nu=1.5",
+    "massive, nu=1.0",
+    "massive, nu=0.5",
+    "massless, nu=1.5",
+    "massless, nu=1.0",
+    "massless, nu=0.5",
+])
+def invariant(request):
+    return me.Invariant(**request.param)
+
+def test_invariant_min(invariant, r_in, s_min, s_max):
+    (s,), det = invariant.map_forward([r_in], [s_min, s_max])
+    np.testing.assert_array_less(s_min, s)
+
+def test_invariant_max(invariant, r_in, s_min, s_max):
+    (s,), det = invariant.map_forward([r_in], [s_min, s_max])
+    np.testing.assert_array_less(s, s_max)
+
+def test_invariant_finite(invariant, r_in, s_min, s_max):
+    (s,), det = invariant.map_forward([r_in], [s_min, s_max])
+    assert np.all(np.isfinite(s))
+    assert np.all(np.isfinite(det))
+
+def test_invariant_inverse(invariant, r_in, s_min, s_max):
+    (s,), det = invariant.map_forward([r_in], [s_min, s_max])
+    (r_out,), det_inv = invariant.map_inverse([s], [s_min, s_max])
+    assert r_out == approx(r_in, abs=1e-4)
+    assert det_inv == approx(1 / det)

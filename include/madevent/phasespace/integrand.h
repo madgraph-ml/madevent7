@@ -1,79 +1,99 @@
 #pragma once
 
 #include "madevent/phasespace/phasespace.h"
+#include "madevent/phasespace/matrix_element.h"
+#include "madevent/phasespace/cross_section.h"
+#include "madevent/phasespace/vegas.h"
+#include "madevent/phasespace/pdf.h"
+#include "madevent/phasespace/flow.h"
+#include "madevent/phasespace/discrete_sampler.h"
+#include "madevent/phasespace/discrete_flow.h"
+#include "madevent/phasespace/channel_weights.h"
+#include "madevent/phasespace/channel_weight_network.h"
+#include "madevent/util.h"
 
 namespace madevent {
 
-class DifferentialCrossSection : public FunctionGenerator {
+class Unweighter : public FunctionGenerator {
 public:
-    using PidOptions = std::tuple<std::vector<int>, std::size_t>;
-
-    DifferentialCrossSection(
-        const std::vector<PidOptions>& pid_options, double e_cm2, double q2
-    ) :
-        FunctionGenerator(
-            {
-                batch_four_vec_array(std::get<0>(pid_options.at(0)).size()),
-                batch_float,
-                batch_float
-            },
-            {batch_float}
-        ),
-        _pid_options(pid_options),
-        _e_cm2(e_cm2),
-        _q2(q2)
-    {}
-
-    const std::vector<PidOptions>& pid_options() const { return _pid_options; }
+    Unweighter(const TypeVec& types);
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-
-    std::vector<PidOptions> _pid_options;
-    double _e_cm2;
-    double _q2;
 };
 
 class Integrand : public FunctionGenerator {
 public:
+    using AdaptiveMapping = std::variant<std::monostate, VegasMapping, Flow>;
+    using AdaptiveDiscrete = std::variant<std::monostate, DiscreteSampler, DiscreteFlow>;
+    inline static const int sample = 1;
+    inline static const int unweight = 2;
+    inline static const int return_momenta = 4;
+    inline static const int return_x1_x2 = 8;
+    inline static const int return_random = 16;
+    inline static const int return_latent = 32;
+    inline static const int return_discrete = 64;
+    inline static const int return_chan_weights = 128;
+    inline static const int return_cwnet_input = 256;
+
     Integrand(
         const PhaseSpaceMapping& mapping,
         const DifferentialCrossSection& diff_xs,
-        bool sample = false,
-        bool unweight = false
-    ) :
-        FunctionGenerator(
-            [&] {
-                TypeVec arg_types;
-                if (sample) {
-                    arg_types.push_back(Type({batch_size}));
-                } else {
-                    arg_types.push_back(batch_float_array(mapping.random_dim()));
-                }
-                if (unweight) {
-                    arg_types.push_back(single_float);
-                }
-                return arg_types;
-            }(),
-            {
-                batch_four_vec_array(mapping.particle_count()),
-                batch_float,
-                batch_float,
-                batch_float
-            }
-        ),
-        _mapping(mapping),
-        _diff_xs(diff_xs),
-        _sample(sample),
-        _unweight(unweight)
-    {}
+        const AdaptiveMapping& adaptive_map = std::monostate{},
+        const AdaptiveDiscrete& discrete_before = std::monostate{},
+        const AdaptiveDiscrete& discrete_after = std::monostate{},
+        const std::optional<PdfGrid>& pdf_grid = std::nullopt,
+        const std::optional<EnergyScale>& energy_scale = std::nullopt,
+        const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
+        const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
+        int flags = 0,
+        const std::vector<std::size_t>& channel_indices = {}
+    );
+    std::size_t particle_count() const { return _mapping.particle_count(); }
+    int flags() const { return _flags; }
+    std::optional<std::string> vegas_grid_name() const {
+        if (auto vegas = std::get_if<VegasMapping>(&_adaptive_map)) {
+            return vegas->grid_name();
+        } else {
+            return std::nullopt;
+        }
+    }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
-    bool _sample;
-    bool _unweight;
+    AdaptiveMapping _adaptive_map;
+    AdaptiveDiscrete _discrete_before;
+    AdaptiveDiscrete _discrete_after;
+    std::optional<PartonDensity> _pdf1;
+    std::optional<PartonDensity> _pdf2;
+    std::vector<int64_t> _pdf_indices1;
+    std::vector<int64_t> _pdf_indices2;
+    std::optional<EnergyScale> _energy_scale;
+    std::optional<PropagatorChannelWeights> _prop_chan_weights;
+    std::optional<ChannelWeightNetwork> _chan_weight_net;
+    int _flags;
+    std::vector<int64_t> _channel_indices;
+    int64_t _random_dim;
+    std::size_t _latent_dim;
+
+    friend class IntegrandProbability;
+};
+
+class IntegrandProbability : public FunctionGenerator {
+public:
+    IntegrandProbability(const Integrand& integrand);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    Integrand::AdaptiveMapping _adaptive_map;
+    Integrand::AdaptiveDiscrete _discrete_before;
+    Integrand::AdaptiveDiscrete _discrete_after;
+    std::size_t _permutation_count;
+    std::size_t _flavor_count;
+    bool _has_pdf_prior;
 };
 
 }
