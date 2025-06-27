@@ -81,7 +81,7 @@ add_library(
     src/runtime/format.cpp
     src/runtime/tensor.cpp
     src/runtime/context.cpp
-    src/runtime/generate.cpp
+    src/runtime/event_generator.cpp
     src/runtime/thread_pool.cpp
     src/runtime/io.cpp
     src/runtime/vegas_optimizer.cpp
@@ -121,7 +121,7 @@ add_library(
     include/madevent/runtime/tensor.h
     include/madevent/runtime/context.h
     include/madevent/runtime/thread_pool.h
-    include/madevent/runtime/generate.h
+    include/madevent/runtime/event_generator.h
     include/madevent/runtime/io.h
     include/madevent/runtime/vegas_optimizer.h
     include/madevent/runtime/discrete_optimizer.h

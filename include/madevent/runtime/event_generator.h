@@ -77,6 +77,9 @@ public:
         std::size_t iterations;
         bool done;
     };
+    static void set_abort_check_function(std::function<void(void)> func) {
+        _abort_check_function = func;
+    }
 
     EventGenerator(
         ContextPtr context,
@@ -106,11 +109,12 @@ private:
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
     };
+    inline static std::function<void(void)> _abort_check_function = []{};
 
     ContextPtr _context;
     Config _config;
     std::vector<ChannelState> _channels;
-    std::vector<std::tuple<double, double, std::size_t>> _large_weights;
+    std::vector<std::tuple<double, std::size_t>> _large_weights;
     double _max_weight;
     RuntimePtr _unweighter;
     Status _status_all;

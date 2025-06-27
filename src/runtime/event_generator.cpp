@@ -1,4 +1,4 @@
-#include "madevent/runtime/generate.h"
+#include "madevent/runtime/event_generator.h"
 
 #include <filesystem>
 #include <format>
@@ -64,6 +64,7 @@ void EventGenerator::survey() {
     for (std::size_t iter = 0; !done && iter < _config.survey_max_iters; ++iter) {
         done = true;
         for (auto& channel : _channels) {
+            _abort_check_function();
             //clear_channel(channel);
             auto [weights, events] = generate_channel(channel, true);
 
@@ -84,6 +85,7 @@ void EventGenerator::generate() {
     print_gen_init();
     while (!_status_all.done) {
         for (auto& channel : _channels) {
+            _abort_check_function();
             if (channel.eff_count >= channel.integral_fraction * _config.target_count) {
                 continue;
             }
@@ -151,7 +153,7 @@ void EventGenerator::combine() {
             writer.read(buffer);
         } while(buffer.event().weight == 0);
         buffer.event().weight = std::max(
-            _max_weight, buffer.event().weight / channel.integral_fraction
+            1., buffer.event().weight / channel.max_weight
         );
         _writer.write(buffer);
     }
@@ -179,7 +181,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
 std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     ChannelState& channel, bool always_optimize
 ) {
-    bool run_optim = channel.vegas_optimizer && (channel.needs_optimization || always_optimize);
+    bool run_optim = channel.vegas_optimizer && (
+        channel.needs_optimization || always_optimize
+    );
     if (run_optim) clear_channel(channel);
 
     auto events = channel.runtime->run({Tensor({channel.batch_size})});
@@ -231,57 +235,75 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
 
 void EventGenerator::clear_channel(ChannelState& channel) {
     channel.eff_count = 0;
+    channel.max_weight = 0;
     channel.writer.clear();
     channel.cross_section.reset();
     std::erase_if(
         _large_weights,
-        [&channel](auto item) { return std::get<2>(item) == channel.index; }
+        [&channel](auto item) { return std::get<1>(item) == channel.index; }
     );
 }
 
 void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
-    for (auto& [w, w_scaled, chan_index] : _large_weights) {
-        w_scaled = w / _channels[chan_index].integral_fraction;
-    }
-
     auto w_view = weights.view<double,1>();
     double chan_max_weight = _max_weight * channel.integral_fraction;
+    double w_min_nonzero = 0.;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
-        double w = w_view[i];
-        if (w > chan_max_weight) _large_weights.push_back({
-            w, w / channel.integral_fraction, channel.index
-        });
+        double w = std::abs(w_view[i]);
+        if (w != 0 && (w_min_nonzero == 0 || w < w_min_nonzero)) w_min_nonzero = w;
+        if (w > channel.max_weight) {
+            _large_weights.push_back({w, channel.index});
+        }
     }
-    std::sort(_large_weights.begin(), _large_weights.end(), [this](auto& item1, auto& item2) {
-        return std::get<1>(item1) > std::get<1>(item2);
-    });
+    if (channel.max_weight == 0) channel.max_weight = w_min_nonzero;
+
+    std::sort(
+        _large_weights.begin(), _large_weights.end(),
+        [this](auto& item1, auto& item2) {
+            auto [w1, id1] = item1;
+            auto [w2, id2] = item2;
+            return w1 / _channels.at(id1).max_weight > w2 / _channels.at(id2).max_weight;
+        }
+    );
+
+    double w_sum = 0, w_prev = 0;
+    double max_truncation =
+        _config.max_overweight_truncation * channel.integral_fraction * _config.target_count;
+    std::size_t count = 0;
+    for (auto [w, chan_index] : _large_weights) {
+        if (chan_index != channel.index) continue;
+        if (w < channel.max_weight) break;
+        w_sum += w;
+        ++count;
+        if (w_sum / w - count > max_truncation) {
+            if (channel.max_weight < w) {
+                channel.eff_count *= channel.max_weight / w_prev;
+                channel.max_weight = w_prev;
+            }
+            break;
+        }
+        w_prev = w;
+    }
+
     std::size_t max_overweights = _config.max_overweight_fraction * _config.target_count;
     if (_large_weights.size() > max_overweights) {
         _large_weights.erase(_large_weights.begin() + max_overweights, _large_weights.end());
-    }
-    double new_max_weight = _large_weights.size() > 0 ?
-        std::get<1>(_large_weights.back()) : 0.;
-    double truncation = 0;
-    for (auto [w, w_scaled, chan_index] : _large_weights) {
-        truncation += std::max(w_scaled, _max_weight) / w_scaled - 1;
-        if (truncation > _config.max_overweight_truncation) {
-            new_max_weight = w_scaled;
-            break;
+        std::vector<bool> found_channels(_channels.size());
+        for (auto [w, chan_index] : std::views::reverse(_large_weights)) {
+            if (found_channels.at(chan_index)) continue;
+            found_channels.at(chan_index) = true;
+            auto& chan = _channels.at(chan_index);
+            if (chan.max_weight < w) {
+                chan.eff_count *= chan.max_weight / w;
+                chan.max_weight = w;
+            }
         }
     }
-    if (new_max_weight > _max_weight) {
-        double acceptance = _max_weight / new_max_weight;
-        for (auto& chan : _channels) {
-            chan.eff_count *= acceptance;
-        }
-        _max_weight = new_max_weight;
-    }
-    channel.max_weight = std::max(
-        channel.max_weight, _max_weight * channel.integral_fraction
-    );
 }
 
-void EventGenerator::unweight_and_write(ChannelState& channel, const std::vector<Tensor>& events) {
+void EventGenerator::unweight_and_write(
+    ChannelState& channel, const std::vector<Tensor>& events
+) {
     std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 2);
     unweighter_args.push_back(Tensor(channel.max_weight, _context->device()));
     auto unw_events = _unweighter->run(unweighter_args);
@@ -339,7 +361,7 @@ void EventGenerator::print_gen_init() {
         println(
             "Individual channels: \n"
             "--------------------------------------------------------------------------\n"
-            " #   integral        RSD      N      unweighted"
+            " #   integral ↓      RSD      N      unweighted"
         );
         for (std::size_t i = 0; i < _channels.size(); ++i) {
             if (i == 20) {
@@ -404,7 +426,6 @@ void EventGenerator::print_gen_update() {
 
         print("\n\n\n\n\n");
         for (auto& channel : channels | std::views::take(20)) {
-            if (channel.index == 20) break;
             std::string int_str, rsd_str, count_str, unw_str;
             if (!std::isnan(channel.error)) {
                 int_str = format_with_error(channel.mean, channel.error);
