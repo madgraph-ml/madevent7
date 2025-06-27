@@ -16,6 +16,7 @@ KERNELSPEC void kernel_chili_forward(
     FVal<T> _e_cm(e_cm);
     auto e_cm2 = _e_cm * _e_cm;
     auto pt_max = _e_cm / 2; // generally too large, thats why we get x1x2 > 1 and NaNs
+    auto pt2_max = pt_max * pt_max;
     auto n_out = m_out.size();
     for (std::size_t i = 0; i < n_out - 1; ++i) {
         FVal<T> pt_min_i(pt_min[i]), y_max_i(y_max[i]), m_out_i(m_out[i]);
@@ -23,20 +24,31 @@ KERNELSPEC void kernel_chili_forward(
         FVal<T> r_pt(r[i]), r_y(r[n_out - 1 + i]), r_phi(r[2 * n_out - 1 + i]);
 
         // get the pts
-        auto ptc = where(m_out_i > 0.0, m_out_i, pt_min_i);
-        auto delta_pt = pt_max - pt_min_i;
-        auto pt_denom = 2. * ptc + pt_max * (1. - r_pt);
-        auto pt = pt_min_i + (2. * ptc * delta_pt * r_pt) / pt_denom;
+        auto pt2_min_i = pt_min_i;
+
+        auto pt2_withcut = 1. / (r_pt / pt2_max + (1. - r_pt) / pt2_min_i);
+        auto pt_withcut = sqrt(pt2_withcut);
+        auto det_pt_withcut = pt2_withcut * pt2_withcut * (1. / pt2_min_i - 1. / pt2_max);
+
+        auto pt_nocut = 2. * m_out_i * pt_max * r_pt / (2. * m_out_i + pt_max * (1. - r_pt));
+        auto pt2_nocut = pt_nocut * pt_nocut;
+        auto factor_pt = (2 * m_out_i + pt_nocut);
+        auto denom_pt = m_out_i * (2 * m_out_i + pt_max);
+        auto det_pt_nocut = pt_nocut * pt_max * factor_pt * factor_pt / denom_pt;
+
+        auto has_pt_cut = pt2_min_i > 1e-9;
+        auto pt = where(has_pt_cut, pt_withcut, pt_nocut);
+        auto pt2 = where(has_pt_cut, pt2_withcut, pt2_nocut);
+        auto det_pt = where(has_pt_cut, det_pt_withcut, det_pt_nocut);
 
         // get first n-1 rapidities and phi
-        auto pt2 = pt * pt;
         auto y_max_calc = log(sqrt(e_cm2 / 4. / pt2) + sqrt(e_cm2 / 4. / pt2 - 1.0));
         y_max_calc = min(y_max_i, y_max_calc);
         auto y = y_max_calc * (2. * r_y - 1.0);
-        auto phi = 2. * PI * r_phi;
+        auto phi = 2. * PI * r_phi + atan2(py_sum, px_sum);
 
         det_tmp = det_tmp / 4.
-            * 2. * pt * 2. * ptc * delta_pt * (2. * ptc + pt_max) / (pt_denom * pt_denom)
+            * det_pt
             * 2. * y_max_calc
             * 2. * PI;
 

@@ -297,22 +297,17 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
 
     std::size_t max_overweights = _config.max_overweight_fraction * _config.target_count;
     if (_large_weights.size() > max_overweights) {
-        //println("ERASING {} -> {}", _large_weights.size(), max_overweights);
         _large_weights.erase(_large_weights.begin() + max_overweights, _large_weights.end());
         std::vector<bool> found_channels(_channels.size());
         for (auto [w, chan_index] : std::views::reverse(_large_weights)) {
             if (found_channels.at(chan_index)) continue;
             found_channels.at(chan_index) = true;
             auto& chan = _channels.at(chan_index);
-            //println("chan {}: w_max={}, w_low={}", chan_index, chan.max_weight, w);
             if (chan.max_weight < w) {
                 chan.eff_count *= chan.max_weight / w;
                 chan.max_weight = w;
             }
         }
-        std::size_t n_found = 0;
-        for (bool f : found_channels) n_found += f;
-        //println("found chans: {}", n_found);
     }
 }
 
