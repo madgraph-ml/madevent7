@@ -72,9 +72,11 @@ public:
         double error;
         double rel_std_dev;
         std::size_t count;
+        std::size_t count_integral;
         double count_unweighted;
         double count_target;
         std::size_t iterations;
+        bool optimized;
         bool done;
     };
     static void set_abort_check_function(std::function<void(void)> func) {
@@ -108,13 +110,14 @@ private:
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
+        std::vector<double> large_weights;
     };
     inline static std::function<void(void)> _abort_check_function = []{};
 
     ContextPtr _context;
     Config _config;
     std::vector<ChannelState> _channels;
-    std::vector<std::tuple<double, std::size_t>> _large_weights;
+    //std::vector<std::tuple<double, std::size_t>> _large_weights;
     double _max_weight;
     RuntimePtr _unweighter;
     Status _status_all;
@@ -126,6 +129,7 @@ private:
         ChannelState& channel, bool always_optimize
     );
     void clear_channel(ChannelState& channel);
+    //void sort_large_weights();
     void update_max_weight(ChannelState& channel, Tensor weights);
     void unweight_and_write(ChannelState& channel, const std::vector<Tensor>& momenta);
     void print_gen_init();

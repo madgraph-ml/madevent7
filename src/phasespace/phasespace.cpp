@@ -122,13 +122,15 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         if (!is_com_decay) {
             // TODO: this part must be rewritten for subchannels etc.
             double mass, width;
-            if (decay.mass <= info.m_min) {
+            /*if (decay.mass <= info.m_min) {
                 mass = 0;
                 width = 0;
             } else {
                 mass = decay.mass;
                 width = decay.width;
-            }
+            }*/
+            mass = decay.width == 0. ? 0. : decay.mass;
+            width = decay.width;
             info.invariant = Invariant(nu, mass, width);
         }
     }
