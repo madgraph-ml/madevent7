@@ -1,10 +1,13 @@
 #include "madevent/phasespace/flow.h"
 
+#include "../kernels/nn.h"
+
 #include <numeric>
 #include <algorithm>
 #include <bitset>
 #include <format>
 #include <ranges>
+#include <cmath>
 
 using namespace madevent;
 
@@ -27,6 +30,118 @@ std::tuple<Value, Value> build_block(
         fb.rqs_inverse(input, rqs_condition) :
         fb.rqs_forward(input, rqs_condition);
     return {out, fb.reduce_product(det)};
+}
+
+void vegas_init(
+    ContextPtr context,
+    const std::string& grid_name,
+    const std::string& bias_name,
+    const std::vector<int64_t>& indices,
+    bool inverse_spline
+) {
+    // TODO: check shapes
+    auto bias_global = context->global(bias_name);
+    auto grid_tensor = context->global(grid_name).cpu();
+    bool is_cpu = false; //context->device() == cpu_device();
+    Tensor bias_tensor =
+        is_cpu ? bias_global : Tensor(DataType::dt_float, bias_global.shape());
+    auto bias_view = bias_tensor.view<double, 2>()[0];
+    auto grid_view = grid_tensor.view<double, 3>()[0];
+    std::size_t n_dims = grid_tensor.size(1);
+    std::size_t n_bins_vegas = grid_tensor.size(2) - 1;
+    std::size_t n_bins_flow = (bias_tensor.size(1) / indices.size() - 1) / 3;
+
+    if (n_bins_flow > n_bins_vegas) {
+        throw std::runtime_error("The flow must have less bins than VEGAS");
+    }
+
+    std::vector<double> w, h, d;
+    std::size_t bias_index = 0;
+
+    for (auto index : indices) {
+        // Initialize width, heights and derivatives from VEGAS grid
+        w.clear();
+        h.clear();
+        d.clear();
+        auto dim_grid = grid_view[index];
+        for (std::size_t i = 0; i < n_bins_vegas; ++i) {
+            w.push_back(dim_grid[i+1] - dim_grid[i]);
+            h.push_back(1. / n_bins_vegas);
+        }
+        d.push_back(w.at(0) * n_bins_vegas);
+        for (std::size_t i = 0; i < n_bins_vegas - 1; ++i) {
+            d.push_back((w.at(i) + w.at(i + 1)) / 2. * n_bins_vegas);
+        }
+        d.push_back(w.at(n_bins_vegas - 1) * n_bins_vegas);
+
+        // Run bin reduction algorithm
+        double size_lim = 2. / n_bins_flow;
+        while (w.size() > n_bins_flow) {
+            std::size_t min_diff_index = 0;
+            double min_diff = std::numeric_limits<int>::max();
+            bool min_is_large = true;
+            for (std::size_t i = 0; i < w.size() - 1; ++i) {
+                double wl = w.at(i), wh = w.at(i+1), hl = h.at(i), hh = h.at(i+1);
+                double diff = std::abs(wl / hl - wh / hh);
+                bool is_large = wl + wh > size_lim || hl + hh > size_lim;
+                if (is_large < min_is_large || (
+                    is_large == min_is_large && diff < min_diff
+                )) {
+                    min_diff = diff;
+                    min_is_large = is_large;
+                    min_diff_index = i;
+                }
+            }
+            w.at(min_diff_index) += w.at(min_diff_index + 1);
+            h.at(min_diff_index) += h.at(min_diff_index + 1);
+            w.erase(w.begin() + min_diff_index + 1);
+            h.erase(h.begin() + min_diff_index + 1);
+            d.erase(d.begin() + min_diff_index + 1);
+        }
+
+        // Invert softmax and softplus functions applied to subnet outputs
+        double w_sum = 0.;
+        for (double& wi : w) {
+            wi = std::log(
+                std::max(wi - kernels::MIN_BIN_SIZE, kernels::MIN_BIN_SIZE * 1e-5)
+                / (1. - n_bins_flow * kernels::MIN_BIN_SIZE)
+            );
+            w_sum += wi;
+        }
+        double h_sum = 0.;
+        for (double& hi : h) {
+            hi = std::log(
+                std::max(hi - kernels::MIN_BIN_SIZE, kernels::MIN_BIN_SIZE * 1e-5)
+                / (1. - n_bins_flow * kernels::MIN_BIN_SIZE)
+            );
+            h_sum += hi;
+        }
+        std::size_t offset = bias_index * (3 * n_bins_flow + 1);
+        for (std::size_t i = 0; i < n_bins_flow; ++i) {
+            if (inverse_spline) {
+                bias_view[offset + i] = w.at(i) - w_sum / n_bins_flow;
+                bias_view[offset + n_bins_flow + i] = h.at(i) - h_sum / n_bins_flow;
+            } else {
+                bias_view[offset + i] = h.at(i) - h_sum / n_bins_flow;
+                bias_view[offset + n_bins_flow + i] = w.at(i) - w_sum / n_bins_flow;
+            }
+        }
+        offset += 2 * n_bins_flow;
+        for (std::size_t i = 0; i < n_bins_flow + 1; ++i) {
+            double di = inverse_spline ? 1. / d.at(i) : d.at(i);
+            bias_view[offset + i] = std::log(std::max(
+                std::exp(
+                    (kernels::MIN_DERIVATIVE + LOG_TWO) * di - kernels::MIN_DERIVATIVE
+                ) - 1.,
+                kernels::MIN_DERIVATIVE * 1e-5
+            ));
+        }
+        ++bias_index;
+    }
+
+    if (!is_cpu) {
+        bias_global.copy_from(bias_tensor);
+    }
 }
 
 }
@@ -96,6 +211,25 @@ void Flow::initialize_globals(ContextPtr context) const {
         block.subnet1.initialize_globals(context);
         block.subnet2.initialize_globals(context);
     }
+}
+
+void Flow::initialize_from_vegas(ContextPtr context, const std::string& grid_name) const {
+    initialize_globals(context);
+    auto& last_block = _coupling_blocks.at(_coupling_blocks.size() - 1);
+    vegas_init(
+        context,
+        grid_name,
+        last_block.subnet1.last_layer_bias_name(),
+        last_block.indices1,
+        _invert_spline
+    );
+    vegas_init(
+        context,
+        grid_name,
+        last_block.subnet2.last_layer_bias_name(),
+        last_block.indices2,
+        _invert_spline
+    );
 }
 
 Mapping::Result Flow::build_forward_impl(

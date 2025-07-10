@@ -195,10 +195,12 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
 
     auto weights = events.at(0).cpu();
     auto w_view = weights.view<double,1>();
+    std::size_t sample_count = 0;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
+        if (w_view[i] != 0) ++sample_count;
         channel.cross_section.push(w_view[i]);
     }
-    channel.total_sample_count += w_view.size();
+    channel.total_sample_count += sample_count; //w_view.size();
 
     if (run_optim) {
         double rsd = channel.cross_section.rel_std_dev();

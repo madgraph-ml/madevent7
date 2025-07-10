@@ -319,7 +319,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("mode")=PhaseSpaceMapping::rambo,
              py::arg("cuts")=std::nullopt)
         .def("random_dim", &PhaseSpaceMapping::random_dim)
-        .def("particle_count", &PhaseSpaceMapping::particle_count);
+        .def("particle_count", &PhaseSpaceMapping::particle_count)
+        .def("channel_count", &PhaseSpaceMapping::channel_count);
 
     py::class_<FastRamboMapping, Mapping>(m, "FastRamboMapping")
         .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
@@ -372,7 +373,9 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("invert_spline") = true)
         .def("input_dim", &Flow::input_dim)
         .def("condition_dim", &Flow::condition_dim)
-        .def("initialize_globals", &Flow::initialize_globals, py::arg("context"));
+        .def("initialize_globals", &Flow::initialize_globals, py::arg("context"))
+        .def("initialize_from_vegas", &Flow::initialize_from_vegas,
+             py::arg("context"), py::arg("grid_name"));
 
     py::class_<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
         .def(py::init<const std::vector<Topology>&,
@@ -394,7 +397,9 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("activation") = MLP::leaky_relu,
              py::arg("prefix") = "")
         .def("mlp", &ChannelWeightNetwork::mlp)
-        .def("preprocessing", &ChannelWeightNetwork::preprocessing);
+        .def("preprocessing", &ChannelWeightNetwork::preprocessing)
+        .def("initialize_globals", &ChannelWeightNetwork::initialize_globals,
+             py::arg("context"));
 
     py::class_<DiscreteSampler, Mapping>(m, "DiscreteSampler")
         .def(py::init<const std::vector<std::size_t>&, const std::string&,

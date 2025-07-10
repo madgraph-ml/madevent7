@@ -20,6 +20,9 @@ public:
     std::size_t input_dim() const { return _input_dim; }
     std::size_t output_dim() const { return _output_dim; }
     void initialize_globals(ContextPtr context) const;
+    std::string last_layer_bias_name() const {
+        return prefixed_name(_prefix, std::format("layer{}_bias", _layers));
+    }
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 

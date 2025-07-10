@@ -55,6 +55,7 @@ void op_matmul(
     std::size_t dims_out = weight.size(1);
     output = Tensor(DataType::dt_float, {batch_size, dims_out}, device);
     output.copy_from(bias, device);
+    if (batch_size == 0) return;
 
     cublasHandle_t handle = instruction.runtime.cublas_handle();
     check_error(cublasSetStream(handle, device.stream()));
@@ -99,6 +100,7 @@ void backward_op_matmul(
         bias_grad = Tensor(DataType::dt_float, {1, dims_out}, device);
         bias_grad.zero();
     }
+    if (batch_size == 0) return;
 
     double alpha = 1., beta = 1.;
     cublasHandle_t handle = instruction.runtime.cublas_handle();

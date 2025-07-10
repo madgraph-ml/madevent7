@@ -29,7 +29,7 @@ public:
 
     const MLP& mlp() const { return _mlp; }
     const MomentumPreprocessing& preprocessing() const { return _preprocessing; }
-    void initialize_globals(ContextPtr context) const;
+    void initialize_globals(ContextPtr context) const { _mlp.initialize_globals(context); }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
