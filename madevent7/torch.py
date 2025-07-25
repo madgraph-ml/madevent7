@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.autograd.function import FunctionCtx, once_differentiable
-from . import _madevent_py as me #TODO: can we import init here?
+from . import _madevent_py_loader as me
 
 class FunctionModule(nn.Module):
     def __init__(
@@ -35,7 +35,7 @@ class AutogradWrapper(torch.autograd.Function):
         ctx: FunctionCtx, module: FunctionModule, dummy: torch.Tensor, *args: torch.Tensor
     ) -> list[torch.Tensor]:
         outputs, local_grads, eval_grad = module.runtime.call_with_grad(
-            args, [arg.requires_grad for arg in args]
+            [arg.detach() for arg in args], [arg.requires_grad for arg in args]
         )
         ctx.module = module
         ctx.eval_grad = eval_grad

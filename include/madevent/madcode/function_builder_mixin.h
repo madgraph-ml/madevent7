@@ -261,8 +261,28 @@ Value matmul(Value x, Value weight, Value bias) {
     return instruction("matmul", {x, weight, bias})[0];
 }
 
+Value relu(Value in) {
+    return instruction("relu", {in})[0];
+}
+
 Value leaky_relu(Value in) {
     return instruction("leaky_relu", {in})[0];
+}
+
+Value elu(Value in) {
+    return instruction("elu", {in})[0];
+}
+
+Value gelu(Value in) {
+    return instruction("gelu", {in})[0];
+}
+
+Value sigmoid(Value in) {
+    return instruction("sigmoid", {in})[0];
+}
+
+Value softplus(Value in) {
+    return instruction("softplus", {in})[0];
 }
 
 std::array<Value, 3> rqs_activation(Value input, Value bin_count) {

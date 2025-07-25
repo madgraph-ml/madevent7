@@ -539,6 +539,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
     std::vector<bool> store_local(locals.size());
     std::vector<bool> eval_grad(instructions.size());
     std::copy(inputs.begin(), inputs.end(), locals.begin());
+    std::copy(input_requires_grad.begin(), input_requires_grad.end(), requires_grad.begin());
 
     for (auto [instr, instr_eval_grad] : zip(instructions, eval_grad)) {
         AsyncCudaDevice device(instr.stream);

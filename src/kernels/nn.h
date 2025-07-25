@@ -11,9 +11,23 @@ inline constexpr double MIN_DERIVATIVE = 1e-3;
 // Kernels
 
 template<typename T>
+KERNELSPEC void kernel_relu(FIn<T,0> input, FOut<T,0> output) {
+    FVal<T> x(input);
+    output = where(x < 0., 0., x);
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_relu(
+    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+) {
+    FVal<T> x(input), g(output_grad);
+    input_grad = where(x < 0., 0., g);
+}
+
+template<typename T>
 KERNELSPEC void kernel_leaky_relu(FIn<T,0> input, FOut<T,0> output) {
-    FVal<T> x = input;
-    output = where(x < 0, x * 0.01, x);
+    FVal<T> x(input);
+    output = where(x < 0., x * 0.01, x);
 }
 
 template<typename T>
@@ -21,7 +35,65 @@ KERNELSPEC void backward_kernel_leaky_relu(
     FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
 ) {
     FVal<T> x(input), g(output_grad);
-    input_grad = where(x < 0, g * 0.01, g);
+    input_grad = where(x < 0., g * 0.01, g);
+}
+
+template<typename T>
+KERNELSPEC void kernel_elu(FIn<T,0> input, FOut<T,0> output) {
+    FVal<T> x(input);
+    output = where(x < 0., expm1(x), x);
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_elu(
+    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+) {
+    FVal<T> x(input), g(output_grad);
+    input_grad = where(x < 0., g * exp(x), g);
+}
+
+template<typename T>
+KERNELSPEC void kernel_gelu(FIn<T,0> input, FOut<T,0> output) {
+    output = 0.5 * input * (1. + erf(SQRT_HALF * input));
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_gelu(
+    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+) {
+    FVal<T> x(input), g(output_grad);
+    auto cdf = 0.5 * (1. + erf(SQRT_HALF * x));
+    auto pdf = 0.5 * SQRT_HALF * TWO_DIV_SQRT_PI * exp(-0.5 * x * x);
+    input_grad = g * (cdf + x * pdf);
+}
+
+template<typename T>
+KERNELSPEC void kernel_sigmoid(FIn<T,0> input, FOut<T,0> output) {
+    FVal<T> x = input;
+    output = 1. / (1. + exp(-x));
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_sigmoid(
+    FIn<T,0> output, FIn<T,0> output_grad, FOut<T,0> input_grad
+) {
+    FVal<T> y(output), g(output_grad);
+    input_grad = g * y * (1. - y);
+}
+
+template<typename T>
+KERNELSPEC void kernel_softplus(FIn<T,0> input, FOut<T,0> output) {
+    FVal<T> x(input);
+    output = where(x < 20., log1p(exp(x)), x);
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_softplus(
+    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+) {
+    FVal<T> x(input), g(output_grad);
+    auto z = exp(x);
+    input_grad = where(x < 20., g * z / (1. + z), g);
 }
 
 template<typename T>

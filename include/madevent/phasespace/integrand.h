@@ -57,6 +57,22 @@ public:
             return std::nullopt;
         }
     }
+    const PhaseSpaceMapping& mapping() const { return _mapping; }
+    const DifferentialCrossSection& diff_xs() const { return _diff_xs; }
+    const AdaptiveMapping& adaptive_map() const { return _adaptive_map; }
+    const AdaptiveDiscrete& discrete_before() const { return _discrete_before; }
+    const AdaptiveDiscrete& discrete_after() const { return _discrete_after; }
+    const std::optional<EnergyScale>& energy_scale() const { return _energy_scale; }
+    const std::optional<PropagatorChannelWeights>& prop_chan_weights() const {
+        return _prop_chan_weights;
+    }
+    const std::optional<ChannelWeightNetwork>& chan_weight_net() const {
+        return _chan_weight_net;
+    }
+    const std::size_t random_dim() const {
+        //TODO: add discrete dims here
+        return _mapping.random_dim();
+    }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;

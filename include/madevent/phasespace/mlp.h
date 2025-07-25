@@ -7,7 +7,7 @@ namespace madevent {
 
 class MLP : public FunctionGenerator {
 public:
-    enum Activation { leaky_relu, linear };
+    enum Activation { relu, leaky_relu, elu, gelu, sigmoid, softplus, linear };
     MLP(
         std::size_t input_dim,
         std::size_t output_dim,

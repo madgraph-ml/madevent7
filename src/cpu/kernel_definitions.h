@@ -50,6 +50,8 @@ using std::log1p;
 using std::tan;
 using std::atan;
 using std::exp;
+using std::expm1;
+using std::erf;
 
 using std::isnan;
 

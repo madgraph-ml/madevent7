@@ -1072,6 +1072,18 @@ matmul:
   custom_op: True
   differentiable: True
 
+relu:
+  inputs:
+    - name: in
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  dims: 0
+  differentiable: True
+
 leaky_relu:
   inputs:
     - name: in
@@ -1081,7 +1093,56 @@ leaky_relu:
     - name: out
       type: [float, ...]
       desc:
-  dims: 2
+  dims: 0
+  differentiable: True
+
+elu:
+  inputs:
+    - name: in
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  dims: 0
+  differentiable: True
+
+gelu:
+  inputs:
+    - name: in
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  dims: 0
+  differentiable: True
+
+sigmoid:
+  inputs:
+    - name: in
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      backward_arg: True
+      desc:
+  dims: 0
+  differentiable: True
+
+softplus:
+  inputs:
+    - name: in
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  dims: 0
   differentiable: True
 
 rqs_activation:

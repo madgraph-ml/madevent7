@@ -28,8 +28,18 @@ Value build_layer(
     );
     auto linear_out = fb.matmul(input, weight, bias);
     switch (activation) {
+    case MLP::relu:
+        return fb.relu(linear_out);
     case MLP::leaky_relu:
         return fb.leaky_relu(linear_out);
+    case MLP::elu:
+        return fb.elu(linear_out);
+    case MLP::gelu:
+        return fb.gelu(linear_out);
+    case MLP::sigmoid:
+        return fb.sigmoid(linear_out);
+    case MLP::softplus:
+        return fb.softplus(linear_out);
     case MLP::linear:
         return linear_out;
     }

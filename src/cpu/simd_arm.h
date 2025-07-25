@@ -140,6 +140,8 @@ inline FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
 inline FVec atanh(FVec arg1) { return Sleef_atanhd2_u10(arg1); }
 inline FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
 inline FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
+inline FVec expm1(FVec arg1) { return Sleef_expm1d2_u10(arg1); }
+inline FVec erf(FVec arg1) { return Sleef_erfd2_u10(arg1); }
 
 inline BVec isnan(FVec arg) { return arg != arg; }
 inline FVec min(FVec arg1, FVec arg2) { return where(arg1 < arg2, arg1, arg2); }

@@ -4,6 +4,7 @@ import madevent7 as me
 from madevent7.torch import FunctionModule
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(3210)
@@ -27,6 +28,31 @@ def test_initialization(mlp):
     assert torch.all(mlp.global_params["layer2_bias"] != 0)
     assert torch.all(mlp.global_params["layer3_weight"] == 0)
     assert torch.all(mlp.global_params["layer3_bias"] == 0)
+
+@pytest.fixture(params=[
+    "relu", "leaky_relu", "elu", "gelu", "sigmoid", "softplus"
+])
+def activation(request):
+    return request.param
+
+def test_activation(mlp, activation):
+    fb = me.FunctionBuilder([me.batch_float_array(10)], [me.batch_float_array(10)])
+    fb.output(0, getattr(fb, activation)(fb.input(0)))
+    func = FunctionModule(fb.function())
+    x = 10 * torch.randn((1000, 10))
+    x.requires_grad = True
+
+    y_me = func(x)
+    y_me.sum().backward()
+    grad_me = x.grad
+    x.grad = None
+
+    y_torch = getattr(F, activation)(x)
+    y_torch.sum().backward()
+    grad_torch = x.grad
+
+    assert y_me.detach() == approx(y_torch.detach())
+    assert grad_me == approx(grad_torch)
 
 def test_training(mlp):
     mlp_torch = nn.Sequential(

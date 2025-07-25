@@ -72,7 +72,12 @@ void add_instructions(py::class_<FunctionBuilder>& fb) {
     fb.def("interpolate_pdf", &FunctionBuilder::interpolate_pdf, py::arg("x"), py::arg("q2"), py::arg("pid_indices"), py::arg("grid_logx"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("interpolate_alpha_s", &FunctionBuilder::interpolate_alpha_s, py::arg("q2"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
+    fb.def("relu", &FunctionBuilder::relu, py::arg("in"));
     fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));
+    fb.def("elu", &FunctionBuilder::elu, py::arg("in"));
+    fb.def("gelu", &FunctionBuilder::gelu, py::arg("in"));
+    fb.def("sigmoid", &FunctionBuilder::sigmoid, py::arg("in"));
+    fb.def("softplus", &FunctionBuilder::softplus, py::arg("in"));
     fb.def("rqs_activation", &FunctionBuilder::rqs_activation, py::arg("input"), py::arg("bin_count"));
     fb.def("rqs_find_bin", &FunctionBuilder::rqs_find_bin, py::arg("input"), py::arg("in_sizes"), py::arg("out_sizes"), py::arg("derivatives"));
     fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"));

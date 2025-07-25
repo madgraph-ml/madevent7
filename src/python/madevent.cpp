@@ -93,6 +93,8 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.attr("batch_float") = py::cast(batch_float);
     m.attr("batch_int") = py::cast(batch_int);
     m.attr("batch_four_vec") = py::cast(batch_four_vec);
+    m.def("batch_float_array", &batch_float_array, py::arg("count"));
+    m.def("batch_four_vec_array", &batch_four_vec_array, py::arg("count"));
 
     py::class_<InstrCopy>(m, "Instruction")
         .def("__str__", [](const InstrCopy& instr) { return instr.name; } )
@@ -345,7 +347,12 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::class_<MLP, FunctionGenerator> mlp(m, "MLP");
     py::enum_<MLP::Activation>(mlp, "Activation")
+        .value("relu", MLP::relu)
         .value("leaky_relu", MLP::leaky_relu)
+        .value("elu", MLP::elu)
+        .value("gelu", MLP::gelu)
+        .value("sigmoid", MLP::sigmoid)
+        .value("softplus", MLP::softplus)
         .value("linear", MLP::linear)
         .export_values();
     mlp.def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
@@ -531,6 +538,16 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("channel_indices")=std::vector<std::size_t>{})
         .def("particle_count", &Integrand::particle_count)
         .def("flags", &Integrand::flags)
+        .def("vegas_grid_name", &Integrand::vegas_grid_name)
+        .def("mapping", &Integrand::mapping)
+        .def("diff_xs", &Integrand::diff_xs)
+        .def("adaptive_map", &Integrand::adaptive_map)
+        .def("discrete_before", &Integrand::discrete_before)
+        .def("discrete_after", &Integrand::discrete_after)
+        .def("energy_scale", &Integrand::energy_scale)
+        .def("prop_chan_weights", &Integrand::prop_chan_weights)
+        .def("chan_weight_net", &Integrand::chan_weight_net)
+        .def("random_dim", &Integrand::random_dim)
         .def_readonly_static("sample", &Integrand::sample)
         .def_readonly_static("unweight", &Integrand::unweight)
         .def_readonly_static("return_momenta", &Integrand::return_momenta)

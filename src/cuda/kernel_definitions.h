@@ -48,6 +48,8 @@ using ::log1p;
 using ::tan;
 using ::atan;
 using ::exp;
+using ::expm1;
+using ::erf;
 
 using ::isnan;
 
