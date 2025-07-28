@@ -54,8 +54,8 @@ void op_matrix_element(
     if (input_particle_count != matrix_element.particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
-    auto& pool = ThreadPool::instance();
-    auto thread_count = pool.get_thread_count();
+    auto& pool = default_thread_pool();
+    auto thread_count = pool.thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
     auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
@@ -113,8 +113,8 @@ void op_matrix_element_multichannel(
         throw std::runtime_error("Incompatible diagram count");
     }
 
-    auto& pool = ThreadPool::instance();
-    auto thread_count = pool.get_thread_count();
+    //auto& pool = ThreadPool::instance();
+    auto thread_count = 0; //pool.get_thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
     auto random_ptr = static_cast<double*>(random_in.data());
@@ -132,7 +132,7 @@ void op_matrix_element_multichannel(
             me_ptr, amp2_ptr, diag_ptr, color_ptr, helicity_ptr
         );
     } else {
-        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
+        /*auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
         pool.parallel([&](std::size_t thread_id) {
             std::size_t offset = thread_id * count_per_thread;
             matrix_element.call_multichannel(
@@ -143,7 +143,7 @@ void op_matrix_element_multichannel(
                 amp2_ptr + offset, color_ptr + offset, diag_ptr + offset,
                 helicity_ptr + offset
             );
-        });
+        });*/
     }
 }
 
@@ -279,11 +279,13 @@ void batch_gather_impl(
     auto indices_view = indices.view<int64_t, 1>();
     auto values_view = values.view<double, dim>();
     auto selection_view = selection.view<double, dim>();
-    ThreadPool::instance().parallel_for([&](std::size_t i) {
+    //ThreadPool::instance().parallel_for([&](std::size_t i) {
+    for (std::size_t i = 0; i < batch_size; ++i) {
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             values_view[indices_view[i]], selection_view[i]
         );
-    }, batch_size);
+    }
+    //}, batch_size);
 }
 
 void op_batch_gather(
@@ -309,11 +311,13 @@ void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
     auto indices_view = indices.view<int64_t, 1>();
     auto source_view = source.view<double, dim>();
     auto output_view = output.view<double, dim>();
-    ThreadPool::instance().parallel_for([&](std::size_t i) {
+    //ThreadPool::instance().parallel_for([&](std::size_t i) {
+    for (std::size_t i = 0; i < batch_size; ++i) {
         recursive_for<kernel_copy<CpuTypes>, dim-1>(
             source_view[i], output_view[indices_view[i]]
         );
-    }, batch_size);
+    }
+    //}, batch_size);
 }
 
 void op_scatter(

@@ -2,8 +2,6 @@
 
 #include <dlfcn.h>
 
-#include "madevent/runtime/thread_pool.h"
-
 using namespace madevent;
 
 MatrixElementApi::MatrixElementApi(const std::string& file, const std::string& param_card) {
@@ -63,16 +61,12 @@ MatrixElementApi::MatrixElementApi(const std::string& file, const std::string& p
         ));
     }
 
-    //TODO: only works if thread count is not increased later
-    std::size_t thread_count = ThreadPool::instance().get_thread_count();
-    for (int i = 0; i == 0 || i < thread_count; ++i) {
-        _process_instances.push_back(
-            std::unique_ptr<void, std::function<void(void*)>>(
-                _init_subprocess(param_card.c_str()),
-                [this](void* proc) { _free_subprocess(proc); }
-            )
+    _instances = ThreadResource<InstanceType>(default_thread_pool(), [&]{
+        return InstanceType(
+            _init_subprocess(param_card.c_str()),
+            [this](void* proc) { _free_subprocess(proc); }
         );
-    }
+    });
 }
 
 std::size_t Context::load_matrix_element(

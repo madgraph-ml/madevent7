@@ -58,6 +58,13 @@ inline bool operator==(const Sizes& a, const Sizes& b) {
 inline bool operator!=(const Sizes& a, const Sizes& b) { return !(a == b); }
 
 template<ScalarType T, int _dim>
+struct PackedTensorView {
+    T* data;
+    Sizes stride;
+    Sizes shape;
+};
+
+template<ScalarType T, int _dim>
 class TensorView {
 public:
     using DType = T;
@@ -65,6 +72,12 @@ public:
 
     TensorView(T* data, std::size_t* stride, std::size_t* shape) :
         _data(data), _stride(stride), _shape(shape) {}
+
+    TensorView(PackedTensorView<T, _dim>& packed_view) :
+        _data(packed_view.data),
+        _stride(packed_view.stride.data()),
+        _shape(packed_view.shape.data())
+    {}
 
     TensorView(T& value) : _data(&value), _stride(nullptr), _shape(nullptr) {}
 
@@ -304,6 +317,27 @@ public:
         );
     }
 
+    template<class T, int dim>
+    PackedTensorView<T, dim> flat_view(std::size_t flatten_count) {
+        check_impl();
+        if (flatten_count == 0) {
+            return {static_cast<T*>(impl->data), impl->stride, impl->shape};
+        }
+        if (flatten_count > impl->contiguous_dims) {
+            throw std::invalid_argument("can only flatten contiguous dimensions");
+        }
+        Sizes stride{1}, shape{1};
+        std::size_t i = 1;
+        for (; i < flatten_count; ++i) {
+            shape[0] *= impl->shape[i];
+        }
+        for (; i < impl->shape.size(); ++i) {
+            shape.push_back(impl->shape[i]);
+            stride.push_back(impl->stride[i]);
+        }
+        return {static_cast<T*>(impl->data), stride, shape};
+    }
+
     void* data() { check_impl(); return impl->data; }
     void* data() const { check_impl(); return impl->data; }
     const Sizes& shape() const { check_impl(); return impl->shape; }
@@ -404,6 +438,10 @@ public:
 
     bool is_contiguous() const {
         return impl->contiguous_dims == impl->shape.size();
+    }
+
+    std::size_t contiguous_dims() const {
+        return impl->contiguous_dims > 0;
     }
 
     template<typename D>

@@ -103,19 +103,35 @@ private:
     std::size_t _batch_stride;
 };
 
+// return the tuple of flattened PackedTensorViews where the type is extracted
+// from the signature of F
+template<typename F, int dims> struct get_flat_views;
+template<typename... TParam, int dims>
+struct get_flat_views<void(*)(TParam...), dims> {
+    template <typename... TArg>
+    auto operator()(std::size_t flatten_count, TArg&&... args) {
+        return std::make_tuple(
+            args->template flat_view<typename TParam::DType, TParam::dim + dims>(
+                flatten_count
+            )...
+        );
+    }
+};
+
 // return the tuple of TensorViews where the type is extracted from the signature of F
 template<typename F, int dims> struct get_views;
 template<typename... TParam, int dims>
 struct get_views<void(*)(TParam...), dims> {
     template <typename... TArg>
-    auto operator()(TArg&&... args) {
-        return std::make_tuple(
-            args->template view<typename TParam::DType, TParam::dim + dims>()...
-        );
+    auto operator()(std::size_t flatten_count, TArg&&... args) {
+        return std::make_tuple(TensorView<
+            typename TParam::DType, TParam::dim + dims
+        >(args)...);
     }
 };
 
-// return the tuple of VectorizedTensorViews where the type is extracted from the signature of F
+// return the tuple of VectorizedTensorViews where the type is extracted
+// from the signature of F
 template<typename F, int dims> struct get_vectorized_views;
 template<typename... TParam, int dims>
 struct get_vectorized_views<void(*)(TParam...), dims> {
@@ -134,30 +150,18 @@ struct first_param<void(*)(TParam...)> {
 };
 
 template<auto func, int dims, typename... V>
-void recursive_for(V... views) {
-    if constexpr (dims == 0) {
-        func(views...);
-    } else {
-        std::size_t count = std::get<0>(std::tie(views...)).size();
-        for (std::size_t i = 0; i < count; ++i) {
-            recursive_for<func, dims-1>(views[i]...);
-        }
-    }
-}
-
-template<auto func, int dims, typename... V>
-void nested_for(std::size_t batch_size, V... views) {
+void nested_for(std::size_t batch_size, std::size_t batch_offset, V... views) {
     auto& first_view = std::get<0>(std::tie(views...));
     if constexpr (dims == 0) {
         func(views...);
     } else if constexpr (dims == 1) {
-        for (std::size_t i = 0; i < batch_size; ++i) {
+        for (std::size_t i = batch_offset; i < batch_size; ++i) {
             func(views[i]...);
         }
     } else if constexpr (dims == 2) {
         auto size1 = first_view.size(1);
         for (std::size_t j = 0; j < size1; ++j) {
-            for (std::size_t i = 0; i < batch_size; ++i) {
+            for (std::size_t i = batch_offset; i < batch_size; ++i) {
                 func(views.get(i, j)...);
             }
         }
@@ -166,7 +170,7 @@ void nested_for(std::size_t batch_size, V... views) {
         auto size2 = first_view.size(2);
         for (std::size_t k = 0; k < size2; ++k) {
             for (std::size_t j = 0; j < size1; ++j) {
-                for (std::size_t i = 0; i < batch_size; ++i) {
+                for (std::size_t i = batch_offset; i < batch_size; ++i) {
                     func(views.get(i, j, k)...);
                 }
             }
@@ -178,7 +182,7 @@ void nested_for(std::size_t batch_size, V... views) {
         for (std::size_t l = 0; l < size3; ++l) {
             for (std::size_t k = 0; k < size2; ++k) {
                 for (std::size_t j = 0; j < size1; ++j) {
-                    for (std::size_t i = 0; i < batch_size; ++i) {
+                    for (std::size_t i = batch_offset; i < batch_size; ++i) {
                         func(views.get(i, j, k, l)...);
                     }
                 }
@@ -187,88 +191,158 @@ void nested_for(std::size_t batch_size, V... views) {
     }
 }
 
-class CpuDevice;
-
-template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims>
-void tensor_foreach(
+template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims, typename D>
+inline void tensor_foreach_impl(
     std::array<const Tensor*, n_in>& inputs,
     std::array<Tensor*, n_out>& outputs,
     std::size_t batch_size,
-    const CpuDevice& device
+    std::size_t flatten_count,
+    const D& device
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
-    auto views = std::apply(
-        get_views<decltype(scalar_func), dims>(), std::tuple_cat(inputs, outputs)
+    auto flat_views = std::apply(
+        get_flat_views<decltype(scalar_func), dims>(), std::tuple_cat(inputs, outputs)
     );
-    // scalar func and vector func have the same type if cpu vectorization is turned off
-    if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
-        ThreadPool::instance().parallel_for([&](std::size_t i) {
-            std::apply([i](auto&&... args) {
-                recursive_for<scalar_func, dims-1>(args[i]...);
+    auto views = std::apply(get_views<decltype(scalar_func), dims>(), flat_views);
+
+    /*if constexpr (device.is_concurrent) {
+        // scalar func and vector func have the same type if cpu vectorization is turned off
+        if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
+            ThreadPool::instance().parallel_for([&](std::size_t i) {
+                std::apply([i](auto&&... args) {
+                    recursive_for<scalar_func, dims-1>(args[i]...);
+                }, views);
+            }, batch_size);
+        } else {
+            auto vectorized_views = std::apply(
+                get_vectorized_views<decltype(vector_func), dims>(), views
+            );
+            std::size_t vec_batch_size = batch_size / simd_vec_size;
+            ThreadPool::instance().parallel_for([&](std::size_t i) {
+                std::apply([i](auto&&... args) {
+                    recursive_for<vector_func, dims-1>(args[i]...);
+                }, vectorized_views);
+            }, vec_batch_size);
+            //for (std::size_t i = 0; i < vec_batch_size; ++i) {
+            //    std::apply([i](auto&&... args) {
+            //        recursive_for<vector_func, dims-1>(args[i]...);
+            //    }, vectorized_views);
+            //}
+            for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
+                std::apply([i](auto&&... args) {
+                    recursive_for<scalar_func, dims-1>(args[i]...);
+                }, views);
+            }
+        }
+    } else {*/
+        // scalar func and vector func have the same type if cpu vectorization is turned off
+        if constexpr (std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
+            std::apply([batch_size](auto&&... args) {
+                nested_for<scalar_func, dims>(batch_size, 0, args...);
             }, views);
-        }, batch_size);
-        /*std::apply([batch_size](auto&&... args) {
-            nested_for<scalar_func, dims>(batch_size, args...);
-        }, views);*/
-    } else {
-        auto vectorized_views = std::apply(
-            get_vectorized_views<decltype(vector_func), dims>(), views
-        );
-        std::size_t vec_batch_size = batch_size / simd_vec_size;
-        ThreadPool::instance().parallel_for([&](std::size_t i) {
-            std::apply([i](auto&&... args) {
-                recursive_for<vector_func, dims-1>(args[i]...);
+        } else {
+            auto vectorized_views = std::apply(
+                get_vectorized_views<decltype(vector_func), dims>(), views
+            );
+            std::size_t vec_batch_size = batch_size / simd_vec_size;
+            std::apply([vec_batch_size](auto&&... args) {
+                nested_for<vector_func, dims>(vec_batch_size, 0, args...);
             }, vectorized_views);
-        }, vec_batch_size);
-        //for (std::size_t i = 0; i < vec_batch_size; ++i) {
-        //    std::apply([i](auto&&... args) {
-        //        recursive_for<vector_func, dims-1>(args[i]...);
-        //    }, vectorized_views);
-        //}
-        for (std::size_t i = vec_batch_size * simd_vec_size; i < batch_size; ++i) {
-            std::apply([i](auto&&... args) {
-                recursive_for<scalar_func, dims-1>(args[i]...);
+            std::apply([batch_size, vec_batch_size](auto&&... args) {
+                nested_for<scalar_func, dims>(
+                    batch_size, vec_batch_size * simd_vec_size, args...
+                );
             }, views);
         }
-    }
-    /*for (std::size_t i = 0; i < batch_size; ++i) {
-        std::apply([i](auto&&... args) {
-            recursive_for<scalar_func, dims-1>(args[i]...);
-        }, views);
-    }*/
+    //}
 }
 
-template<auto scalar_func, auto vector_func, int n_in, int n_out>
-void tensor_foreach_dynamic(
+template<auto scalar_func, auto vector_func, int n_in, int n_out, typename D>
+inline void tensor_foreach_dynamic_impl(
     std::array<const Tensor*, n_in> inputs,
     std::array<Tensor*, n_out> outputs,
     std::size_t batch_size,
-    const CpuDevice& device
+    std::size_t iter_dims,
+    const D& device
 ) {
-    switch (std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim) {
+    std::size_t flatten_count = iter_dims;
+    for (auto input : inputs) {
+        flatten_count = std::min(flatten_count, input->contiguous_dims());
+    }
+    for (auto output : outputs) {
+        flatten_count = std::min(flatten_count, output->contiguous_dims());
+    }
+    if (flatten_count > 1) {
+        iter_dims -= flatten_count - 1;
+        //TODO: adjust batch size
+    }
+
+    switch (iter_dims) {
         case 1:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 1>(
-                inputs, outputs, batch_size, device
+            tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 1>(
+                inputs, outputs, batch_size, flatten_count
             );
             break;
         case 2:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 2>(
-                inputs, outputs, batch_size, device
+            tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 2>(
+                inputs, outputs, batch_size, flatten_count
             );
             break;
         case 3:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 3>(
-                inputs, outputs, batch_size, device
+            tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 3>(
+                inputs, outputs, batch_size, flatten_count
             );
             break;
         case 4:
-            tensor_foreach<scalar_func, vector_func, n_in, n_out, 4>(
-                inputs, outputs, batch_size, device
+            tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 4>(
+                inputs, outputs, batch_size, flatten_count
             );
             break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }
+}
+
+template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims, typename D>
+inline void tensor_foreach(
+    std::array<const Tensor*, n_in>& inputs,
+    std::array<Tensor*, n_out>& outputs,
+    std::size_t batch_size,
+    const D& device
+) {
+    if constexpr (dims > 1) {
+        // call the dynamic foreach here as we can potentially be more efficient by
+        // flattening contiguous dimensions
+        tensor_foreach_dynamic_impl(inputs, outputs, batch_size, dims);
+    } else {
+        // flatten_count is one if all batch dimensions are contiguous,
+        // allowing for vectorization
+        std::size_t flatten_count = 1;
+        for (auto input : inputs) {
+            flatten_count = std::min(flatten_count, input->contiguous_dims());
+        }
+        for (auto output : outputs) {
+            flatten_count = std::min(flatten_count, output->contiguous_dims());
+        }
+        tensor_foreach_impl(inputs, outputs, batch_size, flatten_count);
+
+    }
+}
+
+
+template<auto scalar_func, auto vector_func, int n_in, int n_out, typename D>
+inline void tensor_foreach_dynamic(
+    std::array<const Tensor*, n_in> inputs,
+    std::array<Tensor*, n_out> outputs,
+    std::size_t batch_size,
+    const D& device
+) {
+    tensor_foreach_dynamic_impl(
+        inputs,
+        outputs,
+        batch_size,
+        std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim
+    );
 }
 
 }

@@ -5,6 +5,7 @@
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
+#include "madevent/runtime/thread_pool.h"
 
 namespace madevent {
 
@@ -34,7 +35,7 @@ public:
         _compute_matrix_element_multichannel(std::forward<T>(args)...);
     }
     void* process_instance(std::size_t index) const {
-        return _process_instances.at(index).get();
+        return _instances.get(index).get();
     }
 
 private:
@@ -49,7 +50,8 @@ private:
         const int64_t*, const int64_t*, double*, double*, int64_t*, int64_t*, int64_t*
     );
     void (*_free_subprocess)(void*);
-    std::vector<std::unique_ptr<void, std::function<void(void*)>>> _process_instances;
+    using InstanceType = std::unique_ptr<void, std::function<void(void*)>>;
+    ThreadResource<InstanceType> _instances;
 };
 
 class Context {
