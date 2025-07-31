@@ -22,6 +22,9 @@ public:
     Sizes(std::size_t size) : _size(size) {
         std::fill(begin(), end(), 0);
     };
+    Sizes(std::size_t size, std::size_t value) : _size(size) {
+        std::fill(begin(), end(), value);
+    };
     Sizes(std::initializer_list<std::size_t> values) : _size(values.size()) {
         if (values.size() > max_size) {
             throw std::invalid_argument("maximum dimension exceeded");
@@ -351,6 +354,7 @@ public:
     std::vector<Tensor> split(std::size_t axis, const SizeVec& sizes) const;
     std::vector<Tensor> unstack(std::size_t axis) const;
     Tensor unsqueeze(std::size_t axis) const;
+    Tensor expand(const Sizes& shape) const;
 
     template<typename D>
     Tensor cpu(const D& device) const {

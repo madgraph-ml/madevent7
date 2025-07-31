@@ -110,6 +110,14 @@ void op_unstack(const I& instruction, TensorVec& locals, const D& device) {
 }
 
 template<typename I, typename D>
+void op_unstack_sizes(const I& instruction, TensorVec& locals, const D& device) {
+    auto sizes = locals[instruction.input_indices[0]].batch_sizes();
+    for (auto [size, output_index] : zip(sizes, instruction.output_indices)) {
+        locals[output_index] = Tensor({size});
+    }
+}
+
+template<typename I, typename D>
 void backward_op_unstack(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -184,11 +192,11 @@ void backward_op_batch_cat(
     std::size_t offset = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
-        auto next_offset = offset + input_grad.size(0);
         if (!input_grad) {
             input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
+        auto next_offset = offset + input_grad.size(0);
         input_grad.add(output_grad.slice(0, offset, next_offset), device);
         offset = next_offset;
     }
@@ -271,7 +279,13 @@ void op_batch_size(const I& instruction, TensorVec& locals, const D& device) {
 
 template<typename I, typename D>
 void op_full(const I& instruction, TensorVec& locals, const D& device) {
-    //TODO: implement
+    auto& input = locals[instruction.input_indices[0]];
+    std::size_t batch_size = locals[instruction.input_indices[1]].batch_sizes().at(0);
+    auto& out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = batch_size;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    locals[instruction.output_indices[0]] = input.expand(shape);
 }
 
 template<typename I, typename D>

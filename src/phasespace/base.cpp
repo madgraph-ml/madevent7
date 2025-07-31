@@ -1,6 +1,37 @@
 #include "madevent/phasespace/base.h"
 
+#include "madevent/util.h"
+
 using namespace madevent;
+
+namespace {
+
+void check_types(
+    const ValueVec& values, const TypeVec& types, const std::string& prefix
+) {
+    if (values.size() != types.size()) {
+        throw std::runtime_error(std::format(
+            "{}: Invalid number of values. Expected {}, got {}",
+            prefix, types.size(), values.size()
+        ));
+    }
+    std::size_t val_index = 1;
+    for (auto [value, type] : zip(values, types)) {
+        if (value.type.dtype != type.dtype) {
+            throw std::runtime_error(std::format(
+                "{}, value {}: Invalid dtype", prefix, val_index
+            ));
+        }
+        if (value.type.shape != type.shape) {
+            throw std::runtime_error(std::format(
+                "{}, value {}: Invalid shape", prefix, val_index
+            ));
+        }
+        ++val_index;
+    }
+}
+
+}
 
 Mapping::Result Mapping::build_forward(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
@@ -56,12 +87,6 @@ Function Mapping::inverse_function() const {
     return fb.function();
 }
 
-void Mapping::check_types(
-    const ValueVec& values, const TypeVec& types, const std::string& prefix
-) const {
-    //TODO: implement this
-}
-
 ValueVec FunctionGenerator::build_function(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
@@ -76,10 +101,4 @@ Function FunctionGenerator::function() const {
     auto outputs = build_function_impl(fb, fb.input_range(0, _arg_types.size()));
     fb.output_range(0, outputs);
     return fb.function();
-}
-
-void FunctionGenerator::check_types(
-    const ValueVec& values, const TypeVec& types, const std::string& prefix
-) const {
-    //TODO: implement this
 }

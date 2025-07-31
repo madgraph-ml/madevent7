@@ -38,6 +38,13 @@ def _init():
             import numpy
             return tuple(numpy.from_dlpack(out) for out in outputs)
 
+    def runtime_call(self, *args):
+        outputs = call_and_convert(self, args)
+        if len(outputs) == 1:
+            return outputs[0]
+        else:
+            return outputs
+
     def function_call(self, *args):
         if not hasattr(self, "runtime"):
             self.runtime = FunctionRuntime(self)
@@ -76,6 +83,7 @@ def _init():
         import torch # Lazy-load torch, to make it optional dependency
         return torch.from_dlpack(tensor)
 
+    FunctionRuntime.__call__ = runtime_call
     Function.__call__ = function_call
     FunctionGenerator.__call__ = function_generator_call
     Mapping.map_forward = map_forward

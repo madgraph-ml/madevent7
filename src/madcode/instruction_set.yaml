@@ -21,6 +21,15 @@ unstack:
   custom_op: True
   differentiable: True
 
+unstack_sizes:
+  inputs:
+    - name: in
+      desc: 
+  outputs: any
+  desc: 
+  class: UnstackSizesInstruction
+  custom_op: True
+
 pop:
   inputs:
     - name: in

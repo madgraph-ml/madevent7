@@ -548,19 +548,18 @@ std::tuple<
         zip(std::views::reverse(instructions), std::views::reverse(eval_grad))
     ) {
         if (!instr_eval_grad) continue;
-        bool needs_grad = true;
         for (auto [output_index, output_dtype] : zip(
             instr.output_indices, instr.output_dtypes
         )) {
-            if (!local_grads[output_index] && output_dtype == DataType::dt_float) {
-                needs_grad = false;
+            auto& grad = local_grads[output_index];
+            if (!grad && output_dtype == DataType::dt_float) {
+                grad = Tensor(DataType::dt_float, locals[output_index].shape(), device);
+                grad.zero(device);
                 break;
             }
         }
-        if (needs_grad) {
-            switch (instr.opcode) {
+        switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
-            }
         }
     }
     std::vector<std::tuple<std::string, Tensor>> global_grads;

@@ -84,6 +84,13 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
+class UnstackSizesInstruction : public Instruction {
+public:
+    UnstackSizesInstruction(int opcode, bool differentiable) :
+        Instruction("unstack_sizes", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
 class BatchCatInstruction : public Instruction {
 public:
     BatchCatInstruction(int opcode, bool differentiable) :

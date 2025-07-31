@@ -31,9 +31,10 @@ public:
     inline static const int return_x1_x2 = 8;
     inline static const int return_random = 16;
     inline static const int return_latent = 32;
-    inline static const int return_discrete = 64;
+    inline static const int return_channel = 64;
     inline static const int return_chan_weights = 128;
     inline static const int return_cwnet_input = 256;
+    inline static const int return_discrete = 512;
 
     Integrand(
         const PhaseSpaceMapping& mapping,

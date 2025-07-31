@@ -11,7 +11,7 @@ class FunctionModule(nn.Module):
     ):
         super().__init__()
         self.global_params = nn.ParameterDict({
-            name: nn.Parameter(
+            name.replace(".", ":"): nn.Parameter(
                 context.get_global(name).torch(),
                 context.global_requires_grad(name),
             )
@@ -55,9 +55,9 @@ class AutogradWrapper(torch.autograd.Function):
             output_grads, ctx.saved_tensors, ctx.eval_grad
         )
         for name, grad in global_grads:
-            param = ctx.module.global_params[name]
             if grad is None:
                 continue
+            param = ctx.module.global_params[name.replace(".", ":")]
             if param.grad is None:
                 param.grad = torch.from_dlpack(grad)
             else:

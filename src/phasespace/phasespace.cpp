@@ -76,7 +76,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             batch_float,
             batch_float
         },
-        permutations.size() == 0 ? TypeVec{} : TypeVec{batch_int}
+        permutations.size() > 1 ? TypeVec{batch_int} : TypeVec{}
     ),
     _topology(topology),
     _cuts(

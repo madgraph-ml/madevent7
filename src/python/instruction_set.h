@@ -12,9 +12,10 @@ using madevent::FunctionBuilder;
 
 namespace {
 
-void add_instructions(py::class_<FunctionBuilder>& fb) {
+void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("stack", &FunctionBuilder::stack, py::arg("args"));
     fb.def("unstack", &FunctionBuilder::unstack, py::arg("in"));
+    fb.def("unstack_sizes", &FunctionBuilder::unstack_sizes, py::arg("in"));
     fb.def("pop", &FunctionBuilder::pop, py::arg("in"));
     fb.def("batch_cat", &FunctionBuilder::batch_cat, py::arg("args"));
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
