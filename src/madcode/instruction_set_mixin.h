@@ -28,7 +28,7 @@ InstructionOwner instructions[] {
     InstructionOwner(new UnsqueezeInstruction(10, true)),
     mi("add", 11, true, {{DataType::dt_float, false, {std::monostate{}}, false}, {DataType::dt_float, false, {std::monostate{}}, false}}, {{DataType::dt_float, false, {std::monostate{}}, false}}),
     mi("sub", 12, true, {{DataType::dt_float, false, {std::monostate{}}, false}, {DataType::dt_float, false, {std::monostate{}}, false}}, {{DataType::dt_float, false, {std::monostate{}}, false}}),
-    mi("mul", 13, true, {{DataType::dt_float, false, {}, false}, {DataType::dt_float, false, {}, false}}, {{DataType::dt_float, false, {}, false}}),
+    mi("mul", 13, true, {{DataType::dt_float, false, {std::monostate{}}, false}, {DataType::dt_float, false, {std::monostate{}}, false}}, {{DataType::dt_float, false, {std::monostate{}}, false}}),
     mi("reduce_product", 14, true, {{DataType::dt_float, false, {"n"}, false}}, {{DataType::dt_float, false, {}, false}}),
     mi("sqrt", 15, true, {{DataType::dt_float, false, {}, false}}, {{DataType::dt_float, false, {}, false}}),
     mi("square", 16, true, {{DataType::dt_float, false, {}, false}}, {{DataType::dt_float, false, {}, false}}),

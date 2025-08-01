@@ -26,7 +26,11 @@ class FunctionModule(nn.Module):
         if torch.is_grad_enabled():
             return AutogradWrapper.apply(self, self.dummy, *args)
         else:
-            return [torch.from_dlpack(out) for out in self.runtime.call(args)]
+            outputs = self.runtime.call(args)
+            if len(outputs) == 1:
+                return torch.from_dlpack(outputs[0])
+            else:
+                return tuple(torch.from_dlpack(out) for out in outputs)
 
 
 class AutogradWrapper(torch.autograd.Function):

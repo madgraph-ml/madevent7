@@ -26,7 +26,7 @@ case 10:
     backward_op_unsqueeze(instr, locals, local_grads, device);
     break;
 case 13:
-    backward_batch_foreach<tensor_foreach<backward_kernel_mul<CudaTypes>, 3, 2, 1>, 2, 1, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
+    backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_mul<CudaTypes>, 3, 2>, 2, 1, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
 case 14:
     backward_batch_foreach<tensor_foreach<backward_kernel_reduce_product<CudaTypes>, 2, 1, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);

@@ -153,17 +153,18 @@ sub:
 mul:
   inputs:
     - name: in1
-      type: [float]
+      type: [float, ...]
       desc: first input to multiplication
     - name: in2
-      type: [float]
+      type: [float, ...]
       desc: second input to multiplication
   outputs:
     - name: out
-      type: [float]
+      type: [float, ...]
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
   differentiable: True
+  dims: 0
 
 reduce_product:
   inputs:

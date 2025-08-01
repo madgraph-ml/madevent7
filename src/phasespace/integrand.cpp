@@ -80,6 +80,7 @@ Integrand::Integrand(
             }
             if (flags & return_chan_weights) {
                 ret_types.push_back(batch_float_array(diff_xs.channel_count()));
+                ret_types.push_back(batch_float);
             }
             if (flags & return_cwnet_input) {
                 ret_types.push_back(batch_float_array(
@@ -286,6 +287,7 @@ ValueVec Integrand::build_function_impl(
     }
 
     // compute full phase-space weight
+    Value selected_chan_weight_acc;
     if (has_multi_channel) {
         //TODO fixme
         Value chan_index_acc;
@@ -294,12 +296,16 @@ ValueVec Integrand::build_function_impl(
         } else {
             chan_index_acc = static_cast<int64_t>(_channel_indices.at(0));
         }
-        weights_after_cuts.push_back(fb.gather(chan_index_acc, chan_weights_acc));
+        selected_chan_weight_acc = fb.gather(chan_index_acc, chan_weights_acc);
+        weights_after_cuts.push_back(selected_chan_weight_acc);
+    } else {
+        selected_chan_weight_acc = 1.;
     }
     weight = fb.mul(weight, fb.scatter(indices_acc, weight, fb.product(weights_after_cuts)));
 
     // return results based on _flags
     ValueVec outputs{weight};
+    Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
     if (_flags & return_momenta) {
         outputs.push_back(momenta);
     }
@@ -316,21 +322,20 @@ ValueVec Integrand::build_function_impl(
     }
     if (_flags & return_channel) {
         if (!has_permutations) {
-            Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
             chan_index = fb.full({static_cast<int64_t>(_channel_indices.at(0)), batch_size});
         }
         outputs.push_back(chan_index);
     }
     if (_flags & return_chan_weights) {
-        Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
         auto chan_count = _diff_xs.channel_count();
         auto cw_flat = fb.full({
             1. / chan_count, batch_size, static_cast<int64_t>(chan_count)
         });
+        auto ones = fb.full({1., batch_size});
         outputs.push_back(fb.scatter(indices_acc, cw_flat, prior_chan_weights_acc));
+        outputs.push_back(fb.scatter(indices_acc, ones, selected_chan_weight_acc));
     }
     if (_flags & return_cwnet_input) {
-        Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
         auto& preproc = _chan_weight_net.value().preprocessing();
         auto cw_preproc_acc = preproc.build_function(
             fb, {momenta_acc, x1_acc, x2_acc}
@@ -343,7 +348,6 @@ ValueVec Integrand::build_function_impl(
             outputs.push_back(chan_index_in_group);
         }
         if (has_multi_flavor && !std::holds_alternative<std::monostate>(_discrete_before)) {
-            Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
             auto zeros = fb.full({static_cast<int64_t>(0), batch_size});
             outputs.push_back(fb.scatter(indices_acc, zeros, flavor_id));
             if (has_pdf_prior) {

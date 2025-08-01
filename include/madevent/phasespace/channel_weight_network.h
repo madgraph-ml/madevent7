@@ -29,13 +29,16 @@ public:
 
     const MLP& mlp() const { return _mlp; }
     const MomentumPreprocessing& preprocessing() const { return _preprocessing; }
-    void initialize_globals(ContextPtr context) const { _mlp.initialize_globals(context); }
+    void initialize_globals(ContextPtr context) const;
+    const std::string& mask_name() const { return _mask_name; }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     MomentumPreprocessing _preprocessing;
     MLP _mlp;
+    std::size_t _channel_count;
+    std::string _mask_name;
 };
 
 }

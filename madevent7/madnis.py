@@ -83,9 +83,11 @@ def build_madnis_integrand(
     def integrand_function(channels):
         channel_perm = torch.argsort(channels)
         channels = channels.bincount(minlength=channel_count)
-        full_weight, x, inv_prob, chan_index, alphas_prior, y = multi_runtime(channels)
+        (
+            full_weight, x, inv_prob, chan_index, alphas_prior, alpha_selected, y
+        ) = multi_runtime(channels)
         prob = 1 / inv_prob
-        weight = full_weight * prob
+        weight = full_weight * prob / alpha_selected
         channel_perm_inv = torch.argsort(channel_perm)
         return (
             x[channel_perm_inv],
@@ -96,6 +98,9 @@ def build_madnis_integrand(
             chan_index[channel_perm_inv]
         )
 
+    def update_mask(mask: torch.Tensor):
+        context.get_global(cwnet.mask_name()).torch()[0, :] = mask.double()
+
     integrand = Integrand(
         function=integrand_function,
         input_dim=channels[0].random_dim(),
@@ -104,6 +109,7 @@ def build_madnis_integrand(
         has_channel_weight_prior=cwnet is not None,
         channel_grouping=channel_grouping,
         function_includes_sampling=True,
+        update_active_channels_mask=update_mask,
         #discrete_dims=
         #discrete_dims_position=
         #discrete_prior_prob_function=

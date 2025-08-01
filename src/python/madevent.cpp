@@ -411,6 +411,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("prefix") = "")
         .def("mlp", &ChannelWeightNetwork::mlp)
         .def("preprocessing", &ChannelWeightNetwork::preprocessing)
+        .def("mask_name", &ChannelWeightNetwork::mask_name)
         .def("initialize_globals", &ChannelWeightNetwork::initialize_globals,
              py::arg("context"));
 

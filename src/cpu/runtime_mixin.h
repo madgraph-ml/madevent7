@@ -41,7 +41,7 @@ case 12:
     batch_foreach<tensor_foreach_dynamic<kernel_sub<CpuTypes>, kernel_sub<SimdTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 13:
-    batch_foreach<tensor_foreach<kernel_mul<CpuTypes>, kernel_mul<SimdTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_mul<CpuTypes>, kernel_mul<SimdTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 14:
     batch_foreach<tensor_foreach<kernel_reduce_product<CpuTypes>, kernel_reduce_product<SimdTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
