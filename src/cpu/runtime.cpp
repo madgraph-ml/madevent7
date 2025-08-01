@@ -555,7 +555,6 @@ std::tuple<
             if (!grad && output_dtype == DataType::dt_float) {
                 grad = Tensor(DataType::dt_float, locals[output_index].shape(), device);
                 grad.zero(device);
-                break;
             }
         }
         switch (instr.opcode) {

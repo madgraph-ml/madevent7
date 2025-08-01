@@ -317,7 +317,7 @@ ValueVec Integrand::build_function_impl(
     if (_flags & return_channel) {
         if (!has_permutations) {
             Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
-            chan_index = fb.full({static_cast<int64_t>(0), batch_size});
+            chan_index = fb.full({static_cast<int64_t>(_channel_indices.at(0)), batch_size});
         }
         outputs.push_back(chan_index);
     }
@@ -405,9 +405,7 @@ ValueVec IntegrandProbability::build_function_impl(
 
     if (_permutation_count > 1) {
         std::visit(Overloaded {
-            [&](std::monostate) {
-                probs.push_back(1. / _permutation_count);
-            },
+            [](std::monostate) {},
             [&](auto discrete_before) {
                 auto chan_index = args.at(arg_index);
                 ++arg_index;

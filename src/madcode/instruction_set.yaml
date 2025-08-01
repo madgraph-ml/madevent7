@@ -163,6 +163,7 @@ mul:
       type: [float]
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
+  differentiable: True
 
 reduce_product:
   inputs:

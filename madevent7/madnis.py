@@ -20,7 +20,7 @@ MADNIS_INTEGRAND_FLAGS = (
 class IntegrandDistribution(nn.Module, Distribution):
     def __init__(
         self,
-        channels: list[me.Integrand], 
+        channels: list[me.Integrand],
         channel_remap_function: Callable[[torch.Tensor], torch.Tensor],
         context: me.Context
     ):
