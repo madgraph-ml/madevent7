@@ -22,12 +22,12 @@ def test_properties():
     assert mlp.output_dim() == 1
 
 def test_initialization(mlp):
-    assert torch.all(mlp.global_params["layer1_weight"] != 0)
-    assert torch.all(mlp.global_params["layer1_bias"] != 0)
-    assert torch.all(mlp.global_params["layer2_weight"] != 0)
-    assert torch.all(mlp.global_params["layer2_bias"] != 0)
-    assert torch.all(mlp.global_params["layer3_weight"] == 0)
-    assert torch.all(mlp.global_params["layer3_bias"] == 0)
+    assert torch.all(mlp.global_params["layer1:weight"] != 0)
+    assert torch.all(mlp.global_params["layer1:bias"] != 0)
+    assert torch.all(mlp.global_params["layer2:weight"] != 0)
+    assert torch.all(mlp.global_params["layer2:bias"] != 0)
+    assert torch.all(mlp.global_params["layer3:weight"] == 0)
+    assert torch.all(mlp.global_params["layer3:bias"] == 0)
 
 @pytest.fixture(params=[
     "relu", "leaky_relu", "elu", "gelu", "sigmoid", "softplus"
@@ -65,8 +65,8 @@ def test_training(mlp):
 
     with torch.no_grad():
         for i in range(3):
-            mlp_torch[2*i].weight[:] = mlp.global_params[f"layer{i+1}_weight"][0]
-            mlp_torch[2*i].bias[:] = mlp.global_params[f"layer{i+1}_bias"][0]
+            mlp_torch[2*i].weight[:] = mlp.global_params[f"layer{i+1}:weight"][0]
+            mlp_torch[2*i].bias[:] = mlp.global_params[f"layer{i+1}:bias"][0]
 
     opt_me7 = torch.optim.Adam(mlp.parameters(), lr=1e-3)
     opt_torch = torch.optim.Adam(mlp_torch.parameters(), lr=1e-3)
@@ -87,14 +87,14 @@ def test_training(mlp):
         with torch.no_grad():
             for i in range(3):
                 assert mlp_torch[2*i].weight.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}_weight"][0].numpy()
+                    mlp.global_params[f"layer{i+1}:weight"][0].numpy()
                 )
                 assert mlp_torch[2*i].bias.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}_bias"][0].numpy()
+                    mlp.global_params[f"layer{i+1}:bias"][0].numpy()
                 )
                 assert mlp_torch[2*i].weight.grad.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}_weight"].grad[0].numpy()
+                    mlp.global_params[f"layer{i+1}:weight"].grad[0].numpy()
                 )
                 assert mlp_torch[2*i].bias.grad.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}_bias"].grad[0].numpy()
+                    mlp.global_params[f"layer{i+1}:bias"].grad[0].numpy()
                 )

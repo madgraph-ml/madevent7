@@ -89,6 +89,8 @@ private:
     std::unordered_map<std::string, Value> globals;
     std::vector<InstructionCall> instructions;
     std::map<std::vector<std::size_t>, std::vector<std::size_t>> instruction_cache;
+    std::vector<int> local_sources;
+    std::vector<bool> instruction_used;
 
     void register_local(Value& val);
 };

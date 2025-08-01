@@ -198,6 +198,7 @@ FunctionBuilder::FunctionBuilder(
     for (auto input_type : input_types) {
         Value value(input_type, locals.size());
         locals.push_back(value);
+        local_sources.push_back(-1);
         inputs.push_back(value);
     }
     for (auto output_type : output_types) {
@@ -226,8 +227,8 @@ ValueVec FunctionBuilder::instruction(const std::string& name, const ValueVec& a
 ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec& args) {
     // check argument types and determine if all arguments are constant
     auto params = args;
-    int arg_index = -1;
-    bool const_opt = true;
+    std::size_t arg_index = 0;
+    std::size_t variable_args = 0;
     for (auto& arg : params) {
         ++arg_index;
 
@@ -246,7 +247,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
                     instruction->name(), arg_index
                 ));
             }
-            const_opt = false;
+            ++variable_args;
         } else if (std::holds_alternative<std::monostate>(arg.literal_value)) {
             throw std::invalid_argument(std::format(
                 "{}, argument {}: undefined value", instruction->name(), arg_index
@@ -256,7 +257,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
 
     // perform simple arithmetic operations on constant arguments
     int opcode = instruction->opcode();
-    if (const_opt) {
+    if (variable_args == 0) {
         switch (opcode) {
         case opcodes::add: {
             double arg0 = std::get<double>(args.at(0).literal_value);
@@ -277,6 +278,19 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
             double arg0 = std::get<double>(args.at(0).literal_value);
             return {arg0 * arg0};
         }}
+    } else if (variable_args == 1 && args.size() == 2) {
+        std::size_t var_index = args.at(0).local_index == -1;
+        auto& var_arg = args.at(var_index);
+        auto& const_arg = args.at(1 - var_index);
+        switch (opcode) {
+        case opcodes::add:
+        case opcodes::sub:
+            if (std::get<double>(const_arg.literal_value) == 0.) return {var_arg};
+            break;
+        case opcodes::mul:
+            if (std::get<double>(const_arg.literal_value) == 0.) return {var_arg};
+            break;
+        }
     }
 
     // create local variables for constants
@@ -285,6 +299,14 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
     for (auto& arg : params) {
         register_local(arg);
         opcode_and_input_locals.push_back(arg.local_index);
+    }
+
+    // simplify square(sqrt(x))
+    if (opcode == opcodes::square) {
+        auto& source_instr = instructions.at(local_sources.at(args.at(0).local_index));
+        if (source_instr.instruction->opcode() == opcodes::sqrt) {
+            return {locals.at(source_instr.inputs.at(0).local_index)};
+        }
     }
 
     // check for cached result (for deterministic instructions)
@@ -306,11 +328,17 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
     for (const auto& type : output_types) {
         Value value(type, locals.size());
         locals.push_back(value);
+        local_sources.push_back(instructions.size());
         call_outputs.push_back(value);
         output_locals.push_back(value.local_index);
     }
     instructions.push_back(InstructionCall{instruction, params, call_outputs});
+    instruction_used.push_back(false);
     instruction_cache[opcode_and_input_locals] = output_locals;
+    for (auto& param : params) {
+        int param_source = local_sources.at(param.local_index);
+        if (param_source != -1) instruction_used.at(param_source) = true;
+    }
     return call_outputs;
 }
 
@@ -327,7 +355,13 @@ Function FunctionBuilder::function() {
         }
         ++output_index;
     }
-    return Function(inputs, func_outputs, locals, globals, instructions);
+
+    std::vector<InstructionCall> filtered_instructions;
+    for (auto [instr, used] : zip(instructions, instruction_used)) {
+        if (used) filtered_instructions.push_back(instr);
+    }
+
+    return Function(inputs, func_outputs, locals, globals, filtered_instructions);
 }
 
 Value FunctionBuilder::input(int index) const {
@@ -369,6 +403,8 @@ void FunctionBuilder::output(int index, Value value) {
     }
     register_local(value);
     outputs.at(index) = value;
+    int value_source = local_sources.at(value.local_index);
+    if (value_source != -1) instruction_used.at(value_source) = true;
 }
 
 void FunctionBuilder::output_range(int start_index, const ValueVec& values) {
@@ -403,6 +439,7 @@ Value FunctionBuilder::global(
     int local_index = locals.size();
     Value new_global(type, local_index);
     locals.push_back(new_global);
+    local_sources.push_back(-1);
     globals[name] = new_global;
     return new_global;
 }
@@ -426,6 +463,7 @@ void FunctionBuilder::register_local(Value& val) {
         int local_index = locals.size();
         val = Value(val.type, val.literal_value, local_index);
         locals.push_back(val);
+        local_sources.push_back(-1);
         literals[val.literal_value] = val;
     } else {
         val = find_literal->second;
