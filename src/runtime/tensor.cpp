@@ -94,6 +94,23 @@ Tensor Tensor::unsqueeze(std::size_t axis) const {
     });
 }
 
+Tensor Tensor::expand(const Sizes& shape) const {
+    check_impl();
+    return Tensor(new Tensor::TensorImpl{
+        impl->dtype,
+        shape,
+        impl->device,
+        impl->data,
+        false,
+        std::nullopt,
+        impl,
+        1,
+        Sizes(shape.size(), 0),
+        impl->offset,
+        0
+    });
+}
+
 std::size_t Tensor::init_stride() {
     std::size_t stride_prod = 1;
     bool first = true;

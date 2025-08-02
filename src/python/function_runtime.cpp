@@ -216,7 +216,7 @@ Tensor madevent_py::dlpack_to_tensor(
     }
 
     bool is_batch_sizes = expected_type ?
-        false : expected_type->dtype == DataType::batch_sizes;
+        expected_type->dtype == DataType::batch_sizes : false;
     DataType dtype;
     if (
         dl_tensor->dtype.code == kDLFloat &&
@@ -226,7 +226,7 @@ Tensor madevent_py::dlpack_to_tensor(
         dtype = DataType::dt_float;
         if (expected_type && expected_type->dtype != DataType::dt_float) {
             throw std::invalid_argument(
-                std::format("Argument {}: expected dtype float", arg_index + 1)
+                std::format("Argument {}: got unexpected dtype", arg_index + 1)
             );
         }
     } else if (
@@ -237,7 +237,7 @@ Tensor madevent_py::dlpack_to_tensor(
         dtype = DataType::dt_int;
         if (expected_type && expected_type->dtype != DataType::dt_int && !is_batch_sizes) {
             throw std::invalid_argument(
-                std::format("Argument {}: expected dtype int", arg_index + 1)
+                std::format("Argument {}: got unexpected dtype", arg_index + 1)
             );
         }
     } else {

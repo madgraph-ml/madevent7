@@ -9,6 +9,10 @@ ValueVec unstack(Value in) {
     return instruction("unstack", {in});
 }
 
+ValueVec unstack_sizes(Value in) {
+    return instruction("unstack_sizes", {in});
+}
+
 std::array<Value, 2> pop(Value in) {
     auto output_vector = instruction("pop", {in});
     return {output_vector[0], output_vector[1]};

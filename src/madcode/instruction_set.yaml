@@ -21,6 +21,15 @@ unstack:
   custom_op: True
   differentiable: True
 
+unstack_sizes:
+  inputs:
+    - name: in
+      desc: 
+  outputs: any
+  desc: 
+  class: UnstackSizesInstruction
+  custom_op: True
+
 pop:
   inputs:
     - name: in
@@ -144,16 +153,18 @@ sub:
 mul:
   inputs:
     - name: in1
-      type: [float]
+      type: [float, ...]
       desc: first input to multiplication
     - name: in2
-      type: [float]
+      type: [float, ...]
       desc: second input to multiplication
   outputs:
     - name: out
-      type: [float]
+      type: [float, ...]
       desc: product of the two inputs
   desc: Computes the product of the two inputs.
+  differentiable: True
+  dims: 0
 
 reduce_product:
   inputs:

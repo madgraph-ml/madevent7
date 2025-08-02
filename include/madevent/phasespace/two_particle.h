@@ -34,12 +34,14 @@ private:
 
 class TwoParticleScattering : public Mapping {
 public:
-    TwoParticleScattering(bool com, double nu = 0, double mass = 0, double width = 0) :
+    TwoParticleScattering(
+        bool com, double invariant_power = 0, double mass = 0, double width = 0
+    ) :
         Mapping(
             {batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},
             {batch_four_vec, batch_four_vec}
-        ), _com(com), _invariant(nu, mass, width) {}
+        ), _com(com), _invariant(invariant_power, mass, width) {}
 
 private:
     Result build_forward_impl(

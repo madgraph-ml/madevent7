@@ -6,7 +6,7 @@ using namespace madevent;
 
 TPropagatorMapping::TPropagatorMapping(
     const std::vector<std::size_t>& integration_order,
-    double nu
+    double invariant_power
 ) :
     Mapping(
         TypeVec(4 * integration_order.size() + 1, batch_float),
@@ -14,8 +14,8 @@ TPropagatorMapping::TPropagatorMapping(
         {}
     ),
     _integration_order(integration_order),
-    _com_scattering(true, nu),
-    _lab_scattering(false, nu)
+    _com_scattering(true, invariant_power),
+    _lab_scattering(false, invariant_power)
 {
     std::size_t next_index_low = 0;
     std::size_t next_index_high = integration_order.size() - 1;

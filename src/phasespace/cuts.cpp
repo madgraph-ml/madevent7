@@ -2,6 +2,7 @@
 
 #include <ranges>
 
+#include "madevent/madcode/type.h"
 #include "madevent/util.h"
 
 using namespace madevent;
@@ -26,13 +27,22 @@ const Cuts::PidVec Cuts::lepton_pids {11, 13, 15, -11, -13, -15};
 const Cuts::PidVec Cuts::missing_pids {12, 14, 16, -12, -14, -16};
 const Cuts::PidVec Cuts::photon_pids {22};
 
-ValueVec Cuts::build_function(
-    FunctionBuilder& fb, Value sqrt_s, Value momenta
-) const {
+Cuts::Cuts(std::vector<int> pids, std::vector<CutItem> cut_data) :
+    FunctionGenerator(
+        {batch_float, batch_four_vec_array(pids.size() + 2)},
+        {batch_float}
+    ),
+    _pids(pids),
+    _cut_data(cut_data) {}
+
+ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
+    auto sqrt_s = args.at(0);
+    auto momenta = args.at(1);
+
     bool has_pt_cuts(false), has_eta_cuts(false), has_dr_cuts(false);
     bool has_mass_cuts(false), has_sqrt_s_cuts(false);
     double inf = std::numeric_limits<double>::infinity();
-    int n_out = pids.size();
+    int n_out = _pids.size();
     std::vector<double> pt_cuts(2 * n_out, 0.), eta_cuts(2 * n_out, 0.);
     std::vector<double> dr_cuts, mass_cuts, sqrt_s_cuts{0., inf};
     std::vector<int64_t> dr_indices, mass_indices;
@@ -42,7 +52,7 @@ ValueVec Cuts::build_function(
     }
 
     // TODO: reduce code duplication
-    for (auto& cut : cut_data) {
+    for (auto& cut : _cut_data) {
         switch (cut.observable) {
         case obs_pt:
             process_single_cuts(cut, pt_cuts, has_pt_cuts);
@@ -87,12 +97,12 @@ ValueVec Cuts::build_function(
     if (has_sqrt_s_cuts) {
         weights.push_back(fb.cut_sqrt_s(momenta, Value(sqrt_s_cuts, {2})));
     }
-    return weights;
+    return {fb.product(weights)};
 }
 
 double Cuts::sqrt_s_min() const {
     double sqrt_s_min = 0.;
-    for (auto& cut : cut_data) {
+    for (auto& cut : _cut_data) {
         if (
             cut.observable == Cuts::obs_sqrt_s &&
             cut.limit_type == Cuts::min &&
@@ -115,10 +125,10 @@ std::vector<double> Cuts::pt_min() const {
 std::vector<double> Cuts::limits(
     CutObservable observable, LimitType limit_type, double default_value
 ) const {
-    std::vector<double> limits(pids.size(), default_value);
-    for (auto& cut : cut_data) {
+    std::vector<double> limits(_pids.size(), default_value);
+    for (auto& cut : _cut_data) {
         if (cut.observable == observable && cut.limit_type == limit_type) {
-            for (auto [limit, pid] : zip(limits, pids)) {
+            for (auto [limit, pid] : zip(limits, _pids)) {
                 if (
                     std::find(cut.pids.begin(), cut.pids.end(), pid) != cut.pids.end() &&
                     (
@@ -141,9 +151,9 @@ void Cuts::process_pair_cuts(
     std::size_t i = 0;
     std::vector<int64_t> indices2;
     std::vector<double> limits2;
-    for (auto pid_i : pids) {
+    for (auto pid_i : _pids) {
         std::size_t j = i + 1;
-        for (auto pid_j : pids | std::views::drop(i + 1)) {
+        for (auto pid_j : _pids | std::views::drop(i + 1)) {
             if (
                 std::find(cut.pids.begin(), cut.pids.end(), pid_i) != cut.pids.end() &&
                 std::find(cut.pids.begin(), cut.pids.end(), pid_j) != cut.pids.end()
@@ -172,10 +182,10 @@ void Cuts::process_single_cuts(
     CutItem cut, std::vector<double>& limits, bool& has_cuts
 ) const {
     std::size_t i = 0;
-    for (auto pid : pids) {
+    for (auto pid : _pids) {
         if (std::find(cut.pids.begin(), cut.pids.end(), pid) != cut.pids.end()) {
             auto& limit_min = limits.at(i);
-            auto& limit_max = limits.at(pids.size() + i);
+            auto& limit_max = limits.at(_pids.size() + i);
             update_cuts(limit_min, limit_max, cut.limit_type, cut.value);
             has_cuts = true;
         }

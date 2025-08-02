@@ -7,9 +7,9 @@ namespace madevent {
 
 class Invariant : public Mapping {
 public:
-    Invariant(double _nu = 0, double _mass = 0, double _width = 0) :
+    Invariant(double power = 0, double mass = 0, double width = 0) :
         Mapping({batch_float}, {batch_float}, {batch_float, batch_float}),
-        nu(_nu), mass(_mass), width(_width) {}
+        _power(power), _mass(mass), _width(width) {}
 
 private:
     Result build_forward_impl(
@@ -19,7 +19,7 @@ private:
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
-    double nu, mass, width;
+    double _power, _mass, _width;
 };
 
 }

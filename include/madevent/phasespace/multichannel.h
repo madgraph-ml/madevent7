@@ -10,18 +10,7 @@ namespace madevent {
 
 class MultiChannelMapping : public Mapping {
 public:
-    MultiChannelMapping(const std::vector<PhaseSpaceMapping>& _mappings) :
-        Mapping(
-            _mappings.at(0).input_types(),
-            _mappings.at(0).output_types(),
-            [&] {
-                auto condition_types = _mappings.at(0).condition_types();
-                condition_types.push_back(multichannel_batch_size(_mappings.size()));
-                return condition_types;
-            }()
-        ),
-        mappings(_mappings)
-    {}
+    MultiChannelMapping(const std::vector<std::shared_ptr<Mapping>>& mappings);
 private:
     Result build_impl(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
@@ -37,7 +26,17 @@ private:
         return build_impl(fb, inputs, conditions, true);
     }
 
-    std::vector<PhaseSpaceMapping> mappings;
+    std::vector<std::shared_ptr<Mapping>> _mappings;
+};
+
+class MultiChannelFunction : public FunctionGenerator {
+public:
+    MultiChannelFunction(const std::vector<std::shared_ptr<FunctionGenerator>>& functions);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<std::shared_ptr<FunctionGenerator>> _functions;
 };
 
 }

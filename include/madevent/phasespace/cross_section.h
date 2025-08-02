@@ -13,7 +13,7 @@ public:
         std::size_t matrix_element_index,
         const RunningCoupling& running_coupling,
         const std::optional<PdfGrid>& pdf_grid,
-        double e_cm2,
+        double cm_energy,
         const EnergyScale& energy_scale,
         bool simple_matrix_element = true,
         std::size_t channel_count = 1,

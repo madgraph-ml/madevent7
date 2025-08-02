@@ -8,7 +8,7 @@ from glob import glob
 import os
 
 BATCH_SIZE = 1000
-S_LAB = 13000.**2
+CM_ENERGY = 13000.
 rng = np.random.default_rng(1234)
 
 def load_processes():
@@ -40,7 +40,7 @@ def mapping(process):
     )
     topology = me.Topology(diagram)
     return me.PhaseSpaceMapping(
-        topology, S_LAB, permutations=process["permutations"]
+        topology, CM_ENERGY, permutations=process["permutations"]
     )
 
 @pytest.fixture
@@ -53,20 +53,24 @@ def permutation_count(process):
 
 def test_process_masses(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
-    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
-    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    condition = [] if permutation_count <= 1 else [
+        rng.integers(0, permutation_count, BATCH_SIZE)
+    ]
+    (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     m_ext_true = np.full((BATCH_SIZE, len(masses)), masses)
     m_ext = np.sqrt(np.maximum(0, p_ext[:,:,0]**2 - np.sum(p_ext[:,:,1:]**2, axis=2)))
     assert m_ext == approx(m_ext_true, abs=1e-3, rel=1e-3)
 
 def test_process_incoming(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
-    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
-    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    condition = [] if permutation_count <= 1 else [
+        rng.integers(0, permutation_count, BATCH_SIZE)
+    ]
+    (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     zeros = np.zeros(BATCH_SIZE)
     p_a = p_ext[:,0]
     p_b = p_ext[:,1]
-    e_beam = 0.5 * S_LAB**0.5
+    e_beam = 0.5 * CM_ENERGY
 
     assert p_a[:,0] == approx(p_a[:,3]) and p_b[:,0] == approx(-p_b[:,3])
     assert p_a[:,1] == approx(zeros) and p_a[:,2] == approx(zeros)
@@ -78,8 +82,10 @@ def test_process_incoming(mapping, masses, permutation_count):
 
 def test_process_momentum_conservation(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
-    perm_id = rng.integers(0, permutation_count, BATCH_SIZE)
-    (p_ext, x1, x2), det = mapping.map_forward([r], [perm_id])
+    condition = [] if permutation_count <= 1 else [
+        rng.integers(0, permutation_count, BATCH_SIZE)
+    ]
+    (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     p_in = np.sum(p_ext[:, :2], axis=1)
     p_out = np.sum(p_ext[:, 2:], axis=1)
 

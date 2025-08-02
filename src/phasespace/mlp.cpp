@@ -17,12 +17,12 @@ Value build_layer(
     int layer_index
 ) {
     auto weight = fb.global(
-        prefixed_name(prefix, std::format("layer{}_weight", layer_index)),
+        prefixed_name(prefix, std::format("layer{}.weight", layer_index)),
         DataType::dt_float,
         {output_dim, input_dim}
     );
     auto bias = fb.global(
-        prefixed_name(prefix, std::format("layer{}_bias", layer_index)),
+        prefixed_name(prefix, std::format("layer{}.bias", layer_index)),
         DataType::dt_float,
         {output_dim}
     );
@@ -56,8 +56,8 @@ void initialize_layer(
 ) {
     double bound = 1 / std::sqrt(input_dim);
     std::uniform_real_distribution<double> rand_dist(-bound, bound);
-    auto weight_name = prefixed_name(prefix, std::format("layer{}_weight", layer_index));
-    auto bias_name = prefixed_name(prefix, std::format("layer{}_bias", layer_index));
+    auto weight_name = prefixed_name(prefix, std::format("layer{}.weight", layer_index));
+    auto bias_name = prefixed_name(prefix, std::format("layer{}.bias", layer_index));
     auto weight_tensor_global = context->define_global(
         weight_name, DataType::dt_float, {output_dim, input_dim}, true
     );

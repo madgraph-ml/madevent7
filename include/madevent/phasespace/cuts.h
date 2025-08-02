@@ -1,12 +1,13 @@
 #pragma once
 
 #include "madevent/madcode.h"
+#include "madevent/phasespace/base.h"
 
 #include <vector>
 
 namespace madevent {
 
-class Cuts {
+class Cuts : public FunctionGenerator {
 public:
     using PidVec = std::vector<int>;
     static const PidVec jet_pids;
@@ -23,14 +24,13 @@ public:
         PidVec pids;
     };
 
-    Cuts(std::vector<int> _pids, std::vector<CutItem> _cut_data) :
-        pids(_pids), cut_data(_cut_data) {}
-    ValueVec build_function(FunctionBuilder& fb, Value sqrt_s, Value momenta) const;
+    Cuts(std::vector<int> _pids, std::vector<CutItem> _cut_data);
     double sqrt_s_min() const;
     std::vector<double> eta_max() const;
     std::vector<double> pt_min() const;
 
 private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
     std::vector<double> limits(
         CutObservable observable, LimitType limit_type, double default_value
     ) const;
@@ -44,8 +44,8 @@ private:
         bool& has_cuts
     ) const;
 
-    std::vector<int> pids;
-    std::vector<CutItem> cut_data;
+    std::vector<int> _pids;
+    std::vector<CutItem> _cut_data;
 };
 
 }

@@ -334,6 +334,23 @@ TypeVec UnstackInstruction::signature(const ValueVec& args) const {
     return TypeVec(arg.type.shape[0], {arg.type.dtype, arg.type.batch_size, out_shape});
 }
 
+TypeVec UnstackSizesInstruction::signature(const ValueVec& args) const {
+    if (args.size() != 1) {
+        throw std::invalid_argument(std::format(
+            "unstack_sizes expects one argument, got {}", args.size()
+        ));
+    }
+    auto arg = args.at(0);
+    if (arg.type.dtype != DataType::batch_sizes) {
+        throw std::invalid_argument("Only batch size list accepted as argument");
+    }
+    TypeVec out_types;
+    for (auto& size : arg.type.batch_size_list) {
+        out_types.push_back(std::vector<BatchSize>{size});
+    }
+    return out_types;
+}
+
 TypeVec BatchCatInstruction::signature(const ValueVec& args) const {
     if (args.size() == 0) {
         throw std::invalid_argument("batch_cat has to be called with at least one argument");
@@ -468,7 +485,47 @@ TypeVec BatchSizeInstruction::signature(const ValueVec& args) const {
 }
 
 TypeVec FullInstruction::signature(const ValueVec& args) const {
-    //TODO: implement
+    if (args.size() < 2) {
+        throw std::invalid_argument("full expects at least two arguments");
+    }
+
+    auto& value_arg = args.at(0);
+    if (
+        value_arg.type.batch_size != BatchSize::one ||
+        value_arg.type.shape.size() != 0 ||
+        std::holds_alternative<std::monostate>(value_arg.literal_value)
+    ) {
+        throw std::invalid_argument("full, argument 1: expected constant");
+    }
+    auto dtype = value_arg.type.dtype;
+
+    auto& batch_size_arg = args.at(1);
+    if (
+        batch_size_arg.type.dtype != DataType::batch_sizes ||
+        batch_size_arg.type.batch_size_list.size() != 1
+    ) {
+        throw std::invalid_argument("full, argument 2: must be single batch size");
+    }
+    auto batch_size = batch_size_arg.type.batch_size_list.at(0);
+
+    std::vector<int> shape;
+    std::size_t arg_index = 3;
+    for (auto& arg : args | std::views::drop(2)) {
+        if (
+            arg.type.dtype != DataType::dt_int ||
+            arg.type.batch_size != BatchSize::one ||
+            arg.type.shape.size() != 0 ||
+            !std::holds_alternative<int64_t>(arg.literal_value)
+        ) {
+            throw std::invalid_argument(std::format(
+                "full, argument {}: expected integer constant", arg_index
+            ));
+        }
+        shape.push_back(std::get<int64_t>(arg.literal_value));
+        ++arg_index;
+    }
+
+    return {{dtype, batch_size, shape}};
 }
 
 TypeVec SqueezeInstruction::signature(const ValueVec& args) const {

@@ -14,7 +14,7 @@ class TPropagatorMapping : public Mapping {
 public:
     TPropagatorMapping(
         const std::vector<std::size_t>& integration_order,
-        double nu=0.8
+        double invariant_power=0.8
     );
     std::size_t random_dim() const {
         return 3 * _integration_order.size() - 1;

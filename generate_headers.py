@@ -73,7 +73,7 @@ def instruction_set_python(commands):
             'namespace py = pybind11;\n'
             'using madevent::FunctionBuilder;\n\n'
             'namespace {\n\n'
-            'void add_instructions(py::class_<FunctionBuilder>& fb) {\n'
+            'void add_instructions(py::classh<FunctionBuilder>& fb) {\n'
         )
 
         for name, cmd in commands.items():
