@@ -275,21 +275,33 @@ void batch_gather_impl(
     auto batch_size = indices.size(0);
     Sizes out_shape = values.shape();
     out_shape[0] = batch_size;
-    selection = Tensor(DataType::dt_float, out_shape, device);
     auto indices_view = indices.view<int64_t, 1>();
-    auto values_view = values.view<double, dim>();
-    auto selection_view = selection.view<double, dim>();
-    ThreadPool::instance().parallel_for([&](std::size_t i) {
-        recursive_for<kernel_copy<CpuTypes>, dim-1>(
-            values_view[indices_view[i]], selection_view[i]
-        );
-    }, batch_size);
+    if (values.dtype() == DataType::dt_float) {
+        selection = Tensor(DataType::dt_float, out_shape, device);
+        auto values_view = values.view<double, dim>();
+        auto selection_view = selection.view<double, dim>();
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
+            recursive_for<kernel_copy<CpuTypes>, dim-1>(
+                values_view[indices_view[i]], selection_view[i]
+            );
+        }, batch_size);
+    } else if (values.dtype() == DataType::dt_int) {
+        selection = Tensor(DataType::dt_int, out_shape, device);
+        auto values_view = values.view<int64_t, dim>();
+        auto selection_view = selection.view<int64_t, dim>();
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
+            recursive_for<kernel_copy_int<CpuTypes>, dim-1>(
+                values_view[indices_view[i]], selection_view[i]
+            );
+        }, batch_size);
+    } else {
+        throw std::runtime_error("invalid dtype in batch_gather");
+    }
 }
 
 void op_batch_gather(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
 ) {
-    //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
     auto& values = locals[instruction.input_indices[1]];
     auto& selection = locals[instruction.output_indices[0]];

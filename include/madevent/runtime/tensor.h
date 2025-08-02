@@ -9,6 +9,7 @@
 #include <initializer_list>
 #include <algorithm>
 #include <concepts>
+#include <atomic>
 
 namespace madevent {
 

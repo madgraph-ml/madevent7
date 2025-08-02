@@ -205,23 +205,51 @@ __global__ void batch_gather_kernel(
 }
 
 template<int dim>
+__global__ void batch_gather_kernel_int(
+    std::size_t batch_size,
+    CudaTensorView<int64_t, 1, true> indices,
+    CudaTensorView<int64_t, dim, true> values,
+    CudaTensorView<int64_t, dim, true> selection
+) {
+    std::size_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < batch_size) {
+        recursive_for<kernel_copy_int<CudaTypes>, dim-1>(values[indices[i]], selection[i]);
+    }
+}
+
+template<int dim>
 void batch_gather_impl(
     Tensor& indices, Tensor& values, Tensor& selection, const AsyncCudaDevice& device
 ) {
     auto batch_size = indices.size(0);
     Sizes out_shape = values.shape();
     out_shape[0] = batch_size;
-    selection = Tensor(DataType::dt_float, out_shape, device);
 
-    launch_kernel(
-        batch_gather_kernel<dim>,
-        batch_size,
-        device.stream(),
-        batch_size,
-        indices.view<int64_t, 1>(),
-        values.view<double, dim>(),
-        selection.view<double, dim>()
-    );
+    if (values.dtype() == DataType::dt_float) {
+        selection = Tensor(DataType::dt_float, out_shape, device);
+        launch_kernel(
+            batch_gather_kernel<dim>,
+            batch_size,
+            device.stream(),
+            batch_size,
+            indices.view<int64_t, 1>(),
+            values.view<double, dim>(),
+            selection.view<double, dim>()
+        );
+    } else if (values.dtype() == DataType::dt_int) {
+        selection = Tensor(DataType::dt_int, out_shape, device);
+        launch_kernel(
+            batch_gather_kernel_int<dim>,
+            batch_size,
+            device.stream(),
+            batch_size,
+            indices.view<int64_t, 1>(),
+            values.view<int64_t, dim>(),
+            selection.view<int64_t, dim>()
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in batch_gather");
+    }
 }
 
 void op_batch_gather(
@@ -229,7 +257,6 @@ void op_batch_gather(
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
     auto& values = locals[instruction.input_indices[1]];
     auto& selection = locals[instruction.output_indices[0]];
