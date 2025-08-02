@@ -17,9 +17,9 @@ public:
 
     PhaseSpaceMapping(
         const Topology& topology,
-        double s_lab,
+        double cm_energy,
         bool leptonic = false,
-        double nu = 0.8,
+        double invariant_power = 0.8,
         TChannelMode t_channel_mode = propagator,
         const std::optional<Cuts>& cuts = std::nullopt,
         const std::vector<std::vector<std::size_t>>& permutations = {}
@@ -27,9 +27,9 @@ public:
 
     PhaseSpaceMapping(
         const std::vector<double>& external_masses,
-        double s_lab,
+        double cm_energy,
         bool leptonic = false,
-        double nu = 0.8,
+        double invariant_power = 0.8,
         TChannelMode mode = rambo,
         const std::optional<Cuts>& cuts = std::nullopt
     );

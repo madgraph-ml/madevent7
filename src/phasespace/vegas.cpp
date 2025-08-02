@@ -26,7 +26,7 @@ Mapping::Result VegasMapping::build_inverse_impl(
     return {{output}, fb.reduce_product(dets)};
 }
 
-void VegasMapping::initialize_global(ContextPtr context) const {
+void VegasMapping::initialize_globals(ContextPtr context) const {
     context->define_global(_grid_name, DataType::dt_float, {_dimension, _bin_count + 1});
     initialize_vegas_grid(context, _grid_name);
 }

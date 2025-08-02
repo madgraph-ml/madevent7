@@ -79,7 +79,6 @@ def build_madnis_integrand(
     channel_count = len(channels)
     multi_integrand = me.MultiChannelFunction(channels)
     multi_runtime = me.FunctionRuntime(multi_integrand.function(), context)
-    print(multi_integrand.function())
 
     def integrand_function(channels):
         channel_perm = torch.argsort(channels)

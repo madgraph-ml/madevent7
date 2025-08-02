@@ -43,6 +43,8 @@ class ChannelWeightNetwork(FunctionGenerator):
         ...
     def initialize_globals(self, context: Context) -> None:
         ...
+    def mask_name(self) -> str:
+        ...
     def mlp(self) -> MLP:
         ...
     def preprocessing(self) -> MomentumPreprocessing:
@@ -87,7 +89,7 @@ class CutItem:
     @property
     def value(self) -> float:
         ...
-class Cuts:
+class Cuts(FunctionGenerator):
     class CutObservable:
         """
         Members:
@@ -185,8 +187,6 @@ class Cuts:
     photon_pids: typing.ClassVar[list] = [22]
     def __init__(self, pids: collections.abc.Sequence[typing.SupportsInt], cut_data: collections.abc.Sequence[CutItem]) -> None:
         ...
-    def build_function(self, builder: FunctionBuilder, sqrt_s: Value, momenta: Value) -> list[Value]:
-        ...
     def eta_max(self) -> list[float]:
         ...
     def pt_min(self) -> list[float]:
@@ -276,7 +276,7 @@ class Diagram:
     def vertices(self) -> list[list[LineRef]]:
         ...
 class DifferentialCrossSection(FunctionGenerator):
-    def __init__(self, pid_options: collections.abc.Sequence[collections.abc.Sequence[typing.SupportsInt]], matrix_element_index: typing.SupportsInt, running_coupling: RunningCoupling, pdf_grid: madevent7._madevent_py.PdfGrid | None, e_cm2: typing.SupportsFloat, energy_scale: EnergyScale, simple_matrix_element: bool = True, channel_count: typing.SupportsInt = 1, amp2_remap: collections.abc.Sequence[typing.SupportsInt] = []) -> None:
+    def __init__(self, pid_options: collections.abc.Sequence[collections.abc.Sequence[typing.SupportsInt]], matrix_element_index: typing.SupportsInt, running_coupling: RunningCoupling, pdf_grid: madevent7._madevent_py.PdfGrid | None, cm_energy: typing.SupportsFloat, energy_scale: EnergyScale, simple_matrix_element: bool = True, channel_count: typing.SupportsInt = 1, amp2_remap: collections.abc.Sequence[typing.SupportsInt] = []) -> None:
         ...
     def pid_options(self) -> list[list[int]]:
         ...
@@ -810,7 +810,7 @@ class IntegrandProbability(FunctionGenerator):
     def __init__(self, integrand: Integrand) -> None:
         ...
 class Invariant(Mapping):
-    def __init__(self, nu: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
+    def __init__(self, power: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
         ...
 class LineRef:
     def __init__(self, str: str) -> None:
@@ -818,7 +818,7 @@ class LineRef:
     def __repr__(self) -> str:
         ...
 class Luminosity(Mapping):
-    def __init__(self, s_lab: typing.SupportsFloat, s_hat_min: typing.SupportsFloat, s_hat_max: typing.SupportsFloat = 0.0, nu: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
+    def __init__(self, s_lab: typing.SupportsFloat, s_hat_min: typing.SupportsFloat, s_hat_max: typing.SupportsFloat = 0.0, invariant_power: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
         ...
 class MLP(FunctionGenerator):
     class Activation:
@@ -1016,10 +1016,10 @@ class PhaseSpaceMapping(Mapping):
     propagator: typing.ClassVar[PhaseSpaceMapping.TChannelMode]  # value = <TChannelMode.propagator: 0>
     rambo: typing.ClassVar[PhaseSpaceMapping.TChannelMode]  # value = <TChannelMode.rambo: 1>
     @typing.overload
-    def __init__(self, topology: Topology, s_lab: typing.SupportsFloat, leptonic: bool = False, nu: typing.SupportsFloat = 0.8, t_channel_mode: PhaseSpaceMapping.TChannelMode = PhaseSpaceMapping.TChannelMode.TChannelMode.propagator, cuts: madevent7._madevent_py.Cuts | None = None, permutations: collections.abc.Sequence[collections.abc.Sequence[typing.SupportsInt]] = []) -> None:
+    def __init__(self, topology: Topology, cm_energy: typing.SupportsFloat, leptonic: bool = False, invariant_power: typing.SupportsFloat = 0.8, t_channel_mode: PhaseSpaceMapping.TChannelMode = PhaseSpaceMapping.TChannelMode.TChannelMode.propagator, cuts: madevent7._madevent_py.Cuts | None = None, permutations: collections.abc.Sequence[collections.abc.Sequence[typing.SupportsInt]] = []) -> None:
         ...
     @typing.overload
-    def __init__(self, masses: collections.abc.Sequence[typing.SupportsFloat], s_lab: typing.SupportsFloat, leptonic: bool = False, nu: typing.SupportsFloat = 0.8, mode: PhaseSpaceMapping.TChannelMode = PhaseSpaceMapping.TChannelMode.TChannelMode.rambo, cuts: madevent7._madevent_py.Cuts | None = None) -> None:
+    def __init__(self, masses: collections.abc.Sequence[typing.SupportsFloat], cm_energy: typing.SupportsFloat, leptonic: bool = False, invariant_power: typing.SupportsFloat = 0.8, mode: PhaseSpaceMapping.TChannelMode = PhaseSpaceMapping.TChannelMode.TChannelMode.rambo, cuts: madevent7._madevent_py.Cuts | None = None) -> None:
         ...
     def channel_count(self) -> int:
         ...
@@ -1046,7 +1046,7 @@ class RunningCoupling(FunctionGenerator):
     def __init__(self, grid: AlphaSGrid, prefix: str = '') -> None:
         ...
 class TPropagatorMapping(Mapping):
-    def __init__(self, integration_order: collections.abc.Sequence[typing.SupportsInt], nu: typing.SupportsFloat = 0.0) -> None:
+    def __init__(self, integration_order: collections.abc.Sequence[typing.SupportsInt], invariant_power: typing.SupportsFloat = 0.0) -> None:
         ...
 class Tensor:
     @staticmethod
@@ -1095,7 +1095,7 @@ class TwoParticleDecay(Mapping):
     def __init__(self, com: bool) -> None:
         ...
 class TwoParticleScattering(Mapping):
-    def __init__(self, com: bool, nu: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
+    def __init__(self, com: bool, invariant_power: typing.SupportsFloat = 0.0, mass: typing.SupportsFloat = 0.0, width: typing.SupportsFloat = 0.0) -> None:
         ...
 class Type:
     @typing.overload
@@ -1150,7 +1150,7 @@ class VegasMapping(Mapping):
         ...
     def grid_name(self) -> str:
         ...
-    def initialize_global(self, context: Context) -> None:
+    def initialize_globals(self, context: Context) -> None:
         ...
 def batch_float_array(count: typing.SupportsInt) -> Type:
     ...

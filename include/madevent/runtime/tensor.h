@@ -154,7 +154,7 @@ public:
     Tensor() : impl(nullptr) {}
 
     Tensor(const Tensor& other) : impl(other.impl) {
-        if (impl != nullptr) ++impl->ref_count;
+        if (impl != nullptr) impl->incref();
     }
 
     Tensor(Tensor&& other) noexcept : impl(other.impl) {
@@ -274,7 +274,7 @@ public:
     Tensor& operator=(const Tensor& other) {
         reset();
         impl = other.impl;
-        if (impl != nullptr) ++impl->ref_count;
+        if (impl != nullptr) impl->incref();
         return *this;
     }
 
@@ -447,7 +447,7 @@ private:
         bool owns_data = true;
         std::optional<std::function<void()>> external_reset = std::nullopt;
         TensorImpl* data_owner;
-        int ref_count = 1;
+        std::atomic<int> ref_count = 1;
         Sizes stride;
         std::size_t offset;
         std::size_t contiguous_dims;
@@ -455,8 +455,7 @@ private:
 
         template<typename D>
         void reset(const D& device) {
-            if (ref_count > 1) {
-                --ref_count;
+            if (ref_count.fetch_sub(1, std::memory_order_acq_rel) != 1) {
                 return;
             }
             if (owns_data) {
@@ -468,11 +467,15 @@ private:
             }
             delete this;
         }
+
+        void incref() {
+            ref_count.fetch_add(1, std::memory_order_relaxed);
+        }
     };
 
     Tensor(TensorImpl* _impl) : impl(_impl) {
         if (impl->data_owner != nullptr) {
-            ++impl->data_owner->ref_count;
+            impl->data_owner->incref();
         }
     }
     std::size_t init_stride();

@@ -47,10 +47,10 @@ def mode(request):
     return request.param
 
 BATCH_SIZE = 1000
-S_LAB = 13000.**2
+CM_ENERGY = 13000.
 
 def test_t_channel_masses(masses, rng, mode):
-    mapping = me.PhaseSpaceMapping(masses, S_LAB, mode=mode)
+    mapping = me.PhaseSpaceMapping(masses, CM_ENERGY, mode=mode)
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     (p_ext, x1, x2), det = mapping.map_forward([r])
 
@@ -59,13 +59,13 @@ def test_t_channel_masses(masses, rng, mode):
     assert m_ext == approx(m_ext_true, abs=1e-3, rel=1e-3)
 
 def test_t_channel_incoming(masses, rng, mode):
-    mapping = me.PhaseSpaceMapping(masses, S_LAB, mode=mode)
+    mapping = me.PhaseSpaceMapping(masses, CM_ENERGY, mode=mode)
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     (p_ext, x1, x2), det = mapping.map_forward([r])
     zeros = np.zeros(BATCH_SIZE)
     p_a = p_ext[:,0]
     p_b = p_ext[:,1]
-    e_beam = 0.5 * S_LAB**0.5
+    e_beam = 0.5 * CM_ENERGY
 
     assert p_a[:,0] == approx(p_a[:,3]) and p_b[:,0] == approx(-p_b[:,3])
     assert p_a[:,1] == approx(zeros) and p_a[:,2] == approx(zeros)
@@ -76,7 +76,7 @@ def test_t_channel_incoming(masses, rng, mode):
     assert p_b[:,0] == approx(e_beam * x2)
 
 def test_t_channel_momentum_conservation(masses, rng, mode):
-    mapping = me.PhaseSpaceMapping(masses, S_LAB, mode=mode)
+    mapping = me.PhaseSpaceMapping(masses, CM_ENERGY, mode=mode)
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     (p_ext, x1, x2), det = mapping.map_forward([r])
     p_in = np.sum(p_ext[:, :2], axis=1)
@@ -97,7 +97,7 @@ def test_t_channel_momentum_conservation(masses, rng, mode):
 )
 def test_t_channel_phase_space_volume(particle_count, energy, rng, mode):
     mapping = me.PhaseSpaceMapping(
-        [0.] * (particle_count + 2), energy**2, mode=mode, leptonic=True
+        [0.] * (particle_count + 2), energy, mode=mode, leptonic=True
     )
     sample_count = 100000
     r = rng.random((sample_count, mapping.random_dim()))

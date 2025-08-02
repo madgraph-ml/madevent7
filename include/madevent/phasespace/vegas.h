@@ -20,7 +20,7 @@ public:
         _grid_name(prefixed_name(prefix, "vegas_grid"))
     {}
     const std::string& grid_name() const { return _grid_name; }
-    void initialize_global(ContextPtr context) const;
+    void initialize_globals(ContextPtr context) const;
 
 private:
     Result build_forward_impl(

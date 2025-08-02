@@ -62,9 +62,9 @@ void update_mass_min_max(
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology,
-    double s_lab,
+    double cm_energy,
     bool leptonic,
-    double nu,
+    double invariant_power,
     TChannelMode t_channel_mode,
     const std::optional<Cuts>& cuts,
     const std::vector<std::vector<std::size_t>>& permutations
@@ -85,7 +85,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     _pi_factors(
         std::pow(2 * PI, 4 - 3 * static_cast<int>(topology.outgoing_masses().size()))
     ),
-    _s_lab(s_lab),
+    _s_lab(cm_energy * cm_energy),
     _leptonic(leptonic),
     _t_mapping(std::monostate{})
 {
@@ -131,7 +131,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             }*/
             mass = decay.width == 0. ? 0. : decay.mass;
             width = decay.width;
-            info.invariant = Invariant(nu, mass, width);
+            info.invariant = Invariant(invariant_power, mass, width);
         }
     }
     for (std::size_t index : _topology.decay_integration_order()) {
@@ -163,7 +163,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             t_channel_mode == PhaseSpaceMapping::propagator ||
             topology.t_propagator_count() < 2
         ) {
-            _t_mapping = TPropagatorMapping(_topology.t_integration_order(), nu);
+            _t_mapping = TPropagatorMapping(
+                _topology.t_integration_order(), invariant_power
+            );
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
             _t_mapping = FastRamboMapping(_topology.t_propagator_count() + 1, false);
@@ -186,9 +188,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const std::vector<double>& external_masses,
-    double s_lab,
+    double cm_energy,
     bool leptonic,
-    double nu,
+    double invariant_power,
     TChannelMode mode,
     const std::optional<Cuts>& cuts
 ) : PhaseSpaceMapping(
@@ -223,7 +225,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
                 vertices
             );
         }()
-    ), s_lab, leptonic, nu, mode, cuts
+    ), cm_energy, leptonic, invariant_power, mode, cuts
 ) {}
 
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
@@ -368,8 +370,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // boost into correct frame and apply cuts
     auto p_ext_lab = _luminosity ? fb.boost_beam(p_ext_stack, x1, x2) : p_ext_stack;
-    auto cut_weights = _cuts.build_function(fb, sqrt_s_hat, p_ext_lab);
-    dets.insert(dets.end(), cut_weights.begin(), cut_weights.end());
+    dets.push_back(_cuts.build_function(fb, {sqrt_s_hat, p_ext_lab}).at(0));
     auto ps_weight = fb.cut_unphysical(fb.product(dets), p_ext_lab, x1, x2);
     return {{p_ext_lab, x1, x2}, ps_weight};
 }

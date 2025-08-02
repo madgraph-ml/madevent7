@@ -25,21 +25,21 @@ def r_in(rng):
 @pytest.fixture(params=[
     {},
     {"mass": 173., "width": 1.4},
-    {"mass": 173., "nu": 1.5},
-    {"mass": 173., "nu": 1.0},
-    {"mass": 173., "nu": 0.5},
-    {"nu": 1.5},
-    {"nu": 1.0},
-    {"nu": 0.5},
+    {"mass": 173., "power": 1.5},
+    {"mass": 173., "power": 1.0},
+    {"mass": 173., "power": 0.5},
+    {"power": 1.5},
+    {"power": 1.0},
+    {"power": 0.5},
 ], ids=[
     "uniform",
     "breit wigner",
-    "massive, nu=1.5",
-    "massive, nu=1.0",
-    "massive, nu=0.5",
-    "massless, nu=1.5",
-    "massless, nu=1.0",
-    "massless, nu=0.5",
+    "massive, power=1.5",
+    "massive, power=1.0",
+    "massive, power=0.5",
+    "massless, power=1.5",
+    "massless, power=1.0",
+    "massless, power=0.5",
 ])
 def invariant(request):
     return me.Invariant(**request.param)

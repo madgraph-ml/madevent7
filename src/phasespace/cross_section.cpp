@@ -9,7 +9,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     std::size_t matrix_element_index,
     const RunningCoupling& running_coupling,
     const std::optional<PdfGrid>& pdf_grid,
-    double e_cm2,
+    double cm_energy,
     const EnergyScale& energy_scale,
     bool simple_matrix_element,
     std::size_t channel_count,
@@ -46,7 +46,7 @@ DifferentialCrossSection::DifferentialCrossSection(
         amp2_remap
     ),
     _running_coupling(running_coupling),
-    _e_cm2(e_cm2),
+    _e_cm2(cm_energy * cm_energy),
     _energy_scale(energy_scale),
     _simple_matrix_element(simple_matrix_element),
     _channel_count(channel_count),
