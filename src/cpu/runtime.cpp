@@ -257,22 +257,19 @@ void op_nonzero(
     output = output_tmp.slice(0, 0, count);
 }
 
-template<int dim, typename D>
-void batch_gather_impl(
+
+template<auto kernel, int dim, typename T, typename D>
+void batch_gather_impl_body(
     Tensor& indices, Tensor& values, Tensor& selection, const D& device
 ) {
-    auto batch_size = indices.size(0);
-    Sizes out_shape = values.shape();
-    out_shape[0] = batch_size;
-    selection = Tensor(DataType::dt_float, out_shape, device);
     device.foreach(
-        batch_size,
+        indices.size(0),
         [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
             auto indices_view = indices.view<int64_t, 1>();
             auto values_view = values.view<double, dim>();
             auto selection_view = selection.view<double, dim>();
             for (std::size_t i = 0; i < count; ++i) {
-                nested_for_nobatch<kernel_copy<CpuTypes>, dim-1>(
+                nested_for_nobatch<kernel, dim-1>(
                     values_view[indices_view[i]], selection_view[i]
                 );
             }
@@ -281,11 +278,31 @@ void batch_gather_impl(
     );
 }
 
+template<int dim, typename D>
+void batch_gather_impl(
+    Tensor& indices, Tensor& values, Tensor& selection, const D& device
+) {
+    Sizes out_shape = values.shape();
+    out_shape[0] = indices.size(0);
+    if (values.dtype() == DataType::dt_float) {
+        selection = Tensor(DataType::dt_float, out_shape, device);
+        batch_gather_impl_body<kernel_copy<CpuTypes>, dim, double>(
+            indices, values, selection, device
+        );
+    } else if (values.dtype() == DataType::dt_int) {
+        selection = Tensor(DataType::dt_int, out_shape, device);
+        batch_gather_impl_body<kernel_copy<CpuTypes>, dim, int64_t>(
+            indices, values, selection, device
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in batch_gather");
+    }
+}
+
 template<typename D>
 void op_batch_gather(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
-    //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
     auto& values = locals[instruction.input_indices[1]];
     auto& selection = locals[instruction.output_indices[0]];

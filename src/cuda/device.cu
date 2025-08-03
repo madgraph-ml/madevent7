@@ -21,25 +21,18 @@ void CudaDevice::memcpy(void* to, void* from, std::size_t size) const {
 }
 
 void CudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_copy<CudaTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0), AsyncCudaDevice(0)
-    );
+    AsyncCudaDevice(0).tensor_copy(source, target);
     check_error(cudaDeviceSynchronize());
 }
 
 void CudaDevice::tensor_zero(Tensor& tensor) const {
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_zero<CudaTypes>, 1, 1>(
-        {&tensor}, {&tensor}, tensor.size(0), AsyncCudaDevice(0)
-    );
+    AsyncCudaDevice(0).tensor_zero(tensor);
     check_error(cudaDeviceSynchronize());
 }
 
 void CudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
-    tensor_foreach_dynamic<kernel_add_inplace<CudaTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0), AsyncCudaDevice(0)
-    );
+    AsyncCudaDevice(0).tensor_add(source, target);
+    check_error(cudaDeviceSynchronize());
 }
 
 void CudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
@@ -63,17 +56,31 @@ void AsyncCudaDevice::memcpy(void* to, void* from, std::size_t size) const {
 }
 
 void AsyncCudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_copy<CudaTypes>, 1, 1>(
-        {&source}, {&target}, target.size(0), *this
-    );
+    if (source.dtype() == DataType::dt_float && target.dtype() == DataType::dt_float) {
+        tensor_foreach_dynamic<kernel_copy<CudaTypes>, 1, 1>(
+            {&source}, {&target}, target.size(0), *this
+        );
+    } else if (source.dtype() == DataType::dt_int && target.dtype() == DataType::dt_int) {
+        tensor_foreach_dynamic<kernel_copy_int<CudaTypes>, 1, 1>(
+            {&source}, {&target}, target.size(0), *this
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in copy");
+    }
 }
 
 void AsyncCudaDevice::tensor_zero(Tensor& tensor) const {
-    //TODO: this only accidentally works for types other than double
-    tensor_foreach_dynamic<kernel_zero<CudaTypes>, 1, 1>(
-        {&tensor}, {&tensor}, tensor.size(0), *this
-    );
+    if (tensor.dtype() == DataType::dt_float) {
+        tensor_foreach_dynamic<kernel_zero<CudaTypes>, 1, 1>(
+            {&tensor}, {&tensor}, tensor.size(0), *this
+        );
+    } else if (tensor.dtype() == DataType::dt_int) {
+        tensor_foreach_dynamic<kernel_zero_int<CudaTypes>, 1, 1>(
+            {&tensor}, {&tensor}, tensor.size(0), *this
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in zero");
+    }
 }
 
 void AsyncCudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
