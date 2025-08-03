@@ -1,5 +1,6 @@
 #include "runtime.h"
 
+#include <random>
 #include <tuple>
 #include <algorithm>
 #include <ranges>
@@ -37,14 +38,15 @@ using namespace madevent::kernels;
 
 namespace {
 
+template<typename D>
 void op_matrix_element(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     auto& me_out = locals[instruction.output_indices[0]];
     me_out = Tensor(DataType::dt_float, {batch_size}, device);
     std::size_t me_index = locals[instruction.input_indices[3]].view<int64_t, 0>();
-    auto& matrix_element = instruction.context.matrix_element(me_index);
+    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
     // TODO: maybe copy can be avoided sometimes
     auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
     auto flavor_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
@@ -54,33 +56,25 @@ void op_matrix_element(
     if (input_particle_count != matrix_element.particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
-    auto& pool = default_thread_pool();
-    auto thread_count = pool.thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
     auto mirror_ptr = static_cast<int64_t*>(mirror_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
-    if (thread_count == 0 || batch_size < thread_count * 100) {
-        matrix_element.call(
-            matrix_element.process_instance(0), batch_size, batch_size,
-            mom_ptr, flavor_ptr, mirror_ptr, me_ptr
-        );
-    } else {
-        auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
-        pool.parallel([&](std::size_t thread_id) {
-            std::size_t offset = thread_id * count_per_thread;
+    device.foreach(
+        batch_size,
+        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
             matrix_element.call(
-                matrix_element.process_instance(thread_id),
-                std::min(batch_size - offset, count_per_thread),
+                matrix_element.process_instance(thread_id), count,
                 batch_size, mom_ptr + offset, flavor_ptr + offset,
                 mirror_ptr + offset, me_ptr + offset
             );
-        });
-    }
+        }
+    );
 }
 
+template<typename D>
 void op_matrix_element_multichannel(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     std::size_t me_index = locals[instruction.input_indices[5]].view<int64_t, 0>();
@@ -97,7 +91,7 @@ void op_matrix_element_multichannel(
     auto& helicity_out = locals[instruction.output_indices[4]];
     helicity_out = Tensor(DataType::dt_int, {batch_size}, device);
 
-    auto& matrix_element = instruction.context.matrix_element(me_index);
+    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
 
     // TODO: maybe copy can be avoided sometimes
     auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
@@ -113,8 +107,6 @@ void op_matrix_element_multichannel(
         throw std::runtime_error("Incompatible diagram count");
     }
 
-    //auto& pool = ThreadPool::instance();
-    auto thread_count = 0; //pool.get_thread_count();
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
     auto random_ptr = static_cast<double*>(random_in.data());
@@ -125,30 +117,25 @@ void op_matrix_element_multichannel(
     auto diag_ptr = static_cast<int64_t*>(diagram_out.data());
     auto color_ptr = static_cast<int64_t*>(color_out.data());
     auto helicity_ptr = static_cast<int64_t*>(helicity_out.data());
-    if (thread_count == 0 || batch_size < thread_count * 100) {
-        matrix_element.call_multichannel(
-            matrix_element.process_instance(0), batch_size, batch_size,
-            mom_ptr, alpha_ptr, random_ptr, flavor_ptr, mirror_ptr,
-            me_ptr, amp2_ptr, diag_ptr, color_ptr, helicity_ptr
-        );
-    } else {
-        /*auto count_per_thread = (batch_size + thread_count - 1) / thread_count;
-        pool.parallel([&](std::size_t thread_id) {
-            std::size_t offset = thread_id * count_per_thread;
+
+    device.foreach(
+        batch_size,
+        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
             matrix_element.call_multichannel(
                 matrix_element.process_instance(thread_id),
-                std::min(batch_size - offset, count_per_thread), batch_size,
+                count, batch_size,
                 mom_ptr + offset, alpha_ptr + offset, random_ptr + offset,
                 flavor_ptr + offset, mirror_ptr + offset, me_ptr + offset,
                 amp2_ptr + offset, color_ptr + offset, diag_ptr + offset,
                 helicity_ptr + offset
             );
-        });*/
-    }
+        }
+    );
 }
 
+template<typename D>
 void op_matmul(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     auto input = locals[instruction.input_indices[0]].contiguous(device);
     auto weight = locals[instruction.input_indices[1]].contiguous(device);
@@ -173,11 +160,12 @@ void op_matmul(
     );
 }
 
+template<typename D>
 void backward_op_matmul(
     const CpuRuntime::Instruction& instruction,
     TensorVec& locals,
     TensorVec& local_grads,
-    const CpuDevice& device
+    const D& device
 ) {
     auto input = locals[instruction.input_indices[0]].contiguous(device);
     auto weight = locals[instruction.input_indices[1]].contiguous(device);
@@ -248,8 +236,9 @@ void backward_op_matmul(
     }
 }
 
+template<typename D>
 void op_nonzero(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     // TODO: not parallelized for now
     auto& input = locals[instruction.input_indices[0]];
@@ -268,28 +257,33 @@ void op_nonzero(
     output = output_tmp.slice(0, 0, count);
 }
 
-template<int dim>
+template<int dim, typename D>
 void batch_gather_impl(
-    Tensor& indices, Tensor& values, Tensor& selection, const CpuDevice& device
+    Tensor& indices, Tensor& values, Tensor& selection, const D& device
 ) {
     auto batch_size = indices.size(0);
     Sizes out_shape = values.shape();
     out_shape[0] = batch_size;
     selection = Tensor(DataType::dt_float, out_shape, device);
-    auto indices_view = indices.view<int64_t, 1>();
-    auto values_view = values.view<double, dim>();
-    auto selection_view = selection.view<double, dim>();
-    //ThreadPool::instance().parallel_for([&](std::size_t i) {
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        recursive_for<kernel_copy<CpuTypes>, dim-1>(
-            values_view[indices_view[i]], selection_view[i]
-        );
-    }
-    //}, batch_size);
+    device.foreach(
+        batch_size,
+        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+            auto indices_view = indices.view<int64_t, 1>();
+            auto values_view = values.view<double, dim>();
+            auto selection_view = selection.view<double, dim>();
+            for (std::size_t i = 0; i < count; ++i) {
+                nested_for_nobatch<kernel_copy<CpuTypes>, dim-1>(
+                    values_view[indices_view[i]], selection_view[i]
+                );
+            }
+        },
+        true
+    );
 }
 
+template<typename D>
 void op_batch_gather(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     //TODO: this only accidentally works for types other than double
     auto& indices = locals[instruction.input_indices[0]];
@@ -305,23 +299,27 @@ void op_batch_gather(
     }
 }
 
-template<int dim>
-void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
-    auto batch_size = indices.size(0);
-    auto indices_view = indices.view<int64_t, 1>();
-    auto source_view = source.view<double, dim>();
-    auto output_view = output.view<double, dim>();
-    //ThreadPool::instance().parallel_for([&](std::size_t i) {
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        recursive_for<kernel_copy<CpuTypes>, dim-1>(
-            source_view[i], output_view[indices_view[i]]
-        );
-    }
-    //}, batch_size);
+template<int dim, typename D>
+void scatter_impl(Tensor& indices, Tensor& source, Tensor& output, const D& device) {
+    device.foreach(
+        indices.size(0),
+        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+            auto indices_view = indices.view<int64_t, 1>();
+            auto source_view = source.view<double, dim>();
+            auto output_view = output.view<double, dim>();
+            for (std::size_t i = 0; i < count; ++i) {
+                nested_for_nobatch<kernel_copy<CpuTypes>, dim-1>(
+                    source_view[i], output_view[indices_view[i]]
+                );
+            }
+        },
+        true
+    );
 }
 
+template<typename D>
 void op_scatter(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     auto& indices = locals[instruction.input_indices[0]];
     auto& target = locals[instruction.input_indices[1]];
@@ -330,33 +328,43 @@ void op_scatter(
     auto& output = locals[instruction.output_indices[0]];
     output = target.copy(device);
     switch (target.shape().size()) {
-        case 1: scatter_impl<1>(indices, source, output); break;
-        case 2: scatter_impl<2>(indices, source, output); break;
-        case 3: scatter_impl<3>(indices, source, output); break;
-        case 4: scatter_impl<4>(indices, source, output); break;
+        case 1: scatter_impl<1>(indices, source, output, device); break;
+        case 2: scatter_impl<2>(indices, source, output, device); break;
+        case 3: scatter_impl<3>(indices, source, output, device); break;
+        case 4: scatter_impl<4>(indices, source, output, device); break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }
 }
 
+template<typename D>
 void op_random(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     auto batch_size = locals[instruction.input_indices[0]].batch_sizes()[0];
     auto& output = locals[instruction.output_indices[0]];
     auto dim = instruction.output_shapes[0][0];
     output = Tensor(DataType::dt_float, {batch_size, dim}, device);
-    auto output_view = output.view<double, 1>();
-    auto& pool = ThreadPool::instance();
-    pool.parallel_for<ThreadPool::pass_thread_id>(
-        [&](std::size_t i, std::size_t thread_id
-    ) {
-        output_view[i] = pool.random(thread_id);
-    }, batch_size * dim);
+    auto flat_view = output.flat_view<double, 1>(2);
+    auto& runtime = instruction.runtime;
+    device.foreach(
+        flat_view.shape[0],
+        [flat_view, &runtime](
+            std::size_t count, std::size_t offset, std::size_t thread_id
+        ) mutable {
+            auto output_view = TensorView<double, 1>(flat_view);
+            std::uniform_real_distribution<double> dist;
+            auto& rand_gen = runtime.rand_gen(thread_id);
+            for (std::size_t i = offset; i < count; ++i) {
+                output_view[i] = dist(rand_gen);
+            }
+        }
+    );
 }
 
+template<typename D>
 void op_unweight(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const CpuDevice& device
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {
     // TODO: not parallelized for now
     auto& weights = locals[instruction.input_indices[0]];
@@ -372,12 +380,13 @@ void op_unweight(
     auto max_weight_view = max_weight.view<double, 1>();
     auto indices_view = indices_tmp.view<int64_t, 1>();
     auto uw_weights_view = uw_weights_tmp.view<double, 1>();
-    auto& pool = ThreadPool::instance();
 
+    std::uniform_real_distribution<double> dist;
+    auto& rand_gen = instruction.runtime.rand_gen(0);
     std::size_t count = 0;
     for (std::size_t i = 0; i < batch_size; ++i) {
         double w = weights_view[i], w_max = max_weight_view[i];
-        if (w != 0. && w > pool.random(0) * w_max) {
+        if (w != 0. && w > dist(rand_gen) * w_max) {
             indices_view[count] = i;
             uw_weights_view[count] = w > w_max ? w : w_max;
             ++count;
@@ -390,11 +399,17 @@ void op_unweight(
 
 }
 
-CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
-    context(context), input_count(function.inputs().size())
+CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concurrent) :
+    _context(context),
+    _input_count(function.inputs().size()),
+    _rand_gens(default_thread_pool(), []() {
+        std::random_device rand_device;
+        return std::mt19937(rand_device());
+    }),
+    _concurrent(concurrent)
 {
-    locals_init.resize(function.locals().size());
-    requires_grad_init.resize(function.locals().size());
+    _locals_init.resize(function.locals().size());
+    _requires_grad_init.resize(function.locals().size());
     std::size_t instr_index = 0;
     LastUseOfLocals last_use(function);
 
@@ -415,19 +430,19 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
             output_dtypes.push_back(out.type.dtype);
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
         }
-        instructions.push_back({
+        _instructions.push_back({
             instr.instruction->opcode(),
             input_indices,
             output_indices,
             output_dtypes,
             output_shapes,
             batch_size_index,
-            *context,
+            *this,
             instr.instruction->differentiable()
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
-            instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *context, false
+            _instructions.push_back({
+                -1, {local_index}, {}, {}, {}, 0, *this, false
             });
         }
         ++instr_index;
@@ -444,10 +459,10 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
                 "Global {} has wrong dtype or shape", name
             ));
         }
-        locals_init.at(value.local_index) = global;
+        _locals_init.at(value.local_index) = global;
         if (context->global_requires_grad(name)) {
-            requires_grad_init.at(value.local_index) = true;
-            grad_global_indices.push_back({name, value.local_index});
+            _requires_grad_init.at(value.local_index) = true;
+            _grad_global_indices.push_back({name, value.local_index});
         }
     }
 
@@ -455,23 +470,56 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context) :
         std::visit(Overloaded{
             [&](auto val) {
                 Tensor tensor(val, &CpuDevice::instance());
-                locals_init[local.local_index] = tensor;
+                _locals_init[local.local_index] = tensor;
             },
             [](std::monostate val){}
         }, local.literal_value);
     }
 
     for (auto& out : function.outputs()) {
-        output_indices.push_back(out.local_index);
+        _output_indices.push_back(out.local_index);
     }
 }
 
 TensorVec CpuRuntime::run(const TensorVec& inputs) const {
+    if (_concurrent) {
+        return run_concurrent(inputs);
+    } else {
+        return run_single(inputs);
+    }
+}
+
+std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
+    const TensorVec& inputs, const std::vector<bool>& input_requires_grad
+) const {
+    if (_concurrent) {
+        return run_with_grad_concurrent(inputs, input_requires_grad);
+    } else {
+        return run_with_grad_single(inputs, input_requires_grad);
+    }
+}
+
+std::tuple<
+    TensorVec, std::vector<std::tuple<std::string, Tensor>>
+> CpuRuntime::run_backward(
+    const TensorVec& output_grads,
+    const TensorVec& stored_locals,
+    const std::vector<bool>& eval_grad
+) const {
+    if (_concurrent) {
+        return run_backward_concurrent(output_grads, stored_locals, eval_grad);
+    } else {
+        return run_backward_single(output_grads, stored_locals, eval_grad);
+    }
+}
+
+TensorVec CpuRuntime::run_single(const TensorVec& inputs) const {
     auto& device = CpuDevice::instance();
-    auto locals = locals_init;
+    auto locals = _locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
-    for (auto& instr : instructions) {
+    for (auto& instr : _instructions) {
+        using DeviceType = CpuDevice;
         switch (instr.opcode) {
             case -1: // free memory
                 locals[instr.input_indices[0]].reset(device);
@@ -480,24 +528,24 @@ TensorVec CpuRuntime::run(const TensorVec& inputs) const {
         }
     }
     TensorVec outputs;
-    for (auto index : output_indices) {
+    for (auto index : _output_indices) {
         outputs.push_back(locals[index]);
     }
     return outputs;
 }
 
-std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
+std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad_single(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
     auto& device = CpuDevice::instance();
-    auto locals = locals_init;
-    auto requires_grad = requires_grad_init;
+    auto locals = _locals_init;
+    auto requires_grad = _requires_grad_init;
     std::vector<bool> store_local(locals.size());
-    std::vector<bool> eval_grad(instructions.size());
+    std::vector<bool> eval_grad(_instructions.size());
     std::copy(inputs.begin(), inputs.end(), locals.begin());
     std::copy(input_requires_grad.begin(), input_requires_grad.end(), requires_grad.begin());
 
-    for (auto [instr, instr_eval_grad] : zip(instructions, eval_grad)) {
+    for (auto [instr, instr_eval_grad] : zip(_instructions, eval_grad)) {
         if (instr.differentiable) {
             for (auto input_index : instr.input_indices) {
                 if (requires_grad[input_index]) {
@@ -516,6 +564,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
                 }
             }
         }
+        using DeviceType = CpuDevice;
         switch (instr.opcode) {
             case -1: { // free memory
                 auto input_index = instr.input_indices[0];
@@ -528,7 +577,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
         }
     }
     TensorVec outputs;
-    for (auto index : output_indices) {
+    for (auto index : _output_indices) {
         outputs.push_back(locals[index]);
     }
     return {outputs, locals, eval_grad};
@@ -536,7 +585,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
 
 std::tuple<
     TensorVec, std::vector<std::tuple<std::string, Tensor>>
-> CpuRuntime::run_backward(
+> CpuRuntime::run_backward_single(
     const TensorVec& output_grads,
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
@@ -544,12 +593,12 @@ std::tuple<
     auto& device = CpuDevice::instance();
     TensorVec local_grads(stored_locals.size());
     TensorVec locals(stored_locals);
-    for (auto [index, grad] : zip(output_indices, output_grads)) {
+    for (auto [index, grad] : zip(_output_indices, output_grads)) {
         local_grads[index] = grad;
     }
     for (
         auto [instr, instr_eval_grad] :
-        zip(std::views::reverse(instructions), std::views::reverse(eval_grad))
+        zip(std::views::reverse(_instructions), std::views::reverse(eval_grad))
     ) {
         if (!instr_eval_grad) continue;
         for (auto [output_index, output_dtype] : zip(
@@ -561,18 +610,36 @@ std::tuple<
                 grad.zero(device);
             }
         }
+        using DeviceType = CpuDevice;
         switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
         }
     }
     std::vector<std::tuple<std::string, Tensor>> global_grads;
-    for (auto& [name, index] : grad_global_indices) {
+    for (auto& [name, index] : _grad_global_indices) {
         global_grads.push_back({name, local_grads[index]});
     }
-    return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
+    return {{local_grads.begin(), local_grads.begin() + _input_count}, global_grads};
+}
+
+TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
+}
+
+std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad_concurrent(
+    const TensorVec& inputs, const std::vector<bool>& input_requires_grad
+) const {
+}
+
+std::tuple<
+    TensorVec, std::vector<std::tuple<std::string, Tensor>>
+> CpuRuntime::run_backward_concurrent(
+    const TensorVec& output_grads,
+    const TensorVec& stored_locals,
+    const std::vector<bool>& eval_grad
+) const {
 }
 
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context) {
-    return new CpuRuntime(function, context);
+    return new CpuRuntime(function, context, false);
 }
 

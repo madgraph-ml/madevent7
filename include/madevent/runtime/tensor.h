@@ -62,6 +62,8 @@ inline bool operator!=(const Sizes& a, const Sizes& b) { return !(a == b); }
 
 template<ScalarType T, int _dim>
 struct PackedTensorView {
+    using DType = T;
+    static const int dim = _dim;
     T* data;
     Sizes stride;
     Sizes shape;
@@ -321,13 +323,16 @@ public:
     }
 
     template<class T, int dim>
-    PackedTensorView<T, dim> flat_view(std::size_t flatten_count) {
+    PackedTensorView<T, dim> flat_view(std::size_t flatten_count) const {
         check_impl();
-        if (flatten_count == 0) {
+        if (flatten_count <= 1) {
             return {static_cast<T*>(impl->data), impl->stride, impl->shape};
         }
         if (flatten_count > impl->contiguous_dims) {
             throw std::invalid_argument("can only flatten contiguous dimensions");
+        }
+        if (impl->stride[0] == 0) {
+            throw std::runtime_error("ALARM!!!!!!!!");
         }
         Sizes stride{1}, shape{1};
         std::size_t i = 1;

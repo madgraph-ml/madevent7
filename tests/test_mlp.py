@@ -86,15 +86,15 @@ def test_training(mlp):
 
         with torch.no_grad():
             for i in range(3):
-                assert mlp_torch[2*i].weight.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}:weight"][0].numpy()
+                assert mlp.global_params[f"layer{i+1}:weight"][0].numpy() == approx(
+                    mlp_torch[2*i].weight.numpy()
                 )
-                assert mlp_torch[2*i].bias.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}:bias"][0].numpy()
+                assert mlp.global_params[f"layer{i+1}:bias"][0].numpy() == approx(
+                    mlp_torch[2*i].bias.numpy()
                 )
-                assert mlp_torch[2*i].weight.grad.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}:weight"].grad[0].numpy()
+                assert mlp.global_params[f"layer{i+1}:weight"].grad[0].numpy() == approx(
+                    mlp_torch[2*i].weight.grad.numpy()
                 )
-                assert mlp_torch[2*i].bias.grad.numpy() == approx(
-                    mlp.global_params[f"layer{i+1}:bias"].grad[0].numpy()
+                assert mlp.global_params[f"layer{i+1}:bias"].grad[0].numpy() == approx(
+                    mlp_torch[2*i].bias.grad.numpy()
                 )

@@ -613,7 +613,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("channel_status", &EventGenerator::channel_status)
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
 
-    m.def("set_thread_count", &ThreadPool::set_thread_count, py::arg("new_count"));
+    m.def("set_thread_count", [](std::size_t new_count) {
+        default_thread_pool().set_thread_count(new_count);
+    }, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));

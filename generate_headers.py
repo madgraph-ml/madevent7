@@ -173,12 +173,14 @@ def runtime_mixin(commands, device):
                         kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<SimdTypes>"
                     else:
                         kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<CpuTypes>"
+                    device_arg = ", DeviceType"
                 elif device == "cuda":
                     kernel = f"kernel_{name}<CudaTypes>"
+                    device_arg = ""
                 foreach_func = (
-                    f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}>"
+                    f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}{device_arg}>"
                     if dims == 0 else
-                    f"tensor_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}>"
+                    f"tensor_foreach<{kernel}, {n_inputs}, {n_outputs}, {dims}{device_arg}>"
                 )
                 func = (
                     f"batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}>"
@@ -219,21 +221,30 @@ def runtime_backward_mixin(commands, device):
                     in_stored = list(range(n_inputs))
                 in_stored_str = ",".join(str(i) for i in in_stored)
                 out_stored_str = ",".join(str(i) for i in out_stored)
+                vectorized = cmd.get("vectorized", True)
 
                 if device == "cpu":
-                    kernel = (
-                        f"backward_kernel_{name}<CpuTypes>, "
-                        f"backward_kernel_{name}<SimdTypes>"
-                    )
+                    if vectorized:
+                        kernel = (
+                            f"backward_kernel_{name}<CpuTypes>, "
+                            f"backward_kernel_{name}<SimdTypes>"
+                        )
+                    else:
+                        kernel = (
+                            f"backward_kernel_{name}<CpuTypes>, "
+                            f"backward_kernel_{name}<CpuTypes>"
+                        )
+                    device_arg = ", DeviceType"
                 elif device == "cuda":
                     kernel = f"backward_kernel_{name}<CudaTypes>"
+                    device_arg = ""
 
                 dims = cmd.get("dims", 1)
                 n_args = len(in_stored) + len(out_stored) + n_outputs
                 foreach_func = (
-                    f"tensor_foreach_dynamic<{kernel}, {n_args}, {n_inputs}>"
+                    f"tensor_foreach_dynamic<{kernel}, {n_args}, {n_inputs}{device_arg}>"
                     if dims == 0 else
-                    f"tensor_foreach<{kernel}, {n_args}, {n_inputs}, {dims}>"
+                    f"tensor_foreach<{kernel}, {n_args}, {n_inputs}, {dims}{device_arg}>"
                 )
                 func = (
                     f"backward_batch_foreach<{foreach_func}, {n_inputs}, {n_outputs}, "

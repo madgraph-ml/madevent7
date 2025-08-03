@@ -43,7 +43,7 @@ public:
         _pool(&pool),
         _listener_id(pool.add_listener([&](std::size_t thread_count) {
             while (_resources.size() < thread_count) {
-                _resources.push_back(constructor);
+                _resources.push_back(constructor());
             }
         }))
     {
@@ -67,6 +67,7 @@ public:
         _resources = std::move(other._resources);
         _listener_id = std::move(other._listener_id);
         other._pool = nullptr;
+        return *this;
     }
     ThreadResource(const ThreadResource&) = delete;
     ThreadResource& operator=(const ThreadResource&) = delete;
