@@ -33,7 +33,12 @@ EventGenerator::EventGenerator(
     _status_all(
         {0, 0., 0., 0., 0, 0, 0., static_cast<double>(config.target_count), false, false}
     ),
-    _writer(file_name, channels.at(0).particle_count())
+    _writer(
+        file_name,
+        std::ranges::max(std::views::transform(channels, [] (auto& chan) {
+            return chan.particle_count(); 
+        }))
+    )
 {
     std::size_t i = 0;
     fs::path file_path(file_name);

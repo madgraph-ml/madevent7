@@ -51,6 +51,9 @@ public:
     const EventRecord& event() const {
         return *reinterpret_cast<const EventRecord*>(_data.data());
     }
+    void clear_rest(std::size_t count) {
+        std::fill(particles().begin() + count, particles().end(), ParticleRecord{});
+    }
 private:
     std::size_t _particle_count;
     std::vector<char> _data;
