@@ -99,6 +99,7 @@ def test_t_channel_phase_space_volume(particle_count, energy, rng, mode):
     mapping = me.PhaseSpaceMapping(
         [0.] * (particle_count + 2), energy, mode=mode, leptonic=True
     )
+    print(mapping.forward_function())
     sample_count = 100000
     r = rng.random((sample_count, mapping.random_dim()))
     _, det = mapping.map_forward([r])

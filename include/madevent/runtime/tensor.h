@@ -332,9 +332,6 @@ public:
         if (flatten_count > impl->contiguous_dims) {
             throw std::invalid_argument("can only flatten contiguous dimensions");
         }
-        if (impl->stride[0] == 0) {
-            throw std::runtime_error("ALARM!!!!!!!!");
-        }
         Sizes stride{1}, shape{1};
         std::size_t i = 1;
         for (; i < flatten_count; ++i) {
@@ -451,7 +448,7 @@ public:
     }
 
     std::size_t contiguous_dims() const {
-        return impl->contiguous_dims > 0;
+        return impl->contiguous_dims;
     }
 
     template<typename D>
