@@ -115,7 +115,8 @@ Integrand::Integrand(
     _random_dim(
         mapping.random_dim() + // phasespace
         (mapping.channel_count() > 1) + // symmetric channel
-        (diff_xs.pid_options().size() > 1) // flavor
+        (diff_xs.pid_options().size() > 1) + // flavor
+        diff_xs.has_mirror() // flipped initial state
     )
 {
     if (pdf_grid) {
@@ -142,9 +143,10 @@ ValueVec Integrand::build_function_impl(
     ValueVec weights_before_cuts, weights_after_cuts;
 
     // split up random numbers depending on discrete degrees of freedom
-    Value chan_random, flavor_random;
+    Value chan_random, flavor_random, mirror_random;
     bool has_permutations = _mapping.channel_count() > 1;
     bool has_multi_flavor = _diff_xs.pid_options().size() > 1;
+    bool has_mirror = _diff_xs.has_mirror();
     if (has_permutations) {
         auto [r_rest, r_val] = fb.pop(r);
         r = r_rest;
@@ -154,6 +156,11 @@ ValueVec Integrand::build_function_impl(
         auto [r_rest, r_val] = fb.pop(r);
         r = r_rest;
         flavor_random = r_val;
+    }
+    if (has_mirror) {
+        auto [r_rest, r_val] = fb.pop(r);
+        r = r_rest;
+        mirror_random = r_val;
     }
 
     // if the channel contains multiple symmetry permutations, sample them either
@@ -201,6 +208,16 @@ ValueVec Integrand::build_function_impl(
     auto x1 = momenta_x1_x2.at(1);
     auto x2 = momenta_x1_x2.at(2);
 
+    Value mirror_id, momenta_mirror;
+    if (has_mirror) {
+        auto [index, mirror_det] = fb.sample_discrete(
+            mirror_random, static_cast<int64_t>(2)
+        );
+        mirror_id = index;
+        momenta_mirror = fb.mirror_momenta(momenta, mirror_id);
+        weights_before_cuts.push_back(mirror_det);
+    }
+
     // filter out events that did not pass cuts
     auto weight = fb.product(weights_before_cuts);
     auto indices_acc = fb.nonzero(weight);
@@ -224,9 +241,13 @@ ValueVec Integrand::build_function_impl(
     ValueVec xs_cache;
     Value pdf_prior;
     if (has_pdf_prior) {
-        auto scales = _energy_scale.value().build_function(fb, {momenta});
-        auto pdf1 = _pdf1.value().build_function(fb, {x1, scales.at(1)}).at(0);
-        auto pdf2 = _pdf2.value().build_function(fb, {x2, scales.at(2)}).at(0);
+        auto scales = _energy_scale.value().build_function(fb, {momenta_acc});
+        auto pdf1 = _pdf1.value().build_function(
+            fb, {x1_acc, fb.square(scales.at(1))}
+        ).at(0);
+        auto pdf2 = _pdf2.value().build_function(
+            fb, {x2_acc, fb.square(scales.at(2))}
+        ).at(0);
         pdf_prior = fb.mul(
             fb.select(pdf1, _pdf_indices1), fb.select(pdf2, _pdf_indices2)
         );
@@ -235,19 +256,20 @@ ValueVec Integrand::build_function_impl(
 
     // if the channel has more than one flavor, sample them either uniformly,
     // adaptively or NN-based depending on _discrete_after
-    Value flavor_id(static_cast<int64_t>(0)), mirror_id(static_cast<int64_t>(0));
+    Value flavor_id(static_cast<int64_t>(0));
     if (has_multi_flavor) {
+        auto flavor_random_acc = fb.batch_gather(indices_acc, flavor_random);
         std::visit(Overloaded {
             [&](std::monostate) {
                 if (has_pdf_prior) {
                     auto [index, flavor_det] = fb.sample_discrete_probs(
-                        flavor_random, pdf_prior
+                        flavor_random_acc, pdf_prior
                     );
                     flavor_id = index;
                     weights_after_cuts.push_back(flavor_det);
                 } else {
                     auto [index, flavor_det] = fb.sample_discrete(
-                        flavor_random, static_cast<int64_t>(_diff_xs.pid_options().size())
+                        flavor_random_acc, static_cast<int64_t>(_diff_xs.pid_options().size())
                     );
                     flavor_id = index;
                     weights_after_cuts.push_back(flavor_det);
@@ -260,7 +282,7 @@ ValueVec Integrand::build_function_impl(
                     discrete_condition.push_back(pdf_prior);
                 }
                 auto [index_vec, flavor_det] = discrete_after.build_forward(
-                    fb, {flavor_random}, discrete_condition
+                    fb, {flavor_random_acc}, discrete_condition
                 );
                 flavor_id = index_vec.at(0);
                 weights_after_cuts.push_back(flavor_det);
@@ -269,7 +291,8 @@ ValueVec Integrand::build_function_impl(
     }
 
     // evaluate differential cross section
-    ValueVec xs_args {momenta_acc, x1_acc, x2_acc, flavor_id, mirror_id};
+    ValueVec xs_args {momenta_acc, x1_acc, x2_acc, flavor_id};
+    if (has_mirror) xs_args.push_back(mirror_id);
     xs_args.insert(xs_args.end(), xs_cache.begin(), xs_cache.end());
     auto dxs_vec = _diff_xs.build_function(fb, xs_args);
     auto diff_xs_acc = dxs_vec.at(0);
@@ -307,7 +330,7 @@ ValueVec Integrand::build_function_impl(
     ValueVec outputs{weight};
     Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
     if (_flags & return_momenta) {
-        outputs.push_back(momenta);
+        outputs.push_back(has_mirror ? momenta_mirror : momenta);
     }
     if (_flags & return_x1_x2) {
         outputs.push_back(x1);
@@ -382,7 +405,10 @@ IntegrandProbability::IntegrandProbability(const Integrand& integrand) :
             }
             arg_types.push_back(batch_float_array(integrand._mapping.random_dim()));
             auto flavor_count = integrand._diff_xs.pid_options().size();
-            if (flavor_count > 1) {
+            if (
+                flavor_count > 1 &&
+                !std::holds_alternative<std::monostate>(integrand._discrete_after)
+            ) {
                 arg_types.push_back(batch_int);
                 if (integrand._pdf1 && integrand._energy_scale) {
                     arg_types.push_back(batch_float_array(flavor_count));
@@ -431,20 +457,12 @@ ValueVec IntegrandProbability::build_function_impl(
     }, _adaptive_map);
 
     if (_flavor_count > 1) {
-        auto flavor = args.at(arg_index);
-        ++arg_index;
         std::visit(Overloaded {
-            [&](std::monostate) {
-                if (_has_pdf_prior) {
-                    auto pdf_prior = args.at(arg_index);
-                    ++arg_index;
-                    probs.push_back(fb.gather(flavor, pdf_prior));
-                } else {
-                    probs.push_back(1. / _flavor_count);
-                }
-            },
+            [&](std::monostate) {},
             [&](auto discrete_after) {
                 //TODO: make conditional on previous things
+                auto flavor = args.at(arg_index);
+                ++arg_index;
                 ValueVec discrete_condition;
                 if (_has_pdf_prior) {
                     auto pdf_prior = args.at(arg_index);

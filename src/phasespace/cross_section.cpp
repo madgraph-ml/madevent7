@@ -13,7 +13,8 @@ DifferentialCrossSection::DifferentialCrossSection(
     const EnergyScale& energy_scale,
     bool simple_matrix_element,
     std::size_t channel_count,
-    const std::vector<int64_t>& amp2_remap
+    const std::vector<int64_t>& amp2_remap,
+    bool has_mirror
 ) :
     FunctionGenerator(
         [&] {
@@ -21,12 +22,20 @@ DifferentialCrossSection::DifferentialCrossSection(
                 batch_four_vec_array(pid_options.at(0).size()),
                 batch_float,
                 batch_float,
-                batch_int,
                 batch_int
             };
+            if (has_mirror) {
+                arg_types.push_back(batch_int);
+            }
             if (!pdf_grid) {
-                arg_types.push_back(batch_float_array(pid_options.size()));
-                arg_types.push_back(batch_float_array(pid_options.size()));
+                std::set<int> pids1, pids2;
+                for (auto& option : pid_options) {
+                    pids1.insert(option.at(0));
+                    pids2.insert(option.at(1));
+                }
+                arg_types.push_back(batch_float_array(pids1.size()));
+                arg_types.push_back(batch_float_array(pids2.size()));
+                arg_types.push_back(batch_float);
             }
             return arg_types;
         }(),
@@ -49,6 +58,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     _e_cm2(cm_energy * cm_energy),
     _energy_scale(energy_scale),
     _simple_matrix_element(simple_matrix_element),
+    _has_mirror(has_mirror),
     _channel_count(channel_count),
     _amp2_remap(amp2_remap)
 {
@@ -80,7 +90,8 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto x1 = args.at(1);
     auto x2 = args.at(2);
     auto flavor_id = args.at(3);
-    auto mirror_id = args.at(4);
+    //auto mirror_id = args.at(4);
+    //TODO: need to use mirror_id if we have two different PDFs
 
     Value pdf1, pdf2, ren_scale;
     if (_pdf1) {
@@ -99,13 +110,13 @@ ValueVec DifferentialCrossSection::build_function_impl(
     }
 
     if (_simple_matrix_element) {
-        auto me_result = _matrix_element.build_function(fb, {momenta, flavor_id, mirror_id});
+        auto me_result = _matrix_element.build_function(fb, {momenta, flavor_id});
         return {fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2)};
     } else {
         auto alpha_s = _running_coupling.build_function(fb, {fb.square(ren_scale)}).at(0);
         Value me2, chan_weights, color_id, diagram_id;
         auto me_result = _matrix_element.build_function(
-            fb, {momenta, flavor_id, mirror_id, alpha_s}
+            fb, {momenta, flavor_id, alpha_s}
         );
         me_result.at(0) = fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2);
         return me_result;

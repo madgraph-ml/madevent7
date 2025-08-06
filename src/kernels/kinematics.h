@@ -379,5 +379,18 @@ KERNELSPEC void kernel_pt_eta_phi_x(FIn<T,2> p_ext, FIn<T,0> x1, FIn<T,0> x2, FO
     }
 }
 
+template<typename T>
+KERNELSPEC void kernel_mirror_momenta(FIn<T,2> p_ext, IIn<T,0> mirror, FOut<T,2> p_out) {
+    auto sign = 1. - 2. * FVal<T>(IVal<T>(mirror));
+    for (std::size_t i = 0; i < p_ext.size(); ++i) {
+        auto p_i = p_ext[i];
+        auto q_i = p_out[i];
+        q_i[0] = p_i[0];
+        q_i[1] = p_i[1];
+        q_i[2] = sign * p_i[2];
+        q_i[3] = sign * p_i[3];
+    }
+}
+
 }
 }

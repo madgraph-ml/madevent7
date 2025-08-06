@@ -135,6 +135,10 @@ Value pt_eta_phi_x(Value p_ext, Value x1, Value x2) {
     return instruction("pt_eta_phi_x", {p_ext, x1, x2})[0];
 }
 
+Value mirror_momenta(Value p_ext, Value mirror) {
+    return instruction("mirror_momenta", {p_ext, mirror})[0];
+}
+
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {
     auto output_vector = instruction("uniform_invariant", {r, s_min, s_max});
     return {output_vector[0], output_vector[1]};

@@ -511,12 +511,18 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
         .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
-                      const EnergyScale&, bool, std::size_t, const std::vector<int64_t>&>(),
-             py::arg("pid_options"), py::arg("matrix_element_index"),
-             py::arg("running_coupling"), py::arg("pdf_grid"),
-             py::arg("cm_energy"), py::arg("energy_scale"),
-             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<int64_t>{})
+                      const EnergyScale&, bool, std::size_t,
+                      const std::vector<int64_t>&, bool>(),
+             py::arg("pid_options"),
+             py::arg("matrix_element_index"),
+             py::arg("running_coupling"),
+             py::arg("pdf_grid"),
+             py::arg("cm_energy"),
+             py::arg("energy_scale"),
+             py::arg("simple_matrix_element")=true,
+             py::arg("channel_count")=1,
+             py::arg("amp2_remap")=std::vector<int64_t>{},
+             py::arg("has_mirror")=false)
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
     py::classh<Unweighter, FunctionGenerator>(m, "Unweighter")
