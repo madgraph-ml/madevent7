@@ -15,8 +15,8 @@ DiscreteFlow::DiscreteFlow(
     MLP::Activation subnet_activation
 ) :
     Mapping(
-        {batch_float_array(option_counts.size())},
         TypeVec(option_counts.size(), batch_float),
+        TypeVec(option_counts.size(), batch_int),
         [&] {
             TypeVec cond_types;
             if (condition_dim > 0) {
@@ -73,7 +73,6 @@ Mapping::Result DiscreteFlow::build_transform(
     const ValueVec& conditions,
     bool inverse
 ) const {
-    auto inputs_unstacked = fb.unstack(inputs.at(0));
     Value subnet_input;
     std::size_t dim_index = 0, mlp_index = 0, condition_index = 0;
     int64_t prev_option_count = 0;
@@ -85,7 +84,7 @@ Mapping::Result DiscreteFlow::build_transform(
     Value prev_index;
     ValueVec outputs, dets;
     for (auto [option_count, input, has_prior] : zip(
-        _option_counts, inputs_unstacked, _dim_has_prior
+        _option_counts, inputs, _dim_has_prior
     )) {
         if (dim_index > 0) {
             subnet_input = fb.cat({

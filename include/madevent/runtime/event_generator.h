@@ -7,6 +7,7 @@
 #include "madevent/phasespace.h"
 #include "madevent/runtime/io.h"
 #include "madevent/runtime/vegas_optimizer.h"
+#include "madevent/runtime/discrete_optimizer.h"
 #include "madevent/runtime/runtime_base.h"
 
 namespace madevent {
@@ -51,7 +52,8 @@ private:
 class EventGenerator {
 public:
     static inline const int integrand_flags =
-        Integrand::sample | Integrand::return_momenta | Integrand::return_random;
+        Integrand::sample | Integrand::return_momenta |
+        Integrand::return_random | Integrand::return_discrete;
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;
@@ -64,6 +66,7 @@ public:
         double survey_target_precision = 0.1;
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
+        double discrete_damping = 0.33;
     };
     static const Config default_config;
     struct Status {
@@ -100,6 +103,7 @@ private:
         RuntimePtr runtime;
         EventFile writer;
         std::optional<VegasGridOptimizer> vegas_optimizer;
+        std::optional<DiscreteOptimizer> discrete_optimizer;
         std::size_t batch_size;
         RunningIntegral cross_section;
         bool needs_optimization = true;

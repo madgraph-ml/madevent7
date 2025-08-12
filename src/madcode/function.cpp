@@ -344,7 +344,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
 
 Function FunctionBuilder::function() {
     ValueVec func_outputs;
-    int output_index = 0;
+    int output_index = 1;
     for (auto output : outputs) {
         if (output) {
             func_outputs.push_back(output.value());

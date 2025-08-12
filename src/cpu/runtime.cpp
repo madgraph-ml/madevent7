@@ -319,13 +319,25 @@ template<int dim>
 void scatter_impl(Tensor& indices, Tensor& source, Tensor& output) {
     auto batch_size = indices.size(0);
     auto indices_view = indices.view<int64_t, 1>();
-    auto source_view = source.view<double, dim>();
-    auto output_view = output.view<double, dim>();
-    ThreadPool::instance().parallel_for([&](std::size_t i) {
-        recursive_for<kernel_copy<CpuTypes>, dim-1>(
-            source_view[i], output_view[indices_view[i]]
-        );
-    }, batch_size);
+    if (source.dtype() == DataType::dt_float) {
+        auto source_view = source.view<double, dim>();
+        auto output_view = output.view<double, dim>();
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
+            recursive_for<kernel_copy<CpuTypes>, dim-1>(
+                source_view[i], output_view[indices_view[i]]
+            );
+        }, batch_size);
+    } else if (source.dtype() == DataType::dt_int) {
+        auto source_view = source.view<int64_t, dim>();
+        auto output_view = output.view<int64_t, dim>();
+        ThreadPool::instance().parallel_for([&](std::size_t i) {
+            recursive_for<kernel_copy_int<CpuTypes>, dim-1>(
+                source_view[i], output_view[indices_view[i]]
+            );
+        }, batch_size);
+    } else {
+        throw std::runtime_error("invalid dtype in batch_gather");
+    }
 }
 
 void op_scatter(

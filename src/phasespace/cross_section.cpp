@@ -91,6 +91,8 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto x2 = args.at(2);
     auto flavor_id = args.at(3);
     //auto mirror_id = args.at(4);
+    std::size_t arg_index = 4;
+    if (_has_mirror) ++arg_index;
     //TODO: need to use mirror_id if we have two different PDFs
 
     Value pdf1, pdf2, ren_scale;
@@ -104,9 +106,9 @@ ValueVec DifferentialCrossSection::build_function_impl(
         ).at(0);
         ren_scale = scales.at(0);
     } else {
-        pdf1 = fb.gather(fb.gather_int(flavor_id, _pdf_indices1), args.at(5));
-        pdf2 = fb.gather(fb.gather_int(flavor_id, _pdf_indices2), args.at(6));
-        ren_scale = args.at(7);
+        pdf1 = fb.gather(fb.gather_int(flavor_id, _pdf_indices1), args.at(arg_index));
+        pdf2 = fb.gather(fb.gather_int(flavor_id, _pdf_indices2), args.at(arg_index + 1));
+        ren_scale = args.at(arg_index + 2);
     }
 
     if (_simple_matrix_element) {

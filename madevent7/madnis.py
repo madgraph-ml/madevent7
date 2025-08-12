@@ -13,8 +13,8 @@ MADNIS_INTEGRAND_FLAGS = (
     me.Integrand.return_latent |
     me.Integrand.return_channel |
     me.Integrand.return_chan_weights |
-    me.Integrand.return_cwnet_input #|
-    #me.Integrand.return_discrete
+    me.Integrand.return_cwnet_input |
+    me.Integrand.return_discrete_latent
 )
 
 class IntegrandDistribution(nn.Module, Distribution):
@@ -27,6 +27,7 @@ class IntegrandDistribution(nn.Module, Distribution):
         super().__init__()
         self.channel_count = len(channels)
         self.channel_remap_function = channel_remap_function
+        self.latent_dims, self.latent_float = channels[0].latent_dims()
         multi_prob = me.MultiChannelFunction(
             [me.IntegrandProbability(chan) for chan in channels]
         )
@@ -63,7 +64,12 @@ class IntegrandDistribution(nn.Module, Distribution):
             channel = torch.tensor([len(x)])
         else:
             raise NotImplementedError("channel argument type not supported")
-        prob = self.integrand_prob(x, channel)
+
+        prob_args = [
+            xi if is_float else xi[:,0].to(torch.int64)
+            for xi, is_float in zip(x.split(self.latent_dims, dim=1), self.latent_float)
+        ]
+        prob = self.integrand_prob(*prob_args, channel)
         if channel_perm is None:
             return prob
         else:
@@ -84,10 +90,15 @@ def build_madnis_integrand(
         channel_perm = torch.argsort(channels)
         channels = channels.bincount(minlength=channel_count)
         (
-            full_weight, x, inv_prob, chan_index, alphas_prior, alpha_selected, y
+            full_weight, latent, inv_prob, chan_index, alphas_prior, alpha_selected, y, *rest
         ) = multi_runtime(channels)
+
+        x_parts = [latent, *rest]
+        x = torch.cat(
+            [xi.double().reshape(latent.shape[0], -1) for xi in x_parts], dim=1
+        )
         prob = 1 / inv_prob
-        weight = full_weight * prob / alpha_selected
+        weight = torch.where(alpha_selected == 0., 0., full_weight * prob / alpha_selected)
         channel_perm_inv = torch.argsort(channel_perm)
         return (
             x[channel_perm_inv],
@@ -103,18 +114,13 @@ def build_madnis_integrand(
 
     integrand = Integrand(
         function=integrand_function,
-        input_dim=channels[0].random_dim(),
+        input_dim=sum(channels[0].latent_dims()[0]),
         channel_count=channel_count,
         remapped_dim=cwnet.preprocessing().output_dim(),
         has_channel_weight_prior=cwnet is not None,
         channel_grouping=channel_grouping,
         function_includes_sampling=True,
         update_active_channels_mask=update_mask,
-        #discrete_dims=
-        #discrete_dims_position=
-        #discrete_prior_prob_function=
-        #discrete_prior_prob_mode=
-        #discrete_mode=
     )
     flow = IntegrandDistribution(channels, integrand.remap_channels, context)
     cwnet_module = None if cwnet is None else FunctionModule(cwnet.mlp().function(), context)

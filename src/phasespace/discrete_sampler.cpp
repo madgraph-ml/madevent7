@@ -8,8 +8,8 @@ DiscreteSampler::DiscreteSampler(
     const std::vector<std::size_t>& dims_with_prior
 ) :
     Mapping(
-        {batch_float_array(option_counts.size())},
         TypeVec(option_counts.size(), batch_float),
+        TypeVec(option_counts.size(), batch_int),
         [&] {
             TypeVec cond_types;
             for (std::size_t dim : dims_with_prior) {
@@ -47,11 +47,10 @@ Mapping::Result DiscreteSampler::build_transform(
     const ValueVec& conditions,
     bool inverse
 ) const {
-    auto inputs_unstacked = fb.unstack(inputs.at(0));
     ValueVec dets, outputs;
     std::size_t condition_index = 0;
     for (auto [input, prob_name, option_count, has_prior] : zip(
-        inputs_unstacked, _prob_names, _option_counts, _dim_has_prior
+        inputs, _prob_names, _option_counts, _dim_has_prior
     )) {
         auto probs = fb.global(
             prob_name, DataType::dt_float, {static_cast<int>(option_count)}

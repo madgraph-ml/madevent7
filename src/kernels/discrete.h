@@ -38,10 +38,10 @@ KERNELSPEC void kernel_sample_discrete_probs(
     IVal<T> option(0);
     for (std::size_t i = 0; i < probs.size(); ++i) {
         auto prob = probs[i] / prob_norm;
-        cum_prob = cum_prob + prob;
         auto mask = r < cum_prob;
-        option = where(mask, IVal<T>(i), option);
-        prob_out = where(mask, prob, prob_out);
+        cum_prob = cum_prob + prob;
+        option = where(mask, option, IVal<T>(i));
+        prob_out = where(mask, prob_out, prob);
     }
     output = option;
     det = 1. / prob_out;
@@ -65,6 +65,23 @@ KERNELSPEC void kernel_sample_discrete_probs_inverse(
     }
     r = random;
     det = prob_out;
+}
+
+template<typename T>
+KERNELSPEC void backward_kernel_sample_discrete_probs_inverse(
+    IIn<T,0> index, FIn<T,1> probs,
+    FIn<T,0> r_grad, FIn<T,0> det_grad,
+    IOut<T,0> index_grad, FOut<T,1> probs_grad
+) {
+    FVal<T> prob_norm(0.);
+    for (std::size_t i = 0; i < probs.size(); ++i) {
+        prob_norm = prob_norm + probs[i];
+    }
+    FVal<T> det_grad_out(0.);
+    auto prob = probs.gather(index) / prob_norm;
+    for (std::size_t i = 0; i < probs.size(); ++i) {
+        probs_grad[i] = (where(index == i, FVal<T>(1.), 0.) - prob) / prob_norm * det_grad;
+    }
 }
 
 template<typename T>

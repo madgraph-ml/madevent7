@@ -15,7 +15,23 @@ MultiChannelMapping::MultiChannelMapping(
         }()
     ),
     _mappings(mappings)
-{}
+{
+    auto& first_mapping = mappings.at(0);
+    std::size_t input_count = first_mapping->input_types().size();
+    std::size_t output_count = first_mapping->output_types().size();
+    std::size_t condition_count = first_mapping->condition_types().size();
+    for (auto& mapping : mappings) {
+        if (
+            mapping->input_types().size() != input_count ||
+            mapping->output_types().size() != output_count ||
+            mapping->condition_types().size() != condition_count
+        ) {
+            throw std::invalid_argument(
+                "All mappings must have the same number of inputs, outputs and conditions"
+            );
+        }
+    }
+}
 
 Mapping::Result MultiChannelMapping::build_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
@@ -87,7 +103,21 @@ MultiChannelFunction::MultiChannelFunction(
         functions.at(0)->return_types()
     ),
     _functions(functions)
-{}
+{
+    auto& first_function = functions.at(0);
+    std::size_t arg_count = first_function->arg_types().size();
+    std::size_t return_count = first_function->return_types().size();
+    for (auto& function : functions) {
+        if (
+            function->arg_types().size() != arg_count ||
+            function->return_types().size() != return_count
+        ) {
+            throw std::invalid_argument(
+                "All functions must have the same number of inputs and outputs"
+            );
+        }
+    }
+}
 
 ValueVec MultiChannelFunction::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args

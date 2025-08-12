@@ -1338,6 +1338,7 @@ sample_discrete_probs_inverse:
     - name: det
       type: [float]
       desc:
+  differentiable: True
 
 permute_momenta:
   inputs:

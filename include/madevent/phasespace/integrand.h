@@ -35,6 +35,7 @@ public:
     inline static const int return_chan_weights = 128;
     inline static const int return_cwnet_input = 256;
     inline static const int return_discrete = 512;
+    inline static const int return_discrete_latent = 1024;
 
     Integrand(
         const PhaseSpaceMapping& mapping,
@@ -47,7 +48,8 @@ public:
         const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
         const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
         int flags = 0,
-        const std::vector<std::size_t>& channel_indices = {}
+        const std::vector<std::size_t>& channel_indices = {},
+        const std::vector<std::size_t>& active_flavors = {}
     );
     std::size_t particle_count() const { return _mapping.particle_count(); }
     int flags() const { return _flags; }
@@ -70,10 +72,8 @@ public:
     const std::optional<ChannelWeightNetwork>& chan_weight_net() const {
         return _chan_weight_net;
     }
-    const std::size_t random_dim() const {
-        //TODO: add discrete dims here
-        return _mapping.random_dim();
-    }
+    const std::size_t random_dim() const { return _random_dim; }
+    std::tuple<std::vector<std::size_t>, std::vector<bool>> latent_dims() const;
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
@@ -94,6 +94,7 @@ private:
     std::vector<int64_t> _channel_indices;
     int64_t _random_dim;
     std::size_t _latent_dim;
+    std::vector<double> _active_flavors;
 
     friend class IntegrandProbability;
 };
