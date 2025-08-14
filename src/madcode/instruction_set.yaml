@@ -502,6 +502,20 @@ pt_eta_phi_x:
       type: [float, 3n+2]
       desc:
 
+mirror_momenta:
+  inputs:
+    - name: p_ext
+      type: [float, n, 4]
+      desc:
+    - name: mirror
+      type: [int]
+      desc:
+  outputs:
+    - name: p_mirror
+      type: [float, n, 4]
+      desc:
+
+
 ---
 title: Invariants
 
@@ -1324,6 +1338,7 @@ sample_discrete_probs_inverse:
     - name: det
       type: [float]
       desc:
+  differentiable: True
 
 permute_momenta:
   inputs:

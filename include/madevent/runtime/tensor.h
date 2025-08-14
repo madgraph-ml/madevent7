@@ -326,8 +326,9 @@ public:
     template<class T, int dim>
     PackedTensorView<T, dim> flat_view(std::size_t flatten_count) const {
         check_impl();
+        T* data = static_cast<T*>(impl->data);
         if (flatten_count <= 1) {
-            return {static_cast<T*>(impl->data), impl->stride, impl->shape};
+            return {&data[impl->offset], impl->stride, impl->shape};
         }
         if (flatten_count > impl->contiguous_dims) {
             throw std::invalid_argument("can only flatten contiguous dimensions");
@@ -341,7 +342,7 @@ public:
             shape.push_back(impl->shape[i]);
             stride.push_back(impl->stride[i]);
         }
-        return {static_cast<T*>(impl->data), stride, shape};
+        return {&data[impl->offset], stride, shape};
     }
 
     void* data() { check_impl(); return impl->data; }

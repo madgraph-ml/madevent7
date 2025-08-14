@@ -336,7 +336,6 @@ inline void tensor_foreach_dynamic_impl(
         }
     }
 
-    println("---> {}", iter_dims);
     switch (iter_dims) {
         case 1:
             tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 1>(
@@ -372,14 +371,12 @@ inline void tensor_foreach(
 ) {
     if (batch_size == 0) return;
     if constexpr (dims > 1) {
-        println("fixed dynamic");
         // call the dynamic foreach here as we can potentially be more efficient by
         // flattening contiguous dimensions
         tensor_foreach_dynamic_impl<scalar_func, vector_func, n_in, n_out>(
             inputs, outputs, batch_size, dims, device
         );
     } else {
-        println("fixed");
         tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, dims>(
             inputs, outputs, batch_size, 0, device
         );
@@ -394,7 +391,6 @@ inline void tensor_foreach_dynamic(
     std::size_t batch_size,
     const D& device
 ) {
-    println("dynamic");
     if (batch_size == 0) return;
     tensor_foreach_dynamic_impl<scalar_func, vector_func, n_in, n_out>(
         inputs,

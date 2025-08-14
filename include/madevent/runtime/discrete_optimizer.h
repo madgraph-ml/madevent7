@@ -9,18 +9,19 @@ namespace madevent {
 class DiscreteOptimizer {
 public:
     DiscreteOptimizer(
-        ContextPtr context, const std::vector<std::string>& prob_names
-    ) : _context(context), _prob_names(prob_names), _weight_sums(prob_names.size()) {}
-    void optimize(
-        Tensor weights,
-        const std::vector<Tensor>& inputs,
-        const std::vector<Tensor>& priors = {}
-    );
+        ContextPtr context, const std::vector<std::string>& prob_names, double damping
+    ) :
+        _context(context),
+        _prob_names(prob_names),
+        _damping(std::max(std::min(damping, 1.), 0.)),
+        _sample_count(7000)
+    {}
+    void optimize(Tensor weights, const std::vector<Tensor>& inputs);
 
 private:
     ContextPtr _context;
     std::vector<std::string> _prob_names;
-    std::vector<std::vector<double>> _weight_sums;
+    double _damping;
     std::size_t _sample_count;
 };
 

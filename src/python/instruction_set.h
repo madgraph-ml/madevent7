@@ -44,6 +44,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("invariants_from_momenta", &FunctionBuilder::invariants_from_momenta, py::arg("p_ext"), py::arg("factors"));
     fb.def("sde2_channel_weights", &FunctionBuilder::sde2_channel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"));
     fb.def("pt_eta_phi_x", &FunctionBuilder::pt_eta_phi_x, py::arg("p_ext"), py::arg("x1"), py::arg("x2"));
+    fb.def("mirror_momenta", &FunctionBuilder::mirror_momenta, py::arg("p_ext"), py::arg("mirror"));
     fb.def("uniform_invariant", &FunctionBuilder::uniform_invariant, py::arg("r"), py::arg("s_min"), py::arg("s_max"));
     fb.def("uniform_invariant_inverse", &FunctionBuilder::uniform_invariant_inverse, py::arg("s"), py::arg("s_min"), py::arg("s_max"));
     fb.def("breit_wigner_invariant", &FunctionBuilder::breit_wigner_invariant, py::arg("r"), py::arg("mass"), py::arg("width"), py::arg("s_min"), py::arg("s_max"));

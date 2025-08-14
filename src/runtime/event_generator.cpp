@@ -33,7 +33,12 @@ EventGenerator::EventGenerator(
     _status_all(
         {0, 0., 0., 0., 0, 0, 0., static_cast<double>(config.target_count), false, false}
     ),
-    _writer(file_name, channels.at(0).particle_count())
+    _writer(
+        file_name,
+        std::ranges::max(std::views::transform(channels, [] (auto& chan) {
+            return chan.particle_count();
+        }))
+    )
 {
     std::size_t i = 0;
     fs::path file_path(file_name);
@@ -41,7 +46,7 @@ EventGenerator::EventGenerator(
     for (auto& channel : channels) {
         if (channel.flags() != integrand_flags) {
             throw std::invalid_argument(
-                "Integrand flags must be sample | return_momenta | return_random"
+                "Integrand flags must be sample | return_momenta | return_random | return_discrete"
             );
         }
         auto chan_path = temp_path / file_path.stem();
@@ -50,11 +55,28 @@ EventGenerator::EventGenerator(
         if (const auto& name = channel.vegas_grid_name(); name) {
             vegas_optimizer = VegasGridOptimizer(context, *name, config.vegas_damping);
         }
+        std::vector<std::string> prob_names;
+        auto add_names = Overloaded {
+            [&](const DiscreteSampler& sampler) {
+                auto& names = sampler.prob_names();
+                prob_names.insert(prob_names.end(), names.begin(), names.end());
+            },
+            [](auto sampler) {}
+        };
+        std::visit(add_names, channel.discrete_before());
+        std::visit(add_names, channel.discrete_after());
+        std::optional<DiscreteOptimizer> discrete_optimizer;
+        if (prob_names.size() > 0) {
+            discrete_optimizer = DiscreteOptimizer(
+                context, prob_names, config.discrete_damping
+            );
+        }
         _channels.push_back({
             i,
             build_runtime(channel.function(), context),
             EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
             vegas_optimizer,
+            discrete_optimizer,
             config.start_batch_size
         });
         ++i;
@@ -185,7 +207,7 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
 std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     ChannelState& channel, bool always_optimize
 ) {
-    bool run_optim = channel.vegas_optimizer && (
+    bool run_optim = (channel.vegas_optimizer || channel.discrete_optimizer) && (
         channel.needs_optimization || always_optimize
     );
     if (run_optim) clear_channel(channel);
@@ -213,7 +235,14 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
             }
         }
         channel.best_rsd = std::min(rsd, channel.best_rsd);
-        channel.vegas_optimizer->optimize(weights, events.at(2));
+        if (channel.vegas_optimizer) {
+            channel.vegas_optimizer->optimize(weights, events.at(2));
+        }
+        if (channel.discrete_optimizer) {
+            channel.discrete_optimizer->optimize(
+                weights, {events.begin() + 3, events.end()}
+            );
+        }
         ++channel.iterations;
     }
 

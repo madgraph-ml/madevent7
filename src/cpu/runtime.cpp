@@ -266,8 +266,8 @@ void batch_gather_impl_body(
         indices.size(0),
         [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
             auto indices_view = indices.view<int64_t, 1>();
-            auto values_view = values.view<double, dim>();
-            auto selection_view = selection.view<double, dim>();
+            auto values_view = values.view<T, dim>();
+            auto selection_view = selection.view<T, dim>();
             for (std::size_t i = 0; i < count; ++i) {
                 nested_for_nobatch<kernel, dim-1>(
                     values_view[indices_view[i]], selection_view[i]
@@ -291,7 +291,7 @@ void batch_gather_impl(
         );
     } else if (values.dtype() == DataType::dt_int) {
         selection = Tensor(DataType::dt_int, out_shape, device);
-        batch_gather_impl_body<kernel_copy<CpuTypes>, dim, int64_t>(
+        batch_gather_impl_body<kernel_copy_int<CpuTypes>, dim, int64_t>(
             indices, values, selection, device
         );
     } else {
@@ -316,22 +316,41 @@ void op_batch_gather(
     }
 }
 
-template<int dim, typename D>
-void scatter_impl(Tensor& indices, Tensor& source, Tensor& output, const D& device) {
+template<auto kernel, int dim, typename T, typename D>
+void scatter_impl_body(
+    Tensor& indices, Tensor& source, Tensor& output, const D& device
+) {
     device.foreach(
         indices.size(0),
         [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
             auto indices_view = indices.view<int64_t, 1>();
-            auto source_view = source.view<double, dim>();
-            auto output_view = output.view<double, dim>();
+            auto source_view = source.view<T, dim>();
+            auto output_view = output.view<T, dim>();
             for (std::size_t i = 0; i < count; ++i) {
-                nested_for_nobatch<kernel_copy<CpuTypes>, dim-1>(
+                nested_for_nobatch<kernel, dim-1>(
                     source_view[i], output_view[indices_view[i]]
                 );
             }
         },
         true
     );
+}
+
+template<int dim, typename D>
+void scatter_impl(
+    Tensor& indices, Tensor& source, Tensor& output, const D& device
+) {
+    if (source.dtype() == DataType::dt_float) {
+        scatter_impl_body<kernel_copy<CpuTypes>, dim, double>(
+            indices, source, output, device
+        );
+    } else if (source.dtype() == DataType::dt_int) {
+        scatter_impl_body<kernel_copy_int<CpuTypes>, dim, int64_t>(
+            indices, source, output, device
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in batch_gather");
+    }
 }
 
 template<typename D>

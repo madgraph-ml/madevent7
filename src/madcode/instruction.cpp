@@ -625,13 +625,13 @@ TypeVec ScatterInstruction::signature(const ValueVec& args) const {
             "{}, argument 1: expected batch of integers", name()
         ));
     }
-    if (target_type.dtype != DataType::dt_float) {
+    if (target_type.dtype != DataType::dt_float && target_type.dtype != DataType::dt_int) {
         throw std::invalid_argument(std::format(
-            "{}, argument 2: expected data type float", name()
+            "{}, argument 2: expected data type float or int", name()
         ));
     }
     if (
-        source_type.dtype != DataType::dt_float ||
+        source_type.dtype != target_type.dtype ||
         source_type.batch_size != indices_type.batch_size ||
         source_type.shape != target_type.shape
     ) {

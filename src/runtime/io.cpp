@@ -253,7 +253,15 @@ void EventFile::write(const EventBuffer& event) {
 
 bool EventFile::read(EventBuffer& event) {
     if (_current_event == _event_count) return false;
-    _file_stream.read(event.data(), event.size());
+    auto count = event.particles().size();
+    if (count == _particle_count) {
+        _file_stream.read(event.data(), event.size());
+    } else if (count > _particle_count) {
+        _file_stream.read(event.data(), EventBuffer::size(_particle_count));
+        event.clear_rest(_particle_count);
+    } else {
+        throw std::invalid_argument("Wrong number of particles");
+    }
     //if (_file_stream.fail()) return false;
     ++_current_event;
     return true;

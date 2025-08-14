@@ -421,6 +421,8 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const std::vector<std::size_t>&>(),
              py::arg("option_counts"), py::arg("prefix") = "",
              py::arg("dims_with_prior") = std::vector<std::size_t>{})
+        .def("option_counts", &DiscreteSampler::option_counts)
+        .def("prob_names", &DiscreteSampler::prob_names)
         .def("initialize_globals", &DiscreteSampler::initialize_globals,
              py::arg("context"));
 
@@ -449,6 +451,21 @@ PYBIND11_MODULE(_madevent_py, m) {
              }, py::arg("weights"), py::arg("inputs"))
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
+
+    py::classh<DiscreteOptimizer>(m, "DiscreteOptimizer")
+        .def("optimize",
+             [](DiscreteOptimizer& opt, py::object weights, std::vector<py::object> inputs) {
+                TensorVec input_tensors;
+                for (std::size_t i = 1; auto& input : inputs) {
+                    input_tensors.push_back(dlpack_to_tensor(input, batch_int, i));
+                    ++i;
+                }
+                opt.optimize(
+                    dlpack_to_tensor(weights, batch_float, 0), input_tensors
+                );
+             }, py::arg("weights"), py::arg("inputs"))
+        .def(py::init<ContextPtr, const std::vector<std::string>&, double>(),
+             py::arg("context"), py::arg("prob_names"), py::arg("damping"));
 
     py::classh<PdfGrid>(m, "PdfGrid")
         .def(py::init<const std::string&>(), py::arg("file"))
@@ -511,12 +528,18 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
         .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
-                      const EnergyScale&, bool, std::size_t, const std::vector<int64_t>&>(),
-             py::arg("pid_options"), py::arg("matrix_element_index"),
-             py::arg("running_coupling"), py::arg("pdf_grid"),
-             py::arg("cm_energy"), py::arg("energy_scale"),
-             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<int64_t>{})
+                      const EnergyScale&, bool, std::size_t,
+                      const std::vector<int64_t>&, bool>(),
+             py::arg("pid_options"),
+             py::arg("matrix_element_index"),
+             py::arg("running_coupling"),
+             py::arg("pdf_grid"),
+             py::arg("cm_energy"),
+             py::arg("energy_scale"),
+             py::arg("simple_matrix_element")=true,
+             py::arg("channel_count")=1,
+             py::arg("amp2_remap")=std::vector<int64_t>{},
+             py::arg("has_mirror")=false)
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
     py::classh<Unweighter, FunctionGenerator>(m, "Unweighter")
@@ -532,6 +555,7 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const std::optional<PropagatorChannelWeights>&,
                       const std::optional<ChannelWeightNetwork>&,
                       int,
+                      const std::vector<std::size_t>&,
                       const std::vector<std::size_t>&>(),
              py::arg("mapping"),
              py::arg("diff_xs"),
@@ -543,7 +567,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("prop_chan_weights")=std::nullopt,
              py::arg("chan_weight_net")=std::nullopt,
              py::arg("flags")=0,
-             py::arg("channel_indices")=std::vector<std::size_t>{})
+             py::arg("channel_indices")=std::vector<std::size_t>{},
+             py::arg("active_flavors")=std::vector<std::size_t>{})
         .def("particle_count", &Integrand::particle_count)
         .def("flags", &Integrand::flags)
         .def("vegas_grid_name", &Integrand::vegas_grid_name)
@@ -556,6 +581,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("prop_chan_weights", &Integrand::prop_chan_weights)
         .def("chan_weight_net", &Integrand::chan_weight_net)
         .def("random_dim", &Integrand::random_dim)
+        .def("latent_dims", &Integrand::latent_dims)
         .def_readonly_static("sample", &Integrand::sample)
         .def_readonly_static("unweight", &Integrand::unweight)
         .def_readonly_static("return_momenta", &Integrand::return_momenta)
@@ -565,7 +591,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_channel", &Integrand::return_channel)
         .def_readonly_static("return_chan_weights", &Integrand::return_chan_weights)
         .def_readonly_static("return_cwnet_input", &Integrand::return_cwnet_input)
-        .def_readonly_static("return_discrete", &Integrand::return_discrete);
+        .def_readonly_static("return_discrete", &Integrand::return_discrete)
+        .def_readonly_static("return_discrete_latent", &Integrand::return_discrete_latent);
     py::classh<IntegrandProbability, FunctionGenerator>(m, "IntegrandProbability")
         .def(py::init<const Integrand&>(), py::arg("integrand"));
 
@@ -586,7 +613,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("optimization_patience",
                        &EventGenerator::Config::optimization_patience)
         .def_readwrite("optimization_threshold",
-                       &EventGenerator::Config::optimization_threshold);
+                       &EventGenerator::Config::optimization_threshold)
+        .def_readwrite("discrete_damping", &EventGenerator::Config::discrete_damping);
     py::classh<EventGenerator::Status>(m, "EventGeneratorStatus")
         .def(py::init<>())
         .def_readwrite("index", &EventGenerator::Status::index)

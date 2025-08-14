@@ -13,6 +13,7 @@ public:
         const std::vector<std::size_t>& dims_with_prior = {}
     );
     const std::vector<std::size_t>& option_counts() const { return _option_counts; }
+    const std::vector<std::string>& prob_names() const { return _prob_names; }
     void initialize_globals(ContextPtr context) const;
 
 private:

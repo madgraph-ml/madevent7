@@ -288,7 +288,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
             if (std::get<double>(const_arg.literal_value) == 0.) return {var_arg};
             break;
         case opcodes::mul:
-            if (std::get<double>(const_arg.literal_value) == 0.) return {var_arg};
+            if (std::get<double>(const_arg.literal_value) == 1.) return {var_arg};
             break;
         }
     }
@@ -344,7 +344,7 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
 
 Function FunctionBuilder::function() {
     ValueVec func_outputs;
-    int output_index = 0;
+    int output_index = 1;
     for (auto output : outputs) {
         if (output) {
             func_outputs.push_back(output.value());

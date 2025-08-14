@@ -2,42 +2,41 @@
 
 using namespace madevent;
 
-void DiscreteOptimizer::optimize(
-    Tensor weights,
-    const std::vector<Tensor>& inputs,
-    const std::vector<Tensor>& priors
-) {
+void DiscreteOptimizer::optimize(Tensor weights, const std::vector<Tensor>& inputs) {
     //TODO: check shapes
     auto weights_cpu = weights.cpu();
     auto weights_view = weights_cpu.view<double, 1>();
-    _sample_count += weights_view.size();
-    double min_prob = 1. / _sample_count;
-    for (auto [prob_name, weight_sum, input] : zip(_prob_names, _weight_sums, inputs)) {
+    std::size_t next_sample_count = _sample_count + weights_view.size();
+    double prob_ratio = 1.;//static_cast<double>(_sample_count) / next_sample_count;
+    _sample_count = next_sample_count;
+    for (auto [prob_name, input] : zip(_prob_names, inputs)) {
         auto input_cpu = input.cpu();
         auto input_view = input_cpu.view<int64_t, 1>();
         auto prob_global = _context->global(prob_name);
         bool is_cpu = _context->device() == cpu_device();
         auto prob = is_cpu ? prob_global : Tensor(DataType::dt_float, prob_global.shape());
         auto prob_view = prob.view<double, 2>()[0];
+        auto option_count = prob_view.size();
 
-        weight_sum.resize(prob_view.size());
-        double norm = 0.;
+        std::vector<double> weight_sums(option_count);
+        std::vector<std::size_t> counts(prob_view.size());
         for (std::size_t i = 0; i < weights_view.size(); ++i) {
             auto w = weights_view[i];
-            weight_sum.at(input_view[i]) += w;
-            norm += w;
+            std::size_t index = input_view[i];
+            weight_sums.at(index) += w;
+            ++counts.at(index);
         }
-        // probability is at least min_prob = 1/N to prevent setting it to zero
-        // in early iterations with few samples
-        double corrected_norm = 0.;
-        for (std::size_t i = 0; i < prob_view.size(); ++i) {
-            auto prob_val = std::min(min_prob, weight_sum.at(i) / norm);
-            prob_view[i] = prob_val;
-            corrected_norm += prob_val;
+
+        double norm = 0.;
+        for (std::size_t i = 0; auto [wsum, count] : zip(weight_sums, counts)) {
+            if (count > 0) wsum *= prob_view[i] / count;
+            norm += wsum;
+            ++i;
         }
-        // normalize again to account for min_prob
-        for (std::size_t i = 0; i < prob_view.size(); ++i) {
-            prob_view[i] = prob_view[i] / corrected_norm;
+
+        for (std::size_t i = 0; double wsum : weight_sums) {
+            prob_view[i] = prob_view[i] * prob_ratio + wsum / norm * (1. - prob_ratio);
+            ++i;
         }
 
         if (!is_cpu) {
