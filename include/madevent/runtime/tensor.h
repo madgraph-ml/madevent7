@@ -334,7 +334,7 @@ public:
             throw std::invalid_argument("can only flatten contiguous dimensions");
         }
         Sizes stride{1}, shape{1};
-        std::size_t i = 1;
+        std::size_t i = 0;
         for (; i < flatten_count; ++i) {
             shape[0] *= impl->shape[i];
         }

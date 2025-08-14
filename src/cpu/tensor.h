@@ -232,28 +232,6 @@ inline void nested_for_nobatch(V... views) {
     }
 }
 
-/*template<auto scalar_func, auto vector_func, int dims, typename V>
-inline void tensor_foreach_body(std::size_t count, std::size_t offset, V& flat_views) {
-    auto views = std::apply(
-        get_views<decltype(scalar_func), dims>(), flat_views
-    );
-    std::size_t scalar_offset = offset;
-    if constexpr (!std::is_same_v<decltype(scalar_func), decltype(vector_func)>) {
-        auto vectorized_views = std::apply(
-            get_vectorized_views<decltype(vector_func), dims>(), views
-        );
-        std::size_t vec_count = count / simd_vec_size;
-        std::apply([vec_count, offset](auto&&... args) {
-            nested_for<vector_func, dims>(vec_count, offset, args...);
-        }, vectorized_views);
-        scalar_offset += vec_count * simd_vec_size;
-    }
-    std::size_t scalar_count = offset + count - scalar_offset;
-    std::apply([scalar_count, scalar_offset](auto&&... args) {
-        nested_for<scalar_func, dims>(scalar_count, scalar_offset, args...);
-    }, views);
-}*/
-
 template<auto scalar_func, auto vector_func, int n_in, int n_out, int dims, typename D>
 inline void tensor_foreach_impl(
     std::array<const Tensor*, n_in>& inputs,
