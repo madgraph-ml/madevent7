@@ -443,27 +443,29 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("context"));
 
     py::classh<VegasGridOptimizer>(m, "VegasGridOptimizer")
-        .def("optimize", [](VegasGridOptimizer& opt, py::object weights, py::object inputs) {
-                opt.optimize(
+        .def("add_data", [](VegasGridOptimizer& opt, py::object weights, py::object inputs) {
+                opt.add_data(
                     dlpack_to_tensor(weights, batch_float, 0),
                     dlpack_to_tensor(inputs, batch_float_array(opt.input_dim()), 1)
                 );
              }, py::arg("weights"), py::arg("inputs"))
+        .def("optimize", &VegasGridOptimizer::optimize)
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 
     py::classh<DiscreteOptimizer>(m, "DiscreteOptimizer")
-        .def("optimize",
+        .def("add_data",
              [](DiscreteOptimizer& opt, py::object weights, std::vector<py::object> inputs) {
                 TensorVec input_tensors;
                 for (std::size_t i = 1; auto& input : inputs) {
                     input_tensors.push_back(dlpack_to_tensor(input, batch_int, i));
                     ++i;
                 }
-                opt.optimize(
+                opt.add_data(
                     dlpack_to_tensor(weights, batch_float, 0), input_tensors
                 );
              }, py::arg("weights"), py::arg("inputs"))
+        .def("optimize", &DiscreteOptimizer::optimize)
         .def(py::init<ContextPtr, const std::vector<std::string>&, double>(),
              py::arg("context"), py::arg("prob_names"), py::arg("damping"));
 
@@ -614,7 +616,8 @@ PYBIND11_MODULE(_madevent_py, m) {
                        &EventGenerator::Config::optimization_patience)
         .def_readwrite("optimization_threshold",
                        &EventGenerator::Config::optimization_threshold)
-        .def_readwrite("discrete_damping", &EventGenerator::Config::discrete_damping);
+        .def_readwrite("discrete_damping", &EventGenerator::Config::discrete_damping)
+        .def_readwrite("batch_size", &EventGenerator::Config::batch_size);
     py::classh<EventGenerator::Status>(m, "EventGeneratorStatus")
         .def(py::init<>())
         .def_readwrite("index", &EventGenerator::Status::index)

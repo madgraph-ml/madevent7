@@ -2,30 +2,46 @@
 
 using namespace madevent;
 
-void DiscreteOptimizer::optimize(Tensor weights, const std::vector<Tensor>& inputs) {
-    //TODO: check shapes
+void DiscreteOptimizer::add_data(Tensor weights, const std::vector<Tensor>& inputs) {
     auto weights_cpu = weights.cpu();
     auto weights_view = weights_cpu.view<double, 1>();
-    std::size_t next_sample_count = _sample_count + weights_view.size();
-    double prob_ratio = 1.;//static_cast<double>(_sample_count) / next_sample_count;
-    _sample_count = next_sample_count;
-    for (auto [prob_name, input] : zip(_prob_names, inputs)) {
+
+    if (_data.size() != _prob_names.size()) {
+        _data.resize(_prob_names.size());
+        for (auto [prob_name, data_item] : zip(_prob_names, _data)) {
+            auto prob_global = _context->global(prob_name);
+            auto option_count = prob_global.size(1);
+            auto& [weight_sums, counts] = data_item;
+            weight_sums.resize(option_count);
+            counts.resize(option_count);
+        }
+    }
+
+    for (auto [prob_name, input, data_item] : zip(_prob_names, inputs, _data)) {
+        auto& [weight_sums, counts] = data_item;
         auto input_cpu = input.cpu();
         auto input_view = input_cpu.view<int64_t, 1>();
-        auto prob_global = _context->global(prob_name);
-        bool is_cpu = _context->device() == cpu_device();
-        auto prob = is_cpu ? prob_global : Tensor(DataType::dt_float, prob_global.shape());
-        auto prob_view = prob.view<double, 2>()[0];
-        auto option_count = prob_view.size();
-
-        std::vector<double> weight_sums(option_count);
-        std::vector<std::size_t> counts(prob_view.size());
         for (std::size_t i = 0; i < weights_view.size(); ++i) {
             auto w = weights_view[i];
             std::size_t index = input_view[i];
             weight_sums.at(index) += w;
             ++counts.at(index);
         }
+
+    }
+}
+
+void DiscreteOptimizer::optimize() {
+    //TODO: check shapes
+    //std::size_t next_sample_count = _sample_count + weights_view.size();
+    double prob_ratio = 1.;//static_cast<double>(_sample_count) / next_sample_count;
+    //_sample_count = next_sample_count;
+    for (auto [prob_name, data_item] : zip(_prob_names, _data)) {
+        auto& [weight_sums, counts] = data_item;
+        auto prob_global = _context->global(prob_name);
+        bool is_cpu = _context->device() == cpu_device();
+        auto prob = is_cpu ? prob_global : Tensor(DataType::dt_float, prob_global.shape());
+        auto prob_view = prob.view<double, 2>()[0];
 
         double norm = 0.;
         for (std::size_t i = 0; auto [wsum, count] : zip(weight_sums, counts)) {
@@ -42,5 +58,7 @@ void DiscreteOptimizer::optimize(Tensor weights, const std::vector<Tensor>& inpu
         if (!is_cpu) {
             prob_global.copy_from(prob);
         }
+        std::fill(weight_sums.begin(), weight_sums.end(), 0.);
+        std::fill(counts.begin(), counts.end(), 0);
     }
 }

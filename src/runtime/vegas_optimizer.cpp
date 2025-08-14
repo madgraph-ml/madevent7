@@ -2,30 +2,23 @@
 
 using namespace madevent;
 
-void VegasGridOptimizer::optimize(Tensor weights, Tensor inputs) {
+void VegasGridOptimizer::add_data(Tensor weights, Tensor inputs) {
     auto grid = _context->global(_grid_name);
-    auto grid_cpu = grid.cpu();
     auto weights_cpu = weights.cpu();
     auto inputs_cpu = inputs.cpu();
-
     std::size_t n_samples = inputs.size(0);
     std::size_t n_dims = inputs.size(1);
-    std::size_t n_bins = grid_cpu.size(2) - 1;
+    std::size_t n_bins = grid.size(2) - 1;
     //TODO: check all the shapes here
-
-    auto new_grid = grid_cpu.copy();
-    std::vector<std::size_t> bin_counts(n_bins);
-    std::vector<double> bin_values(n_bins);
-
-    auto grid_view = grid_cpu.view<double, 3>()[0];
-    auto new_grid_view = new_grid.view<double, 3>()[0];
     auto w_view = weights_cpu.view<double, 1>();
     auto in_view = inputs_cpu.view<double, 2>();
 
-    for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
-        std::fill(bin_counts.begin(), bin_counts.end(), 0);
-        std::fill(bin_values.begin(), bin_values.end(), 0.);
+    while (_data.size() < n_dims) {
+        _data.push_back({std::vector<std::size_t>(n_bins), std::vector<double>(n_bins)});
+    }
 
+    for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
+        auto& [bin_values, bin_counts] = _data.at(i_dim);
         // build histograms
         for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
             int i_bin = in_view[i_sample][i_dim] * n_bins;
@@ -33,6 +26,23 @@ void VegasGridOptimizer::optimize(Tensor weights, Tensor inputs) {
             double w = w_view[i_sample];
             bin_values[i_bin] += w * w;
             ++bin_counts[i_bin];
+        }
+    }
+}
+
+void VegasGridOptimizer::optimize() {
+    auto grid = _context->global(_grid_name);
+    auto grid_cpu = grid.cpu();
+    std::size_t n_dims = grid.size(1);
+    std::size_t n_bins = grid_cpu.size(2) - 1;
+    auto new_grid = grid_cpu.copy();
+    auto grid_view = grid_cpu.view<double, 3>()[0];
+    auto new_grid_view = new_grid.view<double, 3>()[0];
+
+    for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
+        auto& [bin_values, bin_counts] = _data.at(i_dim);
+        if (bin_counts.size() != n_bins || bin_values.size() != n_bins) {
+            throw std::runtime_error("no data to run optimization");
         }
 
         // compute averages
@@ -97,6 +107,9 @@ void VegasGridOptimizer::optimize(Tensor weights, Tensor inputs) {
             new_grid_view[i_dim][i_bin] =
                 grid_j_next - accumulator / bin_values[j_bin] * bin_width;
         }
+
+        std::fill(bin_counts.begin(), bin_counts.end(), 0);
+        std::fill(bin_values.begin(), bin_values.end(), 0.);
     }
 
     grid.copy_from(new_grid);

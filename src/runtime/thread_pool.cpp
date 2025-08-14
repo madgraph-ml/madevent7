@@ -31,19 +31,19 @@ void ThreadPool::set_thread_count(int new_count) {
     for (auto& [id, listener] : _listeners) listener(_thread_count);
 }
 
-void ThreadPool::submit(std::function<int(std::size_t)> job) {
+void ThreadPool::submit(std::function<std::size_t()> job) {
     std::unique_lock<std::mutex> lock(_mutex);
     _job_queue.push(job);
     _cv_run.notify_one();
 }
 
-std::optional<int> ThreadPool::wait() {
+std::optional<std::size_t> ThreadPool::wait() {
     std::unique_lock<std::mutex> lock(_mutex);
     if (_done_queue.empty()) {
         if (_job_queue.empty() && _busy_threads == 0) return std::nullopt;
         _cv_done.wait(lock, [&]{ return !_done_queue.empty(); });
     }
-    int result = _done_queue.front();
+    std::size_t result = _done_queue.front();
     _done_queue.pop();
     return result;
 }
@@ -62,6 +62,7 @@ void ThreadPool::remove_listener(std::size_t id) {
 }
 
 void ThreadPool::thread_loop(std::size_t index) {
+    _thread_index = index;
     std::unique_lock<std::mutex> lock(_mutex);
     while (true) {
         _cv_run.wait(lock, [&]{ return !_job_queue.empty() || index >= _thread_count; });
@@ -70,7 +71,7 @@ void ThreadPool::thread_loop(std::size_t index) {
         _job_queue.pop();
         ++_busy_threads;
         lock.unlock();
-        int result = job(index);
+        std::size_t result = job();
         lock.lock();
         --_busy_threads;
         _done_queue.push(result);

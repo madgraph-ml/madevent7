@@ -16,13 +16,15 @@ public:
         _damping(std::max(std::min(damping, 1.), 0.)),
         _sample_count(7000)
     {}
-    void optimize(Tensor weights, const std::vector<Tensor>& inputs);
+    void add_data(Tensor weights, const std::vector<Tensor>& inputs);
+    void optimize();
 
 private:
     ContextPtr _context;
     std::vector<std::string> _prob_names;
     double _damping;
     std::size_t _sample_count;
+    std::vector<std::tuple<std::vector<std::size_t>, std::vector<double>>> _data;
 };
 
 }

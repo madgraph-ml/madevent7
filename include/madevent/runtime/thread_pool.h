@@ -17,19 +17,23 @@ public:
     ThreadPool& operator=(const ThreadPool&) = delete;
     void set_thread_count(int new_count);
     std::size_t thread_count() const { return _thread_count; }
-    void submit(std::function<int(std::size_t)> job);
-    std::optional<int> wait();
+    void submit(std::function<std::size_t()> job);
+    std::optional<std::size_t> wait();
     std::size_t add_listener(std::function<void(std::size_t)> listener);
     void remove_listener(std::size_t id);
 
+    static std::size_t thread_index() { return _thread_index; }
+
 private:
+    static inline thread_local std::size_t _thread_index = 0;
+
     void thread_loop(std::size_t index);
     std::mutex _mutex;
     std::condition_variable _cv_run, _cv_done;
     std::size_t _thread_count;
     std::vector<std::thread> _threads;
-    std::queue<std::function<int(std::size_t)>> _job_queue;
-    std::queue<int> _done_queue;
+    std::queue<std::function<std::size_t()>> _job_queue;
+    std::queue<std::size_t> _done_queue;
     std::size_t _busy_threads;
     std::size_t _listener_id;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;

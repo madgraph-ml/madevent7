@@ -48,7 +48,7 @@ public:
 
     template<typename F>
     void foreach(std::size_t batch_size, F func, bool single_job = false) const {
-        func(batch_size, 0, 0);
+        func(batch_size, 0);
     }
 
     CpuDevice(const CpuDevice&) = delete;
@@ -81,8 +81,8 @@ public:
             std::size_t offset = i * job_size;
             std::size_t count = std::min(job_size, batch_size - offset);
             default_thread_pool().submit(
-                [count, offset, func, result](std::size_t thread_id) {
-                    func(count, offset, thread_id);
+                [count, offset, func, result]() {
+                    func(count, offset);
                     return result;
                 }
             );

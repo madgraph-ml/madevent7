@@ -62,9 +62,9 @@ void op_matrix_element(
     auto me_ptr = static_cast<double*>(me_out.data());
     device.foreach(
         batch_size,
-        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+        [&](std::size_t count, std::size_t offset) {
             matrix_element.call(
-                matrix_element.process_instance(thread_id), count,
+                matrix_element.process_instance(ThreadPool::thread_index()), count,
                 batch_size, mom_ptr + offset, flavor_ptr + offset,
                 mirror_ptr + offset, me_ptr + offset
             );
@@ -120,9 +120,9 @@ void op_matrix_element_multichannel(
 
     device.foreach(
         batch_size,
-        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+        [&](std::size_t count, std::size_t offset) {
             matrix_element.call_multichannel(
-                matrix_element.process_instance(thread_id),
+                matrix_element.process_instance(ThreadPool::thread_index()),
                 count, batch_size,
                 mom_ptr + offset, alpha_ptr + offset, random_ptr + offset,
                 flavor_ptr + offset, mirror_ptr + offset, me_ptr + offset,
@@ -264,7 +264,7 @@ void batch_gather_impl_body(
 ) {
     device.foreach(
         indices.size(0),
-        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+        [&](std::size_t count, std::size_t offset) {
             auto indices_view = indices.view<int64_t, 1>();
             auto values_view = values.view<T, dim>();
             auto selection_view = selection.view<T, dim>();
@@ -322,7 +322,7 @@ void scatter_impl_body(
 ) {
     device.foreach(
         indices.size(0),
-        [&](std::size_t count, std::size_t offset, std::size_t thread_id) {
+        [&](std::size_t count, std::size_t offset) {
             auto indices_view = indices.view<int64_t, 1>();
             auto source_view = source.view<T, dim>();
             auto output_view = output.view<T, dim>();
@@ -386,11 +386,11 @@ void op_random(
     device.foreach(
         flat_view.shape[0],
         [flat_view, &runtime](
-            std::size_t count, std::size_t offset, std::size_t thread_id
+            std::size_t count, std::size_t offset
         ) mutable {
             auto output_view = TensorView<double, 1>(flat_view);
             std::uniform_real_distribution<double> dist;
-            auto& rand_gen = runtime.rand_gen(thread_id);
+            auto& rand_gen = runtime.rand_gen(ThreadPool::thread_index());
             for (std::size_t i = offset; i < count; ++i) {
                 output_view[i] = dist(rand_gen);
             }

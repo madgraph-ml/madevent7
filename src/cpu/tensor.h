@@ -248,7 +248,7 @@ inline void tensor_foreach_impl(
 
     device.foreach(
         batch_size,
-        [flat_views] (std::size_t count, std::size_t offset, std::size_t thread_id) mutable {
+        [flat_views] (std::size_t count, std::size_t offset) mutable {
             auto views = std::apply(
                 get_views(), flat_views
             );

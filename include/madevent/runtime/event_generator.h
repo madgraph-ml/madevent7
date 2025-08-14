@@ -67,6 +67,7 @@ public:
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
         double discrete_damping = 0.33;
+        std::size_t batch_size = 1000;
     };
     static const Config default_config;
     struct Status {
@@ -115,25 +116,32 @@ private:
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
         std::vector<double> large_weights;
+        std::size_t job_count;
+    };
+    struct RunningJob {
+        std::size_t channel_index;
+        TensorVec events;
     };
     inline static std::function<void(void)> _abort_check_function = []{};
 
     ContextPtr _context;
     Config _config;
     std::vector<ChannelState> _channels;
-    //std::vector<std::tuple<double, std::size_t>> _large_weights;
     double _max_weight;
     RuntimePtr _unweighter;
     Status _status_all;
     EventFile _writer;
+    std::unordered_map<std::size_t, RunningJob> _running_jobs;
+    std::size_t _job_id;
 
     void unweight_all();
     void combine();
-    std::tuple<Tensor, std::vector<Tensor>> generate_channel(
-        ChannelState& channel, bool always_optimize
+    std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
+        ChannelState& channel, TensorVec& events, bool always_optimize
     );
+    void start_job(ChannelState& channel, std::size_t batch_size);
+    void start_vegas_jobs(ChannelState& channel);
     void clear_channel(ChannelState& channel);
-    //void sort_large_weights();
     void update_max_weight(ChannelState& channel, Tensor weights);
     void unweight_and_write(ChannelState& channel, const std::vector<Tensor>& momenta);
     void print_gen_init();

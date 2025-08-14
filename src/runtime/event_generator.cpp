@@ -85,40 +85,90 @@ EventGenerator::EventGenerator(
 
 void EventGenerator::survey() {
     bool done = false;
-    for (std::size_t iter = 0; !done && iter < _config.survey_max_iters; ++iter) {
-        done = true;
-        for (auto& channel : _channels) {
-            _abort_check_function();
-            //clear_channel(channel);
-            auto [weights, events] = generate_channel(channel, true);
+    auto& thread_pool = default_thread_pool();
+    std::size_t min_iters = _config.survey_min_iters;
+    std::size_t max_iters = std::max(min_iters, _config.survey_max_iters);
+    double target_precision = _config.survey_target_precision;
 
-            if (iter >= _config.survey_min_iters - 1 && (
-                iter == _config.survey_max_iters - 1 ||
-                channel.cross_section.rel_error() < _config.survey_target_precision
-            )) {
+    for (std::size_t iter = 0; !done && iter < max_iters; ++iter) {
+        for (auto& channel : _channels) {
+            if (iter >= min_iters && channel.cross_section.rel_error() < target_precision) {
+                continue;
+            }
+            start_vegas_jobs(channel);
+        }
+        done = true;
+        while (auto job_id = thread_pool.wait()) {
+            _abort_check_function();
+            auto& job = _running_jobs.at(*job_id);
+            auto& channel = _channels.at(job.channel_index);
+            --channel.job_count;
+
+            bool run_optim = channel.vegas_optimizer || channel.discrete_optimizer;
+            auto [weights, events] = integrate_and_optimize(channel, job.events, run_optim);
+
+            if (iter >= min_iters - 1) {
                 update_max_weight(channel, weights);
                 unweight_and_write(channel, events);
+                if (
+                    channel.job_count == 0 &&
+                    channel.cross_section.rel_error() < target_precision
+                ) {
+                    done = false;
+                }
             } else {
                 done = false;
             }
+            _running_jobs.erase(*job_id);
         }
     }
+    println("survey: {} +- {}", _status_all.mean, _status_all.error);
 }
 
 void EventGenerator::generate() {
     print_gen_init();
-    while (!_status_all.done) {
-        for (auto& channel : _channels) {
-            _abort_check_function();
+    auto& thread_pool = default_thread_pool();
+    std::size_t channel_index = 0;
+    std::size_t target_job_count = 2 * thread_pool.thread_count();
+    while (true) {
+        _abort_check_function();
+
+        for (
+            std::size_t i = 0;
+            i < _channels.size() && _running_jobs.size() < target_job_count;
+            ++i, channel_index = (channel_index + 1) % _channels.size()
+        ) {
+            auto& channel = _channels.at(channel_index);
             if (channel.eff_count >= channel.integral_fraction * _config.target_count) {
                 continue;
             }
-            auto [weights, events] = generate_channel(channel, false);
+            if (
+                (channel.vegas_optimizer || channel.discrete_optimizer) &&
+                channel.needs_optimization
+            ) {
+                start_vegas_jobs(channel);
+            } else {
+                start_job(channel, _config.batch_size);
+            }
+        }
+
+        if (auto job_id = thread_pool.wait()) {
+            auto& job = _running_jobs.at(*job_id);
+            auto& channel = _channels.at(job.channel_index);
+            --channel.job_count;
+
+            bool run_optim =
+                (channel.vegas_optimizer || channel.discrete_optimizer) &&
+                channel.needs_optimization;
+            auto [weights, events] = integrate_and_optimize(channel, job.events, run_optim);
             update_max_weight(channel, weights);
             unweight_and_write(channel, events);
             print_gen_update();
+            _running_jobs.erase(*job_id);
+        } else {
+            if (_status_all.done) unweight_all();
+            if (_status_all.done) break;
         }
-        if (_status_all.done) unweight_all();
     }
     combine();
 }
@@ -204,17 +254,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
     return status;
 }
 
-std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
-    ChannelState& channel, bool always_optimize
+std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
+    ChannelState& channel, TensorVec& events, bool run_optim
 ) {
-    bool run_optim = (channel.vegas_optimizer || channel.discrete_optimizer) && (
-        channel.needs_optimization || always_optimize
-    );
-    if (run_optim) clear_channel(channel);
-
-    auto events = channel.runtime->run({Tensor({channel.batch_size})});
-    channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
-
     auto weights = events.at(0).cpu();
     auto w_view = weights.view<double,1>();
     std::size_t sample_count = 0;
@@ -225,25 +267,29 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     channel.total_sample_count += sample_count; //w_view.size();
 
     if (run_optim) {
-        double rsd = channel.cross_section.rel_std_dev();
-        if (rsd < _config.optimization_threshold * channel.best_rsd) {
-            channel.iters_without_improvement = 0;
-        } else {
-            ++channel.iters_without_improvement;
-            if (channel.iters_without_improvement >= _config.optimization_patience) {
-                channel.needs_optimization = false;
-            }
-        }
-        channel.best_rsd = std::min(rsd, channel.best_rsd);
         if (channel.vegas_optimizer) {
-            channel.vegas_optimizer->optimize(weights, events.at(2));
+            channel.vegas_optimizer->add_data(weights, events.at(2));
         }
         if (channel.discrete_optimizer) {
-            channel.discrete_optimizer->optimize(
+            channel.discrete_optimizer->add_data(
                 weights, {events.begin() + 3, events.end()}
             );
         }
-        ++channel.iterations;
+        if (channel.job_count == 0) {
+            //if (channel.vegas_optimizer) channel.vegas_optimizer->optimize();
+            //if (channel.discrete_optimizer) channel.discrete_optimizer->optimize();
+            double rsd = channel.cross_section.rel_std_dev();
+            if (rsd < _config.optimization_threshold * channel.best_rsd) {
+                channel.iters_without_improvement = 0;
+            } else {
+                ++channel.iters_without_improvement;
+                if (channel.iters_without_improvement >= _config.optimization_patience) {
+                    channel.needs_optimization = false;
+                }
+            }
+            channel.best_rsd = std::min(rsd, channel.best_rsd);
+            ++channel.iterations;
+        }
     }
 
     double total_mean = 0., total_var = 0.;
@@ -272,28 +318,38 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::generate_channel(
     return {weights, events};
 }
 
+void EventGenerator::start_job(ChannelState& channel, std::size_t batch_size) {
+    std::size_t new_job_id = _job_id;
+    ++_job_id;
+    ++channel.job_count;
+    auto& job = std::get<0>(
+        _running_jobs.emplace(new_job_id, RunningJob{channel.index, {}})
+    )->second;
+    default_thread_pool().submit([new_job_id, batch_size, &job, &channel] () {
+        job.events = channel.runtime->run({Tensor({batch_size})});
+        return new_job_id;
+    });
+}
+
+void EventGenerator::start_vegas_jobs(ChannelState& channel) {
+    clear_channel(channel);
+    for (
+        std::size_t offset = 0;
+        offset < channel.batch_size;
+        offset += _config.batch_size
+    ) {
+        start_job(channel, std::min(_config.batch_size, channel.batch_size - offset));
+    }
+    channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
+}
+
 void EventGenerator::clear_channel(ChannelState& channel) {
     channel.eff_count = 0;
     channel.max_weight = 0;
     channel.writer.clear();
     channel.cross_section.reset();
     channel.large_weights.clear();
-    /*std::erase_if(
-        _large_weights,
-        [&channel](auto item) { return std::get<1>(item) == channel.index; }
-    );*/
 }
-
-/*void EventGenerator::sort_large_weights() {
-    std::sort(
-        _large_weights.begin(), _large_weights.end(),
-        [this](auto& item1, auto& item2) {
-            auto [w1, id1] = item1;
-            auto [w2, id2] = item2;
-            return w1 / _channels.at(id1).max_weight > w2 / _channels.at(id2).max_weight;
-        }
-    );
-}*/
 
 void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
     auto w_view = weights.view<double,1>();
@@ -304,19 +360,15 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
         if (w != 0 && (w_min_nonzero == 0 || w < w_min_nonzero)) w_min_nonzero = w;
         if (w > channel.max_weight) {
             channel.large_weights.push_back(w);
-            //_large_weights.push_back({w, channel.index});
         }
     }
     if (channel.max_weight == 0) channel.max_weight = w_min_nonzero;
-    //sort_large_weights();
     std::sort(channel.large_weights.begin(), channel.large_weights.end(), std::greater{});
 
     double w_sum = 0, w_prev = 0;
     double max_truncation =
         _config.max_overweight_truncation * channel.integral_fraction * _config.target_count;
     std::size_t count = 0;
-    /*for (auto [w, chan_index] : _large_weights) {
-        if (chan_index != channel.index) continue;*/
     for (auto w : channel.large_weights) {
         if (w < channel.max_weight) break;
         w_sum += w;
@@ -326,7 +378,6 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
                 channel.eff_count *= channel.max_weight / w_prev;
                 channel.max_weight = w_prev;
             }
-            //sort_large_weights();
             break;
         }
         w_prev = w;
@@ -334,21 +385,6 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
     channel.large_weights.erase(
         channel.large_weights.begin() + count, channel.large_weights.end()
     );
-
-    /*std::size_t max_overweights = _config.max_overweight_fraction * _config.target_count;
-    if (_large_weights.size() > max_overweights) {
-        _large_weights.erase(_large_weights.begin() + max_overweights, _large_weights.end());
-        std::vector<bool> found_channels(_channels.size());
-        for (auto [w, chan_index] : std::views::reverse(_large_weights)) {
-            if (found_channels.at(chan_index)) continue;
-            found_channels.at(chan_index) = true;
-            auto& chan = _channels.at(chan_index);
-            if (chan.max_weight < w) {
-                chan.eff_count *= chan.max_weight / w;
-                chan.max_weight = w;
-            }
-        }
-    }*/
 }
 
 void EventGenerator::unweight_and_write(
