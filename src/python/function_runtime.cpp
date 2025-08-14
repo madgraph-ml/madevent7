@@ -64,7 +64,8 @@ Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
 
 std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
     const std::vector<py::object>& args,
-    FunctionRuntime& func_runtime
+    FunctionRuntime& func_runtime,
+    bool* dlpack_version_cache
 ) {
     //TODO: check batch sizes
     auto n_args = func_runtime.function.inputs().size();
@@ -78,7 +79,7 @@ std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
     for (int i = 0; i < n_args; ++i) {
         auto& arg = args.at(i);
         auto& input_type = func_runtime.function.inputs().at(i).type;
-        auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device);
+        auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device, dlpack_version_cache);
         if (i == 0) expected_device = tensor.device();
         inputs.push_back(tensor);
     }
@@ -177,22 +178,39 @@ Tensor madevent_py::dlpack_to_tensor(
     py::object tensor,
     std::optional<Type> expected_type,
     std::size_t arg_index,
-    DevicePtr expected_device
+    DevicePtr expected_device,
+    bool* dlpack_version_cache
 ) {
     if (tensor.is_none()) return {};
 
     py::object dlpack_func = tensor.attr("__dlpack__");
     py::object capsule_obj;
-    try {
-        capsule_obj = dlpack_func(
-            "max_version"_a=std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
-        );
-    } catch (py::error_already_set &e) {
-        if (e.matches(PyExc_TypeError)) {
-            capsule_obj = dlpack_func();
-        } else {
-            throw;
+
+    // catching exceptions is extremely expensive so we cache whether to use the new or old version
+    // of the dlpack protocol
+    if (dlpack_version_cache == nullptr || !*dlpack_version_cache) {
+        try {
+            capsule_obj = dlpack_func(
+                "max_version"_a=std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
+            );
+        } catch (py::error_already_set &e) {
+            if (e.matches(PyExc_TypeError)) {
+                capsule_obj = dlpack_func();
+                if (dlpack_version_cache != nullptr) *dlpack_version_cache = true;
+            } else {
+                throw;
+            }
         }
+    } else {
+        try {
+            capsule_obj = dlpack_func();
+        } catch (py::error_already_set &e) {
+            capsule_obj = dlpack_func(
+                "max_version"_a=std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
+            );
+            *dlpack_version_cache = false;
+        }
+
     }
     PyObject* capsule = capsule_obj.ptr();
     if (!capsule) throw std::runtime_error("value must support the dlpack protocol");
@@ -374,7 +392,7 @@ Tensor madevent_py::dlpack_to_tensor(
 }
 
 std::vector<Tensor> FunctionRuntime::call(std::vector<py::object> args) {
-    auto [inputs, runtime] = check_and_convert_args(args, *this);
+    auto [inputs, runtime] = check_and_convert_args(args, *this, &dlpack_version_cache);
     return runtime->run(inputs);
 }
 
@@ -386,7 +404,7 @@ std::tuple<
     const std::vector<py::object>& args,
     const std::vector<bool>& input_requires_grad
 ) {
-    auto [inputs, runtime] = check_and_convert_args(args, *this);
+    auto [inputs, runtime] = check_and_convert_args(args, *this, &dlpack_version_cache);
     auto [outputs, loc_grad, eval_grad] = runtime->run_with_grad(
         inputs, input_requires_grad
     );
@@ -412,13 +430,13 @@ std::tuple<
     std::vector<Tensor> arg_out;
     DevicePtr expected_device = nullptr;
     for (auto& grad : output_grads) {
-        auto tensor = dlpack_to_tensor(grad, std::nullopt, 0, expected_device);
+        auto tensor = dlpack_to_tensor(grad, std::nullopt, 0, expected_device, &dlpack_version_cache);
         if (expected_device == nullptr && tensor) expected_device = tensor.device();
         arg_out.push_back(tensor);
     }
     std::vector<Tensor> arg_locals;
     for (auto& local : stored_locals) {
-        auto tensor = dlpack_to_tensor(local, std::nullopt, 0, expected_device);
+        auto tensor = dlpack_to_tensor(local, std::nullopt, 0, expected_device, &dlpack_version_cache);
         if (expected_device == nullptr && tensor) expected_device = tensor.device();
         arg_locals.push_back(tensor);
     }

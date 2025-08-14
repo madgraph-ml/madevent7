@@ -27,7 +27,8 @@ Tensor dlpack_to_tensor(
     py::object tensor,
     std::optional<Type> expected_type = std::nullopt,
     std::size_t arg_index = 0,
-    DevicePtr expected_device = nullptr
+    DevicePtr expected_device = nullptr,
+    bool* dlpack_version_cache = nullptr
 );
 
 struct FunctionRuntime {
@@ -56,6 +57,7 @@ struct FunctionRuntime {
     ContextPtr context;
     RuntimePtr cpu_runtime;
     RuntimePtr cuda_runtime;
+    bool dlpack_version_cache = false;
 };
 
 }
