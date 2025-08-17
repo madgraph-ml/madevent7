@@ -115,12 +115,14 @@ private:
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
+        //std::multiset<double, std::greater<double>> large_weights;
         std::vector<double> large_weights;
         std::size_t job_count;
     };
     struct RunningJob {
         std::size_t channel_index;
         TensorVec events;
+        std::size_t vegas_job_count;
     };
     inline static std::function<void(void)> _abort_check_function = []{};
 
@@ -139,7 +141,9 @@ private:
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
         ChannelState& channel, TensorVec& events, bool always_optimize
     );
-    void start_job(ChannelState& channel, std::size_t batch_size);
+    void start_job(
+        ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count=0
+    );
     void start_vegas_jobs(ChannelState& channel);
     void clear_channel(ChannelState& channel);
     void update_max_weight(ChannelState& channel, Tensor weights);

@@ -51,7 +51,7 @@ void DiscreteOptimizer::optimize() {
         }
 
         for (std::size_t i = 0; double wsum : weight_sums) {
-            prob_view[i] = prob_view[i] * prob_ratio + wsum / norm * (1. - prob_ratio);
+            //prob_view[i] = prob_view[i] * prob_ratio + wsum / norm * (1. - prob_ratio);
             ++i;
         }
 

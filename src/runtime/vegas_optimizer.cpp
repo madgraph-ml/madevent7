@@ -17,9 +17,9 @@ void VegasGridOptimizer::add_data(Tensor weights, Tensor inputs) {
         _data.push_back({std::vector<std::size_t>(n_bins), std::vector<double>(n_bins)});
     }
 
+    // build histograms
     for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
         auto& [bin_values, bin_counts] = _data.at(i_dim);
-        // build histograms
         for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
             int i_bin = in_view[i_sample][i_dim] * n_bins;
             if (i_bin < 0 || i_bin >= n_bins) continue;
@@ -46,7 +46,9 @@ void VegasGridOptimizer::optimize() {
         }
 
         // compute averages
+        std::size_t count_tot=0;
         for (std::size_t i_bin = 0; i_bin < n_bins; ++i_bin) {
+            count_tot += bin_counts[i_bin];
             if (bin_counts[i_bin] > 0) bin_values[i_bin] /= bin_counts[i_bin];
         }
 
@@ -112,7 +114,7 @@ void VegasGridOptimizer::optimize() {
         std::fill(bin_values.begin(), bin_values.end(), 0.);
     }
 
-    grid.copy_from(new_grid);
+    //grid.copy_from(new_grid);
 }
 
 std::size_t VegasGridOptimizer::input_dim() const {

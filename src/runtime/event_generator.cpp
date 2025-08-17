@@ -95,6 +95,7 @@ void EventGenerator::survey() {
             if (iter >= min_iters && channel.cross_section.rel_error() < target_precision) {
                 continue;
             }
+            clear_channel(channel);
             start_vegas_jobs(channel);
         }
         done = true;
@@ -133,33 +134,40 @@ void EventGenerator::generate() {
     while (true) {
         _abort_check_function();
 
-        for (
-            std::size_t i = 0;
-            i < _channels.size() && _running_jobs.size() < target_job_count;
-            ++i, channel_index = (channel_index + 1) % _channels.size()
-        ) {
-            auto& channel = _channels.at(channel_index);
-            if (channel.eff_count >= channel.integral_fraction * _config.target_count) {
-                continue;
-            }
-            if (
-                (channel.vegas_optimizer || channel.discrete_optimizer) &&
-                channel.needs_optimization
+        std::size_t job_count_before;
+        do {
+            job_count_before = _running_jobs.size();
+            for (
+                std::size_t i = 0;
+                i < _channels.size() && _running_jobs.size() < target_job_count;
+                ++i, channel_index = (channel_index + 1) % _channels.size()
             ) {
-                start_vegas_jobs(channel);
-            } else {
-                start_job(channel, _config.batch_size);
+                auto& channel = _channels.at(channel_index);
+                if (channel.eff_count >= channel.integral_fraction * _config.target_count) {
+                    continue;
+                }
+                if (
+                    (channel.vegas_optimizer || channel.discrete_optimizer) &&
+                    channel.needs_optimization
+                ) {
+                    if (channel.job_count == 0) start_vegas_jobs(channel);
+                } else {
+                    start_job(channel, _config.batch_size);
+                }
             }
-        }
+        } while (_running_jobs.size() - job_count_before > 0);
 
         if (auto job_id = thread_pool.wait()) {
             auto& job = _running_jobs.at(*job_id);
             auto& channel = _channels.at(job.channel_index);
-            --channel.job_count;
-
             bool run_optim =
                 (channel.vegas_optimizer || channel.discrete_optimizer) &&
                 channel.needs_optimization;
+            if (run_optim && channel.job_count == job.vegas_job_count) {
+                clear_channel(channel);
+            }
+            --channel.job_count;
+
             auto [weights, events] = integrate_and_optimize(channel, job.events, run_optim);
             update_max_weight(channel, weights);
             unweight_and_write(channel, events);
@@ -276,8 +284,8 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
             );
         }
         if (channel.job_count == 0) {
-            //if (channel.vegas_optimizer) channel.vegas_optimizer->optimize();
-            //if (channel.discrete_optimizer) channel.discrete_optimizer->optimize();
+            if (channel.vegas_optimizer) channel.vegas_optimizer->optimize();
+            if (channel.discrete_optimizer) channel.discrete_optimizer->optimize();
             double rsd = channel.cross_section.rel_std_dev();
             if (rsd < _config.optimization_threshold * channel.best_rsd) {
                 channel.iters_without_improvement = 0;
@@ -318,7 +326,9 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     return {weights, events};
 }
 
-void EventGenerator::start_job(ChannelState& channel, std::size_t batch_size) {
+void EventGenerator::start_job(
+    ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count
+) {
     std::size_t new_job_id = _job_id;
     ++_job_id;
     ++channel.job_count;
@@ -332,13 +342,13 @@ void EventGenerator::start_job(ChannelState& channel, std::size_t batch_size) {
 }
 
 void EventGenerator::start_vegas_jobs(ChannelState& channel) {
-    clear_channel(channel);
-    for (
-        std::size_t offset = 0;
-        offset < channel.batch_size;
-        offset += _config.batch_size
-    ) {
-        start_job(channel, std::min(_config.batch_size, channel.batch_size - offset));
+    std::size_t vegas_job_count =
+        (channel.batch_size + _config.batch_size - 1) / _config.batch_size;
+    for (std::size_t i = 0; i < vegas_job_count; ++i) {
+        std::size_t batch_size = std::min(
+            _config.batch_size, channel.batch_size - i * _config.batch_size
+        );
+        start_job(channel, batch_size, vegas_job_count);
     }
     channel.batch_size = std::min(channel.batch_size * 2, _config.max_batch_size);
 }
