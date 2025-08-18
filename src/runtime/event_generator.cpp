@@ -28,7 +28,8 @@ EventGenerator::EventGenerator(
         Unweighter(
             {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)}
         ).function(),
-        context
+        context,
+        false
     )),
     _status_all(
         {0, 0., 0., 0., 0, 0, 0., static_cast<double>(config.target_count), false, false}
@@ -73,7 +74,7 @@ EventGenerator::EventGenerator(
         }
         _channels.push_back({
             i,
-            build_runtime(channel.function(), context),
+            build_runtime(channel.function(), context, false),
             EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
             vegas_optimizer,
             discrete_optimizer,

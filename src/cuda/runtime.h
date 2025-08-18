@@ -61,7 +61,7 @@ private:
     curandGenerator_t _curand_generator;
 };
 
-extern "C" Runtime* build_runtime(const Function& function, ContextPtr context);
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent);
 
 }
 }

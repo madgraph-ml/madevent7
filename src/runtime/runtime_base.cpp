@@ -45,7 +45,7 @@ struct LoadedRuntime {
 
     std::unique_ptr<void, std::function<void(void*)>> shared_lib;
     DevicePtr (*get_device)();
-    Runtime* (*build_runtime)(const Function& function, ContextPtr context);
+    Runtime* (*build_runtime)(const Function& function, ContextPtr context, bool concurrent);
 };
 
 const LoadedRuntime& cpu_runtime() {
@@ -60,11 +60,11 @@ const LoadedRuntime& cuda_runtime() {
 
 }
 
-RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context) {
+RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
     if (context->device() == cpu_device()) {
-        return RuntimePtr(cpu_runtime().build_runtime(function, context));
+        return RuntimePtr(cpu_runtime().build_runtime(function, context, concurrent));
     } else if (context->device() == cuda_device()) {
-        return RuntimePtr(cuda_runtime().build_runtime(function, context));
+        return RuntimePtr(cuda_runtime().build_runtime(function, context, concurrent));
     } else {
         throw std::runtime_error("Invalid device");
     }

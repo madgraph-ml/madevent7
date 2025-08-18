@@ -660,6 +660,6 @@ std::tuple<
     return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
 }
 
-extern "C" Runtime* build_runtime(const Function& function, ContextPtr context) {
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent) {
     return new CudaRuntime(function, context);
 }

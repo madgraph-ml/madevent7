@@ -158,6 +158,7 @@ public:
     virtual void tensor_add(const Tensor& source, Tensor& target) const = 0;
     virtual void tensor_cpu(const Tensor& source, Tensor& target) const = 0;
     virtual const Device* device_ptr() const = 0;
+    virtual void sync_barrier() const {}
 };
 
 using DevicePtr = const Device*;

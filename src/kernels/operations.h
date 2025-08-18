@@ -64,6 +64,7 @@ void backward_batch_foreach(
         input_grads[i] = &input_grad;
     }
 
+    device.sync_barrier();
     foreach_func(args, input_grads, batch_size, device);
 }
 
@@ -89,13 +90,17 @@ void backward_op_stack(
 ) {
     // TODO: differentiate integer and float here (also other backwards)
     auto& output_grad = local_grads[instruction.output_indices[0]];
-    std::size_t index = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
             input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
+    }
+
+    device.sync_barrier();
+    for (std::size_t index = 0; auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
         input_grad.add(output_grad.select(1, index), device);
         ++index;
     }
@@ -127,6 +132,7 @@ void backward_op_unstack(
         input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
         input_grad.zero(device);
     }
+    device.sync_barrier();
     auto unstacked_grads = input_grad.unstack(1);
     for (auto [grad, output_index] : zip(unstacked_grads, instruction.output_indices)) {
         grad.add(local_grads[output_index], device);
@@ -151,6 +157,7 @@ void backward_op_pop(
         input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
         input_grad.zero(device);
     }
+    device.sync_barrier();
     std::size_t last_index = input_grad.size(1) - 1;
     input_grad.slice(1, 0, last_index).add(
         local_grads[instruction.output_indices[0]], device
@@ -189,13 +196,16 @@ void backward_op_batch_cat(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
     auto output_grad = local_grads[instruction.output_indices[0]];
-    std::size_t offset = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
             input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
+    }
+    device.sync_barrier();
+    for (std::size_t offset = 0; auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
         auto next_offset = offset + input_grad.size(0);
         input_grad.add(output_grad.slice(0, offset, next_offset), device);
         offset = next_offset;
@@ -222,6 +232,7 @@ void backward_op_batch_split(
         input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
         input_grad.zero(device);
     }
+    device.sync_barrier();
     auto split_grads = input_grad.split(0, sizes);
     for (auto [tensor, output_index] : zip(split_grads, instruction.output_indices)) {
         tensor.add(locals[output_index], device);
@@ -258,13 +269,17 @@ void backward_op_cat(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
     auto& output_grad = local_grads[instruction.output_indices[0]];
-    std::size_t offset = 0;
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
             input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
+    }
+
+    device.sync_barrier();
+    for (std::size_t offset = 0; auto input_index : instruction.input_indices) {
+        auto& input_grad = local_grads[input_index];
         auto next_offset = offset + input_grad.size(1);
         input_grad.add(output_grad.slice(1, offset, next_offset), device);
         offset = next_offset;

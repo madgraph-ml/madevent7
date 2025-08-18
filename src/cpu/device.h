@@ -10,6 +10,7 @@ namespace cpu {
 inline std::tuple<std::size_t, std::size_t> job_count_and_size(
     std::size_t batch_size, bool single_job = false
 ) {
+    if (batch_size == 0) return {0, 0};
     if (single_job) return {1, batch_size};
 
     std::size_t min_batch_size = 64;
@@ -51,6 +52,9 @@ public:
         func(batch_size, 0);
     }
 
+    template<typename F>
+    void submit(F func) const { func(); }
+
     CpuDevice(const CpuDevice&) = delete;
     CpuDevice& operator=(CpuDevice&) = delete;
     static const CpuDevice& instance() {
@@ -66,32 +70,65 @@ class AsyncCpuDevice : public CpuDevice {
 public:
     static constexpr bool is_concurrent = true;
 
-    AsyncCpuDevice(int instr_index, std::size_t& instr_job_count) :
-        _instr_index(instr_index), _instr_job_count(instr_job_count) {}
-    int add_jobs(int count) const {
-        _instr_job_count += count;
-        return _instr_index;
-    }
+    AsyncCpuDevice(
+        std::size_t instr_index,
+        std::size_t& instr_job_count,
+        bool& barrier_state,
+        std::vector<std::function<std::size_t()>>& funcs_after_barrier
+    ) :
+        _instr_index(instr_index),
+        _instr_job_count(instr_job_count),
+        _barrier_state(barrier_state),
+        _funcs_after_barrier(funcs_after_barrier)
+    {}
 
     template<typename F>
     void foreach(std::size_t batch_size, F func, bool single_job = false) const {
         auto [job_count, job_size] = job_count_and_size(batch_size, single_job);
-        int result = add_jobs(job_size);
+        std::size_t result = _instr_index;
+        if (!_barrier_state) _instr_job_count += job_count;
         for (std::size_t i = 0; i < job_count; ++i) {
             std::size_t offset = i * job_size;
             std::size_t count = std::min(job_size, batch_size - offset);
-            default_thread_pool().submit(
-                [count, offset, func, result]() {
-                    func(count, offset);
-                    return result;
-                }
-            );
+            auto job_func = [count, offset, func, result]() mutable {
+                func(count, offset);
+                return result;
+            };
+            if (_barrier_state) {
+                println("job after barrier");
+                _funcs_after_barrier.push_back(job_func);
+            } else {
+                default_thread_pool().submit(job_func);
+            }
+        }
+    }
+
+    template<typename F>
+    void submit(F func) const {
+        std::size_t result = _instr_index;
+        auto job_func = [func, result]() mutable {
+            func();
+            return result;
+        };
+        if (_barrier_state) {
+            _funcs_after_barrier.push_back(job_func);
+        } else {
+            ++_instr_job_count;
+            default_thread_pool().submit(job_func);
+        }
+    }
+
+    void sync_barrier() const override {
+        if (_instr_job_count > 0) {
+            _barrier_state = true;
         }
     }
 
 private:
     int _instr_index;
     std::size_t& _instr_job_count;
+    bool& _barrier_state;
+    std::vector<std::function<std::size_t()>>& _funcs_after_barrier;
 };
 
 extern "C" DevicePtr get_device();

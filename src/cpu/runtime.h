@@ -21,6 +21,8 @@ public:
         std::size_t batch_size_index;
         CpuRuntime& runtime;
         bool differentiable;
+        SizeVec dependent_instructions;
+        std::size_t dependency_count;
     };
 
     CpuRuntime(const Function& function, ContextPtr context, bool concurrent);
@@ -73,9 +75,10 @@ private:
     ContextPtr _context;
     ThreadResource<std::mt19937> _rand_gens;
     bool _concurrent;
+    SizeVec _ready_instructions_init;
 };
 
-extern "C" Runtime* build_runtime(const Function& function, ContextPtr context);
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent);
 
 }
 }

@@ -62,7 +62,11 @@ void op_matrix_element(
     auto me_ptr = static_cast<double*>(me_out.data());
     device.foreach(
         batch_size,
-        [&](std::size_t count, std::size_t offset) {
+        [
+            momenta_in, flavor_in, mirror_in,
+            mom_ptr, flavor_ptr, mirror_ptr, me_ptr,
+            &matrix_element, batch_size
+        ](std::size_t count, std::size_t offset) {
             matrix_element.call(
                 matrix_element.process_instance(ThreadPool::thread_index()), count,
                 batch_size, mom_ptr + offset, flavor_ptr + offset,
@@ -120,7 +124,12 @@ void op_matrix_element_multichannel(
 
     device.foreach(
         batch_size,
-        [&](std::size_t count, std::size_t offset) {
+        [
+            momenta_in, alpha_s_in, random_in, flavor_in, mirror_in,
+            mom_ptr, alpha_ptr, random_ptr, flavor_ptr, mirror_ptr, me_ptr,
+            amp2_ptr, diag_ptr, color_ptr, helicity_ptr,
+            &matrix_element, batch_size
+        ](std::size_t count, std::size_t offset) {
             matrix_element.call_multichannel(
                 matrix_element.process_instance(ThreadPool::thread_index()),
                 count, batch_size,
@@ -148,6 +157,7 @@ void op_matmul(
     output.copy_from(bias, device);
     if (batch_size == 0) return;
 
+    device.sync_barrier();
     char transa = 'N', transb = 'T';
     int m = batch_size, n = dims_out, k = dims_in;
     double alpha = 1., beta = 1.;
@@ -155,9 +165,11 @@ void op_matmul(
     double* a = static_cast<double*>(input.data());
     double* b = static_cast<double*>(weight.data());
     double* c = static_cast<double*>(output.data());
-    dgemm_(
-        &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
-    );
+    device.submit([=]() mutable {
+        dgemm_(
+            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+        );
+    });
 }
 
 template<typename D>
@@ -190,6 +202,7 @@ void backward_op_matmul(
         bias_grad.zero();
     }
     if (batch_size == 0) return;
+    device.sync_barrier();
 
     // compute input_grad += output_grad * weight
     {
@@ -200,9 +213,11 @@ void backward_op_matmul(
         double* a = static_cast<double*>(output_grad.data());
         double* b = static_cast<double*>(weight.data());
         double* c = static_cast<double*>(input_grad.data());
-        dgemm_(
-            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
-        );
+        device.submit([=]() mutable {
+            dgemm_(
+                &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+            );
+        });
     }
 
     // compute weight_grad += output_grad.T * input
@@ -214,9 +229,11 @@ void backward_op_matmul(
         double* a = static_cast<double*>(output_grad.data());
         double* b = static_cast<double*>(input.data());
         double* c = static_cast<double*>(weight_grad.data());
-        dgemm_(
-            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
-        );
+        device.submit([=]() mutable {
+            dgemm_(
+                &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+            );
+        });
     }
 
     // compute bias_grad += sum_i output_grad_ij
@@ -230,9 +247,11 @@ void backward_op_matmul(
         double* a = static_cast<double*>(output_grad.data());
         double* x = ones.data();
         double* y = static_cast<double*>(bias_grad.data());
-        dgemv_(
-            &trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy
-        );
+        device.submit([=]() mutable {
+            dgemv_(
+                &trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy
+            );
+        });
     }
 }
 
@@ -245,16 +264,21 @@ void op_nonzero(
     auto batch_size = input.size(0);
     auto& output = locals[instruction.output_indices[0]];
     Tensor output_tmp(DataType::dt_int, {batch_size});
-    auto input_view = input.view<double, 1>();
-    auto output_view = output_tmp.view<int64_t, 1>();
-    std::size_t count = 0;
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        if (input_view[i] != 0.) {
-            output_view[count] = i;
-            ++count;
+    auto input_view_flat = input.flat_view<double, 1>(0);
+    auto output_view_flat = output_tmp.flat_view<int64_t, 1>(0);
+    device.submit([&output, output_tmp, batch_size, input_view_flat, output_view_flat]() mutable {
+        TensorView<double, 1> input_view(input_view_flat);
+        TensorView<int64_t, 1> output_view(output_view_flat);
+        std::size_t count = 0;
+        for (std::size_t i = 0; i < batch_size; ++i) {
+            if (input_view[i] != 0.) {
+                output_view[count] = i;
+                ++count;
+            }
         }
-    }
-    output = output_tmp.slice(0, 0, count);
+        //println("NONZERO {}/{} {}", count, batch_size, static_cast<double>(input_view[0]));
+        output = output_tmp.slice(0, 0, count);
+    });
 }
 
 
@@ -391,7 +415,7 @@ void op_random(
             auto output_view = TensorView<double, 1>(flat_view);
             std::uniform_real_distribution<double> dist;
             auto& rand_gen = runtime.rand_gen(ThreadPool::thread_index());
-            for (std::size_t i = offset; i < count; ++i) {
+            for (std::size_t i = offset; i < offset + count; ++i) {
                 output_view[i] = dist(rand_gen);
             }
         }
@@ -412,25 +436,35 @@ void op_unweight(
     Tensor indices_tmp(DataType::dt_int, {batch_size});
     Tensor uw_weights_tmp(DataType::dt_float, {batch_size});
 
-    auto weights_view = weights.view<double, 1>();
-    auto max_weight_view = max_weight.view<double, 1>();
-    auto indices_view = indices_tmp.view<int64_t, 1>();
-    auto uw_weights_view = uw_weights_tmp.view<double, 1>();
+    auto weights_view_flat = weights.flat_view<double, 1>(0);
+    auto max_weight_view_flat = max_weight.flat_view<double, 1>(0);
+    auto indices_view_flat = indices_tmp.flat_view<int64_t, 1>(0);
+    auto uw_weights_view_flat = uw_weights_tmp.flat_view<double, 1>(0);
+    auto& runtime = instruction.runtime;
 
-    std::uniform_real_distribution<double> dist;
-    auto& rand_gen = instruction.runtime.rand_gen(0);
-    std::size_t count = 0;
-    for (std::size_t i = 0; i < batch_size; ++i) {
-        double w = weights_view[i], w_max = max_weight_view[i];
-        if (w != 0. && w > dist(rand_gen) * w_max) {
-            indices_view[count] = i;
-            uw_weights_view[count] = w > w_max ? w : w_max;
-            ++count;
+    device.submit([
+        weights_view_flat, max_weight_view_flat, indices_view_flat, uw_weights_view_flat,
+        &runtime, batch_size, &indices, &uw_weights, indices_tmp, uw_weights_tmp
+    ]() mutable {
+        TensorView<double, 1> weights_view(weights_view_flat);
+        TensorView<double, 1> max_weight_view(max_weight_view_flat);
+        TensorView<int64_t, 1> indices_view(indices_view_flat);
+        TensorView<double, 1> uw_weights_view(uw_weights_view_flat);
+        std::uniform_real_distribution<double> dist;
+        auto& rand_gen = runtime.rand_gen(ThreadPool::thread_index());
+        std::size_t count = 0;
+        for (std::size_t i = 0; i < batch_size; ++i) {
+            double w = weights_view[i], w_max = max_weight_view[i];
+            if (w != 0. && w > dist(rand_gen) * w_max) {
+                indices_view[count] = i;
+                uw_weights_view[count] = w > w_max ? w : w_max;
+                ++count;
+            }
         }
-    }
 
-    indices = indices_tmp.slice(0, 0, count);
-    uw_weights = uw_weights_tmp.slice(0, 0, count);
+        indices = indices_tmp.slice(0, 0, count);
+        uw_weights = uw_weights_tmp.slice(0, 0, count);
+    });
 }
 
 }
@@ -446,18 +480,39 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
 {
     _locals_init.resize(function.locals().size());
     _requires_grad_init.resize(function.locals().size());
-    std::size_t instr_index = 0;
     LastUseOfLocals last_use(function);
+    std::vector<int> local_sources(function.locals().size(), -1);
+    std::vector<SizeVec> local_uses(function.locals().size());
 
-    for (auto& instr : function.instructions()) {
+    for (std::size_t instr_index = 0; auto& instr : function.instructions()) {
+        std::size_t runtime_instr_index = _instructions.size();
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
+        bool is_ready = true;
+        std::size_t dependency_count = 0;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
+
+            local_uses.at(in.local_index).push_back(runtime_instr_index);
+            std::size_t source_instr = local_sources.at(in.local_index);
+            if (source_instr != -1) {
+                is_ready = false;
+                auto& source_deps = _instructions.at(source_instr).dependent_instructions;
+                if (
+                    std::find(
+                        source_deps.begin(), source_deps.end(), runtime_instr_index
+                    ) == source_deps.end()
+                ) {
+                    source_deps.push_back(runtime_instr_index);
+                    ++dependency_count;
+                }
+            }
         }
+        if (is_ready) _ready_instructions_init.push_back(runtime_instr_index);
+
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
         std::vector<SizeVec> output_shapes;
@@ -465,7 +520,9 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
             output_indices.push_back(out.local_index);
             output_dtypes.push_back(out.type.dtype);
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
+            local_sources.at(out.local_index) = runtime_instr_index;
         }
+
         _instructions.push_back({
             instr.instruction->opcode(),
             input_indices,
@@ -474,11 +531,27 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
             output_shapes,
             batch_size_index,
             *this,
-            instr.instruction->differentiable()
+            instr.instruction->differentiable(),
+            {},
+            dependency_count
         });
+
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
+            std::size_t free_dep_count = 0;
+            std::size_t free_instr_index = _instructions.size();
+            for (auto use_index : local_uses.at(local_index)) {
+                auto& use_deps = _instructions.at(use_index).dependent_instructions;
+                if (
+                    std::find(
+                        use_deps.begin(), use_deps.end(), free_instr_index
+                    ) == use_deps.end()
+                ) {
+                    use_deps.push_back(free_instr_index);
+                    ++free_dep_count;
+                }
+            }
             _instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *this, false
+                -1, {local_index}, {}, {}, {}, 0, *this, false, {}, free_dep_count
             });
         }
         ++instr_index;
@@ -528,11 +601,11 @@ TensorVec CpuRuntime::run(const TensorVec& inputs) const {
 std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
-    if (_concurrent) {
-        return run_with_grad_concurrent(inputs, input_requires_grad);
-    } else {
+    //if (_concurrent) {
+        //return run_with_grad_concurrent(inputs, input_requires_grad);
+    //} else {
         return run_with_grad_single(inputs, input_requires_grad);
-    }
+    //}
 }
 
 std::tuple<
@@ -542,11 +615,11 @@ std::tuple<
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
 ) const {
-    if (_concurrent) {
-        return run_backward_concurrent(output_grads, stored_locals, eval_grad);
-    } else {
+    //if (_concurrent) {
+        //return run_backward_concurrent(output_grads, stored_locals, eval_grad);
+    //} else {
         return run_backward_single(output_grads, stored_locals, eval_grad);
-    }
+    //}
 }
 
 TensorVec CpuRuntime::run_single(const TensorVec& inputs) const {
@@ -659,6 +732,94 @@ std::tuple<
 }
 
 TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
+    auto locals = _locals_init;
+    auto& thread_pool = default_thread_pool();
+    std::copy(inputs.begin(), inputs.end(), locals.begin());
+
+    std::size_t instr_count = _instructions.size();
+    SizeVec job_counts(instr_count);
+    SizeVec ready_input_count(instr_count);
+    SizeVec ready_instructions(_ready_instructions_init);
+    SizeVec next_ready_instructions;
+    std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
+    while (true) {
+        while (ready_instructions.size() > 0) {
+            for (std::size_t instr_index : ready_instructions) {
+                auto& instr = _instructions[instr_index];
+                using DeviceType = AsyncCpuDevice;
+                bool barrier_state = false;
+                std::size_t& job_count = job_counts[instr_index];
+                AsyncCpuDevice device(
+                    instr_index,
+                    job_count,
+                    barrier_state,
+                    funcs_after_barrier[instr_index]
+                );
+                switch (instr.opcode) {
+                    case -1: // free memory
+                        locals[instr.input_indices[0]].reset(device);
+                        break;
+#include "runtime_mixin.h"
+                }
+                //println("started {} {} : {}", instr.opcode, instr_index, job_count);
+
+                if (job_count == 0) {
+                    for (std::size_t dep_index : instr.dependent_instructions) {
+                        auto& ready_count = ready_input_count[dep_index];
+                        ++ready_count;
+                        if (ready_count == _instructions[dep_index].dependency_count) {
+                            next_ready_instructions.push_back(dep_index);
+                        }
+                    }
+                }
+            }
+            ready_instructions = next_ready_instructions;
+            next_ready_instructions.clear();
+        }
+
+        if (auto job = thread_pool.wait()) {
+            std::size_t instr_index = *job;
+            auto& job_count = job_counts[instr_index];
+            --job_count;
+            //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
+            if (job_count > 0) continue;
+
+            //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
+            auto& extra_funcs = funcs_after_barrier[instr_index];
+            if (extra_funcs.size() > 0) {
+                //println("hit barrier");
+                for (auto& func : extra_funcs) thread_pool.submit(func);
+                job_count += extra_funcs.size();
+                extra_funcs.clear();
+                continue;
+            }
+            //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
+
+            auto& instr = _instructions[instr_index];
+            /*for (auto oi : instr.output_indices) {
+                auto& out = locals[oi];
+                if (out.dtype() == DataType::dt_float) {
+                    auto v = out.view<double, 0>();
+                    println("first elem: {}", static_cast<double>(v));
+                }
+            }*/
+            for (std::size_t dep_index : instr.dependent_instructions) {
+                auto& ready_count = ready_input_count[dep_index];
+                ++ready_count;
+                if (ready_count == _instructions[dep_index].dependency_count) {
+                    ready_instructions.push_back(dep_index);
+                }
+            }
+        } else if (ready_instructions.size() == 0) {
+            break;
+        }
+    }
+
+    TensorVec outputs;
+    for (auto index : _output_indices) {
+        outputs.push_back(locals[index]);
+    }
+    return outputs;
 }
 
 std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad_concurrent(
@@ -675,7 +836,7 @@ std::tuple<
 ) const {
 }
 
-extern "C" Runtime* build_runtime(const Function& function, ContextPtr context) {
-    return new CpuRuntime(function, context, false);
+extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent) {
+    return new CpuRuntime(function, context, concurrent);
 }
 

@@ -182,17 +182,18 @@ struct first_param<void(*)(TParam...)> {
 
 template<auto func, int dims, typename... V>
 inline void nested_for(std::size_t batch_size, std::size_t batch_offset, V... views) {
+    std::size_t end_index = batch_offset + batch_size;
     auto& first_view = std::get<0>(std::tie(views...));
     if constexpr (dims == 0) {
         func(views...);
     } else if constexpr (dims == 1) {
-        for (std::size_t i = batch_offset; i < batch_size; ++i) {
+        for (std::size_t i = batch_offset; i < end_index; ++i) {
             func(views[i]...);
         }
     } else if constexpr (dims == 2) {
         auto size1 = first_view.size(1);
         for (std::size_t j = 0; j < size1; ++j) {
-            for (std::size_t i = batch_offset; i < batch_size; ++i) {
+            for (std::size_t i = batch_offset; i < end_index; ++i) {
                 func(views.get(i, j)...);
             }
         }
@@ -201,7 +202,7 @@ inline void nested_for(std::size_t batch_size, std::size_t batch_offset, V... vi
         auto size2 = first_view.size(2);
         for (std::size_t k = 0; k < size2; ++k) {
             for (std::size_t j = 0; j < size1; ++j) {
-                for (std::size_t i = batch_offset; i < batch_size; ++i) {
+                for (std::size_t i = batch_offset; i < end_index; ++i) {
                     func(views.get(i, j, k)...);
                 }
             }
@@ -213,7 +214,7 @@ inline void nested_for(std::size_t batch_size, std::size_t batch_offset, V... vi
         for (std::size_t l = 0; l < size3; ++l) {
             for (std::size_t k = 0; k < size2; ++k) {
                 for (std::size_t j = 0; j < size1; ++j) {
-                    for (std::size_t i = batch_offset; i < batch_size; ++i) {
+                    for (std::size_t i = batch_offset; i < end_index; ++i) {
                         func(views.get(i, j, k, l)...);
                     }
                 }
@@ -269,25 +270,6 @@ inline void tensor_foreach_impl(
             }, views);
         }
     );
-
-    /*if constexpr (device.is_concurrent) {
-        auto [job_count, job_size] = job_count_and_size(batch_size);
-        int result = device.add_jobs(job_size);
-        for (std::size_t i = 0; i < job_count; ++i) {
-            std::size_t offset = i * job_size;
-            std::size_t count = std::min(job_size, batch_size - offset);
-            default_thread_pool().submit(
-                [count, offset, flat_views, result](std::size_t thread_id) {
-                    tensor_foreach_body<scalar_func, vector_func, dims>(
-                        count, offset, flat_views
-                    );
-                    return result;
-                }
-            );
-        }
-    } else {
-        tensor_foreach_body<scalar_func, vector_func, dims>(batch_size, 0, flat_views);
-    }*/
 }
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, typename D>
