@@ -239,7 +239,8 @@ inline void tensor_foreach_impl(
     std::array<Tensor*, n_out>& outputs,
     std::size_t batch_size,
     std::size_t flatten_count,
-    const D& device
+    const D& device,
+    bool single_job
 ) {
     // get views to the tensors with the correct types based on the signature of scalar_func
     auto flat_views = std::apply(
@@ -268,7 +269,8 @@ inline void tensor_foreach_impl(
             std::apply([scalar_count, scalar_offset](auto&&... args) {
                 nested_for<scalar_func, dims>(scalar_count, scalar_offset, args...);
             }, views);
-        }
+        },
+        single_job
     );
 }
 
@@ -278,7 +280,8 @@ inline void tensor_foreach_dynamic_impl(
     std::array<Tensor*, n_out> outputs,
     std::size_t batch_size,
     std::size_t iter_dims,
-    const D& device
+    const D& device,
+    bool single_job
 ) {
     std::size_t flatten_count = iter_dims;
     for (auto input : inputs) {
@@ -299,22 +302,22 @@ inline void tensor_foreach_dynamic_impl(
     switch (iter_dims) {
         case 1:
             tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 1>(
-                inputs, outputs, batch_size, flatten_count, device
+                inputs, outputs, batch_size, flatten_count, device, single_job
             );
             break;
         case 2:
             tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 2>(
-                inputs, outputs, batch_size, flatten_count, device
+                inputs, outputs, batch_size, flatten_count, device, single_job
             );
             break;
         case 3:
             tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 3>(
-                inputs, outputs, batch_size, flatten_count, device
+                inputs, outputs, batch_size, flatten_count, device, single_job
             );
             break;
         case 4:
             tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, 4>(
-                inputs, outputs, batch_size, flatten_count, device
+                inputs, outputs, batch_size, flatten_count, device, single_job
             );
             break;
         default:
@@ -334,15 +337,14 @@ inline void tensor_foreach(
         // call the dynamic foreach here as we can potentially be more efficient by
         // flattening contiguous dimensions
         tensor_foreach_dynamic_impl<scalar_func, vector_func, n_in, n_out>(
-            inputs, outputs, batch_size, dims, device
+            inputs, outputs, batch_size, dims, device, false
         );
     } else {
         tensor_foreach_impl<scalar_func, vector_func, n_in, n_out, dims>(
-            inputs, outputs, batch_size, 0, device
+            inputs, outputs, batch_size, 0, device, false
         );
     }
 }
-
 
 template<auto scalar_func, auto vector_func, int n_in, int n_out, typename D>
 inline void tensor_foreach_dynamic(
@@ -357,7 +359,26 @@ inline void tensor_foreach_dynamic(
         outputs,
         batch_size,
         std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim,
-        device
+        device,
+        false
+    );
+}
+
+template<auto scalar_func, auto vector_func, int n_in, int n_out, typename D>
+inline void tensor_foreach_dynamic_single(
+    std::array<const Tensor*, n_in> inputs,
+    std::array<Tensor*, n_out> outputs,
+    std::size_t batch_size,
+    const D& device
+) {
+    if (batch_size == 0) return;
+    tensor_foreach_dynamic_impl<scalar_func, vector_func, n_in, n_out>(
+        inputs,
+        outputs,
+        batch_size,
+        std::get<0>(inputs)->shape().size() - first_param<decltype(scalar_func)>::dim,
+        device,
+        true
     );
 }
 

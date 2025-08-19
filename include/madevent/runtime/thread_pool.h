@@ -17,8 +17,11 @@ public:
     ThreadPool& operator=(const ThreadPool&) = delete;
     void set_thread_count(int new_count);
     std::size_t thread_count() const { return _thread_count; }
+    void begin_buffer_submit() { _buffer_submit = true; }
     void submit(std::function<std::size_t()> job);
+    void submit_all();
     std::optional<std::size_t> wait();
+    std::vector<std::size_t> wait_multiple();
     std::size_t add_listener(std::function<void(std::size_t)> listener);
     void remove_listener(std::size_t id);
 
@@ -28,15 +31,20 @@ private:
     static inline thread_local std::size_t _thread_index = 0;
 
     void thread_loop(std::size_t index);
+    bool fill_done_buffer();
+
     std::mutex _mutex;
     std::condition_variable _cv_run, _cv_done;
     std::size_t _thread_count;
     std::vector<std::thread> _threads;
-    std::queue<std::function<std::size_t()>> _job_queue;
-    std::queue<std::size_t> _done_queue;
+    std::deque<std::function<std::size_t()>> _job_queue;
+    std::vector<std::function<std::size_t()>> _job_buffer;
+    std::deque<std::size_t> _done_queue;
+    std::vector<std::size_t> _done_buffer;
     std::size_t _busy_threads;
     std::size_t _listener_id;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;
+    bool _buffer_submit;
 };
 
 template<typename T>

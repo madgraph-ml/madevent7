@@ -161,14 +161,14 @@ void op_matmul(
     if (batch_size == 0) return;
 
     device.sync_barrier();
-    char transa = 'N', transb = 'T';
-    int m = batch_size, n = dims_out, k = dims_in;
-    double alpha = 1., beta = 1.;
-    int lda = batch_size, ldb = dims_out, ldc = batch_size;
-    double* a = static_cast<double*>(input.data());
-    double* b = static_cast<double*>(weight.data());
-    double* c = static_cast<double*>(output.data());
     device.submit([=]() mutable {
+        char transa = 'N', transb = 'T';
+        int m = batch_size, n = dims_out, k = dims_in;
+        double alpha = 1., beta = 1.;
+        int lda = batch_size, ldb = dims_out, ldc = batch_size;
+        double* a = static_cast<double*>(input.data());
+        double* b = static_cast<double*>(weight.data());
+        double* c = static_cast<double*>(output.data());
         dgemm_(
             &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
         );
@@ -194,37 +194,35 @@ void backward_op_matmul(
 
     if (!input_grad) {
         input_grad = Tensor(DataType::dt_float, input.shape(), device);
-        input_grad.zero();
+        input_grad.zero(device);
     }
     if (!weight_grad) {
         weight_grad = Tensor(DataType::dt_float, weight.shape(), device);
-        weight_grad.zero();
+        weight_grad.zero(device);
     }
     if (!bias_grad) {
         bias_grad = Tensor(DataType::dt_float, {1, dims_out}, device);
-        bias_grad.zero();
+        bias_grad.zero(device);
     }
     if (batch_size == 0) return;
     device.sync_barrier();
 
     // compute input_grad += output_grad * weight
-    {
+    device.submit([=]() mutable {
         char transa = 'N', transb = 'N';
         int m = batch_size, n = dims_in, k = dims_out;
         double alpha = 1., beta = 1.;
         int lda = batch_size, ldb = dims_out, ldc = batch_size;
-        double* a = static_cast<double*>(output_grad.data());
+        double* a = static_cast<double*>(output_grad.data());;
         double* b = static_cast<double*>(weight.data());
-        double* c = static_cast<double*>(input_grad.data());
-        device.submit([=]() mutable {
-            dgemm_(
-                &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
-            );
-        });
-    }
+        double* c = static_cast<double*>(input_grad.data());;
+        dgemm_(
+            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+        );
+    });
 
     // compute weight_grad += output_grad.T * input
-    {
+    device.submit([=]() mutable {
         char transa = 'T', transb = 'N';
         int m = dims_out, n = dims_in, k = batch_size;
         double alpha = 1., beta = 1.;
@@ -232,15 +230,13 @@ void backward_op_matmul(
         double* a = static_cast<double*>(output_grad.data());
         double* b = static_cast<double*>(input.data());
         double* c = static_cast<double*>(weight_grad.data());
-        device.submit([=]() mutable {
-            dgemm_(
-                &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
-            );
-        });
-    }
+        dgemm_(
+            &transa, &transb, &m, &n, &k, &alpha, a, &lda, b, &ldb, &beta, c, &ldc
+        );
+    });
 
     // compute bias_grad += sum_i output_grad_ij
-    {
+    device.submit([=]() mutable {
         // TODO: we should probably do this differently...
         std::vector<double> ones(batch_size, 1.);
         char trans = 'T';
@@ -250,12 +246,10 @@ void backward_op_matmul(
         double* a = static_cast<double*>(output_grad.data());
         double* x = ones.data();
         double* y = static_cast<double*>(bias_grad.data());
-        device.submit([=]() mutable {
-            dgemv_(
-                &trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy
-            );
-        });
-    }
+        dgemv_(
+            &trans, &m, &n, &alpha, a, &lda, x, &incx, &beta, y, &incy
+        );
+    });
 }
 
 template<typename D>
@@ -481,13 +475,55 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
     }),
     _concurrent(concurrent)
 {
+    std::size_t instr_count = function.instructions().size();
+    std::vector<int> local_sources_backward(function.locals().size(), -1);
+    std::vector<SizeVec> local_uses_backward(function.locals().size());
+    std::vector<std::size_t> dep_counts_backward(instr_count);
+    std::vector<SizeVec> dep_instrs_backward(instr_count);
+    for (
+        std::size_t instr_index = instr_count;
+        auto& instr : std::views::reverse(function.instructions())
+    ) {
+        --instr_index;
+        bool is_ready = true;
+        std::size_t dependency_count = 0;
+        for (auto& out : instr.outputs) {
+            local_uses_backward.at(out.local_index).push_back(instr_index);
+            std::size_t source_instr = local_sources_backward.at(out.local_index);
+            if (source_instr != -1) {
+                is_ready = false;
+                auto& source_deps = dep_instrs_backward.at(source_instr);
+                if (
+                    std::find(
+                        source_deps.begin(), source_deps.end(), instr_index
+                    ) == source_deps.end()
+                ) {
+                    source_deps.push_back(instr_index);
+                    ++dependency_count;
+                }
+            }
+        }
+        dep_counts_backward.at(instr_index) = dependency_count;
+        if (is_ready) _ready_instructions_backward_init.push_back(instr_index);
+
+        for (auto& in : instr.inputs) {
+            local_sources_backward.at(in.local_index) = instr_index;
+        }
+    }
+
     _locals_init.resize(function.locals().size());
     _requires_grad_init.resize(function.locals().size());
     LastUseOfLocals last_use(function);
     std::vector<int> local_sources(function.locals().size(), -1);
     std::vector<SizeVec> local_uses(function.locals().size());
+    SizeVec instr_index_map;
 
-    for (std::size_t instr_index = 0; auto& instr : function.instructions()) {
+    for (
+        std::size_t instr_index = 0;
+        auto [instr, dep_instrs_bw, dep_count_bw] : zip(
+            function.instructions(), dep_instrs_backward, dep_counts_backward
+        )
+    ) {
         std::size_t runtime_instr_index = _instructions.size();
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
@@ -526,6 +562,7 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
             local_sources.at(out.local_index) = runtime_instr_index;
         }
 
+        instr_index_map.push_back(runtime_instr_index);
         _instructions.push_back({
             instr.instruction->opcode(),
             input_indices,
@@ -536,7 +573,9 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
             *this,
             instr.instruction->differentiable(),
             {},
-            dependency_count
+            dependency_count,
+            dep_instrs_bw,
+            dep_count_bw
         });
 
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
@@ -554,10 +593,20 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
                 }
             }
             _instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *this, false, {}, free_dep_count
+                -1, {local_index}, {}, {}, {}, 0, *this, false, {}, free_dep_count, {}, 0
             });
         }
         ++instr_index;
+    }
+
+    // rewrite indices for backward pass to account for the added "free" instructions
+    for (auto& instr : _instructions) {
+        for (auto& dep : instr.dependent_instructions_backward) {
+            dep = instr_index_map.at(dep);
+        }
+    }
+    for (auto& index : _ready_instructions_backward_init) {
+        index = instr_index_map.at(index);
     }
 
     for (auto& [name, value] : function.globals()) {
@@ -619,11 +668,11 @@ std::tuple<
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
 ) const {
-    //if (_concurrent) {
-        //return run_backward_concurrent(output_grads, stored_locals, eval_grad);
-    //} else {
+    if (_concurrent) {
+        return run_backward_concurrent(output_grads, stored_locals, eval_grad);
+    } else {
         return run_backward_single(output_grads, stored_locals, eval_grad);
-    //}
+    }
 }
 
 TensorVec CpuRuntime::run_single(const TensorVec& inputs) const {
@@ -755,6 +804,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
     SizeVec next_ready_instructions;
     std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
     while (true) {
+        thread_pool.begin_buffer_submit();
         while (ready_instructions.size() > 0) {
             for (std::size_t instr_index : ready_instructions) {
                 auto& instr = _instructions[instr_index];
@@ -813,38 +863,34 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
             ready_instructions = next_ready_instructions;
             next_ready_instructions.clear();
         }
+        thread_pool.submit_all();
 
-        if (auto job = thread_pool.wait()) {
-            std::size_t instr_index = *job;
-            auto& job_count = job_counts[instr_index];
-            --job_count;
-            //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
-            if (job_count > 0) continue;
+        if (auto jobs = thread_pool.wait_multiple(); !jobs.empty()) {
+            for (std::size_t instr_index : jobs) {
+                auto& job_count = job_counts[instr_index];
+                --job_count;
+                //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
+                if (job_count > 0) continue;
 
-            //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
-            auto& extra_funcs = funcs_after_barrier[instr_index];
-            if (extra_funcs.size() > 0) {
-                for (auto& func : extra_funcs) thread_pool.submit(func);
-                job_count = extra_funcs.size();
-                extra_funcs.clear();
-                //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
-                continue;
-            }
-            //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
-
-            auto& instr = _instructions[instr_index];
-            for (auto oi : instr.output_indices) {
-                auto& out = locals[oi];
-                if (out.dtype() == DataType::dt_float) {
-                    auto v = out.view<double, 0>();
-                    //println("first elem: {}", static_cast<double>(v));
+                //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
+                auto& extra_funcs = funcs_after_barrier[instr_index];
+                if (extra_funcs.size() > 0) {
+                    thread_pool.begin_buffer_submit();
+                    for (auto& func : extra_funcs) thread_pool.submit(func);
+                    job_count = extra_funcs.size();
+                    extra_funcs.clear();
+                    //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
+                    continue;
                 }
-            }
-            for (std::size_t dep_index : instr.dependent_instructions) {
-                auto& ready_count = ready_input_count[dep_index];
-                ++ready_count;
-                if (ready_count == _instructions[dep_index].dependency_count) {
-                    ready_instructions.push_back(dep_index);
+                //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
+
+                auto& instr = _instructions[instr_index];
+                for (std::size_t dep_index : instr.dependent_instructions) {
+                    auto& ready_count = ready_input_count[dep_index];
+                    ++ready_count;
+                    if (ready_count == _instructions[dep_index].dependency_count) {
+                        ready_instructions.push_back(dep_index);
+                    }
                 }
             }
         } else if (ready_instructions.size() == 0) {
@@ -870,6 +916,104 @@ std::tuple<
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
 ) const {
+    auto& thread_pool = default_thread_pool();
+    TensorVec local_grads(stored_locals.size());
+    TensorVec locals(stored_locals);
+    for (auto [index, grad] : zip(_output_indices, output_grads)) {
+        local_grads[index] = grad;
+    }
+
+    std::size_t instr_count = _instructions.size();
+    SizeVec job_counts(instr_count);
+    SizeVec ready_input_count(instr_count);
+    SizeVec ready_instructions(_ready_instructions_backward_init);
+    SizeVec next_ready_instructions;
+    std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
+    //for (auto r : ready_instructions) println("ready: {}", r);
+    while (true) {
+        thread_pool.begin_buffer_submit();
+        while (ready_instructions.size() > 0) {
+            for (std::size_t instr_index : ready_instructions) {
+                auto& instr = _instructions[instr_index];
+                using DeviceType = AsyncCpuDevice;
+                bool barrier_state = false;
+                std::size_t& job_count = job_counts[instr_index];
+
+                if (eval_grad[instr_index]) {
+                    AsyncCpuDevice device(
+                        instr_index,
+                        job_count,
+                        barrier_state,
+                        funcs_after_barrier[instr_index]
+                    );
+
+                    for (auto [output_index, output_dtype] : zip(
+                        instr.output_indices, instr.output_dtypes
+                    )) {
+                        auto& grad = local_grads[output_index];
+                        if (!grad && output_dtype == DataType::dt_float) {
+                            grad = Tensor(DataType::dt_float, locals[output_index].shape(), device);
+                            grad.zero(device);
+                        }
+                    }
+
+                    switch (instr.opcode) {
+#include "runtime_backward_mixin.h"
+                    }
+                }
+                //println("started {} {} : {}", instr.opcode, instr_index, job_count);
+
+                if (job_count == 0) {
+                    for (std::size_t dep_index : instr.dependent_instructions_backward) {
+                        auto& ready_count = ready_input_count[dep_index];
+                        ++ready_count;
+                        if (ready_count == _instructions[dep_index].dependency_count_backward) {
+                            next_ready_instructions.push_back(dep_index);
+                        }
+                    }
+                }
+            }
+            ready_instructions = next_ready_instructions;
+            next_ready_instructions.clear();
+        }
+        thread_pool.submit_all();
+
+        if (auto job = thread_pool.wait()) {
+            std::size_t instr_index = *job;
+            auto& job_count = job_counts[instr_index];
+            --job_count;
+            //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
+            if (job_count > 0) continue;
+
+            //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
+            auto& extra_funcs = funcs_after_barrier[instr_index];
+            if (extra_funcs.size() > 0) {
+                for (auto& func : extra_funcs) thread_pool.submit(func);
+                job_count = extra_funcs.size();
+                extra_funcs.clear();
+                //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
+                continue;
+            }
+            //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
+
+            auto& instr = _instructions[instr_index];
+            for (std::size_t dep_index : instr.dependent_instructions_backward) {
+                auto& ready_count = ready_input_count[dep_index];
+                ++ready_count;
+                if (ready_count == _instructions[dep_index].dependency_count_backward) {
+                    ready_instructions.push_back(dep_index);
+                }
+            }
+        } else if (ready_instructions.size() == 0) {
+            break;
+        }
+    }
+
+    std::vector<std::tuple<std::string, Tensor>> global_grads;
+    for (auto& [name, index] : _grad_global_indices) {
+        global_grads.push_back({name, local_grads[index]});
+    }
+    return {{local_grads.begin(), local_grads.begin() + _input_count}, global_grads};
 }
 
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent) {

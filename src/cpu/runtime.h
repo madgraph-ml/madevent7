@@ -23,6 +23,8 @@ public:
         bool differentiable;
         SizeVec dependent_instructions;
         std::size_t dependency_count;
+        SizeVec dependent_instructions_backward;
+        std::size_t dependency_count_backward;
     };
 
     CpuRuntime(const Function& function, ContextPtr context, bool concurrent);
@@ -75,6 +77,7 @@ private:
     ThreadResource<std::mt19937> _rand_gens;
     bool _concurrent;
     SizeVec _ready_instructions_init;
+    SizeVec _ready_instructions_backward_init;
 };
 
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent);

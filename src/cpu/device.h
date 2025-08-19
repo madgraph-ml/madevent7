@@ -11,9 +11,10 @@ inline std::tuple<std::size_t, std::size_t> job_count_and_size(
     std::size_t batch_size, bool single_job = false
 ) {
     if (batch_size == 0) return {0, 0};
+    //return {1, batch_size};
     if (single_job) return {1, batch_size};
 
-    std::size_t min_batch_size = 64;
+    std::size_t min_batch_size = 256;
     std::size_t thread_count = default_thread_pool().thread_count();
     std::size_t job_count = batch_size < thread_count * min_batch_size ?
         (batch_size + min_batch_size - 1) / min_batch_size :

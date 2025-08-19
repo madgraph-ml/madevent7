@@ -11,11 +11,11 @@ namespace {
 template<typename D>
 void tensor_copy_impl(const Tensor& source, Tensor& target, const D& device) {
     if (source.dtype() == DataType::dt_float && target.dtype() == DataType::dt_float) {
-        tensor_foreach_dynamic<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
+        tensor_foreach_dynamic_single<kernel_copy<CpuTypes>, kernel_copy<SimdTypes>, 1, 1>(
             {&source}, {&target}, target.size(0), device
         );
     } else if (source.dtype() == DataType::dt_int && target.dtype() == DataType::dt_int) {
-        tensor_foreach_dynamic<kernel_copy_int<CpuTypes>, kernel_copy_int<SimdTypes>, 1, 1>(
+        tensor_foreach_dynamic_single<kernel_copy_int<CpuTypes>, kernel_copy_int<SimdTypes>, 1, 1>(
             {&source}, {&target}, target.size(0), device
         );
     } else {
@@ -26,11 +26,11 @@ void tensor_copy_impl(const Tensor& source, Tensor& target, const D& device) {
 template<typename D>
 void tensor_zero_impl(Tensor& tensor, const D& device) {
     if (tensor.dtype() == DataType::dt_float) {
-        tensor_foreach_dynamic<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
+        tensor_foreach_dynamic_single<kernel_zero<CpuTypes>, kernel_zero<SimdTypes>, 1, 1>(
             {&tensor}, {&tensor}, tensor.size(0), device
         );
     } else if (tensor.dtype() == DataType::dt_int) {
-        tensor_foreach_dynamic<kernel_zero_int<CpuTypes>, kernel_zero_int<SimdTypes>, 1, 1>(
+        tensor_foreach_dynamic_single<kernel_zero_int<CpuTypes>, kernel_zero_int<SimdTypes>, 1, 1>(
             {&tensor}, {&tensor}, tensor.size(0), device
         );
     } else {
@@ -40,7 +40,7 @@ void tensor_zero_impl(Tensor& tensor, const D& device) {
 
 template<typename D>
 void tensor_add_impl(const Tensor& source, Tensor& target, const D& device) {
-    tensor_foreach_dynamic<
+    tensor_foreach_dynamic_single<
         kernel_add_inplace<CpuTypes>, kernel_add_inplace<SimdTypes>, 1, 1
     >(
         {&source}, {&target}, target.size(0), device
