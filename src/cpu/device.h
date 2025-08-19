@@ -82,6 +82,10 @@ public:
         _funcs_after_barrier(funcs_after_barrier)
     {}
 
+    void tensor_copy(const Tensor& source, Tensor& target) const override;
+    void tensor_zero(Tensor& tensor) const override;
+    void tensor_add(const Tensor& source, Tensor& target) const override;
+
     template<typename F>
     void foreach(std::size_t batch_size, F func, bool single_job = false) const {
         auto [job_count, job_size] = job_count_and_size(batch_size, single_job);
@@ -95,7 +99,6 @@ public:
                 return result;
             };
             if (_barrier_state) {
-                println("job after barrier");
                 _funcs_after_barrier.push_back(job_func);
             } else {
                 default_thread_pool().submit(job_func);

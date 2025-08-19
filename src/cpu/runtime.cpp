@@ -51,6 +51,7 @@ void op_matrix_element(
     auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
     auto flavor_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
     auto mirror_in = locals[instruction.input_indices[2]].contiguous(batch_size, device);
+    device.sync_barrier();
 
     auto input_particle_count = momenta_in.size(1);
     if (input_particle_count != matrix_element.particle_count()) {
@@ -110,6 +111,7 @@ void op_matrix_element_multichannel(
     if (diagram_count != matrix_element.diagram_count()) {
         throw std::runtime_error("Incompatible diagram count");
     }
+    device.sync_barrier();
 
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
@@ -148,13 +150,14 @@ void op_matmul(
 ) {
     auto input = locals[instruction.input_indices[0]].contiguous(device);
     auto weight = locals[instruction.input_indices[1]].contiguous(device);
-    auto bias = locals[instruction.input_indices[2]].contiguous(device);
+    auto bias_orig = locals[instruction.input_indices[2]];
+    auto bias = bias_orig.contiguous(device);
     auto& output = locals[instruction.output_indices[0]];
     std::size_t batch_size = input.size(0);
     std::size_t dims_in = input.size(1);
     std::size_t dims_out = weight.size(1);
     output = Tensor(DataType::dt_float, {batch_size, dims_out}, device);
-    output.copy_from(bias, device);
+    output.copy_from(bias_orig, device);
     if (batch_size == 0) return;
 
     device.sync_barrier();
@@ -276,7 +279,6 @@ void op_nonzero(
                 ++count;
             }
         }
-        //println("NONZERO {}/{} {}", count, batch_size, static_cast<double>(input_view[0]));
         output = output_tmp.slice(0, 0, count);
     });
 }
@@ -387,6 +389,7 @@ void op_scatter(
 
     auto& output = locals[instruction.output_indices[0]];
     output = target.copy(device);
+    device.sync_barrier();
     switch (target.shape().size()) {
         case 1: scatter_impl<1>(indices, source, output, device); break;
         case 2: scatter_impl<2>(indices, source, output, device); break;
@@ -787,22 +790,22 @@ TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
             //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
             auto& extra_funcs = funcs_after_barrier[instr_index];
             if (extra_funcs.size() > 0) {
-                //println("hit barrier");
                 for (auto& func : extra_funcs) thread_pool.submit(func);
-                job_count += extra_funcs.size();
+                job_count = extra_funcs.size();
                 extra_funcs.clear();
+                //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
                 continue;
             }
             //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
 
             auto& instr = _instructions[instr_index];
-            /*for (auto oi : instr.output_indices) {
+            for (auto oi : instr.output_indices) {
                 auto& out = locals[oi];
                 if (out.dtype() == DataType::dt_float) {
                     auto v = out.view<double, 0>();
-                    println("first elem: {}", static_cast<double>(v));
+                    //println("first elem: {}", static_cast<double>(v));
                 }
-            }*/
+            }
             for (std::size_t dep_index : instr.dependent_instructions) {
                 auto& ready_count = ready_input_count[dep_index];
                 ++ready_count;
