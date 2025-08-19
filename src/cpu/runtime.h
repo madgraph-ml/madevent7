@@ -44,12 +44,11 @@ public:
 
 private:
     TensorVec run_single(const TensorVec& inputs) const;
-    TensorVec run_concurrent(const TensorVec& inputs) const;
     std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad_single(
         const TensorVec& inputs, const std::vector<bool>& input_requires_grad
     ) const;
-    std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad_concurrent(
-        const TensorVec& inputs, const std::vector<bool>& input_requires_grad
+    std::tuple<TensorVec, TensorVec, std::vector<bool>> run_concurrent(
+        const TensorVec& inputs, const std::vector<bool>& input_requires_grad, bool with_grad
     ) const;
     std::tuple<
         TensorVec, std::vector<std::tuple<std::string, Tensor>>

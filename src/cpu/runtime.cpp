@@ -595,7 +595,8 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
 
 TensorVec CpuRuntime::run(const TensorVec& inputs) const {
     if (_concurrent) {
-        return run_concurrent(inputs);
+        auto [outputs, locals, eval_grad] = run_concurrent(inputs, {}, false);
+        return outputs;
     } else {
         return run_single(inputs);
     }
@@ -604,11 +605,11 @@ TensorVec CpuRuntime::run(const TensorVec& inputs) const {
 std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
-    //if (_concurrent) {
-        //return run_with_grad_concurrent(inputs, input_requires_grad);
-    //} else {
+    if (_concurrent) {
+        return run_concurrent(inputs, input_requires_grad, true);
+    } else {
         return run_with_grad_single(inputs, input_requires_grad);
-    //}
+    }
 }
 
 std::tuple<
@@ -734,10 +735,18 @@ std::tuple<
     return {{local_grads.begin(), local_grads.begin() + _input_count}, global_grads};
 }
 
-TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
-    auto locals = _locals_init;
+std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
+    const TensorVec& inputs, const std::vector<bool>& input_requires_grad, bool with_grad
+) const {
     auto& thread_pool = default_thread_pool();
+    auto locals = _locals_init;
+    auto requires_grad = _requires_grad_init;
+    std::vector<bool> store_local(with_grad ? locals.size() : 0);
+    std::vector<bool> eval_grad(with_grad ? _instructions.size() : 0);
     std::copy(inputs.begin(), inputs.end(), locals.begin());
+    if (with_grad) {
+        std::copy(input_requires_grad.begin(), input_requires_grad.end(), requires_grad.begin());
+    }
 
     std::size_t instr_count = _instructions.size();
     SizeVec job_counts(instr_count);
@@ -752,6 +761,27 @@ TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
                 using DeviceType = AsyncCpuDevice;
                 bool barrier_state = false;
                 std::size_t& job_count = job_counts[instr_index];
+
+                if (with_grad && instr.differentiable) {
+                    auto instr_eval_grad = eval_grad[instr_index];
+                    for (auto input_index : instr.input_indices) {
+                        if (requires_grad[input_index]) {
+                            instr_eval_grad = true;
+                            break;
+                        }
+                    }
+                    if (instr_eval_grad) {
+                        //TODO: only store necessary
+                        for (auto input_index : instr.input_indices) {
+                            store_local[input_index] = true;
+                        }
+                        for (auto output_index : instr.output_indices) {
+                            store_local[output_index] = true;
+                            requires_grad[output_index] = true;
+                        }
+                    }
+                }
+
                 AsyncCpuDevice device(
                     instr_index,
                     job_count,
@@ -759,9 +789,13 @@ TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
                     funcs_after_barrier[instr_index]
                 );
                 switch (instr.opcode) {
-                    case -1: // free memory
-                        locals[instr.input_indices[0]].reset(device);
+                    case -1: { // free memory
+                        auto input_index = instr.input_indices[0];
+                        if (with_grad && !store_local[input_index]) {
+                            locals[input_index].reset(device);
+                        }
                         break;
+                    }
 #include "runtime_mixin.h"
                 }
                 //println("started {} {} : {}", instr.opcode, instr_index, job_count);
@@ -822,12 +856,11 @@ TensorVec CpuRuntime::run_concurrent(const TensorVec& inputs) const {
     for (auto index : _output_indices) {
         outputs.push_back(locals[index]);
     }
-    return outputs;
-}
-
-std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad_concurrent(
-    const TensorVec& inputs, const std::vector<bool>& input_requires_grad
-) const {
+    if (with_grad) {
+        return {outputs, locals, eval_grad};
+    } else {
+        return {outputs, {}, {}};
+    }
 }
 
 std::tuple<
