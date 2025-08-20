@@ -19,7 +19,7 @@ void VegasGridOptimizer::add_data(Tensor weights, Tensor inputs) {
 
     // build histograms
     for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
-        auto& [bin_values, bin_counts] = _data.at(i_dim);
+        auto& [bin_counts, bin_values] = _data.at(i_dim);
         for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
             int i_bin = in_view[i_sample][i_dim] * n_bins;
             if (i_bin < 0 || i_bin >= n_bins) continue;
@@ -40,7 +40,7 @@ void VegasGridOptimizer::optimize() {
     auto new_grid_view = new_grid.view<double, 3>()[0];
 
     for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
-        auto& [bin_values, bin_counts] = _data.at(i_dim);
+        auto& [bin_counts, bin_values] = _data.at(i_dim);
         if (bin_counts.size() != n_bins || bin_values.size() != n_bins) {
             throw std::runtime_error("no data to run optimization");
         }
@@ -114,7 +114,7 @@ void VegasGridOptimizer::optimize() {
         std::fill(bin_values.begin(), bin_values.end(), 0.);
     }
 
-    //grid.copy_from(new_grid);
+    grid.copy_from(new_grid);
 }
 
 std::size_t VegasGridOptimizer::input_dim() const {

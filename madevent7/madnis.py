@@ -115,7 +115,7 @@ def build_madnis_integrand(
     integrand = Integrand(
         function=integrand_function,
         input_dim=sum(channels[0].latent_dims()[0]),
-        channel_count=channel_count,
+        channel_count=len(channel_grouping.channels),
         remapped_dim=cwnet.preprocessing().output_dim(),
         has_channel_weight_prior=cwnet is not None,
         channel_grouping=channel_grouping,
