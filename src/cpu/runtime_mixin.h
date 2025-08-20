@@ -203,7 +203,7 @@ case 66:
     batch_foreach<tensor_foreach_dynamic<kernel_softplus<CpuTypes>, kernel_softplus<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 67:
-    batch_foreach<tensor_foreach<kernel_rqs_activation<CpuTypes>, kernel_rqs_activation<SimdTypes>, 2, 3, 1, DeviceType>, 2, 3>(instr, locals, device);
+    op_rqs_reshape(instr, locals, device);
     break;
 case 68:
     batch_foreach<tensor_foreach<kernel_rqs_find_bin<CpuTypes>, kernel_rqs_find_bin<SimdTypes>, 4, 1, 2, DeviceType>, 4, 1>(instr, locals, device);
@@ -215,7 +215,7 @@ case 70:
     batch_foreach<tensor_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 2, DeviceType>, 2, 2>(instr, locals, device);
     break;
 case 71:
-    batch_foreach<tensor_foreach<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 72:
     batch_foreach<tensor_foreach<kernel_softmax_prior<CpuTypes>, kernel_softmax_prior<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);

@@ -97,93 +97,15 @@ KERNELSPEC void backward_kernel_softplus(
 }
 
 template<typename T>
-KERNELSPEC void kernel_rqs_activation(
-    FIn<T,1> input, IIn<T,0> bin_count,
-    FOut<T,2> widths, FOut<T,2> heights, FOut<T,2> derivatives
-) {
-    std::size_t n_bins = single_index(bin_count);
-    std::size_t n_cond = 3 * n_bins + 1;
-    std::size_t n_dims = input.size() / n_cond;
-
-    for (std::size_t j = 0; j < n_dims; ++j) {
-        std::size_t offset = j * n_cond;
-        auto w_out = widths[j];
-        FVal<T> w_norm(0.), w_in_max(0.);
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            auto w_in = input[offset + i];
-            w_in_max = max(w_in, w_in_max);
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            auto w = exp(input[offset + i] - w_in_max);
-            w_norm = w_norm + w;
-            w_out[i] = w;
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            w_out[i] = w_out[i] / w_norm;
-        }
-
-        offset += n_bins;
-        auto h_out = heights[j];
-        FVal<T> h_norm(0.), h_in_max(0.);
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            auto h_in = input[offset + i];
-            h_in_max = max(h_in, h_in_max);
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            auto h = exp(input[offset + i] - h_in_max);
-            h_norm = h_norm + h;
-            h_out[i] = h;
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            h_out[i] = h_out[i] / h_norm;
-        }
-
-        offset += n_bins;
-        auto d_out = derivatives[j];
-        for (std::size_t i = 0; i < n_bins + 1; ++i) {
-            d_out[i] = input[offset + i];
-        }
-    }
-}
-
-template<typename T>
-KERNELSPEC void backward_kernel_rqs_activation(
-    FIn<T,2> widths, FIn<T,2> heights,
-    FIn<T,2> widths_grad, FIn<T,2> heights_grad, FIn<T,2> derivatives_grad,
-    FOut<T,1> input_grad, FOut<T,0> bin_count_grad
-) {
-    std::size_t n_dims = widths.size();
-    std::size_t n_bins = (input_grad.size() / n_dims - 1) / 3;
-    std::size_t n_cond = 3 * n_bins + 1;
-
-    for (std::size_t j = 0; j < n_dims; ++j) {
-        auto w_j = widths[j];
-        auto grad_w_j = widths_grad[j];
-        std::size_t offset = j * n_cond;
-        FVal<T> w_grad_sum(0.);
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            w_grad_sum = w_grad_sum + w_j[i] * grad_w_j[i];
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            input_grad[offset + i] += w_j[i] * (grad_w_j[i] - w_grad_sum);
-        }
-
-        auto h_j = heights[j];
-        auto grad_h_j = heights_grad[j];
-        offset += n_bins;
-        FVal<T> h_grad_sum(0.);
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            h_grad_sum = h_grad_sum + h_j[i] * grad_h_j[i];
-        }
-        for (std::size_t i = 0; i < n_bins; ++i) {
-            input_grad[offset + i] += h_j[i] * (grad_h_j[i] - h_grad_sum);
-        }
-
-        offset += n_bins;
-        for (std::size_t i = 0; i < n_bins + 1; ++i) {
-            input_grad[offset + i] += derivatives_grad[j][i];
-        }
-    }
+KERNELSPEC FVal<T> fastexp(FVal<T> x) {
+    auto xx = x / 16;
+    auto y = 0.5 * (xx + sqrt(xx * xx + 4));
+    y = y * y;
+    y = y * y;
+    y = y * y;
+    y = y * y;
+    y = y * y;
+    return y;
 }
 
 template<typename T>

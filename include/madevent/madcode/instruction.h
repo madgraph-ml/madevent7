@@ -140,10 +140,10 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
-class RqsActivationInstruction : public Instruction {
+class RqsReshapeInstruction : public Instruction {
 public:
-    RqsActivationInstruction(int opcode, bool differentiable) :
-        Instruction("rqs_activation", opcode, differentiable) {}
+    RqsReshapeInstruction(int opcode, bool differentiable) :
+        Instruction("rqs_reshape", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 

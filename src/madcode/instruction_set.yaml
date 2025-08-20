@@ -1170,7 +1170,7 @@ softplus:
   dims: 0
   differentiable: True
 
-rqs_activation:
+rqs_reshape:
   inputs:
     - name: input
       desc:
@@ -1179,14 +1179,13 @@ rqs_activation:
   outputs:
     - name: widths
       desc:
-      backward_arg: True
     - name: heights
       desc:
-      backward_arg: True
     - name: derivatives
       desc:
-  class: RqsActivationInstruction
+  class: RqsReshapeInstruction
   differentiable: True
+  custom_op: True
 
 rqs_find_bin:
   inputs:
@@ -1248,14 +1247,15 @@ rqs_inverse:
 softmax:
   inputs:
     - name: input
-      type: [float, n]
+      type: [float, ...]
       desc:
   outputs:
     - name: output
-      type: [float, n]
+      type: [float, ...]
       desc:
       backward_arg: True
   differentiable: True
+  dims: 0
 
 softmax_prior:
   inputs:

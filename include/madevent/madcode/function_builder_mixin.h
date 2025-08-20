@@ -293,8 +293,8 @@ Value softplus(Value in) {
     return instruction("softplus", {in})[0];
 }
 
-std::array<Value, 3> rqs_activation(Value input, Value bin_count) {
-    auto output_vector = instruction("rqs_activation", {input, bin_count});
+std::array<Value, 3> rqs_reshape(Value input, Value bin_count) {
+    auto output_vector = instruction("rqs_reshape", {input, bin_count});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 

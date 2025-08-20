@@ -80,7 +80,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("gelu", &FunctionBuilder::gelu, py::arg("in"));
     fb.def("sigmoid", &FunctionBuilder::sigmoid, py::arg("in"));
     fb.def("softplus", &FunctionBuilder::softplus, py::arg("in"));
-    fb.def("rqs_activation", &FunctionBuilder::rqs_activation, py::arg("input"), py::arg("bin_count"));
+    fb.def("rqs_reshape", &FunctionBuilder::rqs_reshape, py::arg("input"), py::arg("bin_count"));
     fb.def("rqs_find_bin", &FunctionBuilder::rqs_find_bin, py::arg("input"), py::arg("in_sizes"), py::arg("out_sizes"), py::arg("derivatives"));
     fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"));
     fb.def("rqs_inverse", &FunctionBuilder::rqs_inverse, py::arg("input"), py::arg("condition"));

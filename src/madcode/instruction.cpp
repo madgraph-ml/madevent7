@@ -552,7 +552,7 @@ TypeVec UnsqueezeInstruction::signature(const ValueVec& args) const {
     return {{arg.type.dtype, arg.type.batch_size, out_shape}};
 }
 
-TypeVec RqsActivationInstruction::signature(const ValueVec& args) const {
+TypeVec RqsReshapeInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
     auto& bin_count_arg = args.at(1);
     auto& bin_count_type = bin_count_arg.type;

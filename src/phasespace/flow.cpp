@@ -22,7 +22,9 @@ std::tuple<Value, Value> build_block(
     bool inverse
 ) {
     auto subnet_out = subnet.build_function(fb, {condition});
-    auto [widths, heights, derivatives] = fb.rqs_activation(subnet_out.at(0), bin_count);
+    auto [widths_unnorm, heights_unnorm, derivatives] = fb.rqs_reshape(subnet_out.at(0), bin_count);
+    auto widths = fb.softmax(widths_unnorm);
+    auto heights = fb.softmax(heights_unnorm);
     auto rqs_condition = fb.rqs_find_bin(
         input, inverse ? heights : widths, inverse ? widths : heights, derivatives
     );
@@ -116,20 +118,19 @@ void vegas_init(
             );
             h_sum += hi;
         }
-        std::size_t offset = bias_index * (3 * n_bins_flow + 1);
+        std::size_t stride = indices.size();
         for (std::size_t i = 0; i < n_bins_flow; ++i) {
             if (inverse_spline) {
-                bias_view[offset + i] = w.at(i) - w_sum / n_bins_flow;
-                bias_view[offset + n_bins_flow + i] = h.at(i) - h_sum / n_bins_flow;
+                bias_view[bias_index + stride * i] = w.at(i) - w_sum / n_bins_flow;
+                bias_view[bias_index + stride * (n_bins_flow + i)] = h.at(i) - h_sum / n_bins_flow;
             } else {
-                bias_view[offset + i] = h.at(i) - h_sum / n_bins_flow;
-                bias_view[offset + n_bins_flow + i] = w.at(i) - w_sum / n_bins_flow;
+                bias_view[bias_index + stride * i] = h.at(i) - h_sum / n_bins_flow;
+                bias_view[bias_index + stride * (n_bins_flow + i)] = w.at(i) - w_sum / n_bins_flow;
             }
         }
-        offset += 2 * n_bins_flow;
         for (std::size_t i = 0; i < n_bins_flow + 1; ++i) {
             double di = inverse_spline ? 1. / d.at(i) : d.at(i);
-            bias_view[offset + i] = std::log(std::max(
+            bias_view[bias_index + stride * (2 * n_bins_flow + i)] = std::log(std::max(
                 std::exp(
                     (kernels::MIN_DERIVATIVE + LOG_TWO) * di - kernels::MIN_DERIVATIVE
                 ) - 1.,

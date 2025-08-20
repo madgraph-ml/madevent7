@@ -313,8 +313,14 @@ template<typename I, typename D>
 void backward_op_squeeze(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
-    auto grad = local_grads[instruction.output_indices[0]].unsqueeze(1);
-    local_grads[instruction.input_indices[0]] = grad;
+    auto output_grad = local_grads[instruction.output_indices[0]].unsqueeze(1);
+    auto& input_grad = local_grads[instruction.input_indices[0]];
+    if (input_grad) {
+        input_grad.add(output_grad, device);
+    } else {
+        input_grad = Tensor(output_grad.dtype(), output_grad.shape(), device);
+        input_grad.copy_from(output_grad, device);
+    }
 }
 
 template<typename I, typename D>
@@ -327,8 +333,49 @@ template<typename I, typename D>
 void backward_op_unsqueeze(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
-    auto grad = local_grads[instruction.output_indices[0]].select(1, 0);
-    local_grads[instruction.input_indices[0]] = grad;
+    auto output_grad = local_grads[instruction.output_indices[0]].select(1, 0);
+    auto& input_grad = local_grads[instruction.input_indices[0]];
+    if (input_grad) {
+        input_grad.add(output_grad, device);
+    } else {
+        input_grad = Tensor(output_grad.dtype(), output_grad.shape(), device);
+        input_grad.copy_from(output_grad, device);
+    }
+}
+
+template<typename I, typename D>
+void op_rqs_reshape(const I& instruction, TensorVec& locals, const D& device) {
+    auto n_dims = instruction.output_shapes[0][0];
+    auto n_bins = instruction.output_shapes[0][1];
+    auto input = locals[instruction.input_indices[0]].factor_dim(1, n_dims);
+    locals[instruction.output_indices[0]] = input.slice(2, 0, n_bins);
+    locals[instruction.output_indices[1]] = input.slice(2, n_bins, 2 * n_bins);
+    locals[instruction.output_indices[2]] = input.slice(2, 2 * n_bins, 3 * n_bins + 1);
+}
+
+template<typename I, typename D>
+void backward_op_rqs_reshape(
+    const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
+) {
+    auto n_dims = instruction.output_shapes[0][0];
+    auto n_bins = instruction.output_shapes[0][1];
+    auto input_index = instruction.input_indices[0];
+    auto& input_grad = local_grads[input_index];
+    if (!input_grad) {
+        input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
+        input_grad.zero(device);
+    }
+    device.sync_barrier();
+    auto input_grad_reshaped = input_grad.factor_dim(1, n_dims);
+    input_grad_reshaped.slice(2, 0, n_bins).add(
+        local_grads[instruction.output_indices[0]], device
+    );
+    input_grad_reshaped.slice(2, n_bins, 2 * n_bins).add(
+        local_grads[instruction.output_indices[1]], device
+    );
+    input_grad_reshaped.slice(2, 2 * n_bins, 3 * n_bins + 1).add(
+        local_grads[instruction.output_indices[2]], device
+    );
 }
 
 }

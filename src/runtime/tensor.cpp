@@ -71,6 +71,7 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) const {
 
 Tensor Tensor::unsqueeze(std::size_t axis) const {
     check_impl();
+    //TODO: check if correct for non-contiguous tensor
     auto new_dim = impl->shape.size() + 1;
     Sizes new_shape(new_dim), new_stride(new_dim);
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
@@ -108,6 +109,35 @@ Tensor Tensor::expand(const Sizes& shape) const {
         Sizes(shape.size(), 0),
         impl->offset,
         0
+    });
+}
+
+Tensor Tensor::factor_dim(std::size_t axis, std::size_t factor) {
+    check_impl();
+    auto new_dim = impl->shape.size() + 1;
+    Sizes new_shape(new_dim), new_stride(new_dim);
+
+    std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
+    new_shape[axis] = factor;
+    std::copy(impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1);
+    new_shape[axis + 1] /= factor;
+
+    std::copy(impl->stride.begin(), impl->stride.begin() + axis + 1, new_stride.begin());
+    new_stride[axis + 1] = new_stride[axis] * factor;
+    std::copy(impl->stride.begin() + axis + 1, impl->stride.end(), new_stride.begin() + axis + 2);
+
+    return Tensor(new Tensor::TensorImpl{
+        impl->dtype,
+        new_shape,
+        impl->device,
+        impl->data,
+        false,
+        std::nullopt,
+        impl,
+        1,
+        new_stride,
+        impl->offset,
+        impl->contiguous_dims + (axis <= impl->contiguous_dims)
     });
 }
 

@@ -11,6 +11,7 @@ namespace madevent {
 
 class ThreadPool {
 public:
+    using JobFunc = std::function<std::size_t()>;
     ThreadPool(int thread_count = -1);
     ~ThreadPool();
     ThreadPool(const ThreadPool&) = delete;
@@ -18,7 +19,7 @@ public:
     void set_thread_count(int new_count);
     std::size_t thread_count() const { return _thread_count; }
     void begin_buffer_submit() { _buffer_submit = true; }
-    void submit(std::function<std::size_t()> job);
+    void submit(JobFunc job);
     void submit_all();
     std::optional<std::size_t> wait();
     std::vector<std::size_t> wait_multiple();
@@ -29,6 +30,7 @@ public:
 
 private:
     static inline thread_local std::size_t _thread_index = 0;
+    static constexpr std::size_t STACK_SIZE_FACTOR = 4;
 
     void thread_loop(std::size_t index);
     bool fill_done_buffer();
@@ -37,10 +39,16 @@ private:
     std::condition_variable _cv_run, _cv_done;
     std::size_t _thread_count;
     std::vector<std::thread> _threads;
-    std::deque<std::function<std::size_t()>> _job_queue;
-    std::vector<std::function<std::size_t()>> _job_buffer;
+    std::deque<JobFunc> _job_queue;
+    std::vector<JobFunc> _job_buffer;
+    //std::vector<JobFunc*> _job_stack;
+    //std::atomic<std::size_t> _job_stack_size_low;
+    //std::atomic<std::size_t> _job_stack_size_high;
     std::deque<std::size_t> _done_queue;
     std::vector<std::size_t> _done_buffer;
+    //std::vector<std::size_t> _done_stack;
+    //std::atomic<std::size_t> _done_stack_size_low;
+    //std::atomic<std::size_t> _done_stack_size_high;
     std::size_t _busy_threads;
     std::size_t _listener_id;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;

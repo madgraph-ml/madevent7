@@ -394,6 +394,7 @@ public:
     std::vector<Tensor> unstack(std::size_t axis) const;
     Tensor unsqueeze(std::size_t axis) const;
     Tensor expand(const Sizes& shape) const;
+    Tensor factor_dim(std::size_t axis, std::size_t factor);
 
     template<typename D>
     Tensor cpu(const D& device) const {

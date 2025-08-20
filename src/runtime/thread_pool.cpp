@@ -33,7 +33,7 @@ void ThreadPool::set_thread_count(int new_count) {
     for (auto& [id, listener] : _listeners) listener(_thread_count);
 }
 
-void ThreadPool::submit(std::function<std::size_t()> job) {
+void ThreadPool::submit(JobFunc job) {
     if (_buffer_submit) {
         _job_buffer.push_back(job);
     } else {
@@ -58,7 +58,7 @@ void ThreadPool::submit_all() {
         _done_queue.clear();
     }
     lock.unlock();
-    _cv_run.notify_one();
+    _cv_run.notify_all();
     _job_buffer.clear();
 }
 

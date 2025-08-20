@@ -203,7 +203,7 @@ case 66:
     batch_foreach<tensor_foreach_dynamic<kernel_softplus<CudaTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 67:
-    batch_foreach<tensor_foreach<kernel_rqs_activation<CudaTypes>, 2, 3, 1>, 2, 3>(instr, locals, device);
+    op_rqs_reshape(instr, locals, device);
     break;
 case 68:
     batch_foreach<tensor_foreach<kernel_rqs_find_bin<CudaTypes>, 4, 1, 2>, 4, 1>(instr, locals, device);
@@ -215,7 +215,7 @@ case 70:
     batch_foreach<tensor_foreach<kernel_rqs_inverse<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;
 case 71:
-    batch_foreach<tensor_foreach<kernel_softmax<CudaTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_softmax<CudaTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 72:
     batch_foreach<tensor_foreach<kernel_softmax_prior<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);

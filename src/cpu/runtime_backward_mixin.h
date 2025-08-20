@@ -53,7 +53,7 @@ case 66:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_softplus<CpuTypes>, backward_kernel_softplus<SimdTypes>, 2, 1, DeviceType>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
 case 67:
-    backward_batch_foreach<tensor_foreach<backward_kernel_rqs_activation<CpuTypes>, backward_kernel_rqs_activation<SimdTypes>, 5, 2, 1, DeviceType>, 2, 3, 0, 2>(instr, locals, local_grads, {}, {0,1}, device);
+    backward_op_rqs_reshape(instr, locals, local_grads, device);
     break;
 case 68:
     backward_batch_foreach<tensor_foreach<backward_kernel_rqs_find_bin<CpuTypes>, backward_kernel_rqs_find_bin<SimdTypes>, 5, 4, 2, DeviceType>, 4, 1, 4, 0>(instr, locals, local_grads, {0,1,2,3}, {}, device);
@@ -65,7 +65,7 @@ case 70:
     backward_batch_foreach<tensor_foreach<backward_kernel_rqs_inverse<CpuTypes>, backward_kernel_rqs_inverse<SimdTypes>, 4, 2, 2, DeviceType>, 2, 2, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
 case 71:
-    backward_batch_foreach<tensor_foreach<backward_kernel_softmax<CpuTypes>, backward_kernel_softmax<SimdTypes>, 2, 1, 1, DeviceType>, 1, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
+    backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_softmax<CpuTypes>, backward_kernel_softmax<SimdTypes>, 2, 1, DeviceType>, 1, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
     break;
 case 72:
     backward_batch_foreach<tensor_foreach<backward_kernel_softmax_prior<CpuTypes>, backward_kernel_softmax_prior<SimdTypes>, 2, 2, 1, DeviceType>, 2, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
