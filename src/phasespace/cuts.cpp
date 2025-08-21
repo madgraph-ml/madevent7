@@ -94,7 +94,7 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
             Value(mass_cuts, {static_cast<int>(mass_cuts.size()) / 2, 2})
         ));
     }
-    if (has_sqrt_s_cuts) {
+    if (has_sqrt_s_cuts && (sqrt_s_cuts.at(0) > 0. || sqrt_s_cuts.at(1) < inf)) {
         weights.push_back(fb.cut_sqrt_s(momenta, Value(sqrt_s_cuts, {2})));
     }
     return {fb.product(weights)};
