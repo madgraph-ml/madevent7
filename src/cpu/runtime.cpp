@@ -458,6 +458,101 @@ void op_unweight(
     });
 }
 
+template<typename D>
+void op_vegas_histogram(
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+) {
+    auto& input = locals[instruction.input_indices[0]];
+    auto& weights = locals[instruction.input_indices[1]];
+    auto& values = locals[instruction.output_indices[0]];
+    auto& counts = locals[instruction.output_indices[1]];
+
+    auto out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = 1;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    values = Tensor(DataType::dt_float, shape, device);
+    counts = Tensor(DataType::dt_int, shape, device);
+    device.sync_barrier();
+
+    auto input_view_flat = input.flat_view<double, 2>(0);
+    auto weights_view_flat = weights.flat_view<double, 1>(0);
+    auto values_view_flat = values.flat_view<double, 3>(0);
+    auto counts_view_flat = counts.flat_view<me_int_t, 3>(0);
+
+    device.submit([
+        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat
+    ]() mutable {
+        TensorView<double, 2> input_view(input_view_flat);
+        TensorView<double, 1> weights_view(weights_view_flat);
+        TensorView<double, 3> values_view(values_view_flat);
+        TensorView<me_int_t, 3> counts_view(counts_view_flat);
+
+        std::size_t n_samples = input_view.size(0);
+        std::size_t n_dims = input_view.size(1);
+        std::size_t n_bins = values_view.size(2);
+
+        for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
+            auto bin_values = values_view[0][i_dim];
+            auto bin_counts = counts_view[0][i_dim];
+            for (std::size_t i_bin = 0; i_bin < n_bins; ++i_bin) {
+                bin_values[i_bin] = 0.;
+                bin_counts[i_bin] = 0;
+            }
+            for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
+                int i_bin = input_view[i_sample][i_dim] * n_bins;
+                if (i_bin < 0 || i_bin >= n_bins) continue;
+                double w = weights_view[i_sample];
+                bin_values[i_bin] += w * w;
+                bin_counts[i_bin] += 1;
+            }
+        }
+    });
+}
+
+template<typename D>
+void op_discrete_histogram(
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+) {
+    auto& input = locals[instruction.input_indices[0]];
+    auto& weights = locals[instruction.input_indices[1]];
+    auto& values = locals[instruction.output_indices[0]];
+    auto& counts = locals[instruction.output_indices[1]];
+
+    auto out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = 1;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    values = Tensor(DataType::dt_float, shape, device);
+    counts = Tensor(DataType::dt_int, shape, device);
+
+    auto input_view_flat = input.flat_view<me_int_t, 1>(0);
+    auto weights_view_flat = weights.flat_view<double, 1>(0);
+    auto values_view_flat = values.flat_view<double, 2>(0);
+    auto counts_view_flat = counts.flat_view<me_int_t, 2>(0);
+
+    device.submit([
+        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat
+    ]() mutable {
+        TensorView<me_int_t, 1> input_view(input_view_flat);
+        TensorView<double, 1> weights_view(weights_view_flat);
+        TensorView<double, 2> values_view(values_view_flat);
+        TensorView<me_int_t, 2> counts_view(counts_view_flat);
+        std::size_t n_samples = input_view.size(0);
+        std::size_t n_opts = values_view.size(1);
+        for (std::size_t i_opt = 0; i_opt < n_opts; ++i_opt) {
+            values_view[0][i_opt] = 0.;
+            counts_view[0][i_opt] = 0;
+        }
+        for (std::size_t i = 0; i < n_samples; ++i) {
+            auto w = weights_view[i];
+            std::size_t index = input_view[i];
+            values_view[0][index] += w * w;
+            counts_view[0][index] += 1;
+        }
+    });
+}
+
 }
 
 CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concurrent) :

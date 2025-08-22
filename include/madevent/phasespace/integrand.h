@@ -60,6 +60,20 @@ public:
             return std::nullopt;
         }
     }
+    std::size_t vegas_dimension() const {
+        if (auto vegas = std::get_if<VegasMapping>(&_adaptive_map)) {
+            return vegas->dimension();
+        } else {
+            return 0;
+        }
+    }
+    std::size_t vegas_bin_count() const {
+        if (auto vegas = std::get_if<VegasMapping>(&_adaptive_map)) {
+            return vegas->bin_count();
+        } else {
+            return 0;
+        }
+    }
     const PhaseSpaceMapping& mapping() const { return _mapping; }
     const DifferentialCrossSection& diff_xs() const { return _diff_xs; }
     const AdaptiveMapping& adaptive_map() const { return _adaptive_map; }

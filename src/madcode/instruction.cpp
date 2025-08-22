@@ -274,7 +274,9 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 }
             }
         }
-        output_types.push_back(Type{out_dtype, batch_size, out_shape});
+        output_types.push_back(
+            Type{out_dtype, is_single ? BatchSize::one : batch_size, out_shape}
+        );
     }
     return output_types;
 }

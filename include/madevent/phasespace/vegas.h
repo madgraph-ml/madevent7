@@ -5,6 +5,16 @@
 
 namespace madevent {
 
+class VegasHistogram : public FunctionGenerator {
+public:
+    VegasHistogram(std::size_t dimension, std::size_t bin_count);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::size_t _bin_count;
+};
+
 class VegasMapping : public Mapping {
 public:
     VegasMapping(
@@ -22,6 +32,8 @@ public:
     {}
     const std::string& grid_name() const { return _grid_name; }
     void initialize_globals(ContextPtr context) const;
+    std::size_t dimension() const { return _dimension; }
+    std::size_t bin_count() const { return _bin_count; }
 
 private:
     Result build_forward_impl(

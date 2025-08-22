@@ -103,7 +103,9 @@ private:
         RuntimePtr runtime;
         EventFile writer;
         std::optional<VegasGridOptimizer> vegas_optimizer;
+        RuntimePtr vegas_histogram;
         std::optional<DiscreteOptimizer> discrete_optimizer;
+        RuntimePtr discrete_histogram;
         std::size_t batch_size;
         RunningIntegral cross_section;
         bool needs_optimization = true;

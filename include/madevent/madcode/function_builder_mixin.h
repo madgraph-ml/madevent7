@@ -340,6 +340,11 @@ std::array<Value, 2> sample_discrete_probs_inverse(Value index, Value probs) {
     return {output_vector[0], output_vector[1]};
 }
 
+std::array<Value, 2> discrete_histogram(Value input, Value weights, Value option_count) {
+    auto output_vector = instruction("discrete_histogram", {input, weights, option_count});
+    return {output_vector[0], output_vector[1]};
+}
+
 Value permute_momenta(Value momenta, Value permutations, Value index) {
     return instruction("permute_momenta", {momenta, permutations, index})[0];
 }
@@ -388,6 +393,11 @@ std::array<Value, 2> vegas_forward(Value input, Value grid) {
 
 std::array<Value, 2> vegas_inverse(Value input, Value grid) {
     auto output_vector = instruction("vegas_inverse", {input, grid});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> vegas_histogram(Value input, Value weights, Value bin_count) {
+    auto output_vector = instruction("vegas_histogram", {input, weights, bin_count});
     return {output_vector[0], output_vector[1]};
 }
 

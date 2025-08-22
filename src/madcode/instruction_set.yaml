@@ -1334,6 +1334,26 @@ sample_discrete_probs_inverse:
       desc:
   differentiable: True
 
+discrete_histogram:
+  inputs:
+    - name: input
+      type: [int]
+      desc:
+    - name: weights
+      type: [float]
+      desc:
+    - name: option_count
+      type: [size, n]
+      desc:
+  outputs:
+    - name: values
+      type: [float, single, n]
+      desc:
+    - name: counts
+      type: [int, single, n]
+      desc:
+  custom_op: True
+
 permute_momenta:
   inputs:
     - name: momenta
@@ -1508,4 +1528,24 @@ vegas_inverse:
       type: [float, n]
       desc:
   dims: 2
+
+vegas_histogram:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+    - name: weights
+      type: [float]
+      desc:
+    - name: bin_count
+      type: [size, b]
+      desc:
+  outputs:
+    - name: values
+      type: [float, single, n, b]
+      desc:
+    - name: counts
+      type: [int, single, n, b]
+      desc:
+  custom_op: True
 

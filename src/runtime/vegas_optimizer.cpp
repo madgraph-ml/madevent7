@@ -2,30 +2,24 @@
 
 using namespace madevent;
 
-void VegasGridOptimizer::add_data(Tensor weights, Tensor inputs) {
-    auto grid = _context->global(_grid_name);
-    auto weights_cpu = weights.cpu();
-    auto inputs_cpu = inputs.cpu();
-    std::size_t n_samples = inputs.size(0);
-    std::size_t n_dims = inputs.size(1);
-    std::size_t n_bins = grid.size(2) - 1;
+void VegasGridOptimizer::add_data(Tensor values, Tensor counts) {
+    auto values_cpu = values.cpu();
+    auto counts_cpu = counts.cpu();
     //TODO: check all the shapes here
-    auto w_view = weights_cpu.view<double, 1>();
-    auto in_view = inputs_cpu.view<double, 2>();
+    auto values_view = values_cpu.view<double, 3>()[0];
+    auto counts_view = counts_cpu.view<me_int_t, 3>()[0];
+    std::size_t n_dims = values_view.size(0);
+    std::size_t n_bins = values_view.size(1);
 
     while (_data.size() < n_dims) {
         _data.push_back({std::vector<std::size_t>(n_bins), std::vector<double>(n_bins)});
     }
 
-    // build histograms
     for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
-        auto& [bin_counts, bin_values] = _data.at(i_dim);
-        for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
-            int i_bin = in_view[i_sample][i_dim] * n_bins;
-            if (i_bin < 0 || i_bin >= n_bins) continue;
-            double w = w_view[i_sample];
-            bin_values[i_bin] += w * w;
-            ++bin_counts[i_bin];
+        auto& [bin_counts, bin_values] = _data[i_dim];
+        for (std::size_t i_bin = 0; i_bin < n_bins; ++i_bin) {
+            bin_counts[i_bin] += counts_view[i_dim][i_bin];
+            bin_values[i_bin] += values_view[i_dim][i_bin];
         }
     }
 }

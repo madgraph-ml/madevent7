@@ -2,6 +2,27 @@
 
 using namespace madevent;
 
+VegasHistogram::VegasHistogram(std::size_t dimension, std::size_t bin_count) :
+    FunctionGenerator(
+        "VegasHistogram",
+        {batch_float_array(dimension), batch_float},
+        {
+            single_float_array_2d(dimension, bin_count),
+            single_int_array_2d(dimension, bin_count)
+        }
+    ),
+    _bin_count(bin_count)
+{}
+
+ValueVec VegasHistogram::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
+) const {
+    auto [values, counts] = fb.vegas_histogram(
+        args.at(0), args.at(1), static_cast<me_int_t>(_bin_count)
+    );
+    return {values, counts};
+}
+
 Mapping::Result VegasMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {

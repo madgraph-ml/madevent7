@@ -233,38 +233,44 @@ case 76:
     batch_foreach<tensor_foreach<kernel_sample_discrete_probs_inverse<CudaTypes>, 2, 2, 1>, 2, 2>(instr, locals, device);
     break;
 case 77:
-    batch_foreach<tensor_foreach<kernel_permute_momenta<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
+    op_discrete_histogram(instr, locals, device);
     break;
 case 78:
-    batch_foreach<tensor_foreach<kernel_gather<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_permute_momenta<CudaTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
     break;
 case 79:
-    batch_foreach<tensor_foreach<kernel_gather_int<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_gather<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 80:
-    batch_foreach<tensor_foreach<kernel_select<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_gather_int<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 81:
-    batch_foreach<tensor_foreach<kernel_one_hot<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 82:
-    op_nonzero(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_one_hot<CudaTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 83:
-    op_batch_gather(instr, locals, device);
+    op_nonzero(instr, locals, device);
     break;
 case 84:
-    op_batch_scatter(instr, locals, device);
+    op_batch_gather(instr, locals, device);
     break;
 case 85:
-    op_random(instr, locals, device);
+    op_batch_scatter(instr, locals, device);
     break;
 case 86:
-    op_unweight(instr, locals, device);
+    op_random(instr, locals, device);
     break;
 case 87:
-    batch_foreach<tensor_foreach<kernel_vegas_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    op_unweight(instr, locals, device);
     break;
 case 88:
+    batch_foreach<tensor_foreach<kernel_vegas_forward<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    break;
+case 89:
     batch_foreach<tensor_foreach<kernel_vegas_inverse<CudaTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    break;
+case 90:
+    op_vegas_histogram(instr, locals, device);
     break;

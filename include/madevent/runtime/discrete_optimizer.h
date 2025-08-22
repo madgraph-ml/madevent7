@@ -15,7 +15,7 @@ public:
         _prob_names(prob_names),
         _sample_count(7000)
     {}
-    void add_data(Tensor weights, const std::vector<Tensor>& inputs);
+    void add_data(const std::vector<Tensor>& values_and_counts);
     void optimize();
 
 private:

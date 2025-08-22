@@ -97,8 +97,17 @@ using TypeVec = std::vector<Type>;
 
 const Type single_float{DataType::dt_float, BatchSize::One{}, {}};
 const Type single_int{DataType::dt_int, BatchSize::One{}, {}};
+inline Type single_float_array(int count) {
+    return {DataType::dt_float, BatchSize::one, {count}};
+}
 inline Type single_int_array(int count) {
     return {DataType::dt_int, BatchSize::one, {count}};
+}
+inline Type single_float_array_2d(int count1, int count2) {
+    return {DataType::dt_float, BatchSize::one, {count1, count2}};
+}
+inline Type single_int_array_2d(int count1, int count2) {
+    return {DataType::dt_int, BatchSize::one, {count1, count2}};
 }
 
 const BatchSize batch_size = BatchSize("batch_size");

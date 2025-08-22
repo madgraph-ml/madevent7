@@ -90,6 +90,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("sample_discrete_inverse", &FunctionBuilder::sample_discrete_inverse, py::arg("index"), py::arg("option_count"));
     fb.def("sample_discrete_probs", &FunctionBuilder::sample_discrete_probs, py::arg("r"), py::arg("probs"));
     fb.def("sample_discrete_probs_inverse", &FunctionBuilder::sample_discrete_probs_inverse, py::arg("index"), py::arg("probs"));
+    fb.def("discrete_histogram", &FunctionBuilder::discrete_histogram, py::arg("input"), py::arg("weights"), py::arg("option_count"));
     fb.def("permute_momenta", &FunctionBuilder::permute_momenta, py::arg("momenta"), py::arg("permutations"), py::arg("index"));
     fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
     fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
@@ -102,5 +103,6 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("unweight", &FunctionBuilder::unweight, py::arg("weights"), py::arg("max_weight"));
     fb.def("vegas_forward", &FunctionBuilder::vegas_forward, py::arg("input"), py::arg("grid"));
     fb.def("vegas_inverse", &FunctionBuilder::vegas_inverse, py::arg("input"), py::arg("grid"));
+    fb.def("vegas_histogram", &FunctionBuilder::vegas_histogram, py::arg("input"), py::arg("weights"), py::arg("bin_count"));
 }
 }

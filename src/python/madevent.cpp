@@ -446,28 +446,28 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("context"));
 
     py::classh<VegasGridOptimizer>(m, "VegasGridOptimizer")
-        .def("add_data", [](VegasGridOptimizer& opt, py::object weights, py::object inputs) {
+        .def("add_data", [](VegasGridOptimizer& opt, py::object values, py::object counts) {
                 opt.add_data(
-                    dlpack_to_tensor(weights, batch_float, 0),
-                    dlpack_to_tensor(inputs, batch_float_array(opt.input_dim()), 1)
+                    dlpack_to_tensor(values, batch_float, 0),
+                    dlpack_to_tensor(counts, batch_float_array(opt.input_dim()), 1)
                 );
-             }, py::arg("weights"), py::arg("inputs"))
+             }, py::arg("values"), py::arg("counts"))
         .def("optimize", &VegasGridOptimizer::optimize)
         .def(py::init<ContextPtr, const std::string&, double>(),
              py::arg("context"), py::arg("grid_name"), py::arg("damping"));
 
     py::classh<DiscreteOptimizer>(m, "DiscreteOptimizer")
         .def("add_data",
-             [](DiscreteOptimizer& opt, py::object weights, std::vector<py::object> inputs) {
+             [](DiscreteOptimizer& opt, std::vector<py::object> values_and_counts) {
                 TensorVec input_tensors;
-                for (std::size_t i = 1; auto& input : inputs) {
-                    input_tensors.push_back(dlpack_to_tensor(input, batch_int, i));
+                for (std::size_t i = 1; auto& input : values_and_counts) {
+                    input_tensors.push_back(dlpack_to_tensor(
+                        input, i % 2 == 0 ? batch_int : batch_float, i
+                    ));
                     ++i;
                 }
-                opt.add_data(
-                    dlpack_to_tensor(weights, batch_float, 0), input_tensors
-                );
-             }, py::arg("weights"), py::arg("inputs"))
+                opt.add_data(input_tensors);
+             }, py::arg("values_and_counts"))
         .def("optimize", &DiscreteOptimizer::optimize)
         .def(py::init<ContextPtr, const std::vector<std::string>&>(),
              py::arg("context"), py::arg("prob_names"));

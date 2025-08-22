@@ -2,10 +2,7 @@
 
 using namespace madevent;
 
-void DiscreteOptimizer::add_data(Tensor weights, const std::vector<Tensor>& inputs) {
-    auto weights_cpu = weights.cpu();
-    auto weights_view = weights_cpu.view<double, 1>();
-
+void DiscreteOptimizer::add_data(const std::vector<Tensor>& values_and_counts) {
     if (_data.size() != _prob_names.size()) {
         _data.resize(_prob_names.size());
         for (auto [prob_name, data_item] : zip(_prob_names, _data)) {
@@ -17,17 +14,17 @@ void DiscreteOptimizer::add_data(Tensor weights, const std::vector<Tensor>& inpu
         }
     }
 
-    for (auto [prob_name, input, data_item] : zip(_prob_names, inputs, _data)) {
+    for (std::size_t i = 0; auto [prob_name, data_item] : zip(_prob_names, _data)) {
         auto& [weight_sums, counts] = data_item;
-        auto input_cpu = input.cpu();
-        auto input_view = input_cpu.view<me_int_t, 1>();
-        for (std::size_t i = 0; i < weights_view.size(); ++i) {
-            auto w = weights_view[i];
-            std::size_t index = input_view[i];
-            weight_sums.at(index) += w;
-            ++counts.at(index);
+        auto values_cpu = values_and_counts.at(2 * i).cpu();
+        auto counts_cpu = values_and_counts.at(2 * i + 1).cpu();
+        auto values_view = values_cpu.view<double, 2>()[0];
+        auto counts_view = counts_cpu.view<me_int_t, 2>()[0];
+        for (std::size_t j = 0; j < values_view.size(); ++j) {
+            weight_sums[j] += values_view[j];
+            counts[j] += counts_view[j];
         }
-
+        ++i;
     }
 }
 

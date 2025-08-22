@@ -73,6 +73,6 @@ case 72:
 case 76:
     backward_batch_foreach<tensor_foreach<backward_kernel_sample_discrete_probs_inverse<CudaTypes>, 4, 2, 1>, 2, 2, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
-case 80:
+case 81:
     backward_batch_foreach<tensor_foreach<backward_kernel_select<CudaTypes>, 2, 2, 1>, 2, 1, 1, 0>(instr, locals, local_grads, {1}, {}, device);
     break;

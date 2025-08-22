@@ -53,29 +53,40 @@ EventGenerator::EventGenerator(
         auto chan_path = temp_path / file_path.stem();
         chan_path += std::format(".channel{}.npy", i);
         std::optional<VegasGridOptimizer> vegas_optimizer;
+        RuntimePtr vegas_histogram = nullptr;
         if (const auto& name = channel.vegas_grid_name(); name) {
             vegas_optimizer = VegasGridOptimizer(context, *name, config.vegas_damping);
+            VegasHistogram hist(channel.vegas_dimension(), channel.vegas_bin_count());
+            vegas_histogram = build_runtime(hist.function(), context, false);
         }
         std::vector<std::string> prob_names;
+        std::vector<std::size_t> option_counts;
         auto add_names = Overloaded {
             [&](const DiscreteSampler& sampler) {
                 auto& names = sampler.prob_names();
                 prob_names.insert(prob_names.end(), names.begin(), names.end());
+                auto& opts = sampler.option_counts();
+                option_counts.insert(option_counts.end(), opts.begin(), opts.end());
             },
             [](auto sampler) {}
         };
         std::visit(add_names, channel.discrete_before());
         std::visit(add_names, channel.discrete_after());
         std::optional<DiscreteOptimizer> discrete_optimizer;
+        RuntimePtr discrete_histogram = nullptr;
         if (prob_names.size() > 0) {
             discrete_optimizer = DiscreteOptimizer(context, prob_names);
+            DiscreteHistogram hist(option_counts);
+            discrete_histogram = build_runtime(hist.function(), context, false);
         }
         _channels.push_back({
             i,
             build_runtime(channel.function(), context, false),
             EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
             vegas_optimizer,
+            std::move(vegas_histogram),
             discrete_optimizer,
+            std::move(discrete_histogram),
             config.start_batch_size
         });
         ++i;
@@ -275,12 +286,14 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
 
     if (run_optim) {
         if (channel.vegas_optimizer) {
-            channel.vegas_optimizer->add_data(weights, events.at(2));
+            auto hist = channel.vegas_histogram->run({events.at(2), weights});
+            channel.vegas_optimizer->add_data(hist.at(0), hist.at(1));
         }
         if (channel.discrete_optimizer) {
-            channel.discrete_optimizer->add_data(
-                weights, {events.begin() + 3, events.end()}
-            );
+            TensorVec args{events.begin() + 3, events.end()};
+            args.push_back(weights);
+            auto hist = channel.discrete_histogram->run(args);
+            channel.discrete_optimizer->add_data(hist);
         }
         if (channel.job_count == 0) {
             if (channel.vegas_optimizer) channel.vegas_optimizer->optimize();

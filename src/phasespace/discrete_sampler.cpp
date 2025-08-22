@@ -2,6 +2,41 @@
 
 using namespace madevent;
 
+DiscreteHistogram::DiscreteHistogram(const std::vector<std::size_t>& option_counts) :
+    FunctionGenerator(
+        "DiscreteHistogram",
+        [&] {
+            TypeVec arg_types(option_counts.size(), batch_int);
+            arg_types.push_back(batch_float);
+            return arg_types;
+        }(),
+        [&] {
+            TypeVec ret_types;
+            for (std::size_t option_count : option_counts) {
+                ret_types.push_back(single_float_array(option_count));
+                ret_types.push_back(single_int_array(option_count));
+            }
+            return ret_types;
+        }()
+    ),
+    _option_counts(option_counts)
+{}
+
+ValueVec DiscreteHistogram::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
+) const {
+    ValueVec results;
+    auto weights = args.at(_option_counts.size());
+    for (auto [option_count, input] : zip(_option_counts, args)) {
+        auto [values, counts] = fb.discrete_histogram(
+            input, weights, static_cast<me_int_t>(option_count)
+        );
+        results.push_back(values);
+        results.push_back(counts);
+    }
+    return results;
+}
+
 DiscreteSampler::DiscreteSampler(
     const std::vector<std::size_t>& option_counts,
     const std::string& prefix,

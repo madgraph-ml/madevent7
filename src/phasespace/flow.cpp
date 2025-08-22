@@ -1,6 +1,6 @@
 #include "madevent/phasespace/flow.h"
 
-#include "../kernels/nn.h"
+#include "madevent/constants.h"
 
 #include <numeric>
 #include <algorithm>
@@ -105,16 +105,16 @@ void vegas_init(
         double w_sum = 0.;
         for (double& wi : w) {
             wi = std::log(
-                std::max(wi - kernels::MIN_BIN_SIZE, kernels::MIN_BIN_SIZE * 1e-5)
-                / (1. - n_bins_flow * kernels::MIN_BIN_SIZE)
+                std::max(wi - MIN_BIN_SIZE, MIN_BIN_SIZE * 1e-5)
+                / (1. - n_bins_flow * MIN_BIN_SIZE)
             );
             w_sum += wi;
         }
         double h_sum = 0.;
         for (double& hi : h) {
             hi = std::log(
-                std::max(hi - kernels::MIN_BIN_SIZE, kernels::MIN_BIN_SIZE * 1e-5)
-                / (1. - n_bins_flow * kernels::MIN_BIN_SIZE)
+                std::max(hi - MIN_BIN_SIZE, MIN_BIN_SIZE * 1e-5)
+                / (1. - n_bins_flow * MIN_BIN_SIZE)
             );
             h_sum += hi;
         }
@@ -132,9 +132,9 @@ void vegas_init(
             double di = inverse_spline ? 1. / d.at(i) : d.at(i);
             bias_view[bias_index + stride * (2 * n_bins_flow + i)] = std::log(std::max(
                 std::exp(
-                    (kernels::MIN_DERIVATIVE + LOG_TWO) * di - kernels::MIN_DERIVATIVE
+                    (MIN_DERIVATIVE + LOG_TWO) * di - MIN_DERIVATIVE
                 ) - 1.,
-                kernels::MIN_DERIVATIVE * 1e-5
+                MIN_DERIVATIVE * 1e-5
             ));
         }
         ++bias_index;

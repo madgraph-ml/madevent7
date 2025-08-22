@@ -5,6 +5,16 @@
 
 namespace madevent {
 
+class DiscreteHistogram : public FunctionGenerator {
+public:
+    DiscreteHistogram(const std::vector<std::size_t>& option_counts);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<std::size_t> _option_counts;
+};
+
 class DiscreteSampler : public Mapping {
 public:
     DiscreteSampler(
