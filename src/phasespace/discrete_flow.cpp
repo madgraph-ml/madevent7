@@ -76,7 +76,7 @@ Mapping::Result DiscreteFlow::build_transform(
 ) const {
     Value subnet_input;
     std::size_t dim_index = 0, mlp_index = 0, condition_index = 0;
-    int64_t prev_option_count = 0;
+    me_int_t prev_option_count = 0;
     if (_condition_dim != 0) {
         subnet_input = conditions.at(0);
         ++condition_index;

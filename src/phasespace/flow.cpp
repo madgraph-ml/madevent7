@@ -18,7 +18,7 @@ std::tuple<Value, Value> build_block(
     const MLP& subnet,
     Value input,
     Value condition,
-    int64_t bin_count,
+    me_int_t bin_count,
     bool inverse
 ) {
     auto subnet_out = subnet.build_function(fb, {condition});
@@ -38,7 +38,7 @@ void vegas_init(
     ContextPtr context,
     const std::string& grid_name,
     const std::string& bias_name,
-    const std::vector<int64_t>& indices,
+    const std::vector<me_int_t>& indices,
     bool inverse_spline
 ) {
     // TODO: check shapes
@@ -175,7 +175,7 @@ Flow::Flow(
     for (std::size_t i = 0; i < input_dim; ++i) masks.push_back(i);
 
     for (std::size_t block_index = 0; block_index < block_count; ++block_index) {
-        std::vector<int64_t> indices1, indices2;
+        std::vector<me_int_t> indices1, indices2;
         std::size_t dim_index = 0;
         for (auto& mask : masks) {
             if (mask.test(block_index)) {
@@ -254,11 +254,11 @@ Mapping::Result Flow::build_transform(
     bool has_cond = _condition_dim != 0;
     if (has_cond) cond = conditions.at(0);
     ValueVec dets;
-    std::vector<int64_t> dim_positions(_input_dim);
+    std::vector<me_int_t> dim_positions(_input_dim);
     std::iota(dim_positions.begin(), dim_positions.end(), 0);
 
     auto loop_body = [&](const CouplingBlock& block) {
-        std::vector<int64_t> half1_indices, half2_indices;
+        std::vector<me_int_t> half1_indices, half2_indices;
         for (auto index : block.indices1) {
             half1_indices.push_back(dim_positions[index]);
         }

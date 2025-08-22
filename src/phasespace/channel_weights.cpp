@@ -26,7 +26,7 @@ PropagatorChannelWeights::PropagatorChannelWeights(
     _masses.resize(channel_count);
     _widths.resize(channel_count);
 
-    std::map<std::vector<int64_t>, std::size_t> found_factors;
+    std::map<std::vector<me_int_t>, std::size_t> found_factors;
     std::size_t max_propagator_count = 0;
     for (auto [topology, chan_perms, indices] : zip(
         topologies, permutations, channel_indices
@@ -40,7 +40,7 @@ PropagatorChannelWeights::PropagatorChannelWeights(
             auto& chan_masses = _masses.at(index);
             auto& chan_widths = _widths.at(index);
             for (auto [factors, mass, width] : mom_terms) {
-                std::vector<int64_t> permuted_factors;
+                std::vector<me_int_t> permuted_factors;
                 for (std::size_t i : perm) {
                     permuted_factors.push_back(factors.at(i));
                 }

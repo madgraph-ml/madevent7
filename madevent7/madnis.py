@@ -59,14 +59,14 @@ class IntegrandDistribution(nn.Module, Distribution):
             channel = self.channel_remap_function(channel)
             channel_perm = torch.argsort(channel)
             x = x[channel_perm]
-            channel = channel.bincount(minlength=self.channel_count)
+            channel = channel.bincount(minlength=self.channel_count).to(torch.int32)
         elif channel is None:
-            channel = torch.tensor([len(x)])
+            channel = torch.tensor([len(x)], dtype=torch.int32)
         else:
             raise NotImplementedError("channel argument type not supported")
 
         prob_args = [
-            xi if is_float else xi[:,0].to(torch.int64)
+            xi if is_float else xi[:,0].to(torch.int32)
             for xi, is_float in zip(x.split(self.latent_dims, dim=1), self.latent_float)
         ]
         prob = self.integrand_prob(*prob_args, channel)
@@ -88,7 +88,7 @@ def build_madnis_integrand(
 
     def integrand_function(channels):
         channel_perm = torch.argsort(channels)
-        channels = channels.bincount(minlength=channel_count)
+        channels = channels.bincount(minlength=channel_count).to(torch.int32)
         (
             full_weight, latent, inv_prob, chan_index, alphas_prior, alpha_selected, y, *rest
         ) = multi_runtime(channels)
@@ -106,7 +106,7 @@ def build_madnis_integrand(
             weight[channel_perm_inv],
             y[channel_perm_inv],
             alphas_prior[channel_perm_inv],
-            chan_index[channel_perm_inv]
+            chan_index[channel_perm_inv].to(torch.int64)
         )
 
     def update_mask(mask: torch.Tensor):

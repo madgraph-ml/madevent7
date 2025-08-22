@@ -127,7 +127,7 @@ py::object madevent_py::tensor_to_dlpack(
         DLDataType dtype;
         switch(tensor.dtype()) {
             case DataType::dt_float: dtype = {kDLFloat, 64, 1}; break;
-            case DataType::dt_int: dtype = {kDLInt, 64, 1}; break;
+            case DataType::dt_int: dtype = {kDLInt, 32, 1}; break;
             default: break;
         }
         ManagerContext* context = new ManagerContext{
@@ -249,7 +249,7 @@ Tensor madevent_py::dlpack_to_tensor(
         }
     } else if (
         dl_tensor->dtype.code == kDLInt &&
-        dl_tensor->dtype.bits == 64 &&
+        dl_tensor->dtype.bits == 32 &&
         dl_tensor->dtype.lanes == 1
     ) {
         dtype = DataType::dt_int;
@@ -260,7 +260,7 @@ Tensor madevent_py::dlpack_to_tensor(
         }
     } else {
         throw std::invalid_argument(std::format(
-            "Argument {}: input dtype must be 64-bit float or int", arg_index + 1
+            "Argument {}: input dtype must be 64-bit float or 32-bit int", arg_index + 1
         ));
     }
 
@@ -299,7 +299,7 @@ Tensor madevent_py::dlpack_to_tensor(
             ));
         }
         std::vector<std::size_t> batch_sizes(count);
-        int64_t* data_ptr = reinterpret_cast<int64_t*>(
+        int* data_ptr = reinterpret_cast<int*>(
             static_cast<uint8_t*>(dl_tensor->data) + dl_tensor->byte_offset
         );
         std::size_t bs_stride = dl_tensor->strides ? dl_tensor->strides[0] : 1;
@@ -314,19 +314,6 @@ Tensor madevent_py::dlpack_to_tensor(
             if (ptr->deleter) ptr->deleter(ptr);
         }
         ret_tensor = {batch_sizes};
-    /*} else if (
-        expected_type &&
-        expected_type->batch_size == BatchSize::one &&
-        expected_type->shape.size() == 0
-    ) {
-        switch(expected_type->dtype) {
-        case DataType::dt_float:
-            return {tensor.item<double>(), device};
-        case DataType::dt_int:
-            return {tensor.item<int64_t>(), device};
-        default:
-            throw std::logic_error("unreachable");
-        }*/
     } else {
         bool is_batch = !expected_type || expected_type->batch_size != BatchSize::one;
         if (expected_type && dl_tensor->ndim != expected_type->shape.size() + is_batch) {

@@ -46,7 +46,7 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
     int n_out = _pids.size();
     std::vector<double> pt_cuts(2 * n_out, 0.), eta_cuts(2 * n_out, 0.);
     std::vector<double> dr_cuts, mass_cuts, sqrt_s_cuts{0., inf};
-    std::vector<int64_t> dr_indices, mass_indices;
+    std::vector<me_int_t> dr_indices, mass_indices;
     for (std::size_t i = n_out; i < 2 * n_out; ++i) {
         pt_cuts.at(i) = inf;
         eta_cuts.at(i) = inf;
@@ -146,11 +146,11 @@ std::vector<double> Cuts::limits(
 }
 
 void Cuts::process_pair_cuts(
-    CutItem cut, std::vector<int64_t>& indices, std::vector<double>& limits, bool& has_cuts
+    CutItem cut, std::vector<me_int_t>& indices, std::vector<double>& limits, bool& has_cuts
 ) const {
     double inf = std::numeric_limits<double>::infinity();
     std::size_t i = 0;
-    std::vector<int64_t> indices2;
+    std::vector<me_int_t> indices2;
     std::vector<double> limits2;
     for (auto pid_i : _pids) {
         std::size_t j = i + 1;

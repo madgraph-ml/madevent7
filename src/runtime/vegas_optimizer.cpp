@@ -94,7 +94,7 @@ void VegasGridOptimizer::optimize() {
 
         // update grid
         double accumulator = 0.;
-        int64_t j_bin = -1;
+        me_int_t j_bin = -1;
         for (std::size_t i_bin = 1; i_bin < n_bins; ++i_bin) {
             while (accumulator < damped_avg) {
                 ++j_bin;

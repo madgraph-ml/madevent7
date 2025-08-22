@@ -102,14 +102,14 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("opcode", &InstrCopy::opcode);
 
     py::classh<Value>(m, "Value")
-        .def(py::init<int64_t>(), py::arg("value"))
+        .def(py::init<me_int_t>(), py::arg("value"))
         .def(py::init<double>(), py::arg("value"))
         .def("__str__", &to_string<Value>)
         .def("__repr__", &to_string<Value>)
         .def_readonly("type", &Value::type)
         .def_readonly("literal_value", &Value::literal_value)
         .def_readonly("local_index", &Value::local_index);
-    py::implicitly_convertible<int64_t, Value>();
+    py::implicitly_convertible<me_int_t, Value>();
     py::implicitly_convertible<double, Value>();
     py::implicitly_convertible<std::string, Value>();
 
@@ -348,10 +348,10 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<MatrixElement, FunctionGenerator>(m, "MatrixElement")
         .def(py::init<std::size_t, std::size_t, bool, std::size_t,
-                      const std::vector<int64_t>&>(),
+                      const std::vector<me_int_t>&>(),
              py::arg("matrix_element_index"), py::arg("particle_count"),
              py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<int64_t>{})
+             py::arg("amp2_remap")=std::vector<me_int_t>{})
         .def("channel_count", &MatrixElement::channel_count)
         .def("particle_count", &MatrixElement::particle_count);
 
@@ -531,10 +531,10 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("fact_scale2"));
 
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<int64_t>>&, std::size_t,
+        .def(py::init<const std::vector<std::vector<me_int_t>>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
                       const EnergyScale&, bool, std::size_t,
-                      const std::vector<int64_t>&, bool>(),
+                      const std::vector<me_int_t>&, bool>(),
              py::arg("pid_options"),
              py::arg("matrix_element_index"),
              py::arg("running_coupling"),
@@ -543,7 +543,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("energy_scale"),
              py::arg("simple_matrix_element")=true,
              py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<int64_t>{},
+             py::arg("amp2_remap")=std::vector<me_int_t>{},
              py::arg("has_mirror")=false)
         .def("pid_options", &DifferentialCrossSection::pid_options);
 

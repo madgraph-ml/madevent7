@@ -20,7 +20,7 @@ void DiscreteOptimizer::add_data(Tensor weights, const std::vector<Tensor>& inpu
     for (auto [prob_name, input, data_item] : zip(_prob_names, inputs, _data)) {
         auto& [weight_sums, counts] = data_item;
         auto input_cpu = input.cpu();
-        auto input_view = input_cpu.view<int64_t, 1>();
+        auto input_view = input_cpu.view<me_int_t, 1>();
         for (std::size_t i = 0; i < weights_view.size(); ++i) {
             auto w = weights_view[i];
             std::size_t index = input_view[i];

@@ -39,8 +39,8 @@ private:
     struct CouplingBlock {
         MLP subnet1;
         MLP subnet2;
-        std::vector<int64_t> indices1;
-        std::vector<int64_t> indices2;
+        std::vector<me_int_t> indices1;
+        std::vector<me_int_t> indices2;
     };
 
     std::vector<CouplingBlock> _coupling_blocks;

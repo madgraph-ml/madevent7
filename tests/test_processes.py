@@ -54,7 +54,7 @@ def permutation_count(process):
 def test_process_masses(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     condition = [] if permutation_count <= 1 else [
-        rng.integers(0, permutation_count, BATCH_SIZE)
+        rng.integers(0, permutation_count, BATCH_SIZE, dtype=np.int32)
     ]
     (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     m_ext_true = np.full((BATCH_SIZE, len(masses)), masses)
@@ -64,7 +64,7 @@ def test_process_masses(mapping, masses, permutation_count):
 def test_process_incoming(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     condition = [] if permutation_count <= 1 else [
-        rng.integers(0, permutation_count, BATCH_SIZE)
+        rng.integers(0, permutation_count, BATCH_SIZE, dtype=np.int32)
     ]
     (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     zeros = np.zeros(BATCH_SIZE)
@@ -83,7 +83,7 @@ def test_process_incoming(mapping, masses, permutation_count):
 def test_process_momentum_conservation(mapping, masses, permutation_count):
     r = rng.random((BATCH_SIZE, mapping.random_dim()))
     condition = [] if permutation_count <= 1 else [
-        rng.integers(0, permutation_count, BATCH_SIZE)
+        rng.integers(0, permutation_count, BATCH_SIZE, dtype=np.int32)
     ]
     (p_ext, x1, x2), det = mapping.map_forward([r], condition)
     p_in = np.sum(p_ext[:, :2], axis=1)

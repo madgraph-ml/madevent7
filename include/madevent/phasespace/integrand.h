@@ -85,14 +85,14 @@ private:
     AdaptiveDiscrete _discrete_after;
     std::optional<PartonDensity> _pdf1;
     std::optional<PartonDensity> _pdf2;
-    std::vector<int64_t> _pdf_indices1;
-    std::vector<int64_t> _pdf_indices2;
+    std::vector<me_int_t> _pdf_indices1;
+    std::vector<me_int_t> _pdf_indices2;
     std::optional<EnergyScale> _energy_scale;
     std::optional<PropagatorChannelWeights> _prop_chan_weights;
     std::optional<ChannelWeightNetwork> _chan_weight_net;
     int _flags;
-    std::vector<int64_t> _channel_indices;
-    int64_t _random_dim;
+    std::vector<me_int_t> _channel_indices;
+    me_int_t _random_dim;
     std::size_t _latent_dim;
     std::vector<double> _active_flavors;
 

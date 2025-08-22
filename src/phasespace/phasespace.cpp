@@ -365,7 +365,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         !std::is_sorted(_permutations.at(0).begin(), _permutations.at(0).end())
     ) {
         p_ext_stack = fb.permute_momenta(
-            p_ext_stack, _permutations, static_cast<int64_t>(0)
+            p_ext_stack, _permutations, static_cast<me_int_t>(0)
         );
     }
 

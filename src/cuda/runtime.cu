@@ -148,7 +148,7 @@ void backward_op_matmul(
 }
 
 struct NotMinusOne {
-    __device__ bool operator()(int64_t val) {
+    __device__ bool operator()(me_int_t val) {
         return val != -1;
     }
 };
@@ -156,9 +156,9 @@ struct NotMinusOne {
 __global__ void kernel_nonzero(
     std::size_t batch_size,
     CudaTensorView<double, 1, true> input,
-    CudaTensorView<int64_t, 1, true> output
+    CudaTensorView<me_int_t, 1, true> output
 ) {
-    int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < batch_size) {
         output[i] = input[i] == 0. ? -1 : i;
     }
@@ -175,14 +175,14 @@ void op_nonzero(
     Tensor output_tmp(DataType::dt_int, {batch_size}, device);
     launch_kernel(
         kernel_nonzero, batch_size, device.stream(),
-        batch_size, input.view<double, 1>(), output_tmp.view<int64_t, 1>()
+        batch_size, input.view<double, 1>(), output_tmp.view<me_int_t, 1>()
     );
 
     auto input_ptr = thrust::device_pointer_cast(
-        static_cast<int64_t*>(input.data())
+        static_cast<me_int_t*>(input.data())
     );
     auto output_ptr = thrust::device_pointer_cast(
-        static_cast<int64_t*>(output_tmp.data())
+        static_cast<me_int_t*>(output_tmp.data())
     );
     cudaStreamSynchronize(device.stream());
     auto count = thrust::copy_if(
@@ -194,7 +194,7 @@ void op_nonzero(
 template<int dim>
 __global__ void batch_gather_kernel(
     std::size_t batch_size,
-    CudaTensorView<int64_t, 1, true> indices,
+    CudaTensorView<me_int_t, 1, true> indices,
     CudaTensorView<double, dim, true> values,
     CudaTensorView<double, dim, true> selection
 ) {
@@ -207,9 +207,9 @@ __global__ void batch_gather_kernel(
 template<int dim>
 __global__ void batch_gather_kernel_int(
     std::size_t batch_size,
-    CudaTensorView<int64_t, 1, true> indices,
-    CudaTensorView<int64_t, dim, true> values,
-    CudaTensorView<int64_t, dim, true> selection
+    CudaTensorView<me_int_t, 1, true> indices,
+    CudaTensorView<me_int_t, dim, true> values,
+    CudaTensorView<me_int_t, dim, true> selection
 ) {
     std::size_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < batch_size) {
@@ -232,7 +232,7 @@ void batch_gather_impl(
             batch_size,
             device.stream(),
             batch_size,
-            indices.view<int64_t, 1>(),
+            indices.view<me_int_t, 1>(),
             values.view<double, dim>(),
             selection.view<double, dim>()
         );
@@ -243,9 +243,9 @@ void batch_gather_impl(
             batch_size,
             device.stream(),
             batch_size,
-            indices.view<int64_t, 1>(),
-            values.view<int64_t, dim>(),
-            selection.view<int64_t, dim>()
+            indices.view<me_int_t, 1>(),
+            values.view<me_int_t, dim>(),
+            selection.view<me_int_t, dim>()
         );
     } else {
         throw std::runtime_error("invalid dtype in batch_gather");
@@ -273,7 +273,7 @@ void op_batch_gather(
 template<int dim>
 __global__ void batch_scatter_kernel(
     std::size_t batch_size,
-    CudaTensorView<int64_t, 1, true> indices,
+    CudaTensorView<me_int_t, 1, true> indices,
     CudaTensorView<double, dim, true> source,
     CudaTensorView<double, dim, true> output
 ) {
@@ -293,7 +293,7 @@ void batch_scatter_impl(
         batch_size,
         device.stream(),
         batch_size,
-        indices.view<int64_t, 1>(),
+        indices.view<me_int_t, 1>(),
         source.view<double, dim>(),
         output.view<double, dim>()
     );
@@ -342,9 +342,9 @@ __global__ void kernel_unweight(
     CudaTensorView<double, 1, true> weights_in,
     CudaTensorView<double, 1, true> max_weights_in,
     CudaTensorView<double, 1, true> weights_out,
-    CudaTensorView<int64_t, 1, true> indices_out
+    CudaTensorView<me_int_t, 1, true> indices_out
 ) {
-    int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i >= batch_size) return;
 
     auto rand = rand_in[i], weight = weights_in[i], max_weight = max_weights_in[i];
@@ -384,16 +384,16 @@ void op_unweight(
         weights.view<double, 1>(),
         max_weight.view<double, 1>(),
         uw_weights_tmp.view<double, 1>(),
-        indices_tmp.view<int64_t, 1>()
+        indices_tmp.view<me_int_t, 1>()
     );
 
     Tensor indices_compacted(DataType::dt_int, {batch_size}, device);
     cudaStreamSynchronize(stream);
     auto ptr_all = thrust::device_pointer_cast(
-        static_cast<int64_t*>(indices_tmp.data())
+        static_cast<me_int_t*>(indices_tmp.data())
     );
     auto ptr_compacted = thrust::device_pointer_cast(
-        static_cast<int64_t*>(indices_compacted.data())
+        static_cast<me_int_t*>(indices_compacted.data())
     );
     auto ptr_compacted_end = thrust::copy_if(
         ptr_all, ptr_all + batch_size, ptr_compacted, NotMinusOne()

@@ -39,7 +39,7 @@ private:
     ) const;
     void process_pair_cuts(
         CutItem cut,
-        std::vector<int64_t>& indices,
+        std::vector<me_int_t>& indices,
         std::vector<double>& limits,
         bool& has_cuts
     ) const;

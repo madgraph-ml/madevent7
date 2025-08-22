@@ -134,8 +134,8 @@ public:
     T* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
-    T gather(int64_t index) const requires (_dim == 1) { return (*this)[index]; }
-    void scatter_add(int64_t index, T value) requires (_dim == 1) {
+    T gather(me_int_t index) const requires (_dim == 1) { return (*this)[index]; }
+    void scatter_add(me_int_t index, T value) requires (_dim == 1) {
         (*this)[index] += value;
     }
 
@@ -251,7 +251,7 @@ public:
     template<ScalarType T>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
-            std::is_same_v<T, int64_t> ? DataType::dt_int : DataType::dt_float,
+            std::is_same_v<T, me_int_t> ? DataType::dt_int : DataType::dt_float,
             {1},
             device
         })
@@ -259,13 +259,13 @@ public:
         auto size = init_stride();
         impl->data = device->allocate(size);
         device->memcpy(impl->data, &value, sizeof(value));
-        if (std::is_same_v<T, int64_t> && value >= 0) impl->batch_sizes.push_back(value);
+        if (std::is_same_v<T, me_int_t> && value >= 0) impl->batch_sizes.push_back(value);
     }
 
     Tensor(TensorValue value, DevicePtr device) :
         impl(new TensorImpl{
             std::visit(Overloaded{
-                [](std::vector<int64_t>) { return DataType::dt_int; },
+                [](std::vector<me_int_t>) { return DataType::dt_int; },
                 [](std::vector<double>) { return DataType::dt_float; },
             }, std::get<1>(value)),
             [&]{
@@ -360,13 +360,13 @@ public:
         check_impl();
         if (impl->batch_sizes.size() > 0) return impl->batch_sizes[0];
         auto cpu_tensor = cpu();
-        return cpu_tensor.view<int64_t, 1>()[0];
+        return cpu_tensor.view<me_int_t, 1>()[0];
     }
 
     std::size_t dtype_size() const {
         check_impl();
         switch (impl->dtype) {
-            case DataType::dt_int: return sizeof(int64_t);
+            case DataType::dt_int: return sizeof(me_int_t);
             case DataType::dt_float: return sizeof(double);
             case DataType::batch_sizes: return 0;
             default: throw std::logic_error("invalid data type");

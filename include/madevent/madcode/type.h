@@ -16,8 +16,10 @@ enum class DataType {
     batch_sizes
 };
 
+using me_int_t = int;
+
 template<typename T>
-concept ScalarType = std::same_as<T, int64_t> || std::same_as<T, double>;
+concept ScalarType = std::same_as<T, me_int_t> || std::same_as<T, double>;
 
 class BatchSize {
 public:
@@ -114,10 +116,10 @@ inline Type batch_four_vec_array(int count) {
 
 using TensorValue = std::tuple<
     std::vector<int>,
-    std::variant<std::vector<int64_t>, std::vector<double>>
+    std::variant<std::vector<me_int_t>, std::vector<double>>
 >; //TODO: make this a class
 
-using LiteralValue = std::variant<int64_t, double, TensorValue, std::monostate>;
+using LiteralValue = std::variant<me_int_t, double, TensorValue, std::monostate>;
 
 struct Value {
     Type type;
@@ -126,7 +128,7 @@ struct Value {
 
     Value() : type(single_float), literal_value(std::monostate{}) {}
 
-    Value(int64_t value) : type(single_int), literal_value(value) {}
+    Value(me_int_t value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
 
     template<ScalarType T>
@@ -154,7 +156,7 @@ struct Value {
     template<ScalarType T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
-            std::is_same_v<T, int64_t> ? DataType::dt_int : DataType::dt_float,
+            std::is_same_v<T, me_int_t> ? DataType::dt_int : DataType::dt_float,
             BatchSize::one,
             shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())} : shape
         },

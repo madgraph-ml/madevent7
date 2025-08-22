@@ -96,8 +96,8 @@ public:
         return value;
     }
 
-    __device__ T gather(int64_t index) const requires (_dim == 1) { return (*this)[index]; }
-    __device__ void scatter_add(int64_t index, T value) requires (_dim == 1) {
+    __device__ T gather(me_int_t index) const requires (_dim == 1) { return (*this)[index]; }
+    __device__ void scatter_add(me_int_t index, T value) requires (_dim == 1) {
         (*this)[index] += value;
     }
 

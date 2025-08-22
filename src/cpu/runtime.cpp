@@ -57,7 +57,7 @@ void op_matrix_element(
         throw std::runtime_error("Incompatible particle count");
     }
     auto mom_ptr = static_cast<double*>(momenta_in.data());
-    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
     device.foreach(
         batch_size,
@@ -111,12 +111,12 @@ void op_matrix_element_multichannel(
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
     auto random_ptr = static_cast<double*>(random_in.data());
-    auto flavor_ptr = static_cast<int64_t*>(flavor_in.data());
+    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
     auto amp2_ptr = static_cast<double*>(amp2_out.data());
-    auto diag_ptr = static_cast<int64_t*>(diagram_out.data());
-    auto color_ptr = static_cast<int64_t*>(color_out.data());
-    auto helicity_ptr = static_cast<int64_t*>(helicity_out.data());
+    auto diag_ptr = static_cast<me_int_t*>(diagram_out.data());
+    auto color_ptr = static_cast<me_int_t*>(color_out.data());
+    auto helicity_ptr = static_cast<me_int_t*>(helicity_out.data());
 
     device.foreach(
         batch_size,
@@ -256,10 +256,10 @@ void op_nonzero(
     auto& output = locals[instruction.output_indices[0]];
     Tensor output_tmp(DataType::dt_int, {batch_size});
     auto input_view_flat = input.flat_view<double, 1>(0);
-    auto output_view_flat = output_tmp.flat_view<int64_t, 1>(0);
+    auto output_view_flat = output_tmp.flat_view<me_int_t, 1>(0);
     device.submit([&output, output_tmp, batch_size, input_view_flat, output_view_flat]() mutable {
         TensorView<double, 1> input_view(input_view_flat);
-        TensorView<int64_t, 1> output_view(output_view_flat);
+        TensorView<me_int_t, 1> output_view(output_view_flat);
         std::size_t count = 0;
         for (std::size_t i = 0; i < batch_size; ++i) {
             if (input_view[i] != 0.) {
@@ -279,7 +279,7 @@ void batch_gather_impl_body(
     device.foreach(
         indices.size(0),
         [&](std::size_t count, std::size_t offset) {
-            auto indices_view = indices.view<int64_t, 1>();
+            auto indices_view = indices.view<me_int_t, 1>();
             auto values_view = values.view<T, dim>();
             auto selection_view = selection.view<T, dim>();
             for (std::size_t i = 0; i < count; ++i) {
@@ -305,7 +305,7 @@ void batch_gather_impl(
         );
     } else if (values.dtype() == DataType::dt_int) {
         selection = Tensor(DataType::dt_int, out_shape, device);
-        batch_gather_impl_body<kernel_copy_int<CpuTypes>, dim, int64_t>(
+        batch_gather_impl_body<kernel_copy_int<CpuTypes>, dim, me_int_t>(
             indices, values, selection, device
         );
     } else {
@@ -337,7 +337,7 @@ void batch_scatter_impl_body(
     device.foreach(
         indices.size(0),
         [&](std::size_t count, std::size_t offset) {
-            auto indices_view = indices.view<int64_t, 1>();
+            auto indices_view = indices.view<me_int_t, 1>();
             auto source_view = source.view<T, dim>();
             auto output_view = output.view<T, dim>();
             for (std::size_t i = 0; i < count; ++i) {
@@ -359,7 +359,7 @@ void batch_scatter_impl(
             indices, source, output, device
         );
     } else if (source.dtype() == DataType::dt_int) {
-        batch_scatter_impl_body<kernel_copy_int<CpuTypes>, dim, int64_t>(
+        batch_scatter_impl_body<kernel_copy_int<CpuTypes>, dim, me_int_t>(
             indices, source, output, device
         );
     } else {
@@ -429,7 +429,7 @@ void op_unweight(
 
     auto weights_view_flat = weights.flat_view<double, 1>(0);
     auto max_weight_view_flat = max_weight.flat_view<double, 1>(0);
-    auto indices_view_flat = indices_tmp.flat_view<int64_t, 1>(0);
+    auto indices_view_flat = indices_tmp.flat_view<me_int_t, 1>(0);
     auto uw_weights_view_flat = uw_weights_tmp.flat_view<double, 1>(0);
     auto& runtime = instruction.runtime;
 
@@ -439,7 +439,7 @@ void op_unweight(
     ]() mutable {
         TensorView<double, 1> weights_view(weights_view_flat);
         TensorView<double, 1> max_weight_view(max_weight_view_flat);
-        TensorView<int64_t, 1> indices_view(indices_view_flat);
+        TensorView<me_int_t, 1> indices_view(indices_view_flat);
         TensorView<double, 1> uw_weights_view(uw_weights_view_flat);
         std::uniform_real_distribution<double> dist;
         auto& rand_gen = runtime.rand_gen(ThreadPool::thread_index());

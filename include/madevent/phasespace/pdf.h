@@ -38,7 +38,7 @@ public:
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
-    std::vector<int64_t> _pid_indices;
+    std::vector<me_int_t> _pid_indices;
     bool _dynamic_pid;
     std::string _prefix;
     std::vector<std::size_t> _logx_shape;

@@ -17,7 +17,7 @@ private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<std::vector<double>> _momentum_factors;
-    std::vector<std::vector<int64_t>> _invariant_indices;
+    std::vector<std::vector<me_int_t>> _invariant_indices;
     std::vector<std::vector<double>> _masses;
     std::vector<std::vector<double>> _widths;
 };

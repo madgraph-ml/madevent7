@@ -5,7 +5,7 @@
 using namespace madevent;
 
 DifferentialCrossSection::DifferentialCrossSection(
-    const std::vector<std::vector<int64_t>>& pid_options,
+    const std::vector<std::vector<me_int_t>>& pid_options,
     std::size_t matrix_element_index,
     const RunningCoupling& running_coupling,
     const std::optional<PdfGrid>& pdf_grid,
@@ -13,7 +13,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     const EnergyScale& energy_scale,
     bool simple_matrix_element,
     std::size_t channel_count,
-    const std::vector<int64_t>& amp2_remap,
+    const std::vector<me_int_t>& amp2_remap,
     bool has_mirror
 ) :
     FunctionGenerator(

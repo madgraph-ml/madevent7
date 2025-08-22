@@ -148,7 +148,7 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                 arg_dtype != DataType::dt_int ||
                 arg_batch_size != BatchSize::one ||
                 arg_shape.size() != 0 ||
-                !std::holds_alternative<int64_t>(arg.literal_value)
+                !std::holds_alternative<me_int_t>(arg.literal_value)
             ) {
                 throw std::invalid_argument(std::format(
                     "{}, argument {}: expected integer constant", name(), i + 1
@@ -160,7 +160,7 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
                     "{}, argument {}: size already defined", name(), i + 1
                 ));
             }
-            variables[var_name] = std::get<int64_t>(arg.literal_value);
+            variables[var_name] = std::get<me_int_t>(arg.literal_value);
             continue;
         }
 
@@ -515,13 +515,13 @@ TypeVec FullInstruction::signature(const ValueVec& args) const {
             arg.type.dtype != DataType::dt_int ||
             arg.type.batch_size != BatchSize::one ||
             arg.type.shape.size() != 0 ||
-            !std::holds_alternative<int64_t>(arg.literal_value)
+            !std::holds_alternative<me_int_t>(arg.literal_value)
         ) {
             throw std::invalid_argument(std::format(
                 "full, argument {}: expected integer constant", arg_index
             ));
         }
-        shape.push_back(std::get<int64_t>(arg.literal_value));
+        shape.push_back(std::get<me_int_t>(arg.literal_value));
         ++arg_index;
     }
 
@@ -560,13 +560,13 @@ TypeVec RqsReshapeInstruction::signature(const ValueVec& args) const {
         bin_count_type.dtype != DataType::dt_int ||
         bin_count_type.batch_size != BatchSize::one ||
         bin_count_type.shape.size() != 0 ||
-        !std::holds_alternative<int64_t>(bin_count_arg.literal_value)
+        !std::holds_alternative<me_int_t>(bin_count_arg.literal_value)
     ) {
         throw std::invalid_argument(std::format(
             "{}, argument 2: expected integer constant", name()
         ));
     }
-    int bin_count = std::get<int64_t>(bin_count_arg.literal_value);
+    int bin_count = std::get<me_int_t>(bin_count_arg.literal_value);
 
     auto& input_type = args.at(0).type;
     if (
@@ -659,13 +659,13 @@ TypeVec RandomInstruction::signature(const ValueVec& args) const {
         count_type.dtype != DataType::dt_int ||
         count_type.batch_size != BatchSize::one ||
         count_type.shape.size() != 0 ||
-        !std::holds_alternative<int64_t>(count_arg.literal_value)
+        !std::holds_alternative<me_int_t>(count_arg.literal_value)
     ) {
         throw std::invalid_argument(std::format(
             "{}, argument 2: expected integer constant", name()
         ));
     }
-    int count = std::get<int64_t>(count_arg.literal_value);
+    int count = std::get<me_int_t>(count_arg.literal_value);
     return {{DataType::dt_float, batch_size_type.batch_size_list.at(0), {count}}};
 }
 

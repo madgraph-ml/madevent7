@@ -62,7 +62,7 @@ private:
     > _t_mapping;
     std::vector<std::variant<TwoParticleDecay, FastRamboMapping>> _s_decays;
     std::optional<Luminosity> _luminosity;
-    std::vector<std::vector<int64_t>> _permutations;
+    std::vector<std::vector<me_int_t>> _permutations;
 };
 
 }

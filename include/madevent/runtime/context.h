@@ -10,10 +10,10 @@
 namespace madevent {
 
 struct SubProcessInfo {
-    uint8_t on_gpu;
-    uint64_t particle_count;
-    uint64_t diagram_count;
-    uint64_t helicity_count;
+    bool on_gpu;
+    std::size_t particle_count;
+    std::size_t diagram_count;
+    std::size_t helicity_count;
 };
 
 class MatrixElementApi {
@@ -43,11 +43,11 @@ private:
     SubProcessInfo _subprocess_info;
     void* (*_init_subprocess)(const char*);
     void (*_compute_matrix_element)(
-        void*, uint64_t, uint64_t, const double*, const int64_t*, double*
+        void*, std::size_t, std::size_t, const double*, const int*, double*
     );
     void (*_compute_matrix_element_multichannel)(
-        void*, uint64_t, uint64_t, const double*, const double*, const double*,
-        const int64_t*, double*, double*, int64_t*, int64_t*, int64_t*
+        void*, std::size_t, std::size_t, const double*, const double*, const double*,
+        const int*, double*, double*, int*, int*, int*
     );
     void (*_free_subprocess)(void*);
     using InstanceType = std::unique_ptr<void, std::function<void(void*)>>;

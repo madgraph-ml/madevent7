@@ -16,7 +16,7 @@ struct FVec {
 struct IVec {
     IVec() = default;
     IVec(int64x2_t _v) : v(_v) {};
-    IVec(int64_t _v) : v(vdupq_n_s64(_v)) {};
+    IVec(int _v) : v(vdupq_n_s64(_v)) {};
     explicit IVec(float64x2_t _v) : v(vcvtq_s64_f64(_v)) {};
     operator int64x2_t() { return v; }
     IVec operator+=(IVec _v) { v = vaddq_s64(v, _v); return v; }
@@ -42,7 +42,7 @@ inline FVec vgather(
 }
 
 inline IVec vgather(
-    int64_t* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices
+    int* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices
 ) {
     IVec ret;
     IVec strided_indices = indices * IVec(index_stride);
@@ -58,7 +58,7 @@ inline FVec vload(double* base_ptr, std::size_t stride) {
     return ret;
 }
 
-inline IVec vload(int64_t* base_ptr, std::size_t stride) {
+inline IVec vload(int* base_ptr, std::size_t stride) {
     IVec ret;
     ret = vsetq_lane_s64(base_ptr[0], ret, 0);
     ret = vsetq_lane_s64(base_ptr[stride], ret, 1);
@@ -74,7 +74,7 @@ inline void vscatter(
 }
 
 inline void vscatter(
-    int64_t* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, IVec values
+    int* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, IVec values
 ) {
     IVec strided_indices = indices * IVec(index_stride);
     base_ptr[vgetq_lane_s64(strided_indices, 0)] = vgetq_lane_s64(values, 0);
@@ -86,7 +86,7 @@ inline void vstore(double* base_ptr, std::size_t stride, FVec values) {
     base_ptr[stride] = vgetq_lane_f64(values, 1);
 }
 
-inline void vstore(int64_t* base_ptr, std::size_t stride, IVec values) {
+inline void vstore(me_int_t* base_ptr, std::size_t stride, IVec values) {
     base_ptr[0] = vgetq_lane_s64(values, 0);
     base_ptr[stride] = vgetq_lane_s64(values, 1);
 }
