@@ -71,6 +71,7 @@ public:
     void tensor_add(const Tensor& source, Tensor& target) const;
     void tensor_cpu(const Tensor& source, Tensor& target) const;
     DevicePtr device_ptr() const { return &CudaDevice::instance(); }
+    void sync_barrier() const {};
     cudaStream_t stream() const { return _stream; }
 
 private:

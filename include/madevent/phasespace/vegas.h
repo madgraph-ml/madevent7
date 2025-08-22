@@ -11,6 +11,7 @@ public:
         std::size_t dimension, std::size_t bin_count, const std::string& prefix = ""
     ) :
         Mapping(
+            "VegasMapping",
             {batch_float_array(dimension)},
             {batch_float_array(dimension)},
             {}

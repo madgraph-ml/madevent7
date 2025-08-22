@@ -68,8 +68,8 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("scale_half_transverse_mass", &FunctionBuilder::scale_half_transverse_mass, py::arg("momenta"));
     fb.def("scale_partonic_energy", &FunctionBuilder::scale_partonic_energy, py::arg("momenta"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
-    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("flavor"), py::arg("mirror"), py::arg("index"));
-    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("mirror"), py::arg("index"), py::arg("diagram_count"));
+    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("flavor"), py::arg("index"));
+    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("index"), py::arg("diagram_count"));
     fb.def("collect_channel_weights", &FunctionBuilder::collect_channel_weights, py::arg("amp2"), py::arg("channel_indices"), py::arg("channel_count"));
     fb.def("interpolate_pdf", &FunctionBuilder::interpolate_pdf, py::arg("x"), py::arg("q2"), py::arg("pid_indices"), py::arg("grid_logx"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("interpolate_alpha_s", &FunctionBuilder::interpolate_alpha_s, py::arg("q2"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
@@ -97,7 +97,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
     fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
     fb.def("batch_gather", &FunctionBuilder::batch_gather, py::arg("indices"), py::arg("values"));
-    fb.def("scatter", &FunctionBuilder::scatter, py::arg("indices"), py::arg("target"), py::arg("source"));
+    fb.def("batch_scatter", &FunctionBuilder::batch_scatter, py::arg("indices"), py::arg("target"), py::arg("source"));
     fb.def("random", &FunctionBuilder::random, py::arg("batch_size"), py::arg("count"));
     fb.def("unweight", &FunctionBuilder::unweight, py::arg("weights"), py::arg("max_weight"));
     fb.def("vegas_forward", &FunctionBuilder::vegas_forward, py::arg("input"), py::arg("grid"));

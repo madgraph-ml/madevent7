@@ -101,7 +101,11 @@ MLP::MLP(
     Activation activation,
     const std::string& prefix
 ) :
-    FunctionGenerator({batch_float_array(input_dim)}, {batch_float_array(output_dim)}),
+    FunctionGenerator(
+        "MLP",
+        {batch_float_array(input_dim)},
+        {batch_float_array(output_dim)}
+    ),
     _input_dim(input_dim),
     _output_dim(output_dim),
     _hidden_dim(hidden_dim),

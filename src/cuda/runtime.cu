@@ -271,7 +271,7 @@ void op_batch_gather(
 }
 
 template<int dim>
-__global__ void scatter_kernel(
+__global__ void batch_scatter_kernel(
     std::size_t batch_size,
     CudaTensorView<int64_t, 1, true> indices,
     CudaTensorView<double, dim, true> source,
@@ -284,12 +284,12 @@ __global__ void scatter_kernel(
 }
 
 template<int dim>
-void scatter_impl(
+void batch_scatter_impl(
     Tensor& indices, Tensor& source, Tensor& output, const AsyncCudaDevice& device
 ) {
     auto batch_size = indices.size(0);
     launch_kernel(
-        scatter_kernel<dim>,
+        batch_scatter_kernel<dim>,
         batch_size,
         device.stream(),
         batch_size,
@@ -299,7 +299,7 @@ void scatter_impl(
     );
 }
 
-void op_scatter(
+void op_batch_scatter(
     const CudaRuntime::Instruction& instruction,
     TensorVec& locals,
     const AsyncCudaDevice& device
@@ -311,10 +311,10 @@ void op_scatter(
     auto& output = locals[instruction.output_indices[0]];
     output = target.copy(device);
     switch (target.shape().size()) {
-        case 1: scatter_impl<1>(indices, source, output, device); break;
-        case 2: scatter_impl<2>(indices, source, output, device); break;
-        case 3: scatter_impl<3>(indices, source, output, device); break;
-        case 4: scatter_impl<4>(indices, source, output, device); break;
+        case 1: batch_scatter_impl<1>(indices, source, output, device); break;
+        case 2: batch_scatter_impl<2>(indices, source, output, device); break;
+        case 3: batch_scatter_impl<3>(indices, source, output, device); break;
+        case 4: batch_scatter_impl<4>(indices, source, output, device); break;
         default:
             throw std::runtime_error("The number of dimensions must be between 1 and 4");
     }

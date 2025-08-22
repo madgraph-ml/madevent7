@@ -2,6 +2,16 @@
 
 #include "madevent/util.h"
 
+#define CATCH_ONE_ERROR(etype, name) catch (const etype& e) { handle_errors(e, name); }
+#define CATCH_ERRORS(name) \
+    CATCH_ONE_ERROR(std::invalid_argument, name) \
+    CATCH_ONE_ERROR(std::domain_error, name) \
+    CATCH_ONE_ERROR(std::length_error, name) \
+    CATCH_ONE_ERROR(std::out_of_range, name) \
+    CATCH_ONE_ERROR(std::logic_error, name) \
+    CATCH_ONE_ERROR(std::range_error, name) \
+    CATCH_ONE_ERROR(std::runtime_error, name)
+
 using namespace madevent;
 
 namespace {
@@ -31,28 +41,43 @@ void check_types(
     }
 }
 
+template<typename T>
+[[noreturn]] void handle_errors(const T& e, const std::string& name) {
+    std::string message(e.what());
+    if (auto in_pos = message.find("[in "); in_pos != std::string::npos) {
+        message.insert(in_pos + 4, std::format("{} > ", name));
+    } else {
+        message.append(std::format("\n [in {}]", name));
+    }
+    throw T(message);
+}
+
 }
 
 Mapping::Result Mapping::build_forward(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    check_types(inputs, _input_types, "Input");
-    check_types(conditions, _condition_types, "Condition");
-    auto [outputs, det] = build_forward_impl(fb, inputs, conditions);
-    check_types(outputs, _output_types, "Output");
-    check_types({det}, {batch_float}, "Determinant");
-    return {outputs, det};
+    try {
+        check_types(inputs, _input_types, "Input");
+        check_types(conditions, _condition_types, "Condition");
+        auto [outputs, det] = build_forward_impl(fb, inputs, conditions);
+        check_types(outputs, _output_types, "Output");
+        check_types({det}, {batch_float}, "Determinant");
+        return {outputs, det};
+    } CATCH_ERRORS(name());
 }
 
 Mapping::Result Mapping::build_inverse(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    check_types(inputs, _output_types, "Input");
-    check_types(conditions, _condition_types, "Condition");
-    auto [outputs, det] = build_inverse_impl(fb, inputs, conditions);
-    check_types(outputs, _input_types, "Output");
-    check_types({det}, {batch_float}, "Determinant");
-    return {outputs, det};
+    try {
+        check_types(inputs, _output_types, "Input");
+        check_types(conditions, _condition_types, "Condition");
+        auto [outputs, det] = build_inverse_impl(fb, inputs, conditions);
+        check_types(outputs, _input_types, "Output");
+        check_types({det}, {batch_float}, "Determinant");
+        return {outputs, det};
+    } CATCH_ERRORS(name());
 }
 
 Function Mapping::forward_function() const {
@@ -90,10 +115,12 @@ Function Mapping::inverse_function() const {
 ValueVec FunctionGenerator::build_function(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
-    check_types(args, _arg_types, "Argument");
-    auto outputs = build_function_impl(fb, args);
-    check_types(outputs, _return_types, "Output");
-    return outputs;
+    try {
+        check_types(args, _arg_types, "Argument");
+        auto outputs = build_function_impl(fb, args);
+        check_types(outputs, _return_types, "Output");
+        return outputs;
+    } CATCH_ERRORS(name());
 }
 
 Function FunctionGenerator::function() const {

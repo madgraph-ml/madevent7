@@ -254,7 +254,7 @@ case 83:
     op_batch_gather(instr, locals, device);
     break;
 case 84:
-    op_scatter(instr, locals, device);
+    op_batch_scatter(instr, locals, device);
     break;
 case 85:
     op_random(instr, locals, device);

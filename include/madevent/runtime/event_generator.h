@@ -57,8 +57,8 @@ public:
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;
-        double max_overweight_fraction = 0.01;
         double max_overweight_truncation = 0.01;
+        std::size_t freeze_max_weight_after = 10000;
         std::size_t start_batch_size = 1000;
         std::size_t max_batch_size = 64000;
         std::size_t survey_min_iters = 3;
@@ -66,7 +66,6 @@ public:
         double survey_target_precision = 0.1;
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
-        double discrete_damping = 0.33;
         std::size_t batch_size = 1000;
     };
     static const Config default_config;

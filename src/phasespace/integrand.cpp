@@ -8,6 +8,7 @@ using namespace madevent;
 
 Unweighter::Unweighter(const TypeVec& types) :
     FunctionGenerator(
+        "Unweighter",
         [&] {
             auto arg_types = types;
             arg_types.push_back(single_float);
@@ -43,6 +44,7 @@ Integrand::Integrand(
     const std::vector<std::size_t>& active_flavors
 ) :
     FunctionGenerator(
+        "Integrand",
         [&] {
             TypeVec arg_types;
             if (flags & sample) {
@@ -298,10 +300,10 @@ ValueVec Integrand::build_function_impl(
     if (has_pdf_prior) {
         auto scales = _energy_scale.value().build_function(fb, {momenta_acc});
         auto pdf1 = _pdf1.value().build_function(
-            fb, {x1_acc, fb.square(scales.at(1))}
+            fb, {x1_acc, scales.at(1)}
         ).at(0);
         auto pdf2 = _pdf2.value().build_function(
-            fb, {x2_acc, fb.square(scales.at(2))}
+            fb, {x2_acc, scales.at(2)}
         ).at(0);
         pdf_prior = fb.mul(
             fb.select(pdf1, _pdf_indices1), fb.select(pdf2, _pdf_indices2)
@@ -353,7 +355,7 @@ ValueVec Integrand::build_function_impl(
                 flavor_id = index_vec.at(0);
                 weights_after_cuts.push_back(flavor_det);
                 auto ones = fb.full({1., batch_size});
-                adaptive_probs.push_back(fb.scatter(indices_acc, ones, flavor_det));
+                adaptive_probs.push_back(fb.batch_scatter(indices_acc, ones, flavor_det));
             }
         }, _discrete_after);
     }
@@ -392,7 +394,7 @@ ValueVec Integrand::build_function_impl(
     } else {
         selected_chan_weight_acc = 1.;
     }
-    weight = fb.mul(weight, fb.scatter(indices_acc, weight, fb.product(weights_after_cuts)));
+    weight = fb.mul(weight, fb.batch_scatter(indices_acc, weight, fb.product(weights_after_cuts)));
 
     // return results based on _flags
     ValueVec outputs{weight};
@@ -423,8 +425,8 @@ ValueVec Integrand::build_function_impl(
         });
         auto ones = fb.full({1., batch_size});
         if (has_multi_channel) {
-            outputs.push_back(fb.scatter(indices_acc, cw_flat, prior_chan_weights_acc));
-            outputs.push_back(fb.scatter(indices_acc, ones, selected_chan_weight_acc));
+            outputs.push_back(fb.batch_scatter(indices_acc, cw_flat, prior_chan_weights_acc));
+            outputs.push_back(fb.batch_scatter(indices_acc, ones, selected_chan_weight_acc));
         } else {
             outputs.push_back(cw_flat);
             outputs.push_back(ones);
@@ -436,7 +438,7 @@ ValueVec Integrand::build_function_impl(
             fb, {momenta_acc, x1_acc, x2_acc}
         ).at(0);
         auto zeros = fb.full({0., batch_size, static_cast<int64_t>(preproc.output_dim())});
-        outputs.push_back(fb.scatter(indices_acc, zeros, cw_preproc_acc));
+        outputs.push_back(fb.batch_scatter(indices_acc, zeros, cw_preproc_acc));
     }
     if (_flags & return_discrete) {
         if (has_permutations && !std::holds_alternative<std::monostate>(_discrete_before)) {
@@ -444,7 +446,7 @@ ValueVec Integrand::build_function_impl(
         }
         if (has_multi_flavor && !std::holds_alternative<std::monostate>(_discrete_after)) {
             auto zeros = fb.full({static_cast<int64_t>(0), batch_size});
-            outputs.push_back(fb.scatter(indices_acc, zeros, flavor_id));
+            outputs.push_back(fb.batch_scatter(indices_acc, zeros, flavor_id));
         }
     }
     if (_flags & return_discrete_latent) {
@@ -457,13 +459,13 @@ ValueVec Integrand::build_function_impl(
             !std::holds_alternative<std::monostate>(_discrete_after)
         ) {
             auto zeros = fb.full({static_cast<int64_t>(0), batch_size});
-            outputs.push_back(fb.scatter(indices_acc, zeros, flavor_id));
+            outputs.push_back(fb.batch_scatter(indices_acc, zeros, flavor_id));
             if (has_pdf_prior) {
                 auto flav_count = _diff_xs.pid_options().size();
                 auto norm = fb.full({
                     1. / flav_count, batch_size, static_cast<int64_t>(flav_count)
                 });
-                outputs.push_back(fb.scatter(indices_acc, norm, pdf_prior));
+                outputs.push_back(fb.batch_scatter(indices_acc, norm, pdf_prior));
             }
         }
     }
@@ -480,6 +482,7 @@ ValueVec Integrand::build_function_impl(
 
 IntegrandProbability::IntegrandProbability(const Integrand& integrand) :
     FunctionGenerator(
+        "IntegrandProbability",
         [&] {
             TypeVec arg_types {
                 batch_float_array(integrand._mapping.random_dim()),

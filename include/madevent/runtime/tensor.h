@@ -259,6 +259,7 @@ public:
         auto size = init_stride();
         impl->data = device->allocate(size);
         device->memcpy(impl->data, &value, sizeof(value));
+        if (std::is_same_v<T, int64_t> && value >= 0) impl->batch_sizes.push_back(value);
     }
 
     Tensor(TensorValue value, DevicePtr device) :
@@ -355,6 +356,12 @@ public:
     DataType dtype() const { check_impl(); return impl->dtype; }
     const SizeVec& batch_sizes() const { check_impl(); return impl->batch_sizes; }
     DevicePtr device() const { check_impl(); return impl->device; }
+    std::size_t index_value() const {
+        check_impl();
+        if (impl->batch_sizes.size() > 0) return impl->batch_sizes[0];
+        auto cpu_tensor = cpu();
+        return cpu_tensor.view<int64_t, 1>()[0];
+    }
 
     std::size_t dtype_size() const {
         check_impl();

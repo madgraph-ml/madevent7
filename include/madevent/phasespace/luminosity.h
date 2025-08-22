@@ -12,7 +12,12 @@ public:
         double s_lab, double s_hat_min, double s_hat_max = 0,
         double invariant_power = 1, double mass = 0, double width = 0
     ) :
-        Mapping({batch_float, batch_float}, {batch_float, batch_float, batch_float}, {}),
+        Mapping(
+            "Luminosity",
+            {batch_float, batch_float},
+            {batch_float, batch_float, batch_float},
+            {}
+        ),
         _s_lab(s_lab),
         _s_hat_min(s_hat_min),
         _s_hat_max(s_hat_max == 0 ? s_lab : s_hat_max),

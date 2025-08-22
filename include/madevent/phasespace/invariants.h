@@ -8,7 +8,7 @@ namespace madevent {
 class Invariant : public Mapping {
 public:
     Invariant(double power = 0, double mass = 0, double width = 0) :
-        Mapping({batch_float}, {batch_float}, {batch_float, batch_float}),
+        Mapping("Invariant", {batch_float}, {batch_float}, {batch_float, batch_float}),
         _power(power), _mass(mass), _width(width) {}
 
 private:

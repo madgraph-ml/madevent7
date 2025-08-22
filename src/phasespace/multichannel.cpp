@@ -6,6 +6,7 @@ MultiChannelMapping::MultiChannelMapping(
     const std::vector<std::shared_ptr<Mapping>>& mappings
 ) :
     Mapping(
+        "MultiChannelMapping",
         mappings.at(0)->input_types(),
         mappings.at(0)->output_types(),
         [&] {
@@ -84,6 +85,7 @@ MultiChannelFunction::MultiChannelFunction(
     const std::vector<std::shared_ptr<FunctionGenerator>>& functions
 ) :
     FunctionGenerator(
+        "MultiChannelFunction",
         [&] {
             TypeVec arg_types;
             for (auto& arg_type : functions.at(0)->arg_types()) {

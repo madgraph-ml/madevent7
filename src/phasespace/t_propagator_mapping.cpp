@@ -9,6 +9,7 @@ TPropagatorMapping::TPropagatorMapping(
     double invariant_power
 ) :
     Mapping(
+        "TPropagatorMapping",
         TypeVec(4 * integration_order.size() + 1, batch_float),
         TypeVec(integration_order.size() + 3, batch_four_vec),
         {}

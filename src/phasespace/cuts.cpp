@@ -29,6 +29,7 @@ const Cuts::PidVec Cuts::photon_pids {22};
 
 Cuts::Cuts(std::vector<int> pids, std::vector<CutItem> cut_data) :
     FunctionGenerator(
+        "Cuts",
         {batch_float, batch_four_vec_array(pids.size() + 2)},
         {batch_float}
     ),

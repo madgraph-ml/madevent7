@@ -8,6 +8,7 @@ using namespace madevent;
 
 FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
     Mapping(
+        "FastRamboMapping",
         [&] {
             TypeVec input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float);
             if (!_com) {

@@ -68,9 +68,7 @@ EventGenerator::EventGenerator(
         std::visit(add_names, channel.discrete_after());
         std::optional<DiscreteOptimizer> discrete_optimizer;
         if (prob_names.size() > 0) {
-            discrete_optimizer = DiscreteOptimizer(
-                context, prob_names, config.discrete_damping
-            );
+            discrete_optimizer = DiscreteOptimizer(context, prob_names);
         }
         _channels.push_back({
             i,
@@ -363,6 +361,8 @@ void EventGenerator::clear_channel(ChannelState& channel) {
 }
 
 void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
+    if (channel.eff_count > _config.freeze_max_weight_after) return;
+
     auto w_view = weights.view<double,1>();
     double chan_max_weight = _max_weight * channel.integral_fraction;
     double w_min_nonzero = 0.;

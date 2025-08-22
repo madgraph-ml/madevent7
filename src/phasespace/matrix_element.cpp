@@ -10,6 +10,7 @@ MatrixElement::MatrixElement(
     const std::vector<int64_t>& amp2_remap
 ) :
     FunctionGenerator(
+        "MatrixElement",
         [&] {
             TypeVec arg_types {
                 batch_four_vec_array(particle_count),
@@ -36,15 +37,14 @@ ValueVec MatrixElement::build_function_impl(
 ) const {
     auto momenta = args.at(0);
     auto flavor = args.at(1);
-    Value mirror = static_cast<int64_t>(0); //TODO: remove
     if (_simple_matrix_element) {
-        return {fb.matrix_element(momenta, flavor, mirror, _matrix_element_index)};
+        return {fb.matrix_element(momenta, flavor, _matrix_element_index)};
     } else {
         auto alpha_s = args.at(2);
-        auto batch_size = fb.batch_size({momenta, alpha_s, flavor, mirror});
+        auto batch_size = fb.batch_size({momenta, alpha_s, flavor});
         auto random = fb.random(batch_size, static_cast<int64_t>(3));
         auto [me, amp2, diagram_id, color_id, helicity_id] = fb.matrix_element_multichannel(
-            momenta, alpha_s, random, flavor, mirror, _matrix_element_index,
+            momenta, alpha_s, random, flavor, _matrix_element_index,
             static_cast<int64_t>(_amp2_remap.size())
         );
         auto channel_weights = fb.collect_channel_weights(amp2, _amp2_remap, _channel_count);

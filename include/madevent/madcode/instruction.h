@@ -161,10 +161,10 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
-class ScatterInstruction : public Instruction {
+class BatchScatterInstruction : public Instruction {
 public:
-    ScatterInstruction(int opcode, bool differentiable) :
-        Instruction("scatter", opcode, differentiable) {}
+    BatchScatterInstruction(int opcode, bool differentiable) :
+        Instruction("batch_scatter", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 

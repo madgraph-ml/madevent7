@@ -15,6 +15,7 @@ DiscreteFlow::DiscreteFlow(
     MLP::Activation subnet_activation
 ) :
     Mapping(
+        "DiscreteFlow",
         TypeVec(option_counts.size(), batch_float),
         TypeVec(option_counts.size(), batch_int),
         [&] {

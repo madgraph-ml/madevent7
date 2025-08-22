@@ -10,6 +10,7 @@ PropagatorChannelWeights::PropagatorChannelWeights(
     const std::vector<std::vector<std::size_t>> channel_indices
 ) :
     FunctionGenerator(
+        "PropagatorChannelWeights",
         {batch_four_vec_array(topologies.at(0).outgoing_masses().size() + 2)},
         {batch_float_array([&](){
             std::size_t channel_count = 0;

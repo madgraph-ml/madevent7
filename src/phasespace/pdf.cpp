@@ -333,6 +333,7 @@ PartonDensity::PartonDensity(
     const std::string& prefix
 ) :
     FunctionGenerator(
+        "PartonDensity",
         dynamic_pid ?
             TypeVec{batch_float, batch_float, batch_int} :
             TypeVec{batch_float, batch_float},
@@ -539,7 +540,7 @@ void AlphaSGrid::initialize_globals(ContextPtr context, const std::string& prefi
 RunningCoupling::RunningCoupling(
     const AlphaSGrid& grid, const std::string& prefix
 ) :
-    FunctionGenerator({batch_float}, {batch_float}),
+    FunctionGenerator("RunningCoupling", {batch_float}, {batch_float}),
     _prefix(prefix),
     _logq2_shape(grid.logq2_shape()),
     _coeffs_shape(grid.coefficients_shape())

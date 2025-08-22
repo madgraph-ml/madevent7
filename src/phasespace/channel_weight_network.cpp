@@ -4,6 +4,7 @@ using namespace madevent;
 
 MomentumPreprocessing::MomentumPreprocessing(std::size_t particle_count) :
     FunctionGenerator(
+        "MomentumPreprocessing",
         {batch_four_vec_array(particle_count), batch_float, batch_float},
         {batch_float_array(3 * (particle_count - 2) + 2)}
     ),
@@ -25,6 +26,7 @@ ChannelWeightNetwork::ChannelWeightNetwork(
     const std::string& prefix
 ) :
     FunctionGenerator(
+        "ChannelWeightNetwork",
         {
             batch_four_vec_array(particle_count),
             batch_float,

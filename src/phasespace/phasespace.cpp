@@ -70,6 +70,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     const std::vector<std::vector<std::size_t>>& permutations
 ) :
     Mapping(
+        "PhaseSpaceMapping",
         {batch_float_array(3 * topology.outgoing_masses().size() - (leptonic ? 4 : 2))},
         {
             batch_four_vec_array(topology.outgoing_masses().size() + 2),

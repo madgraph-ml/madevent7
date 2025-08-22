@@ -8,6 +8,7 @@ namespace madevent {
 class TwoParticleDecay : public Mapping {
 public:
     TwoParticleDecay(bool com) : Mapping(
+        "TwoParticleDecay",
         [&] {
             TypeVec input_types(5, batch_float);
             if (!com) {
@@ -38,6 +39,7 @@ public:
         bool com, double invariant_power = 0, double mass = 0, double width = 0
     ) :
         Mapping(
+            "TwoParticleScattering",
             {batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},
             {batch_four_vec, batch_four_vec}

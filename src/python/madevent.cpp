@@ -196,6 +196,9 @@ PYBIND11_MODULE(_madevent_py, m) {
     add_instructions(fb);
 
     py::classh<Mapping, PyMapping>(m, "Mapping", py::dynamic_attr())
+        .def(py::init<const std::string&, const TypeVec&, const TypeVec&, const TypeVec&>(),
+             py::arg("name"), py::arg("input_types"),
+             py::arg("output_types"), py::arg("condition_types"))
         .def("forward_function", &Mapping::forward_function)
         .def("inverse_function", &Mapping::inverse_function)
         .def("build_forward", &Mapping::build_forward,
@@ -238,8 +241,8 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<FunctionGenerator, PyFunctionGenerator>(
              m, "FunctionGenerator", py::dynamic_attr())
-        .def(py::init<TypeVec, TypeVec>(),
-             py::arg("arg_types"), py::arg("return_types"))
+        .def(py::init<const std::string&, const TypeVec&, const TypeVec&>(),
+             py::arg("name"), py::arg("arg_types"), py::arg("return_types"))
         .def("function", &FunctionGenerator::function)
         .def("build_function", &FunctionGenerator::build_function,
              py::arg("builder"), py::arg("args"));
@@ -466,8 +469,8 @@ PYBIND11_MODULE(_madevent_py, m) {
                 );
              }, py::arg("weights"), py::arg("inputs"))
         .def("optimize", &DiscreteOptimizer::optimize)
-        .def(py::init<ContextPtr, const std::vector<std::string>&, double>(),
-             py::arg("context"), py::arg("prob_names"), py::arg("damping"));
+        .def(py::init<ContextPtr, const std::vector<std::string>&>(),
+             py::arg("context"), py::arg("prob_names"));
 
     py::classh<PdfGrid>(m, "PdfGrid")
         .def(py::init<const std::string&>(), py::arg("file"))
@@ -602,10 +605,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<>())
         .def_readwrite("target_count", &EventGenerator::Config::target_count)
         .def_readwrite("vegas_damping", &EventGenerator::Config::vegas_damping)
-        .def_readwrite("max_overweight_fraction",
-                       &EventGenerator::Config::max_overweight_fraction)
         .def_readwrite("max_overweight_truncation",
                        &EventGenerator::Config::max_overweight_truncation)
+        .def_readwrite("freeze_max_weight_after",
+                       &EventGenerator::Config::freeze_max_weight_after)
         .def_readwrite("start_batch_size", &EventGenerator::Config::start_batch_size)
         .def_readwrite("max_batch_size", &EventGenerator::Config::max_batch_size)
         .def_readwrite("survey_min_iters", &EventGenerator::Config::survey_min_iters)
@@ -616,7 +619,6 @@ PYBIND11_MODULE(_madevent_py, m) {
                        &EventGenerator::Config::optimization_patience)
         .def_readwrite("optimization_threshold",
                        &EventGenerator::Config::optimization_threshold)
-        .def_readwrite("discrete_damping", &EventGenerator::Config::discrete_damping)
         .def_readwrite("batch_size", &EventGenerator::Config::batch_size);
     py::classh<EventGenerator::Status>(m, "EventGeneratorStatus")
         .def(py::init<>())

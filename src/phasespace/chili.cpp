@@ -8,6 +8,7 @@ ChiliMapping::ChiliMapping(
     std::size_t _n_particles, const std::vector<double>& _y_max, const std::vector<double>& _pt_min
 ) :
     Mapping(
+        "ChiliMapping",
         TypeVec(4 * _n_particles - 1, batch_float),
         [&] {
             TypeVec output_types(_n_particles + 2, batch_four_vec);

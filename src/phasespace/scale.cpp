@@ -12,6 +12,7 @@ EnergyScale::EnergyScale(
     double fact_scale2
 ) :
     FunctionGenerator(
+        "EnergyScale",
         {batch_four_vec_array(particle_count)},
         {batch_float, batch_float, batch_float}
     ),
@@ -26,7 +27,7 @@ ValueVec EnergyScale::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
     if (_ren_scale_fixed && _fact_scale_fixed) {
-        return {_ren_scale, _fact_scale1, _fact_scale2};
+        return {_ren_scale * _ren_scale, _fact_scale1 * _fact_scale1, _fact_scale2 * _fact_scale2};
     }
     auto momenta = args.at(0);
     Value scale;
@@ -47,8 +48,8 @@ ValueVec EnergyScale::build_function_impl(
         throw std::runtime_error("invalid dynamical scale type");
     }
     return {
-        _ren_scale_fixed ? _ren_scale : scale,
-        _fact_scale_fixed ? _fact_scale1 : scale,
-        _fact_scale_fixed ? _fact_scale2 : scale
+        _ren_scale_fixed ? _ren_scale * _ren_scale : scale,
+        _fact_scale_fixed ? _fact_scale1 * _fact_scale1 : scale,
+        _fact_scale_fixed ? _fact_scale2 * _fact_scale2 : scale
     };
 }

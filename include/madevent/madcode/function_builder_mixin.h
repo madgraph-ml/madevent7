@@ -244,12 +244,12 @@ std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_mi
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-Value matrix_element(Value momenta, Value flavor, Value mirror, Value index) {
-    return instruction("matrix_element", {momenta, flavor, mirror, index})[0];
+Value matrix_element(Value momenta, Value flavor, Value index) {
+    return instruction("matrix_element", {momenta, flavor, index})[0];
 }
 
-std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value mirror, Value index, Value diagram_count) {
-    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, mirror, index, diagram_count});
+std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value index, Value diagram_count) {
+    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, index, diagram_count});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3], output_vector[4]};
 }
 
@@ -368,8 +368,8 @@ Value batch_gather(Value indices, Value values) {
     return instruction("batch_gather", {indices, values})[0];
 }
 
-Value scatter(Value indices, Value target, Value source) {
-    return instruction("scatter", {indices, target, source})[0];
+Value batch_scatter(Value indices, Value target, Value source) {
+    return instruction("batch_scatter", {indices, target, source})[0];
 }
 
 Value random(Value batch_size, Value count) {

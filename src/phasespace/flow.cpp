@@ -158,6 +158,7 @@ Flow::Flow(
     bool invert_spline
 ) :
     Mapping(
+        "Flow",
         {batch_float_array(input_dim)},
         {batch_float_array(input_dim)},
         condition_dim == 0 ? TypeVec{} : TypeVec{batch_float_array(condition_dim)}

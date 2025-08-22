@@ -962,9 +962,6 @@ matrix_element:
     - name: flavor
       type: [int]
       desc:
-    - name: mirror
-      type: [int]
-      desc:
     - name: index
       type: [int, single]
       desc:
@@ -986,9 +983,6 @@ matrix_element_multichannel:
       type: [float, 3]
       desc:
     - name: flavor
-      type: [int]
-      desc:
-    - name: mirror
       type: [int]
       desc:
     - name: index
@@ -1435,7 +1429,7 @@ batch_gather:
   class: BatchGatherInstruction
   custom_op: True
 
-scatter:
+batch_scatter:
   inputs:
     - name: indices
       desc:
@@ -1446,7 +1440,7 @@ scatter:
   outputs:
     - name: output
       desc:
-  class: ScatterInstruction
+  class: BatchScatterInstruction
   custom_op: True
 
 ---

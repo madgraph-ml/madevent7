@@ -8,6 +8,7 @@ DiscreteSampler::DiscreteSampler(
     const std::vector<std::size_t>& dims_with_prior
 ) :
     Mapping(
+        "DiscreteSampler",
         TypeVec(option_counts.size(), batch_float),
         TypeVec(option_counts.size(), batch_int),
         [&] {

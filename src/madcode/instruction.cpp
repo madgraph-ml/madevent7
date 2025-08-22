@@ -615,7 +615,7 @@ TypeVec BatchGatherInstruction::signature(const ValueVec& args) const {
     return {{values_type.dtype, indices_type.batch_size, values_type.shape}};
 }
 
-TypeVec ScatterInstruction::signature(const ValueVec& args) const {
+TypeVec BatchScatterInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 3);
     auto& indices_type = args.at(0).type;
     auto& target_type = args.at(1).type;
