@@ -19,9 +19,8 @@ public:
     ThreadPool& operator=(const ThreadPool&) = delete;
     void set_thread_count(int new_count);
     std::size_t thread_count() const { return _thread_count; }
-    void begin_buffer_submit() { _buffer_submit = true; }
     void submit(JobFunc job);
-    void submit_all();
+    void submit(std::vector<JobFunc>& jobs);
     std::optional<std::size_t> wait();
     std::vector<std::size_t> wait_multiple();
     std::size_t add_listener(std::function<void(std::size_t)> listener);
@@ -31,25 +30,25 @@ public:
 
 private:
     static inline thread_local std::size_t _thread_index = 0;
-    static constexpr std::size_t STACK_SIZE_FACTOR = 4;
+    static const std::size_t QUEUE_SIZE_PER_THREAD = 16384;
 
     void thread_loop(std::size_t index);
-    bool fill_done_buffer();
+    bool fill_done_cache();
 
     std::mutex _mutex;
     std::condition_variable _cv_run, _cv_done;
     std::size_t _thread_count;
     std::vector<std::thread> _threads;
-    std::deque<JobFunc> _job_queue;
-    std::vector<JobFunc> _job_buffer;
-    //std::vector<JobFunc*> _job_stack;
-    //std::atomic<std::size_t> _job_stack_size_low;
-    //std::atomic<std::size_t> _job_stack_size_high;
-    std::deque<std::size_t> _done_queue;
-    std::vector<std::size_t> _done_buffer;
-    //std::vector<std::size_t> _done_stack;
-    //std::atomic<std::size_t> _done_stack_size_low;
-    //std::atomic<std::size_t> _done_stack_size_high;
+    std::size_t _queue_mask;
+    std::vector<JobFunc> _job_queue;
+    std::atomic<std::size_t> _job_queue_begin;
+    std::atomic<std::size_t> _job_queue_end;
+    std::atomic<std::size_t> _job_queue_read;
+    std::deque<std::size_t> _done_queue_cache;
+    std::vector<std::size_t> _done_queue;
+    std::atomic<std::size_t> _done_queue_begin;
+    std::atomic<std::size_t> _done_queue_end;
+    std::atomic<std::size_t> _done_queue_write;
     std::size_t _busy_threads;
     std::size_t _listener_id;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;

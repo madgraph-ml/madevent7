@@ -92,6 +92,8 @@ public:
     void foreach(std::size_t batch_size, F func, bool single_job = false) const {
         auto [job_count, job_size] = job_count_and_size(batch_size, single_job);
         std::size_t result = _instr_index;
+        std::vector<ThreadPool::JobFunc> jobs;
+        jobs.reserve(job_count);
         if (!_barrier_state) _instr_job_count += job_count;
         for (std::size_t i = 0; i < job_count; ++i) {
             std::size_t offset = i * job_size;
@@ -103,9 +105,11 @@ public:
             if (_barrier_state) {
                 _funcs_after_barrier.push_back(job_func);
             } else {
-                default_thread_pool().submit(job_func);
+                //default_thread_pool().submit(job_func);
+                jobs.push_back(job_func);
             }
         }
+        if (!_barrier_state) default_thread_pool().submit(jobs);
     }
 
     template<typename F>

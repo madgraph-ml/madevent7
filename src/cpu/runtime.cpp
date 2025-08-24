@@ -363,7 +363,7 @@ void batch_scatter_impl(
             indices, source, output, device
         );
     } else {
-        throw std::runtime_error("invalid dtype in batch_gather");
+        throw std::runtime_error("invalid dtype in batch_scatter");
     }
 }
 
@@ -480,15 +480,16 @@ void op_vegas_histogram(
     auto values_view_flat = values.flat_view<double, 3>(0);
     auto counts_view_flat = counts.flat_view<me_int_t, 3>(0);
 
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+
     device.submit([
-        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat
+        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat, batch_size
     ]() mutable {
         TensorView<double, 2> input_view(input_view_flat);
         TensorView<double, 1> weights_view(weights_view_flat);
         TensorView<double, 3> values_view(values_view_flat);
         TensorView<me_int_t, 3> counts_view(counts_view_flat);
 
-        std::size_t n_samples = input_view.size(0);
         std::size_t n_dims = input_view.size(1);
         std::size_t n_bins = values_view.size(2);
 
@@ -499,7 +500,7 @@ void op_vegas_histogram(
                 bin_values[i_bin] = 0.;
                 bin_counts[i_bin] = 0;
             }
-            for (std::size_t i_sample = 0; i_sample < n_samples; ++i_sample) {
+            for (std::size_t i_sample = 0; i_sample < batch_size; ++i_sample) {
                 int i_bin = input_view[i_sample][i_dim] * n_bins;
                 if (i_bin < 0 || i_bin >= n_bins) continue;
                 double w = weights_view[i_sample];
@@ -526,25 +527,26 @@ void op_discrete_histogram(
     values = Tensor(DataType::dt_float, shape, device);
     counts = Tensor(DataType::dt_int, shape, device);
 
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+
     auto input_view_flat = input.flat_view<me_int_t, 1>(0);
     auto weights_view_flat = weights.flat_view<double, 1>(0);
     auto values_view_flat = values.flat_view<double, 2>(0);
     auto counts_view_flat = counts.flat_view<me_int_t, 2>(0);
 
     device.submit([
-        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat
+        input_view_flat, weights_view_flat, values_view_flat, counts_view_flat, batch_size
     ]() mutable {
         TensorView<me_int_t, 1> input_view(input_view_flat);
         TensorView<double, 1> weights_view(weights_view_flat);
         TensorView<double, 2> values_view(values_view_flat);
         TensorView<me_int_t, 2> counts_view(counts_view_flat);
-        std::size_t n_samples = input_view.size(0);
         std::size_t n_opts = values_view.size(1);
         for (std::size_t i_opt = 0; i_opt < n_opts; ++i_opt) {
             values_view[0][i_opt] = 0.;
             counts_view[0][i_opt] = 0;
         }
-        for (std::size_t i = 0; i < n_samples; ++i) {
+        for (std::size_t i = 0; i < batch_size; ++i) {
             auto w = weights_view[i];
             std::size_t index = input_view[i];
             values_view[0][index] += w * w;
@@ -893,7 +895,6 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
     SizeVec next_ready_instructions;
     std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
     while (true) {
-        thread_pool.begin_buffer_submit();
         while (ready_instructions.size() > 0) {
             for (std::size_t instr_index : ready_instructions) {
                 auto& instr = _instructions[instr_index];
@@ -937,7 +938,6 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
                     }
 #include "runtime_mixin.h"
                 }
-                //println("started {} {} : {}", instr.opcode, instr_index, job_count);
 
                 if (job_count == 0) {
                     for (std::size_t dep_index : instr.dependent_instructions) {
@@ -952,34 +952,27 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_concurrent(
             ready_instructions = next_ready_instructions;
             next_ready_instructions.clear();
         }
-        thread_pool.submit_all();
 
-        if (auto jobs = thread_pool.wait_multiple(); !jobs.empty()) {
-            for (std::size_t instr_index : jobs) {
-                auto& job_count = job_counts[instr_index];
-                --job_count;
-                //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
-                if (job_count > 0) continue;
+        if (auto job = thread_pool.wait()) {
+            std::size_t instr_index = *job;
+            auto& job_count = job_counts[instr_index];
+            --job_count;
+            if (job_count > 0) continue;
 
-                //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
-                auto& extra_funcs = funcs_after_barrier[instr_index];
-                if (extra_funcs.size() > 0) {
-                    thread_pool.begin_buffer_submit();
-                    for (auto& func : extra_funcs) thread_pool.submit(func);
-                    job_count = extra_funcs.size();
-                    extra_funcs.clear();
-                    //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
-                    continue;
-                }
-                //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
+            auto& extra_funcs = funcs_after_barrier[instr_index];
+            if (extra_funcs.size() > 0) {
+                for (auto& func : extra_funcs) thread_pool.submit(func);
+                job_count = extra_funcs.size();
+                extra_funcs.clear();
+                continue;
+            }
 
-                auto& instr = _instructions[instr_index];
-                for (std::size_t dep_index : instr.dependent_instructions) {
-                    auto& ready_count = ready_input_count[dep_index];
-                    ++ready_count;
-                    if (ready_count == _instructions[dep_index].dependency_count) {
-                        ready_instructions.push_back(dep_index);
-                    }
+            auto& instr = _instructions[instr_index];
+            for (std::size_t dep_index : instr.dependent_instructions) {
+                auto& ready_count = ready_input_count[dep_index];
+                ++ready_count;
+                if (ready_count == _instructions[dep_index].dependency_count) {
+                    ready_instructions.push_back(dep_index);
                 }
             }
         } else if (ready_instructions.size() == 0) {
@@ -1020,7 +1013,6 @@ std::tuple<
     std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
     //for (auto r : ready_instructions) println("ready: {}", r);
     while (true) {
-        thread_pool.begin_buffer_submit();
         while (ready_instructions.size() > 0) {
             for (std::size_t instr_index : ready_instructions) {
                 auto& instr = _instructions[instr_index];
@@ -1065,7 +1057,6 @@ std::tuple<
             ready_instructions = next_ready_instructions;
             next_ready_instructions.clear();
         }
-        thread_pool.submit_all();
 
         if (auto job = thread_pool.wait()) {
             std::size_t instr_index = *job;

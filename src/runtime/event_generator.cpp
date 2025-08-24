@@ -390,8 +390,10 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
     std::sort(channel.large_weights.begin(), channel.large_weights.end(), std::greater{});
 
     double w_sum = 0, w_prev = 0;
-    double max_truncation =
-        _config.max_overweight_truncation * channel.integral_fraction * _config.target_count;
+    double max_truncation = _config.max_overweight_truncation * std::min(
+        channel.integral_fraction * _config.target_count,
+        static_cast<double>(_config.freeze_max_weight_after)
+    );
     std::size_t count = 0;
     for (auto w : channel.large_weights) {
         if (w < channel.max_weight) break;
