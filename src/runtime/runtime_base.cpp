@@ -8,18 +8,6 @@ using namespace madevent;
 
 namespace {
 
-#ifdef __APPLE__
-constexpr bool IS_APPLE = true;
-#else
-constexpr bool IS_APPLE = false;
-#endif
-
-#ifdef SIMD_AVAILABLE
-constexpr bool IS_SIMD_AVAILABLE = true;
-#else
-constexpr bool IS_SIMD_AVAILABLE = false;
-#endif
-
 struct LoadedRuntime {
     inline static std::string lib_path = "";
     inline static int vector_size = -1;
@@ -65,18 +53,18 @@ struct LoadedRuntime {
 const LoadedRuntime& cpu_runtime() {
     static LoadedRuntime runtime = [&] {
         std::vector<int> supported_vector_sizes {1};
-        if constexpr (IS_SIMD_AVAILABLE) {
-            if constexpr (IS_APPLE) {
-                supported_vector_sizes.push_back(2);
-            } else {
-                if (__builtin_cpu_supports("avx2")) {
-                    supported_vector_sizes.push_back(4);
-                }
-                if (__builtin_cpu_supports("avx512f")) {
-                    supported_vector_sizes.push_back(8);
-                }
-            }
+#ifdef SIMD_AVAILABLE
+#ifdef __APPLE__
+        supported_vector_sizes.push_back(2);
+#else // __APPLE__
+        if (__builtin_cpu_supports("avx2")) {
+            supported_vector_sizes.push_back(4);
         }
+        if (__builtin_cpu_supports("avx512f")) {
+            supported_vector_sizes.push_back(8);
+        }
+#endif // __APPLE__
+#endif // SIMD_AVAILABLE
 
         int vector_size = LoadedRuntime::vector_size;
         if (vector_size == -1) {
@@ -87,7 +75,11 @@ const LoadedRuntime& cpu_runtime() {
             }
         }
         if (vector_size == 0) {
-            vector_size = IS_APPLE ? 1 : supported_vector_sizes.back();
+#ifdef __APPLE__
+            vector_size = 1;
+#else
+            vector_size = supported_vector_sizes.back();
+#endif
         } else if (
             std::find(
                 supported_vector_sizes.begin(), supported_vector_sizes.end(), vector_size
