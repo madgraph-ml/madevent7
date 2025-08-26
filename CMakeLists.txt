@@ -53,6 +53,7 @@ if(USE_SIMD)
             -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
             -DSLEEF_BUILD_TESTS=OFF
             -DCMAKE_POSITION_INDEPENDENT_CODE=1
+            -DSLEEF_ENABLE_SSL=OFF
         INSTALL_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/${sleef_libname}
     )
     ExternalProject_Get_Property(libsleef install_dir)

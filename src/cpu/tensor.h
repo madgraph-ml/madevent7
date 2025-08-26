@@ -17,7 +17,7 @@ public:
 
     VectorizedTensorView(const TensorView<T, _dim>& view) :
         _data(view.data()), _stride(view.stride()), _shape(view.shape()),
-        _batch_stride(view.stride()[0]) { println("batch stride {}", _batch_stride); }
+        _batch_stride(view.stride()[0]) {}
 
     VectorizedTensorView(
         T* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride
@@ -260,8 +260,9 @@ inline void tensor_foreach_impl(
                     get_vectorized_views<decltype(vector_func), dims>(), views
                 );
                 std::size_t vec_count = count / simd_vec_size;
-                std::apply([vec_count, offset](auto&&... args) {
-                    nested_for<vector_func, dims>(vec_count, offset, args...);
+                std::size_t vec_offset = offset / simd_vec_size;
+                std::apply([vec_count, vec_offset](auto&&... args) {
+                    nested_for<vector_func, dims>(vec_count, vec_offset, args...);
                 }, vectorized_views);
                 scalar_offset += vec_count * simd_vec_size;
             }
