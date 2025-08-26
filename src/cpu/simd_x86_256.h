@@ -48,12 +48,12 @@ struct BVec {
 };
 
 inline __m128i stride_seq(std::size_t stride) {
-    return _mm_mul_epi32(_mm_set1_epi32(stride), _mm_set_epi32(3, 2, 1, 0));
+    return _mm_mullo_epi32(_mm_set1_epi32(stride), _mm_set_epi32(3, 2, 1, 0));
 }
 
 inline __m128i mem_indices(std::size_t batch_stride, std::size_t index_stride, IVec indices) {
     return _mm_add_epi32(
-        _mm_mul_epi32(truncate_i64_to_i32(indices), _mm_set1_epi32(index_stride)),
+        _mm_mullo_epi32(truncate_i64_to_i32(indices), _mm_set1_epi32(index_stride)),
         stride_seq(batch_stride)
     );
 }
@@ -61,7 +61,7 @@ inline __m128i mem_indices(std::size_t batch_stride, std::size_t index_stride, I
 inline FVec vgather(
     double* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices
 ) {
-    return _mm256_i32gather_pd(base_ptr, mem_indices(batch_stride, index_stride, indices), 1);
+    return _mm256_i32gather_pd(base_ptr, mem_indices(batch_stride, index_stride, indices), 8);
 }
 
 inline IVec vgather(
@@ -70,16 +70,16 @@ inline IVec vgather(
     return _mm256_cvtepi32_epi64(_mm_i32gather_epi32(
         base_ptr,
         mem_indices(batch_stride, index_stride, indices),
-        1
+        4
     ));
 }
 
 inline FVec vload(double* base_ptr, std::size_t stride) {
-    return _mm256_i32gather_pd(base_ptr, stride_seq(stride), 1);
+    return _mm256_i32gather_pd(base_ptr, stride_seq(stride), 8);
 }
 
 inline IVec vload(int* base_ptr, std::size_t stride) {
-    return _mm256_cvtepi32_epi64(_mm_i32gather_epi32(base_ptr, stride_seq(stride), 1));
+    return _mm256_cvtepi32_epi64(_mm_i32gather_epi32(base_ptr, stride_seq(stride), 4));
 }
 
 

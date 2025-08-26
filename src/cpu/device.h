@@ -14,14 +14,16 @@ inline std::tuple<std::size_t, std::size_t> job_count_and_size(
     //return {1, batch_size};
     if (single_job) return {1, batch_size};
 
-    std::size_t min_batch_size = 64;
+    std::size_t batch_size_vec = (batch_size + simd_vec_size - 1) / simd_vec_size;
+    std::size_t min_batch_size = 64 / simd_vec_size;
     std::size_t thread_count = default_thread_pool().thread_count();
     //std::size_t job_count = (batch_size + min_batch_size - 1) / min_batch_size;
-    std::size_t job_count = batch_size < thread_count * min_batch_size ?
-        (batch_size + min_batch_size - 1) / min_batch_size :
+    std::size_t job_count = batch_size_vec < thread_count * min_batch_size ?
+        (batch_size_vec + min_batch_size - 1) / min_batch_size :
         thread_count;
-    std::size_t job_size = (batch_size + job_count - 1) / job_count;
-    job_size = (job_size + simd_vec_size - 1) / simd_vec_size * simd_vec_size;
+    std::size_t job_size = (batch_size_vec + job_count - 1) / job_count * simd_vec_size;
+    // correct rounding errors to vector size
+    job_count = (batch_size + job_size - 1) / job_size;
     return {job_count, job_size};
 }
 
