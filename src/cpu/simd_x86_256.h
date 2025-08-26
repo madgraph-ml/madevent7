@@ -6,11 +6,11 @@ constexpr int simd_vec_size = 4;
 
 inline __m128i truncate_i64_to_i32(__m256i arg) {
     __m256 x = _mm256_castsi256_ps(arg);
-    return _mm_shuffle_ps(
+    return _mm_castps_si128(_mm_shuffle_ps(
         _mm256_castps256_ps128(x),
         _mm256_extractf128_ps(x, 1),
         _MM_SHUFFLE(2, 0, 2, 0)
-    );
+    ));
 }
 
 struct FVec {
@@ -129,11 +129,11 @@ inline BVec operator|(BVec arg1, BVec arg2) { return _mm256_or_si256(arg1, arg2)
 inline BVec operator!(BVec arg1) { return _mm256_xor_si256(arg1, _mm256_cmpeq_epi64(arg1, arg1)); }
 
 inline BVec operator==(IVec arg1, IVec arg2) { return _mm256_cmpeq_epi64(arg1, arg2); }
-inline BVec operator!=(IVec arg1, IVec arg2) { return _mm256_cmpneq_epi64(arg1, arg2); }
+inline BVec operator!=(IVec arg1, IVec arg2) { return !(arg1 == arg2); }
 inline BVec operator>(IVec arg1, IVec arg2) { return _mm256_cmpgt_epi64(arg1, arg2); }
-inline BVec operator>=(IVec arg1, IVec arg2) { return _mm256_cmpge_epi64(arg1, arg2); }
-inline BVec operator<(IVec arg1, IVec arg2) { return _mm256_cmplt_epi64(arg1, arg2); }
-inline BVec operator<=(IVec arg1, IVec arg2) { return _mm256_cmple_epi64(arg1, arg2); }
+inline BVec operator>=(IVec arg1, IVec arg2) { return (arg1 > arg2) | (arg1 == arg2); }
+inline BVec operator<(IVec arg1, IVec arg2) { return !(arg1 >= arg2); }
+inline BVec operator<=(IVec arg1, IVec arg2) { return !(arg1 > arg2); }
 
 inline FVec operator-(FVec arg1) { return _mm256_sub_pd(_mm256_set1_pd(0.), arg1); }
 inline FVec operator+(FVec arg1, FVec arg2) { return _mm256_add_pd(arg1, arg2); }
@@ -157,6 +157,7 @@ inline FVec fabs(FVec arg1) { return Sleef_fabsd4_avx2(arg1); }
 inline FVec log(FVec arg1) { return Sleef_logd4_u10avx2(arg1); }
 inline FVec tan(FVec arg1) { return Sleef_tand4_u10avx2(arg1); }
 inline FVec atan(FVec arg1) { return Sleef_atand4_u10avx2(arg1); }
+inline FVec atanh(FVec arg1) { return Sleef_atanhd4_u10avx2(arg1); }
 inline FVec exp(FVec arg1) { return Sleef_expd4_u10avx2(arg1); }
 inline FVec log1p(FVec arg1) { return Sleef_log1pd4_u10avx2(arg1); }
 inline FVec expm1(FVec arg1) { return Sleef_expm1d4_u10avx2(arg1); }
