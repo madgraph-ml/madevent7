@@ -1011,7 +1011,6 @@ std::tuple<
     SizeVec ready_instructions(_ready_instructions_backward_init);
     SizeVec next_ready_instructions;
     std::vector<std::vector<std::function<std::size_t()>>> funcs_after_barrier(instr_count);
-    //for (auto r : ready_instructions) println("ready: {}", r);
     while (true) {
         while (ready_instructions.size() > 0) {
             for (std::size_t instr_index : ready_instructions) {
@@ -1042,7 +1041,6 @@ std::tuple<
 #include "runtime_backward_mixin.h"
                     }
                 }
-                //println("started {} {} : {}", instr.opcode, instr_index, job_count);
 
                 if (job_count == 0) {
                     for (std::size_t dep_index : instr.dependent_instructions_backward) {
@@ -1062,19 +1060,15 @@ std::tuple<
             std::size_t instr_index = *job;
             auto& job_count = job_counts[instr_index];
             --job_count;
-            //println("job_count {} {} : {}", _instructions[instr_index].opcode, instr_index, job_count);
             if (job_count > 0) continue;
 
-            //println("step 1 done {} {}", _instructions[instr_index].opcode, instr_index);
             auto& extra_funcs = funcs_after_barrier[instr_index];
             if (extra_funcs.size() > 0) {
                 for (auto& func : extra_funcs) thread_pool.submit(func);
                 job_count = extra_funcs.size();
                 extra_funcs.clear();
-                //println("barrier: {} jobs, {} {}", job_count, _instructions[instr_index].opcode, instr_index);
                 continue;
             }
-            //println("step 2 done {} {}", _instructions[instr_index].opcode, instr_index);
 
             auto& instr = _instructions[instr_index];
             for (std::size_t dep_index : instr.dependent_instructions_backward) {
