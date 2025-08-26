@@ -21,18 +21,18 @@ void CudaDevice::memcpy(void* to, void* from, std::size_t size) const {
 }
 
 void CudaDevice::tensor_copy(const Tensor& source, Tensor& target) const {
-    AsyncCudaDevice(0).tensor_copy(source, target);
-    check_error(cudaDeviceSynchronize());
+    AsyncCudaDevice(cudaStreamPerThread).tensor_copy(source, target);
+    check_error(cudaStreamSynchronize(cudaStreamPerThread));
 }
 
 void CudaDevice::tensor_zero(Tensor& tensor) const {
-    AsyncCudaDevice(0).tensor_zero(tensor);
-    check_error(cudaDeviceSynchronize());
+    AsyncCudaDevice(cudaStreamPerThread).tensor_zero(tensor);
+    check_error(cudaStreamSynchronize(cudaStreamPerThread));
 }
 
 void CudaDevice::tensor_add(const Tensor& source, Tensor& target) const {
-    AsyncCudaDevice(0).tensor_add(source, target);
-    check_error(cudaDeviceSynchronize());
+    AsyncCudaDevice(cudaStreamPerThread).tensor_add(source, target);
+    check_error(cudaStreamSynchronize(cudaStreamPerThread));
 }
 
 void CudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {

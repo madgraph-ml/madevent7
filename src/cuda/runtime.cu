@@ -30,7 +30,27 @@ void op_matrix_element(
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    //TODO
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    auto& me_out = locals[instruction.output_indices[0]];
+    me_out = Tensor(DataType::dt_float, {batch_size}, device);
+    std::size_t me_index = locals[instruction.input_indices[2]].index_value();
+    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
+    // TODO: maybe copy can be avoided sometimes
+    auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
+    auto flavor_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
+
+    auto input_particle_count = momenta_in.size(1);
+    if (input_particle_count != matrix_element.particle_count()) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
+    auto me_ptr = static_cast<double*>(me_out.data());
+    check_error(cudaStreamSynchronize(device.stream()));
+    matrix_element.call(
+        matrix_element.process_instance(ThreadPool::thread_index()),
+        batch_size, batch_size, mom_ptr, flavor_ptr, me_ptr
+    );
 }
 
 void op_matrix_element_multichannel(
@@ -38,7 +58,53 @@ void op_matrix_element_multichannel(
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    //TODO
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    std::size_t me_index = locals[instruction.input_indices[4]].index_value();
+    std::size_t diagram_count = locals[instruction.input_indices[5]].index_value();
+
+    auto& me_out = locals[instruction.output_indices[0]];
+    me_out = Tensor(DataType::dt_float, {batch_size}, device);
+    auto& amp2_out = locals[instruction.output_indices[1]];
+    amp2_out = Tensor(DataType::dt_float, {batch_size, diagram_count}, device);
+    auto& diagram_out = locals[instruction.output_indices[2]];
+    diagram_out = Tensor(DataType::dt_int, {batch_size}, device);
+    auto& color_out = locals[instruction.output_indices[3]];
+    color_out = Tensor(DataType::dt_int, {batch_size}, device);
+    auto& helicity_out = locals[instruction.output_indices[4]];
+    helicity_out = Tensor(DataType::dt_int, {batch_size}, device);
+
+    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
+
+    // TODO: maybe copy can be avoided sometimes
+    auto momenta_in = locals[instruction.input_indices[0]].contiguous(batch_size, device);
+    auto alpha_s_in = locals[instruction.input_indices[1]].contiguous(batch_size, device);
+    auto random_in = locals[instruction.input_indices[2]].contiguous(batch_size, device);
+    auto flavor_in = locals[instruction.input_indices[3]].contiguous(batch_size, device);
+    auto input_particle_count = momenta_in.size(1);
+    if (input_particle_count != matrix_element.particle_count()) {
+        throw std::runtime_error("Incompatible particle count");
+    }
+    if (diagram_count != matrix_element.diagram_count()) {
+        throw std::runtime_error("Incompatible diagram count");
+    }
+
+    auto mom_ptr = static_cast<double*>(momenta_in.data());
+    auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
+    auto random_ptr = static_cast<double*>(random_in.data());
+    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
+    auto me_ptr = static_cast<double*>(me_out.data());
+    auto amp2_ptr = static_cast<double*>(amp2_out.data());
+    auto diag_ptr = static_cast<me_int_t*>(diagram_out.data());
+    auto color_ptr = static_cast<me_int_t*>(color_out.data());
+    auto helicity_ptr = static_cast<me_int_t*>(helicity_out.data());
+
+    check_error(cudaStreamSynchronize(device.stream()));
+    matrix_element.call_multichannel(
+        matrix_element.process_instance(ThreadPool::thread_index()),
+        batch_size, batch_size,
+        mom_ptr, alpha_ptr, random_ptr, flavor_ptr, me_ptr,
+        amp2_ptr, color_ptr, diag_ptr, helicity_ptr
+    );
 }
 
 void op_matmul(
@@ -184,7 +250,7 @@ void op_nonzero(
     auto output_ptr = thrust::device_pointer_cast(
         static_cast<me_int_t*>(output_tmp.data())
     );
-    cudaStreamSynchronize(device.stream());
+    check_error(cudaStreamSynchronize(device.stream()));
     auto count = thrust::copy_if(
         input_ptr, input_ptr + batch_size, output_ptr, NotMinusOne()
     ) - output_ptr;
@@ -284,19 +350,47 @@ __global__ void batch_scatter_kernel(
 }
 
 template<int dim>
+__global__ void batch_scatter_kernel_int(
+    std::size_t batch_size,
+    CudaTensorView<me_int_t, 1, true> indices,
+    CudaTensorView<me_int_t, dim, true> source,
+    CudaTensorView<me_int_t, dim, true> output
+) {
+    std::size_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < batch_size) {
+        recursive_for<kernel_copy_int<CudaTypes>, dim-1>(source[i], output[indices[i]]);
+    }
+}
+
+template<int dim>
 void batch_scatter_impl(
     Tensor& indices, Tensor& source, Tensor& output, const AsyncCudaDevice& device
 ) {
-    auto batch_size = indices.size(0);
-    launch_kernel(
-        batch_scatter_kernel<dim>,
-        batch_size,
-        device.stream(),
-        batch_size,
-        indices.view<me_int_t, 1>(),
-        source.view<double, dim>(),
-        output.view<double, dim>()
-    );
+    if (source.dtype() == DataType::dt_float) {
+        auto batch_size = indices.size(0);
+        launch_kernel(
+            batch_scatter_kernel<dim>,
+            batch_size,
+            device.stream(),
+            batch_size,
+            indices.view<me_int_t, 1>(),
+            source.view<double, dim>(),
+            output.view<double, dim>()
+        );
+    } else if (source.dtype() == DataType::dt_int) {
+        auto batch_size = indices.size(0);
+        launch_kernel(
+            batch_scatter_kernel<dim>,
+            batch_size,
+            device.stream(),
+            batch_size,
+            indices.view<me_int_t, 1>(),
+            source.view<me_int_t, dim>(),
+            output.view<me_int_t, dim>()
+        );
+    } else {
+        throw std::runtime_error("invalid dtype in batch_scatter");
+    }
 }
 
 void op_batch_scatter(
@@ -388,7 +482,7 @@ void op_unweight(
     );
 
     Tensor indices_compacted(DataType::dt_int, {batch_size}, device);
-    cudaStreamSynchronize(stream);
+    check_error(cudaStreamSynchronize(stream));
     auto ptr_all = thrust::device_pointer_cast(
         static_cast<me_int_t*>(indices_tmp.data())
     );
@@ -413,6 +507,88 @@ void op_unweight(
         ptr_compacted, ptr_compacted_end,
         ptr_all_weights, ptr_uw_weights
     );
+}
+
+__global__ void kernel_bin_index(
+    std::size_t batch_size,
+    CudaTensorView<double, 1, true> input,
+    CudaTensorView<me_int_t, 1, true> bin_count,
+    CudaTensorView<me_int_t, 1, true> output
+) {
+    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i < batch_size) {
+        for (std::size_t j = 0; j < input.size(1); ++j) {
+            double bin_count_f = bin_count;
+            output[i][j] = input[i][j] * bin_count;
+        }
+    }
+}
+
+template<typename D>
+void op_vegas_histogram(
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+) {
+    /*auto& input = locals[instruction.input_indices[0]];
+    auto& weights = locals[instruction.input_indices[1]];
+    auto& bin_count = locals[instruction.input_indices[2]];
+    auto& values = locals[instruction.output_indices[0]];
+    auto& counts = locals[instruction.output_indices[1]];
+
+    auto out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = 1;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    values = Tensor(DataType::dt_float, shape, device);
+    counts = Tensor(DataType::dt_int, shape, device);
+
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    std::size_t n_dims = inputs.size(1);
+    std::size_t n_bins = values.size(2);
+
+    Tensor indices_tmp(DataType::dt_int, {batch_size + n_bins, n_dims}, device);
+    Tensor weights_tmp(DataType::dt_double, {batch_size + n_bins}, device);
+    launch_kernel(
+        kernel_bin_index, batch_size, device.stream(),
+        batch_size, input.view<double, 2>(), bin_count.view<me_int_t, 1>(),
+        indices_tmp.view<double, 2>()
+    );
+    launch_kernel(
+        kernel_square, batch_size, device.stream(),
+        batch_size, weights.view<double, 1>(), weights_tmp.view<double, 1>()
+    );
+
+    auto& policy = thrust::cuda::par.on(stream);*/
+
+
+    // convert input to index
+    // pad data with (0, 0) .. (0, n)
+    // fill values with -1, counts with 0
+    // thrust::sort_by_key
+    // thrust::reduce_by_key for values^2
+    // thrust::reduce_by_key for counts
+}
+
+template<typename D>
+void op_discrete_histogram(
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+) {
+    /*auto& input = locals[instruction.input_indices[0]];
+    auto& weights = locals[instruction.input_indices[1]];
+    auto& values = locals[instruction.output_indices[0]];
+    auto& counts = locals[instruction.output_indices[1]];
+
+    auto out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = 1;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    values = Tensor(DataType::dt_float, shape, device);
+    counts = Tensor(DataType::dt_int, shape, device);
+
+    auto input_view = input.view<me_int_t, 1>();
+    auto weights_view = weights.view<double, 1>();
+    auto values_view = values.view<double, 2>();
+    auto counts_view = counts.view<me_int_t, 2>();*/
+
 }
 
 }

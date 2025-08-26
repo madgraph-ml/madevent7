@@ -1,5 +1,6 @@
 #include <arm_neon.h>
 #include <sleef.h>
+#include <cstddef>
 
 constexpr int simd_vec_size = 2;
 
@@ -86,7 +87,7 @@ inline void vstore(double* base_ptr, std::size_t stride, FVec values) {
     base_ptr[stride] = vgetq_lane_f64(values, 1);
 }
 
-inline void vstore(me_int_t* base_ptr, std::size_t stride, IVec values) {
+inline void vstore(int* base_ptr, std::size_t stride, IVec values) {
     base_ptr[0] = vgetq_lane_s64(values, 0);
     base_ptr[stride] = vgetq_lane_s64(values, 1);
 }
@@ -100,6 +101,9 @@ inline IVec where(BVec arg1, IVec arg2, IVec arg3) {
 inline std::size_t single_index(IVec arg) {
     return vgetq_lane_s64(arg, 0);
 }
+inline FVec min(FVec arg1, FVec arg2) { return where(arg1 < arg2, arg1, arg2); }
+inline FVec max(FVec arg1, FVec arg2) { return where(arg1 > arg2, arg1, arg2); }
+
 inline BVec operator==(FVec arg1, FVec arg2) { return vceqq_f64(arg1, arg2); }
 inline BVec operator!=(FVec arg1, FVec arg2) { return vceqzq_u64(vceqq_f64(arg1, arg2)); }
 inline BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }
@@ -126,6 +130,8 @@ inline IVec operator-(IVec arg1) { return vnegq_s64(arg1); }
 inline IVec operator+(IVec arg1, IVec arg2) { return vaddq_s64(arg1, arg2); }
 inline IVec operator-(IVec arg1, IVec arg2) { return vsubq_s64(arg1, arg2); }
 
+inline BVec isnan(FVec arg) { return arg != arg; }
+
 inline FVec sqrt(FVec arg1) { return Sleef_sqrtd2_u05(arg1); }
 inline FVec sin(FVec arg1) { return Sleef_sind2_u10(arg1); }
 inline FVec cos(FVec arg1) { return Sleef_cosd2_u10(arg1); }
@@ -143,6 +149,3 @@ inline FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
 inline FVec expm1(FVec arg1) { return Sleef_expm1d2_u10(arg1); }
 inline FVec erf(FVec arg1) { return Sleef_erfd2_u10(arg1); }
 
-inline BVec isnan(FVec arg) { return arg != arg; }
-inline FVec min(FVec arg1, FVec arg2) { return where(arg1 < arg2, arg1, arg2); }
-inline FVec max(FVec arg1, FVec arg2) { return where(arg1 > arg2, arg1, arg2); }
