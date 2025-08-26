@@ -43,7 +43,7 @@ public:
         const TensorVec& stored_locals,
         const std::vector<bool>& eval_grad
     ) const override;
-    ContextPtr context() { return _context; }
+    Context& context() { return *_context; }
     cublasHandle_t cublas_handle() { return _cublas_handle; }
     curandGenerator_t curand_generator() { return _curand_generator; }
 

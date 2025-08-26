@@ -27,5 +27,6 @@ RuntimePtr build_runtime(const Function& function, ContextPtr context, bool conc
 DevicePtr cpu_device();
 DevicePtr cuda_device();
 void set_lib_path(const std::string& lib_path);
+void set_simd_vector_size(int vector_size);
 
 }

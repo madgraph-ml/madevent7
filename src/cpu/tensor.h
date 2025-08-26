@@ -17,7 +17,7 @@ public:
 
     VectorizedTensorView(const TensorView<T, _dim>& view) :
         _data(view.data()), _stride(view.stride()), _shape(view.shape()),
-        _batch_stride(view.stride()[0]) {}
+        _batch_stride(view.stride()[0]) { println("batch stride {}", _batch_stride); }
 
     VectorizedTensorView(
         T* data, std::size_t* stride, std::size_t* shape, std::size_t batch_stride

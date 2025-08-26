@@ -49,8 +49,11 @@ if(USE_SIMD)
         GIT_REPOSITORY https://github.com/shibatch/sleef
         GIT_TAG 3.9.0
         UPDATE_DISCONNECTED true
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DSLEEF_BUILD_TESTS=OFF
-        INSTALL_BYPRODUCTS <INSTALL_DIR>/lib/${sleef_libname}
+        CMAKE_ARGS
+            -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+            -DSLEEF_BUILD_TESTS=OFF
+            -DCMAKE_POSITION_INDEPENDENT_CODE=1
+        INSTALL_BYPRODUCTS <INSTALL_DIR>/${CMAKE_INSTALL_LIBDIR}/${sleef_libname}
     )
     ExternalProject_Get_Property(libsleef install_dir)
     add_library(sleef::sleef INTERFACE IMPORTED GLOBAL)
@@ -60,7 +63,7 @@ if(USE_SIMD)
     target_link_libraries(
         sleef::sleef
         INTERFACE
-        ${install_dir}/lib/${sleef_libname}
+        ${install_dir}/${CMAKE_INSTALL_LIBDIR}/${sleef_libname}
     )
     #find_package(sleef CONFIG REQUIRED)
 endif()
@@ -162,6 +165,9 @@ add_library(
 target_include_directories(madevent PUBLIC include)
 target_compile_features(madevent PUBLIC cxx_std_20)
 target_link_libraries(madevent PUBLIC nlohmann_json::nlohmann_json)
+if (USE_SIMD)
+    target_compile_definitions(madevent PRIVATE SIMD_AVAILABLE=1)
+endif()
 
 install(TARGETS madevent DESTINATION madevent7/lib)
 install(
@@ -208,9 +214,9 @@ if(COMPILE_CUDA)
         src/cuda/device.h
         ${KERNEL_SRC}
     )
-    set_target_properties(
-        madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
-    )
+    #set_target_properties(
+    #    madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
+    #)
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
@@ -234,7 +240,7 @@ elseif(APPLE)
     set(SIMD_DEFINES "" "USE_SIMD_NEON=1")
 else()
     set(CPU_TARGETS madevent_cpu madevent_cpu_avx2 madevent_cpu_avx512)
-    set(SIMD_FLAGS "" "-mavx2" "-mavx512")
+    set(SIMD_FLAGS "" "-mavx2" "-mavx512f")
     set(SIMD_DEFINES "" "USE_SIMD_AVX2=1" "USE_SIMD_AVX512=1")
 endif()
 

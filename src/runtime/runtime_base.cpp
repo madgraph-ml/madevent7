@@ -2,13 +2,27 @@
 
 #include <dlfcn.h>
 #include <format>
+#include <cstdlib>
 
 using namespace madevent;
 
 namespace {
 
+#ifdef __APPLE__
+constexpr bool IS_APPLE = true;
+#else
+constexpr bool IS_APPLE = false;
+#endif
+
+#ifdef SIMD_AVAILABLE
+constexpr bool IS_SIMD_AVAILABLE = true;
+#else
+constexpr bool IS_SIMD_AVAILABLE = false;
+#endif
+
 struct LoadedRuntime {
     inline static std::string lib_path = "";
+    inline static int vector_size = -1;
 
     LoadedRuntime(const std::string& file) {
 #ifdef __APPLE__
@@ -49,7 +63,46 @@ struct LoadedRuntime {
 };
 
 const LoadedRuntime& cpu_runtime() {
-    static LoadedRuntime runtime("libmadevent_cpu");
+    static LoadedRuntime runtime = [&] {
+        std::vector<int> supported_vector_sizes {1};
+        if constexpr (IS_SIMD_AVAILABLE) {
+            if constexpr (IS_APPLE) {
+                supported_vector_sizes.push_back(2);
+            } else {
+                if (__builtin_cpu_supports("avx2")) {
+                    supported_vector_sizes.push_back(4);
+                }
+                if (__builtin_cpu_supports("avx512f")) {
+                    supported_vector_sizes.push_back(8);
+                }
+            }
+        }
+
+        int vector_size = LoadedRuntime::vector_size;
+        if (vector_size == -1) {
+            if (char* env_var = std::getenv("SIMD_VECTOR_SIZE")) {
+                vector_size = std::atoi(env_var);
+            } else {
+                vector_size = 0;
+            }
+        }
+        if (vector_size == 0) {
+            vector_size = IS_APPLE ? 1 : supported_vector_sizes.back();
+        } else if (
+            std::find(
+                supported_vector_sizes.begin(), supported_vector_sizes.end(), vector_size
+            ) == supported_vector_sizes.end()
+        ) {
+            throw std::runtime_error("unsupported SIMD vector size");
+        }
+
+        switch (vector_size) {
+            case 2: return LoadedRuntime("libmadevent_cpu_neon");
+            case 4: return LoadedRuntime("libmadevent_cpu_avx2");
+            case 8: return LoadedRuntime("libmadevent_cpu_avx512");
+            default: return LoadedRuntime("libmadevent_cpu");
+        }
+    }();
     return runtime;
 }
 
@@ -80,4 +133,8 @@ DevicePtr madevent::cuda_device() {
 
 void madevent::set_lib_path(const std::string& lib_path) {
     LoadedRuntime::lib_path = lib_path;
+}
+
+void madevent::set_simd_vector_size(int vector_size) {
+    LoadedRuntime::vector_size = vector_size;
 }

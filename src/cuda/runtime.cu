@@ -380,7 +380,7 @@ void batch_scatter_impl(
     } else if (source.dtype() == DataType::dt_int) {
         auto batch_size = indices.size(0);
         launch_kernel(
-            batch_scatter_kernel<dim>,
+            batch_scatter_kernel_int<dim>,
             batch_size,
             device.stream(),
             batch_size,
@@ -511,22 +511,23 @@ void op_unweight(
 
 __global__ void kernel_bin_index(
     std::size_t batch_size,
-    CudaTensorView<double, 1, true> input,
+    CudaTensorView<double, 2, true> input,
     CudaTensorView<me_int_t, 1, true> bin_count,
-    CudaTensorView<me_int_t, 1, true> output
+    CudaTensorView<me_int_t, 2, true> output
 ) {
     me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i < batch_size) {
         for (std::size_t j = 0; j < input.size(1); ++j) {
-            double bin_count_f = bin_count;
-            output[i][j] = input[i][j] * bin_count;
+            double bin_count_f = bin_count[i];
+            output[i][j] = input[i][j] * bin_count_f;
         }
     }
 }
 
-template<typename D>
 void op_vegas_histogram(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+    const CudaRuntime::Instruction& instruction,
+    TensorVec& locals,
+    const AsyncCudaDevice& device
 ) {
     /*auto& input = locals[instruction.input_indices[0]];
     auto& weights = locals[instruction.input_indices[1]];
@@ -568,9 +569,10 @@ void op_vegas_histogram(
     // thrust::reduce_by_key for counts
 }
 
-template<typename D>
 void op_discrete_histogram(
-    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+    const CudaRuntime::Instruction& instruction,
+    TensorVec& locals,
+    const AsyncCudaDevice& device
 ) {
     /*auto& input = locals[instruction.input_indices[0]];
     auto& weights = locals[instruction.input_indices[1]];

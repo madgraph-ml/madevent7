@@ -655,6 +655,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("initialize_vegas_grid", &initialize_vegas_grid,
           py::arg("context"), py::arg("grid_name"));
     m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));
+    m.def("set_simd_vector_size", &set_simd_vector_size, py::arg("vector_size"));
 
     EventGenerator::set_abort_check_function([]{
         if (PyErr_CheckSignals() != 0) throw py::error_already_set();

@@ -82,29 +82,41 @@ inline IVec vload(int* base_ptr, std::size_t stride) {
     return _mm256_cvtepi32_epi64(_mm_i32gather_epi32(base_ptr, stride_seq(stride), 1));
 }
 
+
 inline void vscatter(
     double* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, FVec values
 ) {
-    _mm256_i32scatter_pd(base_ptr, mem_indices(batch_stride, index_stride, indices), values, 1);
+    double values_buf[4];
+    union { long long scalar[4]; __m256i vec; } indices_buf;
+    _mm256_store_pd(values_buf, values);
+    _mm256_store_si256(&indices_buf.vec, indices);
+    for (int i = 0; i < 4; ++i) {
+        base_ptr[index_stride * indices_buf.scalar[i] + batch_stride * i] = values_buf[i];
+    }
 }
 
 inline void vscatter(
     int* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, IVec values
 ) {
-    _mm_i32scatter_epi32(
-        base_ptr,
-        mem_indices(batch_stride, index_stride, indices),
-        truncate_i64_to_i32(values),
-        1
-    );
+    union { int scalar[4]; __m128i vec; } values_buf;
+    union { long long scalar[4]; __m256i vec; } indices_buf;
+    _mm_store_si128(&values_buf.vec, truncate_i64_to_i32(values));
+    _mm256_store_si256(&indices_buf.vec, indices);
+    for (int i = 0; i < 4; ++i) {
+        base_ptr[index_stride * indices_buf.scalar[i] + batch_stride * i] = values_buf.scalar[i];
+    }
 }
 
 inline void vstore(double* base_ptr, std::size_t stride, FVec values) {
-    _mm256_i32scatter_pd(base_ptr, stride_seq(stride), values, 1);
+    double values_buf[4];
+    _mm256_store_pd(values_buf, values);
+    for (int i = 0; i < 4; ++i) base_ptr[i * stride] = values_buf[i];
 }
 
 inline void vstore(int* base_ptr, std::size_t stride, IVec values) {
-    _mm_i32scatter_epi32(base_ptr, stride_seq(stride), truncate_i64_to_i32(values), 1);
+    union { int scalar[4]; __m128i vec; } values_buf;
+    _mm_store_si128(&values_buf.vec, truncate_i64_to_i32(values));
+    for (int i = 0; i < 4; ++i) base_ptr[i * stride] = values_buf.scalar[i];
 }
 
 inline FVec where(BVec arg1, FVec arg2, FVec arg3) {
