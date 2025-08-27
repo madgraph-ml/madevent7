@@ -74,7 +74,7 @@ const LoadedRuntime& cpu_runtime() {
                 vector_size = 0;
             }
         }
-        if (vector_size == 0) {
+        if (vector_size <= 0) {
 #ifdef __APPLE__
             vector_size = 1;
 #else

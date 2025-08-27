@@ -26,12 +26,25 @@ class IntegrandDistribution(nn.Module, Distribution):
     ):
         super().__init__()
         self.channel_count = len(channels)
+        self.channels = channels
+        self.context = context
         self.channel_remap_function = channel_remap_function
         self.latent_dims, self.latent_float = channels[0].latent_dims()
-        multi_prob = me.MultiChannelFunction(
-            [me.IntegrandProbability(chan) for chan in channels]
-        )
-        self.integrand_prob = FunctionModule(multi_prob.function(), context)
+        self.integrand_prob = None
+        self.update_channel_mask(torch.ones(self.channel_count, dtype=torch.bool))
+
+    def update_channel_mask(self, mask: torch.Tensor) -> None:
+        self.channel_mask = mask
+        multi_prob = me.MultiChannelFunction([
+            me.IntegrandProbability(chan)
+            for chan, active in zip(self.channels, mask)
+            if active
+        ])
+        func = multi_prob.function()
+        if self.integrand_prob is None:
+            self.integrand_prob = FunctionModule(func, self.context)
+        else:
+            self.integrand_prob.runtime = me.FunctionRuntime(func, self.context)
 
     def sample(
         self,
@@ -64,6 +77,7 @@ class IntegrandDistribution(nn.Module, Distribution):
             channel = torch.tensor([len(x)], dtype=torch.int32)
         else:
             raise NotImplementedError("channel argument type not supported")
+        channel = channel[self.channel_mask]
 
         prob_args = [
             xi if is_float else xi[:,0].to(torch.int32)
@@ -76,22 +90,28 @@ class IntegrandDistribution(nn.Module, Distribution):
             channel_perm_inv = torch.argsort(channel_perm)
             return prob[channel_perm_inv]
 
-def build_madnis_integrand(
-    channels: list[me.Integrand],
-    cwnet: me.ChannelWeightNetwork | None = None,
-    channel_grouping: ChannelGrouping | None = None,
-    context: me.Context = me.default_context(),
-) -> tuple[Integrand, Distribution, nn.Module | None]:
-    channel_count = len(channels)
-    multi_integrand = me.MultiChannelFunction(channels)
-    multi_runtime = me.FunctionRuntime(multi_integrand.function(), context)
 
-    def integrand_function(channels):
+class IntegrandFunction:
+    def __init__(self, channels: list[me.Integrand], context: me.Context):
+        self.channel_count = len(channels)
+        self.channels = channels
+        self.context = context
+        self.update_channel_mask(torch.ones(self.channel_count, dtype=torch.bool))
+
+    def update_channel_mask(self, mask: torch.Tensor) -> None:
+        self.channel_mask = mask
+        multi_integrand = me.MultiChannelFunction(
+            [chan for chan, active in zip(self.channels, mask) if active]
+        )
+        self.multi_runtime = me.FunctionRuntime(multi_integrand.function(), self.context)
+
+    def __call__(self, channels: torch.Tensor) -> tuple[torch.Tensor, ...]:
         channel_perm = torch.argsort(channels)
-        channels = channels.bincount(minlength=channel_count).to(torch.int32)
+        channels = channels.bincount(minlength=self.channel_count).to(torch.int32)
+        channels = channels[self.channel_mask]
         (
             full_weight, latent, inv_prob, chan_index, alphas_prior, alpha_selected, y, *rest
-        ) = multi_runtime(channels)
+        ) = self.multi_runtime(channels)
 
         x_parts = [latent, *rest]
         x = torch.cat(
@@ -109,8 +129,35 @@ def build_madnis_integrand(
             chan_index[channel_perm_inv].to(torch.int64)
         )
 
-    def update_mask(mask: torch.Tensor):
+
+def build_madnis_integrand(
+    channels: list[me.Integrand],
+    cwnet: me.ChannelWeightNetwork | None = None,
+    channel_grouping: ChannelGrouping | None = None,
+    context: me.Context = me.default_context(),
+) -> tuple[Integrand, Distribution, nn.Module | None]:
+
+    if channel_grouping is None:
+        remap_channels = lambda channels: channels
+        group_indices = torch.arange(len(channels))
+    else:
+        channel_id_map = torch.tensor([
+            channel.group.group_index for channel in channel_grouping.channels
+        ])
+        remap_channels = lambda channels: channel_id_map[channels]
+        group_indices = torch.tensor([
+            group.target_index for group in channel_grouping.groups
+        ])
+
+    integrand_function = IntegrandFunction(channels, context)
+    flow = IntegrandDistribution(channels, remap_channels, context)
+
+    def update_mask(mask: torch.Tensor) -> None:
         context.get_global(cwnet.mask_name()).torch()[0, :] = mask.double()
+        group_mask = mask[group_indices]
+        if torch.any(group_mask != integrand_function.channel_mask):
+            integrand_function.update_channel_mask(group_mask)
+            flow.update_channel_mask(group_mask)
 
     integrand = Integrand(
         function=integrand_function,
@@ -122,6 +169,5 @@ def build_madnis_integrand(
         function_includes_sampling=True,
         update_active_channels_mask=update_mask,
     )
-    flow = IntegrandDistribution(channels, integrand.remap_channels, context)
     cwnet_module = None if cwnet is None else FunctionModule(cwnet.mlp().function(), context)
     return integrand, flow, cwnet_module
