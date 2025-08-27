@@ -734,7 +734,7 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
 }
 
 TensorVec CpuRuntime::run(const TensorVec& inputs) const {
-    if (_concurrent) {
+    if (_concurrent && default_thread_pool().thread_count() > 1) {
         auto [outputs, locals, eval_grad] = run_concurrent(inputs, {}, false);
         return outputs;
     } else {
@@ -745,7 +745,7 @@ TensorVec CpuRuntime::run(const TensorVec& inputs) const {
 std::tuple<TensorVec, TensorVec, std::vector<bool>> CpuRuntime::run_with_grad(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
-    if (_concurrent) {
+    if (_concurrent && default_thread_pool().thread_count() > 1) {
         return run_concurrent(inputs, input_requires_grad, true);
     } else {
         return run_with_grad_single(inputs, input_requires_grad);
@@ -759,7 +759,7 @@ std::tuple<
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
 ) const {
-    if (_concurrent) {
+    if (_concurrent && default_thread_pool().thread_count() > 1) {
         return run_backward_concurrent(output_grads, stored_locals, eval_grad);
     } else {
         return run_backward_single(output_grads, stored_locals, eval_grad);
