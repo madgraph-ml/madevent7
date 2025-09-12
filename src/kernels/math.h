@@ -32,7 +32,6 @@ KERNELSPEC void kernel_add_inplace(FIn<T,0> in, FOut<T,0> out) {
 
 template<typename T>
 KERNELSPEC void kernel_add(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
-    out.size();
     out = in1 + in2;
 }
 
@@ -91,6 +90,16 @@ KERNELSPEC void kernel_sqrt(FIn<T,0> in, FOut<T,0> out) {
 template<typename T>
 KERNELSPEC void kernel_square(FIn<T,0> in, FOut<T,0> out) {
     out = in * in;
+}
+
+template<typename T>
+KERNELSPEC void kernel_min(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
+    out = min(in1, in2);
+}
+
+template<typename T>
+KERNELSPEC void kernel_max(FIn<T,0> in1, FIn<T,0> in2, FOut<T,0> out) {
+    out = max(in1, in2);
 }
 
 }

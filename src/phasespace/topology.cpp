@@ -95,6 +95,8 @@ void build_decays(
             parent_decay_index,
             {},
             diagram.outgoing_masses().at(line_ref.index()),
+            0.,
+            0.,
             0.
         });
         outgoing_indices.at(line_ref.index()) = decay_index;
@@ -106,7 +108,9 @@ void build_decays(
             parent_decay_index,
             {},
             propagator.mass,
-            propagator.width
+            propagator.width,
+            propagator.e_min,
+            propagator.e_max
         });
         decay_indices.push_back(decay_index);
         integration_order.push_back(propagator.integration_order);

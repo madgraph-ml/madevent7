@@ -38,7 +38,7 @@ inline FVec vgather(
     FVec ret;
     IVec strided_indices = indices * IVec(index_stride);
     ret = vsetq_lane_f64(base_ptr[vgetq_lane_s64(strided_indices, 0)], ret, 0);
-    ret = vsetq_lane_f64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 0);
+    ret = vsetq_lane_f64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1);
     return ret;
 }
 
@@ -48,7 +48,7 @@ inline IVec vgather(
     IVec ret;
     IVec strided_indices = indices * IVec(index_stride);
     ret = vsetq_lane_s64(base_ptr[vgetq_lane_s64(strided_indices, 0)], ret, 0);
-    ret = vsetq_lane_s64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 0);
+    ret = vsetq_lane_s64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1);
     return ret;
 }
 

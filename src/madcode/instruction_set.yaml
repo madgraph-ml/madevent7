@@ -5,8 +5,9 @@ stack:
   inputs: any
   outputs:
     - name: out
-      desc: 
-  desc: Combines input tensors
+      desc: Combined tensor with shape (b, n, *) given n inputs with shape (b, *).
+  desc: >
+    Combines input tensors by adding another dimension after the batch dimension.
   class: StackInstruction
   custom_op: True
   differentiable: True
@@ -16,7 +17,7 @@ unstack:
     - name: in
       desc: 
   outputs: any
-  desc: 
+  desc:
   class: UnstackInstruction
   custom_op: True
   differentiable: True
@@ -196,6 +197,37 @@ square:
     - name: out
       type: [float]
       desc:
+
+min:
+  inputs:
+    - name: in1
+      type: [float, ...]
+      desc:
+    - name: in2
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  desc:
+  dims: 0
+
+max:
+  inputs:
+    - name: in1
+      type: [float, ...]
+      desc:
+    - name: in2
+      type: [float, ...]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ...]
+      desc:
+  desc:
+  dims: 0
+
 
 ---
 title: Kinematics

@@ -71,6 +71,14 @@ Value square(Value in) {
     return instruction("square", {in})[0];
 }
 
+Value min(Value in1, Value in2) {
+    return instruction("min", {in1, in2})[0];
+}
+
+Value max(Value in1, Value in2) {
+    return instruction("max", {in1, in2})[0];
+}
+
 Value boost_beam(Value p1, Value x1, Value x2) {
     return instruction("boost_beam", {p1, x1, x2})[0];
 }
