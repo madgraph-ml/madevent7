@@ -30,6 +30,8 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in"));
     fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in"));
     fb.def("square", &FunctionBuilder::square, py::arg("in"));
+    fb.def("min", &FunctionBuilder::min, py::arg("in1"), py::arg("in2"));
+    fb.def("max", &FunctionBuilder::max, py::arg("in1"), py::arg("in2"));
     fb.def("boost_beam", &FunctionBuilder::boost_beam, py::arg("p1"), py::arg("x1"), py::arg("x2"));
     fb.def("boost_beam_inverse", &FunctionBuilder::boost_beam_inverse, py::arg("p1"), py::arg("x1"), py::arg("x2"));
     fb.def("com_p_in", &FunctionBuilder::com_p_in, py::arg("e_cm"));

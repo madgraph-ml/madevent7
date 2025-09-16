@@ -11,6 +11,8 @@ struct Propagator {
     double mass;
     double width;
     int integration_order;
+    double e_min;
+    double e_max;
 };
 
 class Diagram {
@@ -65,6 +67,8 @@ public:
         std::vector<std::size_t> child_indices;
         double mass;
         double width;
+        double e_min;
+        double e_max;
     };
 
     Topology(const Diagram& diagram);

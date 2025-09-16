@@ -111,7 +111,6 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("local_index", &Value::local_index);
     py::implicitly_convertible<me_int_t, Value>();
     py::implicitly_convertible<double, Value>();
-    py::implicitly_convertible<std::string, Value>();
 
     py::classh<InstructionCall>(m, "InstructionCall")
         .def("__str__", &to_string<InstructionCall>)
@@ -219,11 +218,17 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("com"), py::arg("invariant_power")=0.,
              py::arg("mass")=0., py::arg("width")=0.);
     py::classh<Propagator>(m, "Propagator")
-        .def(py::init<double, double, int>(),
-             py::arg("mass")=0., py::arg("width")=0., py::arg("integration_order")=0)
+        .def(py::init<double, double, int, double, double>(),
+             py::arg("mass")=0.,
+             py::arg("width")=0.,
+             py::arg("integration_order")=0,
+             py::arg("e_min")=0.,
+             py::arg("e_max")=0.)
         .def_readonly("mass", &Propagator::mass)
         .def_readonly("width", &Propagator::width)
-        .def_readonly("integration_order", &Propagator::integration_order);
+        .def_readonly("integration_order", &Propagator::integration_order)
+        .def_readonly("e_min", &Propagator::e_min)
+        .def_readonly("e_max", &Propagator::e_max);
     py::classh<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<std::size_t>, double>(),
              py::arg("integration_order"), py::arg("invariant_power")=0.);

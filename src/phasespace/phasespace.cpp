@@ -19,7 +19,7 @@ struct DecayData {
 };
 
 void update_mass_min_max(
-    std::vector<DecayData>& decay_data, std::size_t decay_index
+    FunctionBuilder& fb, std::vector<DecayData>& decay_data, std::size_t decay_index
 ) {
     // Update the minimum mass for the entire decay tree, based on the external
     // masses and already sampled masses.
@@ -33,6 +33,9 @@ void update_mass_min_max(
                 data.min_masses.insert(
                     data.min_masses.end(), child_min_masses.begin(), child_min_masses.end()
                 );
+            }
+            if (data.decay.e_min > 0.) {
+                data.min_masses = {fb.max(data.decay.e_min, fb.sum(data.min_masses))};
             }
         }
     }
@@ -97,7 +100,10 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     };
     std::vector<DecayInfo> decay_info(_topology.decays().size());
     for (auto [index, m_min, pt_min, eta_max] : zip(
-        _topology.outgoing_indices(), _topology.outgoing_masses(), _cuts.pt_min(), _cuts.eta_max()
+        _topology.outgoing_indices(),
+        _topology.outgoing_masses(),
+        _cuts.pt_min(),
+        _cuts.eta_max()
     )) {
         decay_info.at(index) = {m_min, pt_min, eta_max, std::nullopt};
     }
@@ -111,13 +117,16 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         if (decay.child_indices.size() == 2) {
             _s_decays.push_back(TwoParticleDecay(is_com_decay));
         } else {
-            _s_decays.push_back(FastRamboMapping(decay.child_indices.size(), false, is_com_decay));
+            _s_decays.push_back(
+                FastRamboMapping(decay.child_indices.size(), false, is_com_decay)
+            );
         }
 
-        info.m_min = 0.;
+        double m_min = 0.;
         for (std::size_t child_index : decay.child_indices) {
-            info.m_min += decay_info.at(child_index).m_min;
+            m_min += decay_info.at(child_index).m_min;
         }
+        info.m_min = std::max(m_min, decay.e_min);
         info.pt_min = 0.;
         info.eta_max = std::numeric_limits<double>::infinity();
         if (!is_com_decay) {
@@ -142,9 +151,13 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         }
     }
 
-    double total_mass = std::accumulate(
+    /*double total_mass = std::accumulate(
         _topology.outgoing_masses().begin(), _topology.outgoing_masses().end(), 0.
-    );
+    );*/
+    double total_mass = 0.;
+    for (std::size_t index : topology.decays().at(0).child_indices) {
+        total_mass += decay_info.at(index).m_min;
+    }
     double sqrt_s_hat_min = _cuts.sqrt_s_min();
     double s_hat_min = std::max(total_mass * total_mass, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
@@ -273,11 +286,13 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         if (decay_index == 0) continue;
         auto& decay = _topology.decays().at(decay_index);
         auto& data = decay_data.at(decay_index);
-        update_mass_min_max(decay_data, decay_index);
+        update_mass_min_max(fb, decay_data, decay_index);
         auto s_min = fb.square(fb.sum(data.min_masses));
-        auto s_max = fb.square(fb.sub(
-            data.max_mass.value(), fb.sum(data.max_mass_subtract)
-        ));
+        auto sqrt_s_max = fb.sub(data.max_mass.value(), fb.sum(data.max_mass_subtract));
+        if (data.decay.e_max > 0.) {
+            sqrt_s_max = fb.min(sqrt_s_max, data.decay.e_max);
+        }
+        auto s_max = fb.square(sqrt_s_max);
         auto [s_vec, det] = _s_invariants.at(invariant_index++).build_forward(
             fb, {next_random()}, {s_min, s_max}
         );

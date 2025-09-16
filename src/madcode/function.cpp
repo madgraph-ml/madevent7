@@ -277,6 +277,14 @@ ValueVec FunctionBuilder::instruction(InstructionPtr instruction, const ValueVec
         } case opcodes::square: {
             double arg0 = std::get<double>(args.at(0).literal_value);
             return {arg0 * arg0};
+        } case opcodes::min: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {std::min(arg0, arg1)};
+        } case opcodes::max: {
+            double arg0 = std::get<double>(args.at(0).literal_value);
+            double arg1 = std::get<double>(args.at(1).literal_value);
+            return {std::max(arg0, arg1)};
         }}
     } else if (variable_args == 1 && args.size() == 2) {
         std::size_t var_index = args.at(0).local_index == -1;
