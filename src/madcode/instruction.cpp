@@ -550,7 +550,7 @@ TypeVec UnsqueezeInstruction::signature(const ValueVec& args) const {
         throw std::invalid_argument("Batch size list not accepted as argument");
     }
     std::vector<int> out_shape {1};
-    out_shape.insert(out_shape.end(), arg.type.shape.begin() + 1, arg.type.shape.end());
+    out_shape.insert(out_shape.end(), arg.type.shape.begin(), arg.type.shape.end());
     return {{arg.type.dtype, arg.type.batch_size, out_shape}};
 }
 
