@@ -512,58 +512,22 @@ void op_unweight(
     );
 }
 
-__global__ void kernel_prepare_hist(
-    std::size_t batch_size,
-    CudaTensorView<double, 2, true> input,
-    CudaTensorView<double, 1, true> weights_in,
-    CudaTensorView<me_int_t, 1, true> bin_count,
-    CudaTensorView<me_int_t, 2, true> indices,
-    CudaTensorView<double, 2, true> weights_out
-) {
-    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
-    double bin_count_f = bin_count[i];
-    double w2 = i < batch_size ? weights_in[i] * weights_in[i] : 0.;
-    std::size_t n_dims = input.size(1);
-    for (std::size_t j = 0; j < n_dims; ++j) {
-        indices[i][j] = j + n_dims * (
-            i < batch_size ? static_cast<me_int_t>(input[i][j] * bin_count_f) : i - batch_size
-        );
-        weights_out[i][j] = w2;
+struct Decrement {
+    __device__ void operator()(me_int_t& val) {
+        --val;
     }
-}
+};
 
-void op_vegas_histogram(
-    const CudaRuntime::Instruction& instruction,
-    TensorVec& locals,
-    const AsyncCudaDevice& device
+void histogram_common(
+    const AsyncCudaDevice& device,
+    std::size_t padded_size,
+    std::size_t n_dims,
+    std::size_t n_bins,
+    Tensor& indices_tmp,
+    Tensor& weights_tmp,
+    Tensor& counts,
+    Tensor& values
 ) {
-    auto& input = locals[instruction.input_indices[0]];
-    auto& weights = locals[instruction.input_indices[1]];
-    auto& bin_count = locals[instruction.input_indices[2]];
-    auto& values = locals[instruction.output_indices[0]];
-    auto& counts = locals[instruction.output_indices[1]];
-
-    auto out_shape = instruction.output_shapes[0];
-    Sizes shape(out_shape.size() + 1);
-    shape[0] = 1;
-    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
-    values = Tensor(DataType::dt_float, shape, device);
-    counts = Tensor(DataType::dt_int, shape, device);
-
-    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    std::size_t n_dims = input.size(1);
-    std::size_t n_bins = values.size(2);
-
-    std::size_t padded_size = batch_size + n_bins;
-    Tensor indices_tmp(DataType::dt_int, {padded_size, n_dims}, device);
-    Tensor weights_tmp(DataType::dt_float, {padded_size, n_dims}, device);
-    launch_kernel(
-        kernel_prepare_hist, batch_size + n_bins, device.stream(),
-        batch_size + n_bins,
-        input.view<double, 2>(), weights.view<double, 1>(), bin_count.view<me_int_t, 1>(),
-        indices_tmp.view<me_int_t, 2>(), weights_tmp.view<double, 2>()
-    );
-
     auto policy = thrust::cuda::par.on(device.stream());
     Tensor reduce_tmp(DataType::dt_float, {n_dims * n_bins}, device);
     auto indices_ptr = thrust::device_pointer_cast(
@@ -582,31 +546,53 @@ void op_vegas_histogram(
         static_cast<double*>(reduce_tmp.data())
     );
 
-    thrust::sort_by_key(policy, indices_ptr, indices_ptr + padded_size, weights_ptr);
+    std::size_t flat_size = padded_size * n_dims;
+    thrust::sort_by_key(policy, indices_ptr, indices_ptr + flat_size, weights_ptr);
     thrust::reduce_by_key(
         policy,
         indices_ptr,
-        indices_ptr + padded_size,
+        indices_ptr + flat_size,
         thrust::constant_iterator<me_int_t>(1),
         reduce_tmp_ptr,
         counts_ptr
     );
+    thrust::for_each_n(policy, counts_ptr, n_dims * n_bins, Decrement{});
     thrust::reduce_by_key(
         policy,
         indices_ptr,
-        indices_ptr + padded_size,
+        indices_ptr + flat_size,
         weights_ptr,
         reduce_tmp_ptr,
         values_ptr
     );
 }
 
-void op_discrete_histogram(
+__global__ void kernel_prepare_vegas_hist(
+    std::size_t batch_size,
+    std::size_t n_bins,
+    CudaTensorView<double, 2, true> input,
+    CudaTensorView<double, 1, true> weights_in,
+    CudaTensorView<me_int_t, 2, true> indices,
+    CudaTensorView<double, 2, true> weights_out
+) {
+    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i >= batch_size + n_bins) return;
+    std::size_t n_dims = input.size(1);
+    double bin_count_f = n_bins;
+    double w2 = i < batch_size ? weights_in[i] * weights_in[i] : 0.;
+    for (std::size_t j = 0; j < n_dims; ++j) {
+        indices[i][j] = j + n_dims * (i < batch_size ?
+            static_cast<me_int_t>(input[i][j] * bin_count_f) : i - batch_size);
+        weights_out[i][j] = w2;
+    }
+}
+
+void op_vegas_histogram(
     const CudaRuntime::Instruction& instruction,
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    /*auto& input = locals[instruction.input_indices[0]];
+    auto& input = locals[instruction.input_indices[0]];
     auto& weights = locals[instruction.input_indices[1]];
     auto& values = locals[instruction.output_indices[0]];
     auto& counts = locals[instruction.output_indices[1]];
@@ -618,11 +604,68 @@ void op_discrete_histogram(
     values = Tensor(DataType::dt_float, shape, device);
     counts = Tensor(DataType::dt_int, shape, device);
 
-    auto input_view = input.view<me_int_t, 1>();
-    auto weights_view = weights.view<double, 1>();
-    auto values_view = values.view<double, 2>();
-    auto counts_view = counts.view<me_int_t, 2>();*/
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    std::size_t n_dims = input.size(1);
+    std::size_t n_bins = values.size(2);
 
+    std::size_t padded_size = batch_size + n_bins;
+    Tensor indices_tmp(DataType::dt_int, {padded_size, n_dims}, device);
+    Tensor weights_tmp(DataType::dt_float, {padded_size, n_dims}, device);
+    launch_kernel(
+        kernel_prepare_vegas_hist, padded_size, device.stream(), batch_size, n_bins,
+        input.view<double, 2>(), weights.view<double, 1>(),
+        indices_tmp.view<me_int_t, 2>(), weights_tmp.view<double, 2>()
+    );
+    histogram_common(
+        device, padded_size, n_dims, n_bins, indices_tmp, weights_tmp, counts, values
+    );
+}
+
+__global__ void kernel_prepare_discrete_hist(
+    std::size_t batch_size,
+    std::size_t n_opts,
+    CudaTensorView<me_int_t, 1, true> input,
+    CudaTensorView<double, 1, true> weights_in,
+    CudaTensorView<me_int_t, 1, true> indices,
+    CudaTensorView<double, 1, true> weights_out
+) {
+    me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i >= batch_size + n_opts) return;
+    indices[i] = i < batch_size ? input[i] : i - batch_size;
+    weights_out[i] = i < batch_size ? weights_in[i] : 0.;
+}
+
+void op_discrete_histogram(
+    const CudaRuntime::Instruction& instruction,
+    TensorVec& locals,
+    const AsyncCudaDevice& device
+) {
+    auto& input = locals[instruction.input_indices[0]];
+    auto& weights = locals[instruction.input_indices[1]];
+    auto& values = locals[instruction.output_indices[0]];
+    auto& counts = locals[instruction.output_indices[1]];
+
+    auto out_shape = instruction.output_shapes[0];
+    Sizes shape(out_shape.size() + 1);
+    shape[0] = 1;
+    std::copy(out_shape.begin(), out_shape.end(), shape.begin() + 1);
+    values = Tensor(DataType::dt_float, shape, device);
+    counts = Tensor(DataType::dt_int, shape, device);
+
+    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
+    std::size_t n_opts = values.size(1);
+
+    std::size_t padded_size = batch_size + n_opts;
+    Tensor indices_tmp(DataType::dt_int, {padded_size}, device);
+    Tensor weights_tmp(DataType::dt_float, {padded_size}, device);
+    launch_kernel(
+        kernel_prepare_discrete_hist, padded_size, device.stream(), batch_size, n_opts,
+        input.view<me_int_t, 1>(), weights.view<double, 1>(),
+        indices_tmp.view<me_int_t, 1>(), weights_tmp.view<double, 1>()
+    );
+    histogram_common(
+        device, padded_size, 1, n_opts, indices_tmp, weights_tmp, counts, values
+    );
 }
 
 }

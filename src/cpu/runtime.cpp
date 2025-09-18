@@ -551,7 +551,7 @@ void op_discrete_histogram(
         for (std::size_t i = 0; i < batch_size; ++i) {
             auto w = weights_view[i];
             std::size_t index = input_view[i];
-            values_view[0][index] += w * w;
+            values_view[0][index] += w;
             counts_view[0][index] += 1;
         }
     });
