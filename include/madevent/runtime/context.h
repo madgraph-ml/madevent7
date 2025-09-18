@@ -43,11 +43,11 @@ private:
     SubProcessInfo _subprocess_info;
     void* (*_init_subprocess)(const char*);
     void (*_compute_matrix_element)(
-        void*, std::size_t, std::size_t, const double*, const int*, double*
+        void*, std::size_t, std::size_t, const double*, const int*, double*, void*
     );
     void (*_compute_matrix_element_multichannel)(
         void*, std::size_t, std::size_t, const double*, const double*, const double*,
-        const int*, double*, double*, int*, int*, int*
+        const int*, double*, double*, int*, int*, int*, void*
     );
     void (*_free_subprocess)(void*);
     using InstanceType = std::unique_ptr<void, std::function<void(void*)>>;

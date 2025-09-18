@@ -215,10 +215,12 @@ void tensor_foreach(
         ((total_count + THREADS_MULTIPLE - 1) / THREADS_MULTIPLE) * THREADS_MULTIPLE
     );
     std::size_t n_blocks = (total_count + n_threads - 1) / n_threads;
+
     std::apply([&](auto&... args) {
         run_kernel<func, dims><<<n_blocks, n_threads, 0, device.stream()>>>
             (batch_size, args...);
     }, views);
+    check_error();
 }
 
 template<typename F> struct first_param;

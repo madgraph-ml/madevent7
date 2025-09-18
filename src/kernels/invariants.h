@@ -23,7 +23,8 @@ KERNELSPEC void kernel_uniform_invariant_inverse(
 
 template<typename T>
 KERNELSPEC void kernel_breit_wigner_invariant(
-    FIn<T,0> r, FIn<T,0> mass, FIn<T,0> width, FIn<T,0> s_min, FIn<T,0> s_max, FOut<T,0> s, FOut<T,0> gs
+    FIn<T,0> r, FIn<T,0> mass, FIn<T,0> width, FIn<T,0> s_min, FIn<T,0> s_max,
+    FOut<T,0> s, FOut<T,0> gs
 ) {
     auto m2 = mass * mass;
     auto gm = mass * width;

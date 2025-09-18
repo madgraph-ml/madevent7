@@ -12,6 +12,8 @@
 #include <thrust/execution_policy.h>
 #include <thrust/copy.h>
 #include <thrust/gather.h>
+#include <thrust/iterator/constant_iterator.h>
+#include <thrust/sort.h>
 
 #include "madevent/util.h"
 #include "tensor.h"
@@ -46,10 +48,10 @@ void op_matrix_element(
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
-    check_error(cudaStreamSynchronize(device.stream()));
     matrix_element.call(
         matrix_element.process_instance(ThreadPool::thread_index()),
-        batch_size, batch_size, mom_ptr, flavor_ptr, me_ptr
+        batch_size, batch_size, mom_ptr, flavor_ptr, me_ptr,
+        device.stream()
     );
 }
 
@@ -98,12 +100,12 @@ void op_matrix_element_multichannel(
     auto color_ptr = static_cast<me_int_t*>(color_out.data());
     auto helicity_ptr = static_cast<me_int_t*>(helicity_out.data());
 
-    check_error(cudaStreamSynchronize(device.stream()));
     matrix_element.call_multichannel(
         matrix_element.process_instance(ThreadPool::thread_index()),
         batch_size, batch_size,
         mom_ptr, alpha_ptr, random_ptr, flavor_ptr, me_ptr,
-        amp2_ptr, color_ptr, diag_ptr, helicity_ptr
+        amp2_ptr, color_ptr, diag_ptr, helicity_ptr,
+        device.stream()
     );
 }
 
@@ -211,6 +213,7 @@ void backward_op_matmul(
         &beta,
         static_cast<double*>(bias_grad.data()), 1
     ));
+    cudaFreeAsync(ones, stream);
 }
 
 struct NotMinusOne {
@@ -509,18 +512,23 @@ void op_unweight(
     );
 }
 
-__global__ void kernel_bin_index(
+__global__ void kernel_prepare_hist(
     std::size_t batch_size,
     CudaTensorView<double, 2, true> input,
+    CudaTensorView<double, 1, true> weights_in,
     CudaTensorView<me_int_t, 1, true> bin_count,
-    CudaTensorView<me_int_t, 2, true> output
+    CudaTensorView<me_int_t, 2, true> indices,
+    CudaTensorView<double, 2, true> weights_out
 ) {
     me_int_t i = blockDim.x * blockIdx.x + threadIdx.x;
-    if (i < batch_size) {
-        for (std::size_t j = 0; j < input.size(1); ++j) {
-            double bin_count_f = bin_count[i];
-            output[i][j] = input[i][j] * bin_count_f;
-        }
+    double bin_count_f = bin_count[i];
+    double w2 = i < batch_size ? weights_in[i] * weights_in[i] : 0.;
+    std::size_t n_dims = input.size(1);
+    for (std::size_t j = 0; j < n_dims; ++j) {
+        indices[i][j] = j + n_dims * (
+            i < batch_size ? static_cast<me_int_t>(input[i][j] * bin_count_f) : i - batch_size
+        );
+        weights_out[i][j] = w2;
     }
 }
 
@@ -529,7 +537,7 @@ void op_vegas_histogram(
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    /*auto& input = locals[instruction.input_indices[0]];
+    auto& input = locals[instruction.input_indices[0]];
     auto& weights = locals[instruction.input_indices[1]];
     auto& bin_count = locals[instruction.input_indices[2]];
     auto& values = locals[instruction.output_indices[0]];
@@ -543,30 +551,54 @@ void op_vegas_histogram(
     counts = Tensor(DataType::dt_int, shape, device);
 
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    std::size_t n_dims = inputs.size(1);
+    std::size_t n_dims = input.size(1);
     std::size_t n_bins = values.size(2);
 
-    Tensor indices_tmp(DataType::dt_int, {batch_size + n_bins, n_dims}, device);
-    Tensor weights_tmp(DataType::dt_double, {batch_size + n_bins}, device);
+    std::size_t padded_size = batch_size + n_bins;
+    Tensor indices_tmp(DataType::dt_int, {padded_size, n_dims}, device);
+    Tensor weights_tmp(DataType::dt_float, {padded_size, n_dims}, device);
     launch_kernel(
-        kernel_bin_index, batch_size, device.stream(),
-        batch_size, input.view<double, 2>(), bin_count.view<me_int_t, 1>(),
-        indices_tmp.view<double, 2>()
-    );
-    launch_kernel(
-        kernel_square, batch_size, device.stream(),
-        batch_size, weights.view<double, 1>(), weights_tmp.view<double, 1>()
+        kernel_prepare_hist, batch_size + n_bins, device.stream(),
+        batch_size + n_bins,
+        input.view<double, 2>(), weights.view<double, 1>(), bin_count.view<me_int_t, 1>(),
+        indices_tmp.view<me_int_t, 2>(), weights_tmp.view<double, 2>()
     );
 
-    auto& policy = thrust::cuda::par.on(stream);*/
+    auto policy = thrust::cuda::par.on(device.stream());
+    Tensor reduce_tmp(DataType::dt_float, {n_dims * n_bins}, device);
+    auto indices_ptr = thrust::device_pointer_cast(
+        static_cast<me_int_t*>(indices_tmp.data())
+    );
+    auto weights_ptr = thrust::device_pointer_cast(
+        static_cast<double*>(weights_tmp.data())
+    );
+    auto counts_ptr = thrust::device_pointer_cast(
+        static_cast<me_int_t*>(counts.data())
+    );
+    auto values_ptr = thrust::device_pointer_cast(
+        static_cast<double*>(values.data())
+    );
+    auto reduce_tmp_ptr = thrust::device_pointer_cast(
+        static_cast<double*>(reduce_tmp.data())
+    );
 
-
-    // convert input to index
-    // pad data with (0, 0) .. (0, n)
-    // fill values with -1, counts with 0
-    // thrust::sort_by_key
-    // thrust::reduce_by_key for values^2
-    // thrust::reduce_by_key for counts
+    thrust::sort_by_key(policy, indices_ptr, indices_ptr + padded_size, weights_ptr);
+    thrust::reduce_by_key(
+        policy,
+        indices_ptr,
+        indices_ptr + padded_size,
+        thrust::constant_iterator<me_int_t>(1),
+        reduce_tmp_ptr,
+        counts_ptr
+    );
+    thrust::reduce_by_key(
+        policy,
+        indices_ptr,
+        indices_ptr + padded_size,
+        weights_ptr,
+        reduce_tmp_ptr,
+        values_ptr
+    );
 }
 
 void op_discrete_histogram(
@@ -609,25 +641,30 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
     InstructionDependencies dependencies(function);
 
     std::size_t instr_index = 0;
-    std::vector<int> forward_streams;
-    std::vector<int> backward_streams;
+
+    cudaStream_t new_stream;
+    check_error(cudaStreamCreate(&new_stream));
+    streams.push_back(new_stream);
+
+    //std::vector<int> forward_streams;
+    //std::vector<int> backward_streams;
     std::vector<int> local_sources(function.locals().size(), -1);
     for (auto& instr : function.instructions()) {
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
-        int forward_stream_index = -1, backward_stream_index = -1;
+        //int forward_stream_index = -1, backward_stream_index = -1;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
-            int local_source = local_sources.at(in.local_index);
+            /*int local_source = local_sources.at(in.local_index);
             if (local_source != -1) {
                 if (forward_streams.at(local_source)) {
 
                 }
 
-            }
+            }*/
         }
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
@@ -639,11 +676,11 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             local_sources.at(out.local_index) = instr_index;
         }
 
-        if (forward_stream_index >= streams.size() || backward_stream_index >= streams.size()) {
+        /*if (forward_stream_index >= streams.size() || backward_stream_index >= streams.size()) {
             cudaStream_t new_stream;
             check_error(cudaStreamCreate(&new_stream));
             streams.push_back(new_stream);
-        }
+        }*/
 
         instructions.push_back({
             instr.instruction->opcode(),
@@ -654,12 +691,12 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             batch_size_index,
             *this,
             instr.instruction->differentiable(),
-            streams.at(forward_stream_index),
-            streams.at(backward_stream_index),
+            new_stream, //streams.at(forward_stream_index),
+            new_stream, //streams.at(backward_stream_index),
         });
         for (std::size_t local_index : last_use.local_indices(instr_index)) {
             instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *this, false
+                -1, {local_index}, {}, {}, {}, 0, *this, false, new_stream, new_stream
             });
         }
         ++instr_index;
