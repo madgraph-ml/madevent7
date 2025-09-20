@@ -39,7 +39,8 @@ EventGenerator::EventGenerator(
         std::ranges::max(std::views::transform(channels, [] (auto& chan) {
             return chan.particle_count();
         }))
-    )
+    ),
+    _job_id(0)
 {
     std::size_t i = 0;
     fs::path file_path(file_name);
@@ -275,8 +276,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
 std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     ChannelState& channel, TensorVec& events, bool run_optim
 ) {
-    auto weights = events.at(0).cpu();
-    auto w_view = weights.view<double,1>();
+    auto& weights = events.at(0);
+    auto weights_cpu = weights.cpu();
+    auto w_view = weights_cpu.view<double,1>();
     std::size_t sample_count = 0;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         if (w_view[i] != 0) ++sample_count;
@@ -335,7 +337,7 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
         channel.integral_fraction = channel.cross_section.mean() / total_mean;
     }
 
-    return {weights, events};
+    return {weights_cpu, events};
 }
 
 void EventGenerator::start_job(
@@ -419,9 +421,9 @@ void EventGenerator::unweight_and_write(
     std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 2);
     unweighter_args.push_back(Tensor(channel.max_weight, _context->device()));
     auto unw_events = _unweighter->run(unweighter_args);
-    auto unw_weights = unw_events.at(0);
+    auto unw_weights = unw_events.at(0).cpu();
     auto w_view = unw_weights.view<double,1>();
-    auto unw_momenta = unw_events.at(1);
+    auto unw_momenta = unw_events.at(1).cpu();
     auto mom_view = unw_momenta.view<double,3>();
 
     EventBuffer buffer(channel.writer.particle_count());

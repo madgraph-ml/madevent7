@@ -56,6 +56,9 @@ void op_matrix_element(
     if (input_particle_count != matrix_element.particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
+    if (matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
+    }
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
@@ -106,6 +109,9 @@ void op_matrix_element_multichannel(
     }
     if (diagram_count != matrix_element.diagram_count()) {
         throw std::runtime_error("Incompatible diagram count");
+    }
+    if (matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
     }
     device.sync_barrier();
 

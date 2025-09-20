@@ -45,6 +45,9 @@ void op_matrix_element(
     if (input_particle_count != matrix_element.particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
+    if (!matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
+    }
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
@@ -89,6 +92,9 @@ void op_matrix_element_multichannel(
     if (diagram_count != matrix_element.diagram_count()) {
         throw std::runtime_error("Incompatible diagram count");
     }
+    if (!matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
+    }
 
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
@@ -128,7 +134,7 @@ void op_matmul(
     cublasHandle_t handle = instruction.runtime.cublas_handle();
     check_error(cublasSetStream(handle, device.stream()));
     double alpha = 1., beta = 1.;
-    cublasDgemm(
+    check_error(cublasDgemm(
         handle,
         CUBLAS_OP_N, CUBLAS_OP_T,
         batch_size, dims_out, dims_in,
@@ -137,7 +143,7 @@ void op_matmul(
         static_cast<double*>(weight.data()), dims_out,
         &beta,
         static_cast<double*>(output.data()), batch_size
-    );
+    ));
 }
 
 void backward_op_matmul(
@@ -241,21 +247,22 @@ void op_nonzero(
     auto& input = locals[instruction.input_indices[0]];
     auto batch_size = input.size(0);
     auto& output = locals[instruction.output_indices[0]];
+    Tensor indices_tmp(DataType::dt_int, {batch_size}, device);
     Tensor output_tmp(DataType::dt_int, {batch_size}, device);
     launch_kernel(
         kernel_nonzero, batch_size, device.stream(),
-        batch_size, input.view<double, 1>(), output_tmp.view<me_int_t, 1>()
+        batch_size, input.view<double, 1>(), indices_tmp.view<me_int_t, 1>()
     );
 
-    auto input_ptr = thrust::device_pointer_cast(
-        static_cast<me_int_t*>(input.data())
+    auto indices_ptr = thrust::device_pointer_cast(
+        static_cast<me_int_t*>(indices_tmp.data())
     );
     auto output_ptr = thrust::device_pointer_cast(
         static_cast<me_int_t*>(output_tmp.data())
     );
     check_error(cudaStreamSynchronize(device.stream()));
     auto count = thrust::copy_if(
-        input_ptr, input_ptr + batch_size, output_ptr, NotMinusOne()
+        indices_ptr, indices_ptr + batch_size, output_ptr, NotMinusOne()
     ) - output_ptr;
     output = output_tmp.slice(0, 0, count);
 }
@@ -888,23 +895,21 @@ std::tuple<
         zip(std::views::reverse(instructions), std::views::reverse(eval_grad))
     ) {
         if (!instr_eval_grad) continue;
-        bool needs_grad = true;
+        AsyncCudaDevice device(instr.backward_stream);
         for (auto [output_index, output_dtype] : zip(
             instr.output_indices, instr.output_dtypes
         )) {
-            if (!local_grads[output_index] && output_dtype == DataType::dt_float) {
-                needs_grad = false;
-                break;
+            auto& grad = local_grads[output_index];
+            if (!grad && output_dtype == DataType::dt_float) {
+                grad = Tensor(DataType::dt_float, locals[output_index].shape(), device);
+                grad.zero(device);
             }
         }
         for (auto event : instr.backward_wait_events) {
             check_error(cudaStreamWaitEvent(instr.backward_stream, event));
         }
-        if (needs_grad) {
-            AsyncCudaDevice device(instr.backward_stream);
-            switch (instr.opcode) {
+        switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
-            }
         }
         if (instr.backward_record_event) {
             check_error(cudaEventRecord(instr.backward_record_event, instr.backward_stream));

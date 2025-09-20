@@ -409,7 +409,7 @@ public:
         if (impl->device == cpu_device()) {
             return *this;
         } else {
-            Tensor tensor(impl->dtype, impl->shape, impl->device);
+            Tensor tensor(impl->dtype, impl->shape);
             device.tensor_cpu(contiguous(device), tensor);
             return tensor;
         }

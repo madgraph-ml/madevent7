@@ -277,20 +277,30 @@ std::size_t EventFile::unweight(double max_weight, std::function<double()> rando
         throw std::runtime_error("Event file opened in read mode.");
     }
 
-    EventBuffer buffer(_particle_count);
+    std::size_t buf_size = 1000;
+    std::vector<EventBuffer> buffers(buf_size, EventBuffer(_particle_count));
     std::size_t accept_count = 0;
-    for (std::size_t i = 0; i < _event_count; ++i) {
+    for (std::size_t i = 0; i < _event_count; i += buf_size) {
         seek(i);
-        read(buffer);
-        double& weight = buffer.event().weight;
-        if (weight / max_weight < random_generator()) {
-            weight = 0;
-        } else {
-            weight = std::max(weight, max_weight);
-            ++accept_count;
+        std::size_t buf_size = i;
+        for (auto& buffer : buffers) {
+            if (buf_size >= _event_count) break;
+            read(buffer);
+            double& weight = buffer.event().weight;
+            if (weight / max_weight < random_generator()) {
+                weight = 0;
+            } else {
+                weight = std::max(weight, max_weight);
+                ++accept_count;
+            }
+            ++buf_size;
         }
         seek(i);
-        write(buffer);
+        for (auto& buffer : buffers) {
+            if (buf_size == 0) break;
+            write(buffer);
+            --buf_size;
+        }
     }
 
     return accept_count;

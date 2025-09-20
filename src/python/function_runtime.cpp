@@ -25,6 +25,7 @@ void deleter(struct DLManagedTensor* self) {
 
 Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
     Runtime* runtime;
+    if (!expected_device) expected_device = func_runtime.context->device();
     if (expected_device == cpu_device()) {
         if (!func_runtime.cpu_runtime) {
             if (func_runtime.context) {
@@ -80,7 +81,9 @@ std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
         auto& arg = args.at(i);
         auto& input_type = func_runtime.function.inputs().at(i).type;
         auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device, dlpack_version_cache);
-        if (i == 0) expected_device = tensor.device();
+        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+            expected_device = tensor.device();
+        }
         inputs.push_back(tensor);
     }
     return {inputs, get_runtime(func_runtime, expected_device)};
@@ -105,8 +108,8 @@ py::object madevent_py::tensor_to_dlpack(
     DLManagedTensor* dl_tensor;
     if (tensor.dtype() == DataType::batch_sizes) {
         ManagerContext* context = new ManagerContext{
-            {tensor.shape().begin(), tensor.shape().end()},
-            {tensor.stride().begin(), tensor.stride().end()},
+            {tensor.batch_sizes().size()},
+            {1},
             {tensor.batch_sizes().begin(), tensor.batch_sizes().end()},
             {}
         };
@@ -115,7 +118,7 @@ py::object madevent_py::tensor_to_dlpack(
                 static_cast<void*>(context->batch_sizes.data()),
                 {kDLCPU, 0},
                 static_cast<int32_t>(context->shape.size()),
-                {kDLFloat, 64, 1},
+                {kDLInt, 64, 1},
                 context->shape.data(),
                 context->stride.data(),
                 0
@@ -258,6 +261,18 @@ Tensor madevent_py::dlpack_to_tensor(
                 std::format("Argument {}: got unexpected dtype", arg_index + 1)
             );
         }
+    } else if (
+        dl_tensor->dtype.code == kDLInt &&
+        dl_tensor->dtype.bits == 64 &&
+        dl_tensor->dtype.lanes == 1
+    ) {
+        dtype = DataType::batch_sizes;
+        is_batch_sizes = true;
+        if (!is_batch_sizes && expected_type) {
+            throw std::invalid_argument(
+                std::format("Argument {}: got unexpected dtype", arg_index + 1)
+            );
+        }
     } else {
         throw std::invalid_argument(std::format(
             "Argument {}: input dtype must be 64-bit float or 32-bit int", arg_index + 1
@@ -274,8 +289,10 @@ Tensor madevent_py::dlpack_to_tensor(
             std::format("Argument {}: device not supported", arg_index + 1)
         );
     }
-    if (expected_device && device != expected_device) {
-        throw std::invalid_argument("All inputs have to be on the same device.");
+    if (expected_device && !is_batch_sizes && device != expected_device) {
+        throw std::invalid_argument(
+            std::format("Argument {}: wrong device", arg_index + 1)
+        );
     }
 
     Tensor ret_tensor;
@@ -287,7 +304,7 @@ Tensor madevent_py::dlpack_to_tensor(
             ));
         }
         std::size_t count = dl_tensor->shape[0];
-        if (count != expected_type->batch_size_list.size()) {
+        if (expected_type && count != expected_type->batch_size_list.size()) {
             throw std::invalid_argument(std::format(
                 "Argument {}, dimension 0: shape mismatch. Expected {}, got {}",
                 arg_index + 1, expected_type->batch_size_list.size(), dl_tensor->shape[0]
@@ -299,12 +316,22 @@ Tensor madevent_py::dlpack_to_tensor(
             ));
         }
         std::vector<std::size_t> batch_sizes(count);
-        int* data_ptr = reinterpret_cast<int*>(
-            static_cast<uint8_t*>(dl_tensor->data) + dl_tensor->byte_offset
-        );
         std::size_t bs_stride = dl_tensor->strides ? dl_tensor->strides[0] : 1;
-        for (std::size_t i = 0; i < count; ++i) {
-            batch_sizes[i] = data_ptr[bs_stride * i];
+        if (dl_tensor->dtype.bits == 64) {
+            int64_t* data_ptr = reinterpret_cast<int64_t*>(
+                static_cast<uint8_t*>(dl_tensor->data) + dl_tensor->byte_offset
+            );
+            for (std::size_t i = 0; i < count; ++i) {
+                batch_sizes[i] = data_ptr[bs_stride * i];
+            }
+        } else {
+            int* data_ptr = reinterpret_cast<int*>(
+                static_cast<uint8_t*>(dl_tensor->data) + dl_tensor->byte_offset
+            );
+            for (std::size_t i = 0; i < count; ++i) {
+                batch_sizes[i] = data_ptr[bs_stride * i];
+            }
+
         }
         if (versioned) {
             auto ptr = static_cast<DLManagedTensorVersioned*>(managed_ptr);
@@ -416,16 +443,27 @@ std::tuple<
 ) {
     std::vector<Tensor> arg_out;
     DevicePtr expected_device = nullptr;
+    std::size_t arg_index = 0;
     for (auto& grad : output_grads) {
-        auto tensor = dlpack_to_tensor(grad, std::nullopt, 0, expected_device, &dlpack_version_cache);
-        if (expected_device == nullptr && tensor) expected_device = tensor.device();
+        auto tensor = dlpack_to_tensor(
+            grad, std::nullopt, arg_index, expected_device, &dlpack_version_cache
+        );
+        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+            expected_device = tensor.device();
+        }
         arg_out.push_back(tensor);
+        ++arg_index;
     }
     std::vector<Tensor> arg_locals;
     for (auto& local : stored_locals) {
-        auto tensor = dlpack_to_tensor(local, std::nullopt, 0, expected_device, &dlpack_version_cache);
-        if (expected_device == nullptr && tensor) expected_device = tensor.device();
+        auto tensor = dlpack_to_tensor(
+            local, std::nullopt, arg_index, expected_device, &dlpack_version_cache
+        );
+        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+            expected_device = tensor.device();
+        }
         arg_locals.push_back(tensor);
+        ++arg_index;
     }
     // TODO: checks here
     Runtime* runtime = get_runtime(*this, expected_device);

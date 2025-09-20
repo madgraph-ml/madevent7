@@ -183,6 +183,7 @@ __global__ void run_kernel(std::size_t batch_size, V... views) {
 
 template<typename F, typename... Args>
 void launch_kernel(F kernel, std::size_t total_count, cudaStream_t stream, Args... args) {
+    if (total_count == 0) return;
     std::size_t n_threads = std::min(
         MAX_THREADS_PER_BLOCK,
         ((total_count + THREADS_MULTIPLE - 1) / THREADS_MULTIPLE) * THREADS_MULTIPLE
