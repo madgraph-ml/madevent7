@@ -678,44 +678,95 @@ void op_discrete_histogram(
 }
 
 CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
-    _context(context), input_count(function.inputs().size())
+    _context(context), _input_count(function.inputs().size())
 {
     check_error(curandCreateGenerator(&_curand_generator, CURAND_RNG_PSEUDO_DEFAULT));
     std::random_device rand_dev;
     check_error(curandSetPseudoRandomGeneratorSeed(_curand_generator, rand_dev()));
     check_error(cublasCreate(&_cublas_handle));
 
-    locals_init.resize(function.locals().size());
-    requires_grad_init.resize(function.locals().size());
-    LastUseOfLocals last_use(function);
     InstructionDependencies dependencies(function);
+    auto order = dependencies.ranks();
+    SizeVec instruction_perm(function.instructions().size());
+    std::iota(instruction_perm.begin(), instruction_perm.end(), 0);
+    std::sort(
+        instruction_perm.begin(), instruction_perm.end(),
+        [&](std::size_t i, std::size_t j) { return order.at(i) < order.at(j); }
+    );
 
-    std::size_t instr_index = 0;
+    /*std::vector<int> local_sources_backward(function.locals().size(), -1);
+    SizeVec stream_last_instr, instr_stream;
+    for (std::size_t instr_index : std::views::reverse(instruction_perm)) {
+        auto& instr = function.instructions().at(instr_index);
+    }*/
 
-    cudaStream_t new_stream;
-    check_error(cudaStreamCreate(&new_stream));
-    streams.push_back(new_stream);
+    _locals_init.resize(function.locals().size());
+    _requires_grad_init.resize(function.locals().size());
+    LastUseOfLocals last_use(function);
 
-    //std::vector<int> forward_streams;
-    //std::vector<int> backward_streams;
     std::vector<int> local_sources(function.locals().size(), -1);
-    for (auto& instr : function.instructions()) {
+    SizeVec real_indices;
+    std::vector<int> stream_last_instr, instr_streams;
+    std::size_t event_index = 0;
+    for (std::size_t instr_index_new = 0; std::size_t instr_index : instruction_perm) {
+        auto& instr = function.instructions().at(instr_index);
         SizeVec input_indices;
         std::size_t batch_size_index = instr.inputs.at(0).local_index;
-        //int forward_stream_index = -1, backward_stream_index = -1;
+
+        int instr_stream = -1;
+        std::vector<int> instr_deps;
         for (auto& in : instr.inputs) {
             input_indices.push_back(in.local_index);
             if (in.type.batch_size != BatchSize::one) {
                 batch_size_index = in.local_index;
             }
-            /*int local_source = local_sources.at(in.local_index);
-            if (local_source != -1) {
-                if (forward_streams.at(local_source)) {
 
-                }
+            int local_source = local_sources.at(in.local_index);
+            if (local_source == -1) continue;
 
-            }*/
+            if (
+                instr_stream == -1 &&
+                stream_last_instr.at(instr_streams.at(local_source)) == local_source
+            ) {
+                instr_stream = instr_streams.at(local_source);
+            } else {
+                int local_source_perm = instruction_perm.at(local_source);
+                instr_deps.erase(
+                    std::remove_if(instr_deps.begin(), instr_deps.end(), [&](int i) {
+                        return i == local_source || dependencies.depends(
+                            local_source_perm, instruction_perm.at(i)
+                        );
+                    }),
+                    instr_deps.end()
+                );
+                instr_deps.push_back(local_source);
+            }
         }
+        if (instr_stream == -1) {
+            for (int i : stream_last_instr) {
+                int dep_index = instruction_perm.at(i);
+                if (dependencies.depends(instr_index_new, dep_index)) {
+                    instr_stream = instr_streams.at(dep_index);
+                    break;
+                }
+            }
+
+            if (instr_stream == -1) {
+                instr_stream = stream_last_instr.size();
+                stream_last_instr.push_back(instr_index_new);
+            }
+        }
+        stream_last_instr.at(instr_stream) = instr_index_new;
+        instr_streams.push_back(instr_stream);
+        for (int& dep : instr_deps) {
+            auto& dep_instr = _instructions.at(real_indices.at(dep));
+            if (dep_instr.record_event == -1) {
+                dep_instr.record_event = event_index;
+                ++event_index;
+            }
+            dep = dep_instr.record_event;
+        }
+
         SizeVec output_indices;
         std::vector<DataType> output_dtypes;
         std::vector<SizeVec> output_shapes;
@@ -723,16 +774,11 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             output_indices.push_back(out.local_index);
             output_dtypes.push_back(out.type.dtype);
             output_shapes.push_back({out.type.shape.begin(), out.type.shape.end()});
-            local_sources.at(out.local_index) = instr_index;
+            local_sources.at(out.local_index) = instr_index_new;
         }
 
-        /*if (forward_stream_index >= streams.size() || backward_stream_index >= streams.size()) {
-            cudaStream_t new_stream;
-            check_error(cudaStreamCreate(&new_stream));
-            streams.push_back(new_stream);
-        }*/
-
-        instructions.push_back({
+        real_indices.push_back(_instructions.size());
+        _instructions.push_back({
             instr.instruction->opcode(),
             input_indices,
             output_indices,
@@ -741,15 +787,19 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
             batch_size_index,
             *this,
             instr.instruction->differentiable(),
-            new_stream, //streams.at(forward_stream_index),
-            new_stream, //streams.at(backward_stream_index),
+            instr_stream,
+            0,
+            instr_deps,
+            -1,
+            {},
+            -1
         });
-        for (std::size_t local_index : last_use.local_indices(instr_index)) {
-            instructions.push_back({
-                -1, {local_index}, {}, {}, {}, 0, *this, false, new_stream, new_stream
-            });
-        }
-        ++instr_index;
+        //for (std::size_t local_index : last_use.local_indices(instr_index)) {
+        //    _instructions.push_back({
+        //        -1, {local_index}, {}, {}, {}, 0, *this, false, 0, 0
+        //    });
+        //}
+        ++instr_index_new;
     }
 
     for (auto& [name, value] : function.globals()) {
@@ -763,10 +813,10 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
                 "Global {} has wrong dtype or shape", name
             ));
         }
-        locals_init.at(value.local_index) = global;
+        _locals_init.at(value.local_index) = global;
         if (context->global_requires_grad(name)) {
-            requires_grad_init.at(value.local_index) = true;
-            grad_global_indices.push_back({name, value.local_index});
+            _requires_grad_init.at(value.local_index) = true;
+            _grad_global_indices.push_back({name, value.local_index});
         }
     }
 
@@ -774,67 +824,134 @@ CudaRuntime::CudaRuntime(const Function& function, ContextPtr context) :
         std::visit(Overloaded{
             [&](auto val) {
                 Tensor tensor(val, &CudaDevice::instance());
-                locals_init[local.local_index] = tensor;
+                _locals_init[local.local_index] = tensor;
             },
             [](std::monostate val){}
         }, local.literal_value);
     }
 
-    for (auto& out : function.outputs()) {
-        output_indices.push_back(out.local_index);
+    std::vector<int> out_deps;
+    for (std::size_t out_index = 0; auto& out : function.outputs()) {
+        _output_indices.push_back(out.local_index);
+        int local_source = local_sources.at(out.local_index);
+        if (out_index == 0) {
+            _sync_stream = instr_streams.at(local_source);
+        } else {
+            int local_source_perm = instruction_perm.at(local_source);
+            out_deps.erase(
+                std::remove_if(out_deps.begin(), out_deps.end(), [&](int i) {
+                    return i == local_source || dependencies.depends(
+                        local_source_perm, instruction_perm.at(i)
+                    );
+                }),
+                out_deps.end()
+            );
+            out_deps.push_back(local_source);
+        }
+        ++out_index;
     }
+    for (int& dep : out_deps) {
+        auto& dep_instr = _instructions.at(real_indices.at(dep));
+        if (dep_instr.record_event == -1) {
+            dep_instr.record_event = event_index;
+            ++event_index;
+        }
+        _sync_events.push_back(dep_instr.record_event);
+    }
+
+    _sync_stream = 0;
+    _backward_sync_stream = 0;
+    std::size_t event_count = event_index;
+    std::size_t stream_count = stream_last_instr.size();
+    println("stream count: {}, event count: {}", stream_count, event_count);
+
+    _streams = ThreadResource<std::vector<cudaStream_t>>(
+        default_thread_pool(),
+        [stream_count]() {
+            std::vector<cudaStream_t> streams(stream_count);
+            for (auto& stream : streams) cudaStreamCreate(&stream);
+            return streams;
+        },
+        [](auto& streams) {
+            for (auto& stream : streams) cudaStreamDestroy(stream);
+        }
+    );
+    _events = ThreadResource<std::vector<cudaEvent_t>>(
+        default_thread_pool(),
+        [event_count]() {
+            std::vector<cudaEvent_t> events(event_count);
+            for (auto& event : events) cudaEventCreate(&event);
+            return events;
+        },
+        [](auto& events) {
+            for (auto& event : events) cudaEventDestroy(event);
+        }
+    );
 }
 
 CudaRuntime::~CudaRuntime() {
     check_error(curandDestroyGenerator(_curand_generator));
     check_error(cublasDestroy(_cublas_handle));
-    for (auto event : events) {
-        cudaEventDestroy(event);
-    }
-    for (auto stream : streams) {
-        cudaStreamDestroy(stream);
-    }
 }
 
 TensorVec CudaRuntime::run(const TensorVec& inputs) const {
-    auto locals = locals_init;
+    auto& streams = _streams.get(ThreadPool::thread_index()); 
+    auto& events = _events.get(ThreadPool::thread_index()); 
+    auto locals = _locals_init;
     std::copy(inputs.begin(), inputs.end(), locals.begin());
 
-    for (auto& instr : instructions) {
-        AsyncCudaDevice device(instr.stream);
+    //println("----");
+    for (auto& instr : _instructions) {
+        auto stream = streams[instr.stream];
+        AsyncCudaDevice device(stream);
+        //print("opcode={}, stream={}, wait=[", instr.opcode, instr.stream);
         for (auto event : instr.wait_events) {
-            check_error(cudaStreamWaitEvent(instr.stream, event));
+            check_error(cudaStreamWaitEvent(stream, events[event]));
+            //print("{}, ", event);
         }
+        //println("], record={}", instr.record_event);
         switch (instr.opcode) {
             case -1: // free memory
                 locals[instr.input_indices[0]].reset(device);
                 break;
 #include "runtime_mixin.h"
         }
-        if (instr.record_event) {
-            check_error(cudaEventRecord(instr.record_event, instr.stream));
+        if (instr.record_event != -1) {
+            check_error(cudaEventRecord(events[instr.record_event], stream));
         }
     }
+
+    auto sync_stream = streams[_sync_stream];
+    //print("SYNC, stream={}, wait=[", _sync_stream);
+    for (auto event : _sync_events) {
+        check_error(cudaStreamWaitEvent(sync_stream, events[event]));
+        //print("{}, ", event);
+    }
+    //println("]");
+    check_error(cudaStreamSynchronize(sync_stream));
+
     TensorVec outputs;
-    for (auto index : output_indices) {
+    for (auto index : _output_indices) {
         outputs.push_back(locals[index]);
     }
-    check_error(cudaDeviceSynchronize());
     return outputs;
 }
 
 std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
     const TensorVec& inputs, const std::vector<bool>& input_requires_grad
 ) const {
-    auto locals = locals_init;
-    auto requires_grad = requires_grad_init;
+    auto& streams = _streams.get(ThreadPool::thread_index()); 
+    auto& events = _events.get(ThreadPool::thread_index()); 
+    auto locals = _locals_init;
+    auto requires_grad = _requires_grad_init;
     std::vector<bool> store_local(locals.size());
-    std::vector<bool> eval_grad(instructions.size());
+    std::vector<bool> eval_grad(_instructions.size());
     std::copy(inputs.begin(), inputs.end(), locals.begin());
     std::copy(input_requires_grad.begin(), input_requires_grad.end(), requires_grad.begin());
 
-    for (auto [instr, instr_eval_grad] : zip(instructions, eval_grad)) {
-        AsyncCudaDevice device(instr.stream);
+    for (auto [instr, instr_eval_grad] : zip(_instructions, eval_grad)) {
+        auto stream = streams[instr.stream];
+        AsyncCudaDevice device(stream);
         if (instr.differentiable) {
             for (auto input_index : instr.input_indices) {
                 if (requires_grad[input_index]) {
@@ -854,7 +971,7 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
             }
         }
         for (auto event : instr.wait_events) {
-            check_error(cudaStreamWaitEvent(instr.stream, event));
+            check_error(cudaStreamWaitEvent(stream, events[event]));
         }
         switch (instr.opcode) {
             case -1: { // free memory
@@ -866,15 +983,21 @@ std::tuple<TensorVec, TensorVec, std::vector<bool>> CudaRuntime::run_with_grad(
             }
 #include "runtime_mixin.h"
         }
-        if (instr.record_event) {
-            check_error(cudaEventRecord(instr.record_event, instr.stream));
+        if (instr.record_event != -1) {
+            check_error(cudaEventRecord(events[instr.record_event], stream));
         }
     }
+
+    auto sync_stream = streams[_sync_stream];
+    for (auto event : _sync_events) {
+        check_error(cudaStreamWaitEvent(sync_stream, events[event]));
+    }
+    check_error(cudaStreamSynchronize(sync_stream));
+
     TensorVec outputs;
-    for (auto index : output_indices) {
+    for (auto index : _output_indices) {
         outputs.push_back(locals[index]);
     }
-    check_error(cudaDeviceSynchronize());
     return {outputs, locals, eval_grad};
 }
 
@@ -885,17 +1008,20 @@ std::tuple<
     const TensorVec& stored_locals,
     const std::vector<bool>& eval_grad
 ) const {
+    auto& streams = _streams.get(ThreadPool::thread_index()); 
+    auto& events = _events.get(ThreadPool::thread_index()); 
     TensorVec local_grads(stored_locals.size());
     TensorVec locals(stored_locals);
-    for (auto [index, grad] : zip(output_indices, output_grads)) {
+    for (auto [index, grad] : zip(_output_indices, output_grads)) {
         local_grads[index] = grad;
     }
     for (
         auto [instr, instr_eval_grad] :
-        zip(std::views::reverse(instructions), std::views::reverse(eval_grad))
+        zip(std::views::reverse(_instructions), std::views::reverse(eval_grad))
     ) {
         if (!instr_eval_grad) continue;
-        AsyncCudaDevice device(instr.backward_stream);
+        auto stream = streams[instr.backward_stream];
+        AsyncCudaDevice device(stream);
         for (auto [output_index, output_dtype] : zip(
             instr.output_indices, instr.output_dtypes
         )) {
@@ -906,21 +1032,27 @@ std::tuple<
             }
         }
         for (auto event : instr.backward_wait_events) {
-            check_error(cudaStreamWaitEvent(instr.backward_stream, event));
+            check_error(cudaStreamWaitEvent(stream, events[event]));
         }
         switch (instr.opcode) {
 #include "runtime_backward_mixin.h"
         }
-        if (instr.backward_record_event) {
-            check_error(cudaEventRecord(instr.backward_record_event, instr.backward_stream));
+        if (instr.backward_record_event != -1) {
+            check_error(cudaEventRecord(events[instr.backward_record_event], stream));
         }
     }
+
+    auto sync_stream = streams[_backward_sync_stream];
+    for (auto event : _backward_sync_events) {
+        check_error(cudaStreamWaitEvent(sync_stream, events[event]));
+    }
+    check_error(cudaStreamSynchronize(sync_stream));
+
     std::vector<std::tuple<std::string, Tensor>> global_grads;
-    for (auto& [name, index] : grad_global_indices) {
+    for (auto& [name, index] : _grad_global_indices) {
         global_grads.push_back({name, local_grads[index]});
     }
-    check_error(cudaDeviceSynchronize());
-    return {{local_grads.begin(), local_grads.begin() + input_count}, global_grads};
+    return {{local_grads.begin(), local_grads.begin() + _input_count}, global_grads};
 }
 
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent) {

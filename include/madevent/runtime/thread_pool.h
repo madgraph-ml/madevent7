@@ -50,7 +50,7 @@ private:
     std::atomic<std::size_t> _done_queue_end;
     std::atomic<std::size_t> _done_queue_write;
     std::size_t _busy_threads;
-    std::size_t _listener_id;
+    std::size_t _listener_id = 0;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;
     bool _buffer_submit;
 };
@@ -59,19 +59,27 @@ template<typename T>
 class ThreadResource {
 public:
     ThreadResource() = default;
-    ThreadResource(ThreadPool& pool, std::function<T()> constructor) :
+    ThreadResource(
+        ThreadPool& pool,
+        std::function<T()> constructor,
+        std::optional<std::function<void(T&)>> destructor = std::nullopt
+    ) :
         _pool(&pool),
         _listener_id(pool.add_listener([&](std::size_t thread_count) {
             while (_resources.size() < thread_count) {
                 _resources.push_back(constructor());
             }
-        }))
+        })),
+        _destructor(destructor)
     {
         for (std::size_t i = 0; i == 0 || i < pool.thread_count(); ++i) {
             _resources.push_back(constructor());
         }
     }
     ~ThreadResource() {
+        if (_destructor) {
+            for (auto& res : _resources) (*_destructor)(res);
+        }
         if (_pool) _pool->remove_listener(_listener_id);
     }
     ThreadResource(ThreadResource&& other) noexcept :
@@ -95,9 +103,10 @@ public:
     const T& get(std::size_t thread_id) const { return _resources.at(thread_id); }
 
 private:
-    ThreadPool* _pool;
+    ThreadPool* _pool = nullptr;
     std::vector<T> _resources;
     std::size_t _listener_id;
+    std::optional<std::function<void(T&)>> _destructor;
 };
 
 inline ThreadPool& default_thread_pool() {

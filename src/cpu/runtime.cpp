@@ -589,17 +589,16 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
         for (auto& out : instr.outputs) {
             local_uses_backward.at(out.local_index).push_back(instr_index);
             std::size_t source_instr = local_sources_backward.at(out.local_index);
-            if (source_instr != -1) {
-                is_ready = false;
-                auto& source_deps = dep_instrs_backward.at(source_instr);
-                if (
-                    std::find(
-                        source_deps.begin(), source_deps.end(), instr_index
-                    ) == source_deps.end()
-                ) {
-                    source_deps.push_back(instr_index);
-                    ++dependency_count;
-                }
+            if (source_instr == -1) continue;
+            is_ready = false;
+            auto& source_deps = dep_instrs_backward.at(source_instr);
+            if (
+                std::find(
+                    source_deps.begin(), source_deps.end(), instr_index
+                ) == source_deps.end()
+            ) {
+                source_deps.push_back(instr_index);
+                ++dependency_count;
             }
         }
         dep_counts_backward.at(instr_index) = dependency_count;

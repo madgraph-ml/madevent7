@@ -108,7 +108,7 @@ py::object madevent_py::tensor_to_dlpack(
     DLManagedTensor* dl_tensor;
     if (tensor.dtype() == DataType::batch_sizes) {
         ManagerContext* context = new ManagerContext{
-            {tensor.batch_sizes().size()},
+            {static_cast<int64_t>(tensor.batch_sizes().size())},
             {1},
             {tensor.batch_sizes().begin(), tensor.batch_sizes().end()},
             {}

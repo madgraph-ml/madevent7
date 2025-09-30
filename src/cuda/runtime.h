@@ -22,12 +22,12 @@ public:
         std::size_t batch_size_index;
         CudaRuntime& runtime;
         bool differentiable;
-        cudaStream_t stream;
-        cudaStream_t backward_stream;
-        std::vector<cudaEvent_t> wait_events;
-        cudaEvent_t record_event;
-        std::vector<cudaEvent_t> backward_wait_events;
-        cudaEvent_t backward_record_event;
+        int stream;
+        int backward_stream;
+        std::vector<int> wait_events;
+        int record_event;
+        std::vector<int> backward_wait_events;
+        int backward_record_event;
     };
 
     CudaRuntime(const Function& function, ContextPtr context);
@@ -48,17 +48,21 @@ public:
     curandGenerator_t curand_generator() { return _curand_generator; }
 
 private:
-    std::vector<Instruction> instructions;
-    SizeVec output_indices;
-    std::size_t input_count;
-    TensorVec locals_init;
-    std::vector<bool> requires_grad_init;
-    std::vector<std::tuple<std::string, std::size_t>> grad_global_indices;
+    std::vector<Instruction> _instructions;
+    SizeVec _output_indices;
+    std::size_t _input_count;
+    TensorVec _locals_init;
+    std::vector<bool> _requires_grad_init;
+    std::vector<std::tuple<std::string, std::size_t>> _grad_global_indices;
     ContextPtr _context;
-    std::vector<cudaStream_t> streams;
-    std::vector<cudaEvent_t> events;
+    ThreadResource<std::vector<cudaStream_t>> _streams;
+    ThreadResource<std::vector<cudaEvent_t>> _events;
     cublasHandle_t _cublas_handle;
     curandGenerator_t _curand_generator;
+    int _sync_stream;
+    std::vector<int> _sync_events;
+    int _backward_sync_stream;
+    std::vector<int> _backward_sync_events;
 };
 
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent);
