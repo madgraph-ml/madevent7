@@ -83,7 +83,7 @@ class IntegrandDistribution(nn.Module, Distribution):
             xi if is_float else xi[:,0].to(torch.int32)
             for xi, is_float in zip(x.split(self.latent_dims, dim=1), self.latent_float)
         ]
-        prob = self.integrand_prob(*prob_args, channel)
+        prob = self.integrand_prob(*prob_args, channel.cpu())
         if channel_perm is None:
             return prob
         else:
@@ -99,7 +99,7 @@ class IntegrandFunction:
         self.update_channel_mask(torch.ones(self.channel_count, dtype=torch.bool))
 
     def update_channel_mask(self, mask: torch.Tensor) -> None:
-        self.channel_mask = mask
+        self.channel_mask = mask.cpu()
         multi_integrand = me.MultiChannelFunction(
             [chan for chan, active in zip(self.channels, mask) if active]
         )
@@ -107,7 +107,7 @@ class IntegrandFunction:
 
     def __call__(self, channels: torch.Tensor) -> tuple[torch.Tensor, ...]:
         channel_perm = torch.argsort(channels)
-        channels = channels.bincount(minlength=self.channel_count).to(torch.int32)
+        channels = channels.bincount(minlength=self.channel_count).cpu().to(torch.int32)
         channels = channels[self.channel_mask]
         (
             full_weight, latent, inv_prob, chan_index, alphas_prior, alpha_selected, y, *rest
@@ -136,18 +136,18 @@ def build_madnis_integrand(
     channel_grouping: ChannelGrouping | None = None,
     context: me.Context = me.default_context(),
 ) -> tuple[Integrand, Distribution, nn.Module | None]:
-
+    device = torch.device("cpu" if context.device() == me.cpu_device() else "cuda:0")
     if channel_grouping is None:
         remap_channels = lambda channels: channels
         group_indices = torch.arange(len(channels))
     else:
         channel_id_map = torch.tensor([
             channel.group.group_index for channel in channel_grouping.channels
-        ])
+        ], device=device)
         remap_channels = lambda channels: channel_id_map[channels]
         group_indices = torch.tensor([
             group.target_index for group in channel_grouping.groups
-        ])
+        ], device=device)
 
     integrand_function = IntegrandFunction(channels, context)
     flow = IntegrandDistribution(channels, remap_channels, context)
@@ -155,7 +155,7 @@ def build_madnis_integrand(
     def update_mask(mask: torch.Tensor) -> None:
         context.get_global(cwnet.mask_name()).torch()[0, :] = mask.double()
         group_mask = mask[group_indices]
-        if torch.any(group_mask != integrand_function.channel_mask):
+        if torch.any(group_mask.cpu() != integrand_function.channel_mask):
             integrand_function.update_channel_mask(group_mask)
             flow.update_channel_mask(group_mask)
 

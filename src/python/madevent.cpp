@@ -167,7 +167,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("index"), py::return_value_policy::reference_internal)
         .def("save", &Context::save, py::arg("file"))
         .def("load", &Context::load, py::arg("file"))
-        .def("device", &Context::device);
+        .def("device", &Context::device, py::return_value_policy::reference);
     m.def("default_context", &default_context);
     m.def("default_cuda_context", &default_cuda_context);
 
@@ -204,19 +204,32 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("builder"), py::arg("inputs"), py::arg("conditions"))
         .def("build_inverse", &Mapping::build_inverse,
              py::arg("builder"), py::arg("inputs"), py::arg("conditions"));
+
+    py::classh<FunctionGenerator, PyFunctionGenerator>(
+             m, "FunctionGenerator", py::dynamic_attr())
+        .def(py::init<const std::string&, const TypeVec&, const TypeVec&>(),
+             py::arg("name"), py::arg("arg_types"), py::arg("return_types"))
+        .def("function", &FunctionGenerator::function)
+        .def("build_function", &FunctionGenerator::build_function,
+             py::arg("builder"), py::arg("args"));
+
     py::classh<Invariant, Mapping>(m, "Invariant")
         .def(py::init<double, double, double>(),
              py::arg("power")=0., py::arg("mass")=0., py::arg("width")=0.);
+
     py::classh<Luminosity, Mapping>(m, "Luminosity")
         .def(py::init<double, double, double, double, double, double>(),
              py::arg("s_lab"), py::arg("s_hat_min"), py::arg("s_hat_max")=0.,
              py::arg("invariant_power")=0., py::arg("mass")=0., py::arg("width")=0.);
+
     py::classh<TwoParticleDecay, Mapping>(m, "TwoParticleDecay")
         .def(py::init<bool>(), py::arg("com"));
+
     py::classh<TwoParticleScattering, Mapping>(m, "TwoParticleScattering")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("invariant_power")=0.,
              py::arg("mass")=0., py::arg("width")=0.);
+
     py::classh<Propagator>(m, "Propagator")
         .def(py::init<double, double, int, double, double>(),
              py::arg("mass")=0.,
@@ -229,9 +242,15 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("integration_order", &Propagator::integration_order)
         .def_readonly("e_min", &Propagator::e_min)
         .def_readonly("e_max", &Propagator::e_max);
+
     py::classh<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<std::size_t>, double>(),
              py::arg("integration_order"), py::arg("invariant_power")=0.);
+
+    py::classh<VegasHistogram, FunctionGenerator>(m, "VegasHistogram")
+        .def(py::init<std::size_t, std::size_t>(),
+             py::arg("dimension"), py::arg("bin_count"));
+
     py::classh<VegasMapping, Mapping>(m, "VegasMapping")
         .def(py::init<std::size_t, std::size_t, const std::string&>(),
              py::arg("dimension"), py::arg("bin_count"), py::arg("prefix")="")
@@ -243,14 +262,6 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<std::shared_ptr<Mapping>>&>(), py::arg("mappings"));
-
-    py::classh<FunctionGenerator, PyFunctionGenerator>(
-             m, "FunctionGenerator", py::dynamic_attr())
-        .def(py::init<const std::string&, const TypeVec&, const TypeVec&>(),
-             py::arg("name"), py::arg("arg_types"), py::arg("return_types"))
-        .def("function", &FunctionGenerator::function)
-        .def("build_function", &FunctionGenerator::build_function,
-             py::arg("builder"), py::arg("args"));
 
     auto cuts = py::classh<Cuts, FunctionGenerator>(m, "Cuts");
     py::enum_<Cuts::CutObservable>(cuts, "CutObservable")
@@ -434,6 +445,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("mask_name", &ChannelWeightNetwork::mask_name)
         .def("initialize_globals", &ChannelWeightNetwork::initialize_globals,
              py::arg("context"));
+
+    py::classh<DiscreteHistogram, FunctionGenerator>(m, "DiscreteHistogram")
+        .def(py::init<std::vector<std::size_t>>(), py::arg("option_counts"));
 
     py::classh<DiscreteSampler, Mapping>(m, "DiscreteSampler")
         .def(py::init<const std::vector<std::size_t>&, const std::string&,

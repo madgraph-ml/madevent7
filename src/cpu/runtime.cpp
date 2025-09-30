@@ -56,6 +56,9 @@ void op_matrix_element(
     if (input_particle_count != matrix_element.particle_count()) {
         throw std::runtime_error("Incompatible particle count");
     }
+    if (matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
+    }
     auto mom_ptr = static_cast<double*>(momenta_in.data());
     auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
     auto me_ptr = static_cast<double*>(me_out.data());
@@ -67,7 +70,8 @@ void op_matrix_element(
         ](std::size_t count, std::size_t offset) {
             matrix_element.call(
                 matrix_element.process_instance(ThreadPool::thread_index()), count,
-                batch_size, mom_ptr + offset, flavor_ptr + offset, me_ptr + offset
+                batch_size, mom_ptr + offset, flavor_ptr + offset, me_ptr + offset,
+                nullptr
             );
         }
     );
@@ -106,6 +110,9 @@ void op_matrix_element_multichannel(
     if (diagram_count != matrix_element.diagram_count()) {
         throw std::runtime_error("Incompatible diagram count");
     }
+    if (matrix_element.on_gpu()) {
+        throw std::runtime_error("Incompatible device");
+    }
     device.sync_barrier();
 
     auto mom_ptr = static_cast<double*>(momenta_in.data());
@@ -132,7 +139,8 @@ void op_matrix_element_multichannel(
                 mom_ptr + offset, alpha_ptr + offset, random_ptr + offset,
                 flavor_ptr + offset, me_ptr + offset,
                 amp2_ptr + offset, color_ptr + offset, diag_ptr + offset,
-                helicity_ptr + offset
+                helicity_ptr + offset,
+                nullptr
             );
         }
     );
@@ -549,7 +557,7 @@ void op_discrete_histogram(
         for (std::size_t i = 0; i < batch_size; ++i) {
             auto w = weights_view[i];
             std::size_t index = input_view[i];
-            values_view[0][index] += w * w;
+            values_view[0][index] += w;
             counts_view[0][index] += 1;
         }
     });

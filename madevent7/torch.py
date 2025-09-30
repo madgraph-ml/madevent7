@@ -62,10 +62,11 @@ class AutogradWrapper(torch.autograd.Function):
             if grad is None:
                 continue
             param = ctx.module.global_params[name.replace(".", ":")]
+            grad_torch = torch.from_dlpack(grad)
             if param.grad is None:
-                param.grad = torch.from_dlpack(grad)
+                param.grad = grad_torch
             else:
-                param.grad += torch.from_dlpack(grad)
+                param.grad += grad_torch
         input_grads_opt = (
             None if grad is None else torch.from_dlpack(grad) for grad in input_grads
         )
