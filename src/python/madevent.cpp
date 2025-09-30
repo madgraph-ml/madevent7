@@ -308,9 +308,13 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("parent_index", &Topology::Decay::parent_index)
         .def_readonly("child_indices", &Topology::Decay::child_indices)
         .def_readonly("mass", &Topology::Decay::mass)
-        .def_readonly("width", &Topology::Decay::width);
+        .def_readonly("width", &Topology::Decay::width)
+        .def_readonly("e_min", &Topology::Decay::e_min)
+        .def_readonly("e_max", &Topology::Decay::e_max)
+        .def_readonly("on_shell", &Topology::Decay::on_shell);
     auto& topology = py::classh<Topology>(m, "Topology")
         .def(py::init<const Diagram&>(), py::arg("diagram"))
+        .def_static("topologies", &Topology::topologies, py::arg("diagram"))
         .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
         .def_property_readonly("t_integration_order", &Topology::t_integration_order)
         .def_property_readonly("t_propagator_masses", &Topology::t_propagator_masses)
@@ -404,6 +408,13 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const std::vector<std::vector<std::vector<std::size_t>>>&,
                       const std::vector<std::vector<std::size_t>>>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
+
+    py::classh<SubchannelWeights, FunctionGenerator>(m, "SubchannelWeights")
+        .def(py::init<const std::vector<std::vector<Topology>>&,
+                      const std::vector<std::vector<std::vector<std::size_t>>>&,
+                      const std::vector<std::vector<std::size_t>>>(),
+             py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"))
+        .def("channel_count", &SubchannelWeights::channel_count);
 
     py::classh<MomentumPreprocessing, FunctionGenerator>(m, "MomentumPreprocessing")
         .def(py::init<std::size_t>(), py::arg("particle_count"))
@@ -563,6 +574,7 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const std::optional<PdfGrid>&,
                       const std::optional<EnergyScale>&,
                       const std::optional<PropagatorChannelWeights>&,
+                      const std::optional<SubchannelWeights>&,
                       const std::optional<ChannelWeightNetwork>&,
                       int,
                       const std::vector<std::size_t>&,
@@ -575,6 +587,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("pdf_grid")=std::nullopt,
              py::arg("energy_scale")=std::nullopt,
              py::arg("prop_chan_weights")=std::nullopt,
+             py::arg("subchan_weights")=std::nullopt,
              py::arg("chan_weight_net")=std::nullopt,
              py::arg("flags")=0,
              py::arg("channel_indices")=std::vector<std::size_t>{},

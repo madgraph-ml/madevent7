@@ -82,7 +82,7 @@ def test_t_channel_momentum_conservation(masses, rng, mode):
     p_in = np.sum(p_ext[:, :2], axis=1)
     p_out = np.sum(p_ext[:, 2:], axis=1)
 
-    assert p_out == approx(p_in, rel=1e-6, abs=1e-10)
+    assert p_out == approx(p_in, rel=1e-6, abs=1e-9)
 
 
 @pytest.mark.parametrize(

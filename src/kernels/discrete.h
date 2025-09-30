@@ -123,7 +123,8 @@ KERNELSPEC void kernel_one_hot(
 
 template<typename T>
 KERNELSPEC void kernel_collect_channel_weights(
-    FIn<T,1> amp2, IIn<T,1> channel_indices, IIn<T,0> channel_count, FOut<T,1> channel_weights
+    FIn<T,1> amp2, IIn<T,1> channel_indices, IIn<T,0> channel_count,
+    FOut<T,1> channel_weights
 ) {
     FVal<T> norm(0.);
     for (std::size_t i = 0; i < channel_weights.size(); ++i) {

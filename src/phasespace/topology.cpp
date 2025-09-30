@@ -215,12 +215,13 @@ std::ostream& madevent::operator<<(std::ostream& out, const Diagram::LineRef& va
     return out;
 }
 
-Topology::Topology(const Diagram& diagram) :
-    _outgoing_indices(diagram.outgoing_masses().size()),
-    _incoming_masses(diagram.incoming_masses()),
-    _outgoing_masses(diagram.outgoing_masses())
-{
+std::vector<Topology> Topology::topologies(const Diagram& diagram) {
     //TODO: restructure this to account for subchannels etc
+    Topology topo;
+
+    topo._outgoing_indices.resize(diagram.outgoing_masses().size());
+    topo._incoming_masses = diagram.incoming_masses();
+    topo._outgoing_masses = diagram.outgoing_masses();
 
     std::vector<bool> visited(diagram.vertices().size());
     std::vector<std::size_t> t_vertices;
@@ -232,8 +233,8 @@ Topology::Topology(const Diagram& diagram) :
         t_vertices,
         lines_after_t,
         integration_order,
-        _t_propagator_masses,
-        _t_propagator_widths,
+        topo._t_propagator_masses,
+        topo._t_propagator_widths,
         diagram.incoming_vertices().at(1),
         -1
     );
@@ -245,18 +246,18 @@ Topology::Topology(const Diagram& diagram) :
     while (index_low != index_high) {
         int order_low = integration_order.at(index_low);
         int order_high = integration_order.at(index_high - 1);
-        double mass_low = _t_propagator_masses.at(index_low);
-        double mass_high = _t_propagator_masses.at(index_high - 1);
+        double mass_low = topo._t_propagator_masses.at(index_low);
+        double mass_high = topo._t_propagator_masses.at(index_high - 1);
         if (order_low != order_high) {
             choose_low = order_low < order_high;
         } else if (mass_low != mass_high) { //TODO: maybe smarter heuristic here?
             choose_low = mass_low < mass_high;
         }
         if (choose_low) {
-            _t_integration_order.push_back(index_low);
+            topo._t_integration_order.push_back(index_low);
             ++index_low;
         } else {
-            _t_integration_order.push_back(index_high - 1);
+            topo._t_integration_order.push_back(index_high - 1);
             --index_high;
         }
     }
@@ -267,24 +268,26 @@ Topology::Topology(const Diagram& diagram) :
     if (lines_after_t.size() == 1) {
         build_decays(
             diagram,
-            _decays,
+            topo._decays,
             decay_indices,
             integration_order,
-            _outgoing_indices,
+            topo._outgoing_indices,
             t_vertices.at(0),
             lines_after_t.at(0),
             0
         );
     } else {
-        _decays.push_back({0, 0, {}, 0., 0.});
+        topo._decays.push_back({0, 0, {}, 0., 0.});
+        decay_indices.push_back(0);
+        integration_order.push_back(0);
         for (auto [t_vertex, line] : zip(t_vertices, lines_after_t)) {
-            _decays.at(0).child_indices.push_back(_decays.size());
+            topo._decays.at(0).child_indices.push_back(topo._decays.size());
             build_decays(
                 diagram,
-                _decays,
+                topo._decays,
                 decay_indices,
                 integration_order,
-                _outgoing_indices,
+                topo._outgoing_indices,
                 t_vertex,
                 line,
                 0
@@ -292,23 +295,86 @@ Topology::Topology(const Diagram& diagram) :
         }
     }
 
-    std::vector<std::size_t> decay_perm(integration_order.size());
-    std::iota(decay_perm.rbegin(), decay_perm.rend(), 0);
-    std::stable_sort(
-        decay_perm.begin(),
-        decay_perm.end(),
-        [&] (std::size_t i, std::size_t j) {
-            return integration_order.at(i) < integration_order.at(j);
-        }
-    );
-    for (std::size_t index : decay_perm) {
-        _decay_integration_order.push_back(decay_indices.at(index));
+    std::size_t massive_decays = 0;
+    for (std::size_t index : decay_indices) {
+        if (topo._decays.at(index).mass != 0) ++massive_decays;
     }
+    int on_shell_configs = 1 << massive_decays;
+    std::vector<Topology> topos;
+    for (int i = on_shell_configs - 1; i >= 0; --i) {
+        Topology new_topo = topo;
+        auto& decays = new_topo._decays;
+        std::vector<double> e_min(new_topo.decays().size());
+        for (auto [index, m] : zip(new_topo.outgoing_indices(), new_topo.outgoing_masses())) {
+            e_min.at(index) = m;
+        }
+        bool possible = true;
+        for (std::size_t j = 0; std::size_t index : std::views::reverse(decay_indices)) {
+            auto& decay = decays.at(index);
+            double& e_min_item = e_min.at(index);
+            for (std::size_t child_index : decay.child_indices) {
+                e_min_item += e_min.at(child_index);
+            }
+            if (decay.mass == 0) continue;
+            if ((i >> j) & 1) {
+                if (e_min_item > decay.mass) {
+                    possible = false;
+                    break;
+                } else {
+                    decay.on_shell = true;
+                    e_min_item = decay.mass;
+                }
+            }
+            ++j;
+        }
+        if (!possible) continue;
+
+        bool redundant = false;
+        for (auto& other_topo : topos) {
+            bool subset = true;
+            for (auto [this_decay, other_decay] : zip(decays, other_topo.decays())) {
+                if (this_decay.on_shell > other_decay.on_shell) {
+                    subset = false;
+                    break;
+                }
+            }
+            if (subset) {
+                redundant = true;
+                break;
+            }
+        }
+        if (redundant) continue;
+
+        std::vector<std::size_t> decay_perm(integration_order.size());
+        std::iota(decay_perm.rbegin(), decay_perm.rend(), 0);
+        std::stable_sort(
+            decay_perm.begin(),
+            decay_perm.end(),
+            [&] (std::size_t i, std::size_t j) {
+                std::size_t index_i = decay_indices.at(i);
+                std::size_t index_j = decay_indices.at(j);
+                auto& decay_i = decays.at(index_i);
+                auto& decay_j = decays.at(index_j);
+                return 4 * integration_order.at(i) - 2 * decay_i.on_shell - (index_i == 0)
+                    <  4 * integration_order.at(j) - 2 * decay_j.on_shell - (index_j == 0);
+            }
+        );
+        for (std::size_t index : decay_perm) {
+            new_topo._decay_integration_order.push_back(decay_indices.at(index));
+        }
+        topos.push_back(new_topo);
+    }
+
+    return topos;
+}
+
+Topology::Topology(const Diagram& diagram) {
+    *this = topologies(diagram).at(0);
 }
 
 std::vector<std::tuple<
     std::vector<int>, double, double
->> Topology::propagator_momentum_terms() const {
+>> Topology::propagator_momentum_terms(bool only_decays) const {
     std::vector<std::tuple<std::vector<int>, double, double>> ret;
     std::vector<std::vector<std::size_t>> decay_indices(_decays.size());
     std::size_t n_ext = _outgoing_masses.size() + 2;
@@ -338,50 +404,50 @@ std::vector<std::tuple<
             ret.push_back({factors, decay.mass, decay.width});
         }
     }
-    if (_t_integration_order.size() > 0) {
-        std::size_t left_count = 0, right_count = 0;
-        auto& child_indices = _decays.at(0).child_indices;
-        for (std::size_t index : child_indices) {
-            std::size_t current_count = decay_indices.at(index).size();
-            if (left_count == 0) {
-                left_count = current_count;
-            } else {
-                right_count += current_count;
-            }
-        }
-        std::size_t child_count = 1;
-        for (auto [index, mass, width] : zip(
-            child_indices | std::views::drop(1), _t_propagator_masses, _t_propagator_widths
-        )) {
-            std::size_t current_count = decay_indices.at(index).size();
-            std::vector<int> factors(n_ext);
-            if (left_count <= right_count) {
-                factors.at(0) = 1;
-                for (
-                    std::size_t child_index :
-                    child_indices | std::views::take(child_count)
-                ) {
-                    for (std::size_t ext_index : decay_indices.at(child_index)) {
-                        factors.at(ext_index) = -1;
-                    }
-                }
-            } else {
-                factors.at(1) = 1;
-                for (
-                    std::size_t child_index :
-                    child_indices | std::views::drop(child_count)
-                ) {
-                    for (std::size_t ext_index : decay_indices.at(child_index)) {
-                        factors.at(ext_index) = -1;
-                    }
-                }
+    if (_t_integration_order.size() == 0 || only_decays) return ret;
 
-            }
-            ret.push_back({factors, mass, width});
-            left_count += current_count;
-            right_count -= current_count;
-            ++child_count;
+    std::size_t left_count = 0, right_count = 0;
+    auto& child_indices = _decays.at(0).child_indices;
+    for (std::size_t index : child_indices) {
+        std::size_t current_count = decay_indices.at(index).size();
+        if (left_count == 0) {
+            left_count = current_count;
+        } else {
+            right_count += current_count;
         }
+    }
+    std::size_t child_count = 1;
+    for (auto [index, mass, width] : zip(
+        child_indices | std::views::drop(1), _t_propagator_masses, _t_propagator_widths
+    )) {
+        std::size_t current_count = decay_indices.at(index).size();
+        std::vector<int> factors(n_ext);
+        if (left_count <= right_count) {
+            factors.at(0) = 1;
+            for (
+                std::size_t child_index :
+                child_indices | std::views::take(child_count)
+            ) {
+                for (std::size_t ext_index : decay_indices.at(child_index)) {
+                    factors.at(ext_index) = -1;
+                }
+            }
+        } else {
+            factors.at(1) = 1;
+            for (
+                std::size_t child_index :
+                child_indices | std::views::drop(child_count)
+            ) {
+                for (std::size_t ext_index : decay_indices.at(child_index)) {
+                    factors.at(ext_index) = -1;
+                }
+            }
+
+        }
+        ret.push_back({factors, mass, width});
+        left_count += current_count;
+        right_count -= current_count;
+        ++child_count;
     }
     return ret;
 }

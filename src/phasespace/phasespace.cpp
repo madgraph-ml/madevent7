@@ -45,7 +45,7 @@ void update_mass_min_max(
     // m_max = M_i - sum_{other nodes j} m_{min,j}
     auto& start_decay = decay_data.at(decay_index);
     auto current_decay = &start_decay;
-    while (!current_decay->mass) {
+    while (!current_decay->mass && current_decay->decay.index != 0) {
         std::size_t prev_index = current_decay->decay.index;
         current_decay = &decay_data.at(current_decay->decay.parent_index);
         for (std::size_t child_index : current_decay->decay.child_indices) {
@@ -58,7 +58,7 @@ void update_mass_min_max(
             );
         }
     }
-    start_decay.max_mass = current_decay->mass;
+    start_decay.max_mass = current_decay->mass ? current_decay->mass : current_decay->max_mass;
 }
 
 }
@@ -91,6 +91,10 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     ),
     _s_lab(cm_energy * cm_energy),
     _leptonic(leptonic),
+    _map_luminosity(
+        !leptonic &&
+        (_topology.t_propagator_count() == 0 || t_channel_mode != PhaseSpaceMapping::chili)
+    ),
     _t_mapping(std::monostate{})
 {
     bool has_t_channel = _topology.t_propagator_count() > 0;
@@ -111,15 +115,16 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         std::views::reverse(_topology.decays()), std::views::reverse(decay_info)
     )) {
         if (decay.child_indices.size() == 0) continue;
-        if (decay.index == 0 && has_t_channel) continue;
 
         bool is_com_decay = decay.index == 0;
-        if (decay.child_indices.size() == 2) {
-            _s_decays.push_back(TwoParticleDecay(is_com_decay));
-        } else {
-            _s_decays.push_back(
-                FastRamboMapping(decay.child_indices.size(), false, is_com_decay)
-            );
+        if (decay.index != 0 || !has_t_channel) {
+            if (decay.child_indices.size() == 2) {
+                _s_decays.push_back(TwoParticleDecay(is_com_decay));
+            } else {
+                _s_decays.push_back(
+                    FastRamboMapping(decay.child_indices.size(), false, is_com_decay)
+                );
+            }
         }
 
         double m_min = 0.;
@@ -129,18 +134,10 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         info.m_min = std::max(m_min, decay.e_min);
         info.pt_min = 0.;
         info.eta_max = std::numeric_limits<double>::infinity();
-        if (!is_com_decay) {
-            // TODO: this part must be rewritten for subchannels etc.
-            double mass, width;
-            /*if (decay.mass <= info.m_min) {
-                mass = 0;
-                width = 0;
-            } else {
-                mass = decay.mass;
-                width = decay.width;
-            }*/
-            mass = decay.width == 0. ? 0. : decay.mass;
-            width = decay.width;
+
+        if (!is_com_decay || _map_luminosity) {
+            double mass = decay.width == 0. ? 0. : decay.mass;
+            double width = decay.width;
             info.invariant = Invariant(invariant_power, mass, width);
         }
     }
@@ -151,9 +148,6 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         }
     }
 
-    /*double total_mass = std::accumulate(
-        _topology.outgoing_masses().begin(), _topology.outgoing_masses().end(), 0.
-    );*/
     double total_mass = 0.;
     for (std::size_t index : topology.decays().at(0).child_indices) {
         total_mass += decay_info.at(index).m_min;
@@ -161,9 +155,6 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     double sqrt_s_hat_min = _cuts.sqrt_s_min();
     double s_hat_min = std::max(total_mass * total_mass, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
-        if (!_leptonic && t_channel_mode != PhaseSpaceMapping::chili) {
-            _luminosity = Luminosity(_s_lab, s_hat_min); //, s_lab, 0.);
-        }
         if (t_channel_mode == PhaseSpaceMapping::chili) {
             // |y| <= |eta|, so we can pass y_max = eta_max
             std::vector<double> eta_max, pt_min;
@@ -183,15 +174,6 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
             //TODO: add massless special case
             _t_mapping = FastRamboMapping(_topology.t_propagator_count() + 1, false);
-        }
-    } else if (!_leptonic) {
-        auto& first_decay = topology.decays().at(0);
-        if (first_decay.mass > std::sqrt(s_hat_min)) {
-            _luminosity = Luminosity(
-                _s_lab, s_hat_min, _s_lab, 0., first_decay.mass, first_decay.width
-            );
-        } else {
-            _luminosity = Luminosity(_s_lab, s_hat_min);
         }
     }
 
@@ -249,23 +231,8 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     auto r = random_numbers.begin();
     auto next_random = [&]() { return *(r++); };
 
-    // Luminosity sampling in hadronic case
     ValueVec dets{_pi_factors};
-    Value x1, x2, s_hat;
-    if (_luminosity) {
-        auto [x12s, det_lumi] = _luminosity->build_forward(
-            fb, {next_random(), next_random()}, {}
-        );
-        dets.push_back(det_lumi);
-        x1 = x12s.at(0);
-        x2 = x12s.at(1);
-        s_hat = x12s.at(2);
-    } else {
-        x1 = 1.0;
-        x2 = 1.0;
-        s_hat = _s_lab;
-    }
-    auto sqrt_s_hat = fb.sqrt(s_hat);
+    Value x1 = 1.0, x2 = 1.0, s_hat = _s_lab;
 
     // initialize masses and square masses
     std::vector<DecayData> decay_data(_topology.decays().begin(), _topology.decays().end());
@@ -277,13 +244,11 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         data.mass2 = mass * mass;
     }
     auto& root_data = decay_data.at(0);
-    root_data.mass = sqrt_s_hat;
-    root_data.mass2 = s_hat;
+    root_data.max_mass = fb.sqrt(_s_lab);
 
     // sample decay s-invariants, following the integration order
     std::size_t invariant_index = 0;
     for (std::size_t decay_index : _topology.decay_integration_order()) {
-        if (decay_index == 0) continue;
         auto& decay = _topology.decays().at(decay_index);
         auto& data = decay_data.at(decay_index);
         update_mass_min_max(fb, decay_data, decay_index);
@@ -292,13 +257,27 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         if (data.decay.e_max > 0.) {
             sqrt_s_max = fb.min(sqrt_s_max, data.decay.e_max);
         }
-        auto s_max = fb.square(sqrt_s_max);
-        auto [s_vec, det] = _s_invariants.at(invariant_index++).build_forward(
-            fb, {next_random()}, {s_min, s_max}
-        );
-        data.mass2 = s_vec.at(0);
-        data.mass = fb.sqrt(data.mass2.value());
-        dets.push_back(det);
+        if (decay_index != 0 || _map_luminosity) {
+            auto s_max = fb.square(sqrt_s_max);
+            auto [s_vec, det] = _s_invariants.at(invariant_index++).build_forward(
+                fb, {next_random()}, {s_min, s_max}
+            );
+            data.mass2 = s_vec.at(0);
+            data.mass = fb.sqrt(data.mass2.value());
+            dets.push_back(det);
+        } else if (decay_index == 0) {
+            data.mass2 = s_hat;
+            data.mass = fb.sqrt(s_hat);
+        }
+    }
+
+    auto sqrt_s_hat = root_data.mass.value();
+    s_hat = root_data.mass2.value();
+    if (_map_luminosity) {
+        auto [x1_new, x2_new, det_x] = fb.r_to_x1x2(next_random(), s_hat, _s_lab);
+        x1 = x1_new;
+        x2 = x2_new;
+        dets.push_back(det_x);
     }
 
     // if required, build t-channel part of phase space mapping
@@ -385,7 +364,7 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     }
 
     // boost into correct frame and apply cuts
-    auto p_ext_lab = _luminosity ? fb.boost_beam(p_ext_stack, x1, x2) : p_ext_stack;
+    auto p_ext_lab = _map_luminosity ? fb.boost_beam(p_ext_stack, x1, x2) : p_ext_stack;
     dets.push_back(_cuts.build_function(fb, {sqrt_s_hat, p_ext_lab}).at(0));
     auto ps_weight = fb.cut_unphysical(fb.product(dets), p_ext_lab, x1, x2);
     return {{p_ext_lab, x1, x2}, ps_weight};

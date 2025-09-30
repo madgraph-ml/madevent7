@@ -46,6 +46,7 @@ public:
         const std::optional<PdfGrid>& pdf_grid = std::nullopt,
         const std::optional<EnergyScale>& energy_scale = std::nullopt,
         const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
+        const std::optional<SubchannelWeights>& subchan_weights = std::nullopt,
         const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
         int flags = 0,
         const std::vector<std::size_t>& channel_indices = {},
@@ -103,6 +104,7 @@ private:
     std::vector<me_int_t> _pdf_indices2;
     std::optional<EnergyScale> _energy_scale;
     std::optional<PropagatorChannelWeights> _prop_chan_weights;
+    std::optional<SubchannelWeights> _subchan_weights;
     std::optional<ChannelWeightNetwork> _chan_weight_net;
     int _flags;
     std::vector<me_int_t> _channel_indices;

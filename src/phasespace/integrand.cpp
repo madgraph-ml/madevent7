@@ -38,6 +38,7 @@ Integrand::Integrand(
     const std::optional<PdfGrid>& pdf_grid,
     const std::optional<EnergyScale>& energy_scale,
     const std::optional<PropagatorChannelWeights>& prop_chan_weights,
+    const std::optional<SubchannelWeights>& subchan_weights,
     const std::optional<ChannelWeightNetwork>& chan_weight_net,
     int flags,
     const std::vector<std::size_t>& channel_indices,
@@ -51,7 +52,10 @@ Integrand::Integrand(
                 arg_types.push_back(Type({batch_size}));
             } else {
                 arg_types.push_back(batch_float_array(
-                    mapping.random_dim() + (diff_xs.channel_count() > 1)
+                    mapping.random_dim() + // phasespace
+                    (mapping.channel_count() > 1) + // symmetric channel
+                    (diff_xs.pid_options().size() > 1) + // flavor
+                    diff_xs.has_mirror() // flipped initial state
                 ));
             }
             if (flags & unweight) arg_types.push_back(single_float);
@@ -82,7 +86,9 @@ Integrand::Integrand(
                 ret_types.push_back(batch_int);
             }
             if (flags & return_chan_weights) {
-                ret_types.push_back(batch_float_array(diff_xs.channel_count()));
+                ret_types.push_back(batch_float_array(
+                    subchan_weights ? subchan_weights->channel_count() : diff_xs.channel_count()
+                ));
                 ret_types.push_back(batch_float);
             }
             if (flags & return_cwnet_input) {
@@ -127,6 +133,7 @@ Integrand::Integrand(
     _discrete_after(discrete_after),
     _energy_scale(energy_scale),
     _prop_chan_weights(prop_chan_weights),
+    _subchan_weights(subchan_weights),
     _chan_weight_net(chan_weight_net),
     _flags(flags),
     _channel_indices(channel_indices.begin(), channel_indices.end()),
@@ -285,11 +292,19 @@ ValueVec Integrand::build_function_impl(
     // if _prop_chan_weights is given, compute channel weight based
     // on denominators of propagators
     Value chan_weights_acc;
-    bool has_multi_channel = _diff_xs.channel_count() > 1;
-    if (_prop_chan_weights && has_multi_channel) {
-        chan_weights_acc = _prop_chan_weights.value().build_function(
-            fb, {momenta_acc}
-        ).at(0);
+    std::size_t channel_count =
+        _subchan_weights ? _subchan_weights->channel_count() : _diff_xs.channel_count();
+    if (channel_count > 1) {
+        if (_prop_chan_weights) {
+            chan_weights_acc = _prop_chan_weights->build_function(
+                fb, {momenta_acc}
+            ).at(0);
+        }
+        if (_subchan_weights) {
+            chan_weights_acc = _subchan_weights->build_function(
+                fb, {momenta_acc, chan_weights_acc}
+            ).at(0);
+        }
     }
 
     // if PDF grid and energy scale were given and the channel has more than one flavor,
@@ -381,7 +396,7 @@ ValueVec Integrand::build_function_impl(
 
     // compute full phase-space weight
     Value selected_chan_weight_acc;
-    if (has_multi_channel) {
+    if (channel_count > 1) {
         //TODO fixme
         Value chan_index_acc;
         if (has_permutations) {
@@ -419,12 +434,11 @@ ValueVec Integrand::build_function_impl(
         outputs.push_back(chan_index);
     }
     if (_flags & return_chan_weights) {
-        auto chan_count = _diff_xs.channel_count();
         auto cw_flat = fb.full({
-            1. / chan_count, batch_size, static_cast<me_int_t>(chan_count)
+            1. / channel_count, batch_size, static_cast<me_int_t>(channel_count)
         });
         auto ones = fb.full({1., batch_size});
-        if (has_multi_channel) {
+        if (channel_count > 1) {
             outputs.push_back(fb.batch_scatter(indices_acc, cw_flat, prior_chan_weights_acc));
             outputs.push_back(fb.batch_scatter(indices_acc, ones, selected_chan_weight_acc));
         } else {

@@ -139,6 +139,14 @@ Value sde2_channel_weights(Value invariants, Value masses, Value widths, Value i
     return instruction("sde2_channel_weights", {invariants, masses, widths, indices})[0];
 }
 
+Value subchannel_weights(Value invariants, Value masses, Value widths, Value indices, Value on_shell, Value group_sizes) {
+    return instruction("subchannel_weights", {invariants, masses, widths, indices, on_shell, group_sizes})[0];
+}
+
+Value apply_subchannel_weights(Value channel_weights_in, Value subchannel_weights, Value channel_indices, Value subchannel_indices) {
+    return instruction("apply_subchannel_weights", {channel_weights_in, subchannel_weights, channel_indices, subchannel_indices})[0];
+}
+
 Value pt_eta_phi_x(Value p_ext, Value x1, Value x2) {
     return instruction("pt_eta_phi_x", {p_ext, x1, x2})[0];
 }
