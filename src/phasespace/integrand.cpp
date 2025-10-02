@@ -40,6 +40,8 @@ Integrand::Integrand(
     const std::optional<PropagatorChannelWeights>& prop_chan_weights,
     const std::optional<SubchannelWeights>& subchan_weights,
     const std::optional<ChannelWeightNetwork>& chan_weight_net,
+    const std::vector<me_int_t>& chan_weight_remap,
+    std::size_t remapped_chan_count,
     int flags,
     const std::vector<std::size_t>& channel_indices,
     const std::vector<std::size_t>& active_flavors
@@ -87,7 +89,8 @@ Integrand::Integrand(
             }
             if (flags & return_chan_weights) {
                 ret_types.push_back(batch_float_array(
-                    subchan_weights ? subchan_weights->channel_count() : diff_xs.channel_count()
+                    subchan_weights ? subchan_weights->channel_count() :
+                    remapped_chan_count != 0 ? remapped_chan_count : diff_xs.channel_count()
                 ));
                 ret_types.push_back(batch_float);
             }
@@ -135,6 +138,8 @@ Integrand::Integrand(
     _prop_chan_weights(prop_chan_weights),
     _subchan_weights(subchan_weights),
     _chan_weight_net(chan_weight_net),
+    _chan_weight_remap(chan_weight_remap),
+    _remapped_chan_count(remapped_chan_count),
     _flags(flags),
     _channel_indices(channel_indices.begin(), channel_indices.end()),
     _random_dim(
@@ -293,18 +298,12 @@ ValueVec Integrand::build_function_impl(
     // on denominators of propagators
     Value chan_weights_acc;
     std::size_t channel_count =
-        _subchan_weights ? _subchan_weights->channel_count() : _diff_xs.channel_count();
-    if (channel_count > 1) {
-        if (_prop_chan_weights) {
-            chan_weights_acc = _prop_chan_weights->build_function(
-                fb, {momenta_acc}
-            ).at(0);
-        }
-        if (_subchan_weights) {
-            chan_weights_acc = _subchan_weights->build_function(
-                fb, {momenta_acc, chan_weights_acc}
-            ).at(0);
-        }
+        _subchan_weights ? _subchan_weights->channel_count() :
+        _remapped_chan_count != 0 ? _remapped_chan_count : _diff_xs.channel_count();
+    if (channel_count > 1 && _prop_chan_weights) {
+        chan_weights_acc = _prop_chan_weights->build_function(
+            fb, {momenta_acc}
+        ).at(0);
     }
 
     // if PDF grid and energy scale were given and the channel has more than one flavor,
@@ -384,6 +383,16 @@ ValueVec Integrand::build_function_impl(
     weights_after_cuts.push_back(diff_xs_acc);
     if (!_prop_chan_weights) {
         chan_weights_acc = dxs_vec.at(1);
+    }
+    if (channel_count > 1 && _subchan_weights) {
+        chan_weights_acc = _subchan_weights->build_function(
+            fb, {momenta_acc, chan_weights_acc}
+        ).at(0);
+    }
+    if (_chan_weight_remap.size() > 0) {
+        chan_weights_acc = fb.collect_channel_weights(
+            chan_weights_acc, _chan_weight_remap, _remapped_chan_count
+        );
     }
 
     // if given, apply channel weight network

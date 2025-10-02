@@ -367,11 +367,9 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("functions"));
 
     py::classh<MatrixElement, FunctionGenerator>(m, "MatrixElement")
-        .def(py::init<std::size_t, std::size_t, bool, std::size_t,
-                      const std::vector<me_int_t>&>(),
+        .def(py::init<std::size_t, std::size_t, bool, std::size_t>(),
              py::arg("matrix_element_index"), py::arg("particle_count"),
-             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<me_int_t>{})
+             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1)
         .def("channel_count", &MatrixElement::channel_count)
         .def("particle_count", &MatrixElement::particle_count);
 
@@ -417,7 +415,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
         .def(py::init<const std::vector<Topology>&,
                       const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>>(),
+                      const std::vector<std::vector<std::size_t>>&>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
 
     py::classh<SubchannelWeights, FunctionGenerator>(m, "SubchannelWeights")
@@ -563,8 +561,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
         .def(py::init<const std::vector<std::vector<me_int_t>>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
-                      const EnergyScale&, bool, std::size_t,
-                      const std::vector<me_int_t>&, bool>(),
+                      const EnergyScale&, bool, std::size_t, bool>(),
              py::arg("pid_options"),
              py::arg("matrix_element_index"),
              py::arg("running_coupling"),
@@ -573,7 +570,6 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("energy_scale"),
              py::arg("simple_matrix_element")=true,
              py::arg("channel_count")=1,
-             py::arg("amp2_remap")=std::vector<me_int_t>{},
              py::arg("has_mirror")=false)
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
@@ -590,6 +586,8 @@ PYBIND11_MODULE(_madevent_py, m) {
                       const std::optional<PropagatorChannelWeights>&,
                       const std::optional<SubchannelWeights>&,
                       const std::optional<ChannelWeightNetwork>&,
+                      const std::vector<me_int_t>&,
+                      std::size_t,
                       int,
                       const std::vector<std::size_t>&,
                       const std::vector<std::size_t>&>(),
@@ -603,6 +601,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("prop_chan_weights")=std::nullopt,
              py::arg("subchan_weights")=std::nullopt,
              py::arg("chan_weight_net")=std::nullopt,
+             py::arg("chan_weight_remap")=std::vector<me_int_t>{},
+             py::arg("remapped_chan_count")=0,
              py::arg("flags")=0,
              py::arg("channel_indices")=std::vector<std::size_t>{},
              py::arg("active_flavors")=std::vector<std::size_t>{})

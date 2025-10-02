@@ -48,6 +48,8 @@ public:
         const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
         const std::optional<SubchannelWeights>& subchan_weights = std::nullopt,
         const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
+        const std::vector<me_int_t>& chan_weight_remap = {},
+        std::size_t remapped_chan_count = 0,
         int flags = 0,
         const std::vector<std::size_t>& channel_indices = {},
         const std::vector<std::size_t>& active_flavors = {}
@@ -106,6 +108,8 @@ private:
     std::optional<PropagatorChannelWeights> _prop_chan_weights;
     std::optional<SubchannelWeights> _subchan_weights;
     std::optional<ChannelWeightNetwork> _chan_weight_net;
+    std::vector<me_int_t> _chan_weight_remap;
+    me_int_t _remapped_chan_count;
     int _flags;
     std::vector<me_int_t> _channel_indices;
     me_int_t _random_dim;

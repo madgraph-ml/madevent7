@@ -185,6 +185,7 @@ SubchannelWeights::SubchannelWeights(
     for (auto& masses : _masses) masses.resize(max_propagator_count);
     for (auto& widths : _widths) widths.resize(max_propagator_count);
     for (auto& invars : _invariant_indices) invars.resize(max_propagator_count, -1);
+    for (auto& on_shell : _on_shell) on_shell.resize(max_propagator_count);
 }
 
 ValueVec SubchannelWeights::build_function_impl(
