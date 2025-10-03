@@ -89,8 +89,8 @@ Integrand::Integrand(
             }
             if (flags & return_chan_weights) {
                 ret_types.push_back(batch_float_array(
-                    subchan_weights ? subchan_weights->channel_count() :
-                    remapped_chan_count != 0 ? remapped_chan_count : diff_xs.channel_count()
+                    chan_weight_remap.size() > 0 ? remapped_chan_count :
+                    subchan_weights ? subchan_weights->channel_count() : diff_xs.channel_count()
                 ));
                 ret_types.push_back(batch_float);
             }
@@ -298,8 +298,8 @@ ValueVec Integrand::build_function_impl(
     // on denominators of propagators
     Value chan_weights_acc;
     std::size_t channel_count =
-        _subchan_weights ? _subchan_weights->channel_count() :
-        _remapped_chan_count != 0 ? _remapped_chan_count : _diff_xs.channel_count();
+        _chan_weight_remap.size() > 0 ? _remapped_chan_count :
+        _subchan_weights ? _subchan_weights->channel_count() : _diff_xs.channel_count();
     if (channel_count > 1 && _prop_chan_weights) {
         chan_weights_acc = _prop_chan_weights->build_function(
             fb, {momenta_acc}

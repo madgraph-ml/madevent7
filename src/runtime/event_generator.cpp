@@ -347,7 +347,7 @@ void EventGenerator::start_job(
     ++_job_id;
     ++channel.job_count;
     auto& job = std::get<0>(
-        _running_jobs.emplace(new_job_id, RunningJob{channel.index, {}})
+        _running_jobs.emplace(new_job_id, RunningJob{channel.index, {}, vegas_job_count})
     )->second;
     default_thread_pool().submit([new_job_id, batch_size, &job, &channel] () {
         job.events = channel.runtime->run({Tensor({batch_size})});
