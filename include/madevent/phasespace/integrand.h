@@ -93,7 +93,27 @@ public:
     std::tuple<std::vector<std::size_t>, std::vector<bool>> latent_dims() const;
 
 private:
+    struct ChannelArgs {
+        Value r, batch_size;
+        bool has_permutations, has_multi_flavor, has_mirror, has_pdf_prior;
+        Value max_weight;
+    };
+    struct ChannelResult {
+        Value r, latent;
+        Value momenta, momenta_mirror, momenta_acc;
+        Value x1, x1_acc;
+        Value x2, x2_acc;
+        Value pdf_prior;
+        Value chan_index, chan_index_in_group, flavor_id, mirror_id, indices_acc;
+        Value weight_before_cuts, weight_after_cuts, adaptive_prob;
+        ValueVec xs_cache;
+    };
+
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ChannelResult build_channel_part(FunctionBuilder& fb, const ChannelArgs& args) const;
+    ValueVec build_common_part(
+        FunctionBuilder& fb, const ChannelArgs& args, const ChannelResult& result
+    ) const;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
@@ -117,6 +137,17 @@ private:
     std::vector<double> _active_flavors;
 
     friend class IntegrandProbability;
+    friend class MultiChannelIntegrand;
+};
+
+class MultiChannelIntegrand : public FunctionGenerator {
+public:
+    MultiChannelIntegrand(const std::vector<std::shared_ptr<Integrand>>& integrands);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<std::shared_ptr<Integrand>> _integrands;
 };
 
 class IntegrandProbability : public FunctionGenerator {
