@@ -35,6 +35,10 @@ Value batch_size(ValueVec args) {
     return instruction("batch_size", args)[0];
 }
 
+Value offset_indices(Value batch_sizes) {
+    return instruction("offset_indices", {batch_sizes})[0];
+}
+
 Value full(ValueVec args) {
     return instruction("full", args)[0];
 }

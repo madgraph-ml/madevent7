@@ -486,6 +486,26 @@ TypeVec BatchSizeInstruction::signature(const ValueVec& args) const {
     return {{{batch_size}}};
 }
 
+TypeVec OffsetIndicesInstruction::signature(const ValueVec& args) const {
+    if (args.size() != 1) {
+        throw std::invalid_argument(std::format(
+            "offset_indices expects one argument, got {}", args.size()
+        ));
+    }
+    auto count_arg = args.at(0);
+    if (count_arg.type.dtype != DataType::batch_sizes) {
+        throw std::invalid_argument(
+            "Argument of offset_indices must be batch size list"
+        );
+    }
+    BatchSize total_batch_size = std::accumulate(
+        count_arg.type.batch_size_list.begin(),
+        count_arg.type.batch_size_list.end(),
+        BatchSize::zero
+    );
+    return {{DataType::dt_int, total_batch_size, {}}};
+}
+
 TypeVec FullInstruction::signature(const ValueVec& args) const {
     if (args.size() < 2) {
         throw std::invalid_argument("full expects at least two arguments");

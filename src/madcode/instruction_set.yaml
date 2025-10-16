@@ -88,6 +88,16 @@ batch_size:
   class: BatchSizeInstruction
   custom_op: True
 
+offset_indices:
+  inputs:
+    - name: batch_sizes
+      desc:
+  outputs:
+    - name: offsets
+      desc:
+  class: OffsetIndicesInstruction
+  custom_op: True
+
 full:
   inputs: any
   outputs:

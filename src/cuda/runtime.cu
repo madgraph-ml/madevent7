@@ -424,6 +424,30 @@ void op_batch_scatter(
     }
 }
 
+void op_offset_indices(
+    const CudaRuntime::Instruction& instruction,
+    TensorVec& locals,
+    const AsyncCudaDevice& device
+) {
+    auto& sizes = locals[instruction.input_indices[0]].batch_sizes();
+    std::size_t total_size = std::accumulate(sizes.begin(), sizes.end(), 0);
+    auto& output = locals[instruction.output_indices[0]];
+    output = Tensor(DataType::dt_int, {total_size}, device);
+    std::size_t offset = 0;
+    for (std::size_t size : sizes) {
+        thrust::fill_n(
+            thrust::cuda::par.on(device.stream()),
+            thrust::device_pointer_cast(
+                static_cast<me_int_t*>(indices_tmp.data()) + offset
+            ),
+            size,
+            offset
+        );
+        offset += size;
+    }
+
+}
+
 void op_random(
     const CudaRuntime::Instruction& instruction,
     TensorVec& locals,

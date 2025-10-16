@@ -25,7 +25,10 @@ void deleter(struct DLManagedTensor* self) {
 
 Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
     Runtime* runtime;
-    if (!expected_device) expected_device = func_runtime.context->device();
+    if (!expected_device) {
+        expected_device = func_runtime.context ?
+            func_runtime.context->device() : cpu_device();
+    }
     if (expected_device == cpu_device()) {
         if (!func_runtime.cpu_runtime) {
             if (func_runtime.context) {

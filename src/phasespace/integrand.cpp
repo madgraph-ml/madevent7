@@ -593,7 +593,20 @@ MultiChannelIntegrand::MultiChannelIntegrand(
 ValueVec MultiChannelIntegrand::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
+    /*Integrand::ChannelArgs common_args {
+        .r = _flags & sample ? fb.random(args.at(0), _random_dim) : args.at(0),
+        .batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)}),
+        .has_permutations = _mapping.channel_count() > 1,
+        .has_multi_flavor = _diff_xs.pid_options().size() > 1,
+        .has_mirror = _diff_xs.has_mirror(),
+        .has_pdf_prior = _pdf1 && _energy_scale && channel_args.has_multi_flavor,
+    };
+    if (_flags & unweight) {
+        channel_args.max_weight = args.at(1);
+    }*/
     return {};
+    //ChannelResult result = build_channel_part(fb, channel_args);
+    //return build_common_part(fb, channel_args, result);
 }
 
 IntegrandProbability::IntegrandProbability(const Integrand& integrand) :

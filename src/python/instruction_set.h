@@ -21,6 +21,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
     fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
     fb.def("batch_size", &FunctionBuilder::batch_size, py::arg("args"));
+    fb.def("offset_indices", &FunctionBuilder::offset_indices, py::arg("batch_sizes"));
     fb.def("full", &FunctionBuilder::full, py::arg("args"));
     fb.def("squeeze", &FunctionBuilder::squeeze, py::arg("input"));
     fb.def("unsqueeze", &FunctionBuilder::unsqueeze, py::arg("input"));
