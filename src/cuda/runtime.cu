@@ -438,7 +438,7 @@ void op_offset_indices(
         thrust::fill_n(
             thrust::cuda::par.on(device.stream()),
             thrust::device_pointer_cast(
-                static_cast<me_int_t*>(indices_tmp.data()) + offset
+                static_cast<me_int_t*>(output.data()) + offset
             ),
             size,
             offset
