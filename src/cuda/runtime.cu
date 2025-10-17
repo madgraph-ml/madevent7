@@ -429,23 +429,24 @@ void op_offset_indices(
     TensorVec& locals,
     const AsyncCudaDevice& device
 ) {
-    auto& sizes = locals[instruction.input_indices[0]].batch_sizes();
-    std::size_t total_size = std::accumulate(sizes.begin(), sizes.end(), 0);
+    auto& sizes_offset = locals[instruction.input_indices[0]].batch_sizes();
+    auto& sizes_out = locals[instruction.input_indices[1]].batch_sizes();
+    std::size_t total_size = std::accumulate(sizes_out.begin(), sizes_out.end(), 0);
     auto& output = locals[instruction.output_indices[0]];
     output = Tensor(DataType::dt_int, {total_size}, device);
-    std::size_t offset = 0;
-    for (std::size_t size : sizes) {
+    std::size_t sum_offset = 0, sum_out = 0;
+    for (auto [size_offset, size_out] : zip(sizes_offset, sizes_out)) {
         thrust::fill_n(
             thrust::cuda::par.on(device.stream()),
             thrust::device_pointer_cast(
-                static_cast<me_int_t*>(output.data()) + offset
+                static_cast<me_int_t*>(output.data()) + sum_out
             ),
-            size,
-            offset
+            size_out,
+            sum_offset
         );
-        offset += size;
+        sum_offset += size_offset;
+        sum_out += size_out;
     }
-
 }
 
 void op_random(

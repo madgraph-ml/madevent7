@@ -100,7 +100,6 @@ class IntegrandFunction:
 
     def update_channel_mask(self, mask: torch.Tensor) -> None:
         self.channel_mask = mask.cpu()
-        #multi_integrand = me.MultiChannelFunction(
         multi_integrand = me.MultiChannelIntegrand(
             [chan for chan, active in zip(self.channels, mask) if active]
         )
