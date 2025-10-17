@@ -487,20 +487,34 @@ TypeVec BatchSizeInstruction::signature(const ValueVec& args) const {
 }
 
 TypeVec OffsetIndicesInstruction::signature(const ValueVec& args) const {
-    if (args.size() != 1) {
+    if (args.size() != 2) {
         throw std::invalid_argument(std::format(
-            "offset_indices expects one argument, got {}", args.size()
+            "offset_indices expects two arguments, got {}", args.size()
         ));
     }
-    auto count_arg = args.at(0);
-    if (count_arg.type.dtype != DataType::batch_sizes) {
+    auto batch_sizes_offset = args.at(0);
+    auto batch_sizes_out = args.at(1);
+    if (batch_sizes_offset.type.dtype != DataType::batch_sizes) {
         throw std::invalid_argument(
-            "Argument of offset_indices must be batch size list"
+            "Argument 1 of offset_indices must be batch size list"
+        );
+    }
+    if (batch_sizes_out.type.dtype != DataType::batch_sizes) {
+        throw std::invalid_argument(
+            "Argument 2 of offset_indices must be batch size list"
+        );
+    }
+    if (
+        batch_sizes_offset.type.batch_size_list.size()
+        != batch_sizes_out.type.batch_size_list.size()
+    ) {
+        throw std::invalid_argument(
+            "The two batch size lists must have the same length"
         );
     }
     BatchSize total_batch_size = std::accumulate(
-        count_arg.type.batch_size_list.begin(),
-        count_arg.type.batch_size_list.end(),
+        batch_sizes_out.type.batch_size_list.begin(),
+        batch_sizes_out.type.batch_size_list.end(),
         BatchSize::zero
     );
     return {{DataType::dt_int, total_batch_size, {}}};

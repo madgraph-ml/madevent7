@@ -631,6 +631,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_cwnet_input", &Integrand::return_cwnet_input)
         .def_readonly_static("return_discrete", &Integrand::return_discrete)
         .def_readonly_static("return_discrete_latent", &Integrand::return_discrete_latent);
+    py::classh<MultiChannelIntegrand, FunctionGenerator>(m, "MultiChannelIntegrand")
+        .def(py::init<std::vector<std::shared_ptr<Integrand>>&>(),
+             py::arg("integrands"));
     py::classh<IntegrandProbability, FunctionGenerator>(m, "IntegrandProbability")
         .def(py::init<const Integrand&>(), py::arg("integrand"));
 

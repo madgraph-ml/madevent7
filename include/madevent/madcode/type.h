@@ -149,7 +149,9 @@ struct Value {
                 std::vector<T> flat_values;
                 for (auto& vec : values) {
                     if (vec.size() != inner_size) {
-                        throw std::invalid_argument("All inner vectors must have the same size");
+                        throw std::invalid_argument(
+                            "All inner vectors must have the same size"
+                        );
                     }
                 }
                 for (std::size_t j = 0; j < inner_size; ++j) {
@@ -186,6 +188,10 @@ struct Value {
         : type(_type), literal_value(std::monostate{}), local_index(_local_index) {}
     Value(Type _type, LiteralValue _literal_value, int _local_index = -1)
         : type(_type), literal_value(_literal_value), local_index(_local_index) {}
+
+    operator bool() {
+        return !(local_index == -1 && std::holds_alternative<std::monostate>(literal_value));
+    }
 };
 
 using ValueVec = std::vector<Value>;

@@ -21,11 +21,12 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
     fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
     fb.def("batch_size", &FunctionBuilder::batch_size, py::arg("args"));
-    fb.def("offset_indices", &FunctionBuilder::offset_indices, py::arg("batch_sizes"));
+    fb.def("offset_indices", &FunctionBuilder::offset_indices, py::arg("batch_sizes_offset"), py::arg("batch_sizes_out"));
     fb.def("full", &FunctionBuilder::full, py::arg("args"));
     fb.def("squeeze", &FunctionBuilder::squeeze, py::arg("input"));
     fb.def("unsqueeze", &FunctionBuilder::unsqueeze, py::arg("input"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
+    fb.def("add_int", &FunctionBuilder::add_int, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
     fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in"));
