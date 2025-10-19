@@ -17,12 +17,12 @@ public:
         const EnergyScale& energy_scale,
         bool simple_matrix_element = true,
         std::size_t channel_count = 1,
-        const std::vector<me_int_t>& amp2_remap = {},
         bool has_mirror = false
     );
     const std::vector<std::vector<me_int_t>>& pid_options() const { return _pid_options; }
     std::size_t channel_count() const { return _channel_count; }
     bool has_mirror() const { return _has_mirror; }
+    const MatrixElement& matrix_element() const { return _matrix_element; }
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 

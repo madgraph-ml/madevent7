@@ -46,7 +46,10 @@ public:
         const std::optional<PdfGrid>& pdf_grid = std::nullopt,
         const std::optional<EnergyScale>& energy_scale = std::nullopt,
         const std::optional<PropagatorChannelWeights>& prop_chan_weights = std::nullopt,
+        const std::optional<SubchannelWeights>& subchan_weights = std::nullopt,
         const std::optional<ChannelWeightNetwork>& chan_weight_net = std::nullopt,
+        const std::vector<me_int_t>& chan_weight_remap = {},
+        std::size_t remapped_chan_count = 0,
         int flags = 0,
         const std::vector<std::size_t>& channel_indices = {},
         const std::vector<std::size_t>& active_flavors = {}
@@ -90,7 +93,42 @@ public:
     std::tuple<std::vector<std::size_t>, std::vector<bool>> latent_dims() const;
 
 private:
+    struct ChannelArgs {
+        Value r, batch_size;
+        bool has_permutations, has_multi_flavor, has_mirror, has_pdf_prior;
+        Value max_weight;
+    };
+    struct ChannelResult {
+        std::array<Value, 21> values;
+
+        Value& r() { return values[0]; }
+        Value& latent() { return values[1]; }
+        Value& momenta() { return values[2]; }
+        Value& momenta_mirror() { return values[3]; }
+        Value& momenta_acc() { return values[4]; }
+        Value& x1() { return values[5]; }
+        Value& x1_acc() { return values[6]; }
+        Value& x2() { return values[7]; }
+        Value& x2_acc() { return values[8]; }
+        Value& pdf_prior() { return values[9]; }
+        Value& chan_index() { return values[10]; }
+        Value& chan_index_in_group() { return values[11]; }
+        Value& flavor_id() { return values[12]; }
+        Value& mirror_id() { return values[13]; }
+        Value& indices_acc() { return values[14]; }
+        Value& weight_before_cuts() { return values[15]; }
+        Value& weight_after_cuts() { return values[16]; }
+        Value& adaptive_prob() { return values[17]; }
+        Value& pdf1_cache() { return values[18]; }
+        Value& pdf2_cache() { return values[19]; }
+        Value& scale_cache() { return values[20]; }
+    };
+
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ChannelResult build_channel_part(FunctionBuilder& fb, const ChannelArgs& args) const;
+    ValueVec build_common_part(
+        FunctionBuilder& fb, const ChannelArgs& args, ChannelResult& result
+    ) const;
 
     PhaseSpaceMapping _mapping;
     DifferentialCrossSection _diff_xs;
@@ -103,7 +141,10 @@ private:
     std::vector<me_int_t> _pdf_indices2;
     std::optional<EnergyScale> _energy_scale;
     std::optional<PropagatorChannelWeights> _prop_chan_weights;
+    std::optional<SubchannelWeights> _subchan_weights;
     std::optional<ChannelWeightNetwork> _chan_weight_net;
+    std::vector<me_int_t> _chan_weight_remap;
+    me_int_t _remapped_chan_count;
     int _flags;
     std::vector<me_int_t> _channel_indices;
     me_int_t _random_dim;
@@ -111,6 +152,17 @@ private:
     std::vector<double> _active_flavors;
 
     friend class IntegrandProbability;
+    friend class MultiChannelIntegrand;
+};
+
+class MultiChannelIntegrand : public FunctionGenerator {
+public:
+    MultiChannelIntegrand(const std::vector<std::shared_ptr<Integrand>>& integrands);
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<std::shared_ptr<Integrand>> _integrands;
 };
 
 class IntegrandProbability : public FunctionGenerator {

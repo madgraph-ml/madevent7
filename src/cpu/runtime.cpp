@@ -397,6 +397,39 @@ void op_batch_scatter(
 }
 
 template<typename D>
+void op_offset_indices(
+    const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
+) {
+    auto& sizes_offset = locals[instruction.input_indices[0]].batch_sizes();
+    auto& sizes_out = locals[instruction.input_indices[1]].batch_sizes();
+    std::size_t total_size = std::accumulate(sizes_out.begin(), sizes_out.end(), 0);
+    auto& output = locals[instruction.output_indices[0]];
+    output = Tensor(DataType::dt_int, {total_size}, device);
+    auto flat_view = output.flat_view<me_int_t, 1>(0);
+
+    std::size_t sum_offset = 0, sum_out = 0;
+    for (auto [size_offset, size_out] : zip(sizes_offset, sizes_out)) {
+        device.foreach(
+            size_out,
+            [flat_view, sum_offset, sum_out](
+                std::size_t job_count, std::size_t job_offset
+            ) mutable {
+                auto output_view = TensorView<me_int_t, 1>(flat_view);
+                for (
+                    std::size_t i = sum_out + job_offset;
+                    i < sum_out + job_offset + job_count;
+                    ++i
+                ) {
+                    output_view[i] = sum_offset;
+                }
+            }
+        );
+        sum_offset += size_offset;
+        sum_out += size_out;
+    }
+}
+
+template<typename D>
 void op_random(
     const CpuRuntime::Instruction& instruction, TensorVec& locals, const D& device
 ) {

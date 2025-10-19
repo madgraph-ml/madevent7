@@ -69,8 +69,10 @@ public:
         double width;
         double e_min;
         double e_max;
+        bool on_shell;
     };
 
+    static std::vector<Topology> topologies(const Diagram& diagram);
     Topology(const Diagram& diagram);
 
     std::size_t t_propagator_count() const { return _t_integration_order.size(); }
@@ -98,9 +100,11 @@ public:
     }
     std::vector<std::tuple<
         std::vector<int>, double, double
-    >> propagator_momentum_terms() const;
+    >> propagator_momentum_terms(bool only_decays = false) const;
 
 private:
+    Topology() = default;
+
     std::vector<std::size_t> _t_integration_order;
     std::vector<double> _t_propagator_masses;
     std::vector<double> _t_propagator_widths;

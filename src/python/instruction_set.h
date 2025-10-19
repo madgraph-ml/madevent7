@@ -21,10 +21,12 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
     fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
     fb.def("batch_size", &FunctionBuilder::batch_size, py::arg("args"));
+    fb.def("offset_indices", &FunctionBuilder::offset_indices, py::arg("batch_sizes_offset"), py::arg("batch_sizes_out"));
     fb.def("full", &FunctionBuilder::full, py::arg("args"));
     fb.def("squeeze", &FunctionBuilder::squeeze, py::arg("input"));
     fb.def("unsqueeze", &FunctionBuilder::unsqueeze, py::arg("input"));
     fb.def("add", &FunctionBuilder::add, py::arg("in1"), py::arg("in2"));
+    fb.def("add_int", &FunctionBuilder::add_int, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
     fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in"));
@@ -45,6 +47,8 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("t_inv_min_max", &FunctionBuilder::t_inv_min_max, py::arg("pa"), py::arg("pb"), py::arg("m1"), py::arg("m2"));
     fb.def("invariants_from_momenta", &FunctionBuilder::invariants_from_momenta, py::arg("p_ext"), py::arg("factors"));
     fb.def("sde2_channel_weights", &FunctionBuilder::sde2_channel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"));
+    fb.def("subchannel_weights", &FunctionBuilder::subchannel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"), py::arg("on_shell"), py::arg("group_sizes"));
+    fb.def("apply_subchannel_weights", &FunctionBuilder::apply_subchannel_weights, py::arg("channel_weights_in"), py::arg("subchannel_weights"), py::arg("channel_indices"), py::arg("subchannel_indices"));
     fb.def("pt_eta_phi_x", &FunctionBuilder::pt_eta_phi_x, py::arg("p_ext"), py::arg("x1"), py::arg("x2"));
     fb.def("mirror_momenta", &FunctionBuilder::mirror_momenta, py::arg("p_ext"), py::arg("mirror"));
     fb.def("uniform_invariant", &FunctionBuilder::uniform_invariant, py::arg("r"), py::arg("s_min"), py::arg("s_max"));

@@ -38,7 +38,10 @@ Integrand::Integrand(
     const std::optional<PdfGrid>& pdf_grid,
     const std::optional<EnergyScale>& energy_scale,
     const std::optional<PropagatorChannelWeights>& prop_chan_weights,
+    const std::optional<SubchannelWeights>& subchan_weights,
     const std::optional<ChannelWeightNetwork>& chan_weight_net,
+    const std::vector<me_int_t>& chan_weight_remap,
+    std::size_t remapped_chan_count,
     int flags,
     const std::vector<std::size_t>& channel_indices,
     const std::vector<std::size_t>& active_flavors
@@ -51,7 +54,10 @@ Integrand::Integrand(
                 arg_types.push_back(Type({batch_size}));
             } else {
                 arg_types.push_back(batch_float_array(
-                    mapping.random_dim() + (diff_xs.channel_count() > 1)
+                    mapping.random_dim() + // phasespace
+                    (mapping.channel_count() > 1) + // symmetric channel
+                    (diff_xs.pid_options().size() > 1) + // flavor
+                    diff_xs.has_mirror() // flipped initial state
                 ));
             }
             if (flags & unweight) arg_types.push_back(single_float);
@@ -82,7 +88,10 @@ Integrand::Integrand(
                 ret_types.push_back(batch_int);
             }
             if (flags & return_chan_weights) {
-                ret_types.push_back(batch_float_array(diff_xs.channel_count()));
+                ret_types.push_back(batch_float_array(
+                    chan_weight_remap.size() > 0 ? remapped_chan_count :
+                    subchan_weights ? subchan_weights->channel_count() : diff_xs.channel_count()
+                ));
                 ret_types.push_back(batch_float);
             }
             if (flags & return_cwnet_input) {
@@ -127,7 +136,10 @@ Integrand::Integrand(
     _discrete_after(discrete_after),
     _energy_scale(energy_scale),
     _prop_chan_weights(prop_chan_weights),
+    _subchan_weights(subchan_weights),
     _chan_weight_net(chan_weight_net),
+    _chan_weight_remap(chan_weight_remap),
+    _remapped_chan_count(remapped_chan_count),
     _flags(flags),
     _channel_indices(channel_indices.begin(), channel_indices.end()),
     _random_dim(
@@ -181,60 +193,82 @@ std::tuple<std::vector<std::size_t>, std::vector<bool>> Integrand::latent_dims()
 ValueVec Integrand::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
-    Value r = _flags & sample ? fb.random(args.at(0), _random_dim) : args.at(0);
-    Value batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)});
+    bool has_multi_flavor = _diff_xs.pid_options().size() > 1;
+    ChannelArgs channel_args {
+        .r = _flags & sample ? fb.random(args.at(0), _random_dim) : args.at(0),
+        .batch_size = _flags & sample ? args.at(0) : fb.batch_size({args.at(0)}),
+        .has_permutations = _mapping.channel_count() > 1,
+        .has_multi_flavor = has_multi_flavor,
+        .has_mirror = _diff_xs.has_mirror(),
+        .has_pdf_prior = _pdf1 && _energy_scale && has_multi_flavor,
+    };
+    if (_flags & unweight) {
+        channel_args.max_weight = args.at(1);
+    }
+    ChannelResult result = build_channel_part(fb, channel_args);
+    return build_common_part(fb, channel_args, result);
+}
+
+Integrand::ChannelResult Integrand::build_channel_part(
+    FunctionBuilder& fb, const Integrand::ChannelArgs& args
+) const {
+    ChannelResult result;
     ValueVec mapping_conditions;
     ValueVec weights_before_cuts, weights_after_cuts, adaptive_probs;
 
     // split up random numbers depending on discrete degrees of freedom
     Value chan_random, flavor_random, mirror_random;
-    bool has_permutations = _mapping.channel_count() > 1;
-    bool has_multi_flavor = _diff_xs.pid_options().size() > 1;
-    bool has_mirror = _diff_xs.has_mirror();
-    if (has_permutations) {
-        auto [r_rest, r_val] = fb.pop(r);
-        r = r_rest;
+    result.r() = args.r;
+    if (args.has_permutations) {
+        auto [r_rest, r_val] = fb.pop(result.r());
+        result.r() = r_rest;
         chan_random = r_val;
     }
-    if (has_multi_flavor) {
-        auto [r_rest, r_val] = fb.pop(r);
-        r = r_rest;
+    if (args.has_multi_flavor) {
+        auto [r_rest, r_val] = fb.pop(result.r());
+        result.r() = r_rest;
         flavor_random = r_val;
     }
-    if (has_mirror) {
-        auto [r_rest, r_val] = fb.pop(r);
-        r = r_rest;
+    if (args.has_mirror) {
+        auto [r_rest, r_val] = fb.pop(result.r());
+        result.r() = r_rest;
         mirror_random = r_val;
     }
 
     // if the channel contains multiple symmetry permutations, sample them either
     // uniformly, adaptively or NN-based depending on _discrete_before
-    Value chan_index, chan_index_in_group;
     ValueVec flow_conditions;
-    if (has_permutations) {
+    if (args.has_permutations) {
         me_int_t opt_count = _channel_indices.size();
         std::visit(Overloaded {
             [&](std::monostate) {
                 auto [index, chan_det] = fb.sample_discrete(chan_random, opt_count);
-                chan_index_in_group = index;
+                result.chan_index_in_group() = index;
                 weights_before_cuts.push_back(chan_det);
             },
             [&](auto discrete_before) {
                 auto [index_vec, chan_det] = discrete_before.build_forward(
                     fb, {chan_random}, {}
                 );
-                chan_index_in_group = index_vec.at(0);
+                result.chan_index_in_group() = index_vec.at(0);
                 weights_before_cuts.push_back(chan_det);
                 adaptive_probs.push_back(chan_det);
             }
         }, _discrete_before);
-        chan_index = fb.gather_int(chan_index_in_group, _channel_indices);
-        mapping_conditions.push_back(chan_index_in_group);
+        result.chan_index() = fb.gather_int(result.chan_index_in_group(), _channel_indices);
+        mapping_conditions.push_back(result.chan_index_in_group());
         //flow_conditions.push_back(fb.one_hot(chan_index_in_group, opt_count));
+    } else {
+        result.chan_index() = fb.full(
+            {static_cast<me_int_t>(_channel_indices.at(0)), args.batch_size}
+        );
+        result.chan_index_in_group() = fb.full(
+            {static_cast<me_int_t>(0), args.batch_size}
+        );
     }
 
     // apply VEGAS or MadNIS if given in _adaptive_map
-    auto latent = r;
+    result.latent() = result.r();
     std::visit(Overloaded {
         [&](std::monostate) {},
         [&](auto& admap) {
@@ -247,92 +281,83 @@ ValueVec Integrand::build_function_impl(
                     cond.push_back(fb.cat(flow_conditions));
                 }
             }
-            auto [rs, r_det] = admap.build_forward(fb, {r}, cond);
-            latent = rs.at(0);
+            auto [rs, r_det] = admap.build_forward(fb, {result.r()}, cond);
+            result.latent() = rs.at(0);
             adaptive_probs.push_back(r_det);
             weights_before_cuts.push_back(r_det);
-            flow_conditions.push_back(latent);
+            flow_conditions.push_back(result.latent());
         }
     }, _adaptive_map);
 
     // apply phase space mapping
-    auto [momenta_x1_x2, det] = _mapping.build_forward(fb, {latent}, mapping_conditions);
+    auto [momenta_x1_x2, det] = _mapping.build_forward(
+        fb, {result.latent()}, mapping_conditions
+    );
     weights_before_cuts.push_back(det);
-    auto momenta = momenta_x1_x2.at(0);
-    auto x1 = momenta_x1_x2.at(1);
-    auto x2 = momenta_x1_x2.at(2);
+    result.momenta() = momenta_x1_x2.at(0);
+    result.x1() = momenta_x1_x2.at(1);
+    result.x2() = momenta_x1_x2.at(2);
 
-    Value mirror_id, momenta_mirror;
-    if (has_mirror) {
+    if (args.has_mirror) {
         auto [index, mirror_det] = fb.sample_discrete(
             mirror_random, static_cast<me_int_t>(2)
         );
-        mirror_id = index;
-        momenta_mirror = fb.mirror_momenta(momenta, mirror_id);
+        result.mirror_id() = index;
+        result.momenta_mirror() = fb.mirror_momenta(result.momenta(), result.mirror_id());
         weights_before_cuts.push_back(mirror_det);
     }
 
     // filter out events that did not pass cuts
-    auto weight = fb.product(weights_before_cuts);
-    auto indices_acc = fb.nonzero(weight);
-    auto momenta_acc = fb.batch_gather(indices_acc, momenta);
-    auto x1_acc = fb.batch_gather(indices_acc, x1);
-    auto x2_acc = fb.batch_gather(indices_acc, x2);
+    result.weight_before_cuts() = fb.product(weights_before_cuts);
+    result.indices_acc() = fb.nonzero(result.weight_before_cuts());
+    result.momenta_acc() = fb.batch_gather(result.indices_acc(), result.momenta());
+    result.x1_acc() = fb.batch_gather(result.indices_acc(), result.x1());
+    result.x2_acc() = fb.batch_gather(result.indices_acc(), result.x2());
     for (auto& cond : flow_conditions) {
-        cond = fb.batch_gather(indices_acc, cond);
-    }
-
-    // if _prop_chan_weights is given, compute channel weight based
-    // on denominators of propagators
-    Value chan_weights_acc;
-    bool has_multi_channel = _diff_xs.channel_count() > 1;
-    if (_prop_chan_weights && has_multi_channel) {
-        chan_weights_acc = _prop_chan_weights.value().build_function(
-            fb, {momenta_acc}
-        ).at(0);
+        cond = fb.batch_gather(result.indices_acc(), cond);
     }
 
     // if PDF grid and energy scale were given and the channel has more than one flavor,
     // evaluate energy scale and PDF for all flavors to use it as prior for flavor sampling
-    bool has_pdf_prior = _pdf1 && _energy_scale && has_multi_flavor;
-    ValueVec xs_cache;
-    Value pdf_prior;
-    if (has_pdf_prior) {
-        auto scales = _energy_scale.value().build_function(fb, {momenta_acc});
+    if (args.has_pdf_prior) {
+        auto scales = _energy_scale.value().build_function(fb, {result.momenta_acc()});
         auto pdf1 = _pdf1.value().build_function(
-            fb, {x1_acc, scales.at(1)}
+            fb, {result.x1_acc(), scales.at(1)}
         ).at(0);
         auto pdf2 = _pdf2.value().build_function(
-            fb, {x2_acc, scales.at(2)}
+            fb, {result.x2_acc(), scales.at(2)}
         ).at(0);
-        pdf_prior = fb.mul(
+        result.pdf_prior() = fb.mul(
             fb.select(pdf1, _pdf_indices1), fb.select(pdf2, _pdf_indices2)
         );
         if (_active_flavors.size() > 0) {
-            pdf_prior = fb.mul(pdf_prior, _active_flavors);
+            result.pdf_prior() = fb.mul(result.pdf_prior(), _active_flavors);
         }
-        xs_cache = {pdf1, pdf2, scales.at(0)};
+        result.pdf1_cache() = pdf1;
+        result.pdf2_cache() = pdf2;
+        result.scale_cache() = scales.at(0);
     }
 
     // if the channel has more than one flavor, sample them either uniformly,
     // adaptively or NN-based depending on _discrete_after
-    Value flavor_id(static_cast<me_int_t>(0));
-    if (has_multi_flavor) {
-        auto flavor_random_acc = fb.batch_gather(indices_acc, flavor_random);
+    auto batch_size_acc = fb.batch_size({result.momenta_acc()});
+    result.flavor_id() = fb.full({static_cast<me_int_t>(0), batch_size_acc});
+    if (args.has_multi_flavor) {
+        auto flavor_random_acc = fb.batch_gather(result.indices_acc(), flavor_random);
         std::visit(Overloaded {
             [&](std::monostate) {
-                if (has_pdf_prior) {
+                if (args.has_pdf_prior) {
                     auto [index, flavor_det] = fb.sample_discrete_probs(
-                        flavor_random_acc, pdf_prior
+                        flavor_random_acc, result.pdf_prior()
                     );
-                    flavor_id = index;
+                    result.flavor_id() = index;
                     weights_after_cuts.push_back(flavor_det);
                 } else {
                     auto [index, flavor_det] = fb.sample_discrete(
                         flavor_random_acc,
                         static_cast<me_int_t>(_diff_xs.pid_options().size())
                     );
-                    flavor_id = index;
+                    result.flavor_id() = index;
                     weights_after_cuts.push_back(flavor_det);
                 }
             },
@@ -346,87 +371,124 @@ ValueVec Integrand::build_function_impl(
                         discrete_condition.push_back(fb.cat(flow_conditions));
                     }
                 }
-                if (has_pdf_prior) {
-                    discrete_condition.push_back(pdf_prior);
+                if (args.has_pdf_prior) {
+                    discrete_condition.push_back(result.pdf_prior());
                 }
                 auto [index_vec, flavor_det] = discrete_after.build_forward(
                     fb, {flavor_random_acc}, discrete_condition
                 );
-                flavor_id = index_vec.at(0);
+                result.flavor_id() = index_vec.at(0);
                 weights_after_cuts.push_back(flavor_det);
-                auto ones = fb.full({1., batch_size});
-                adaptive_probs.push_back(fb.batch_scatter(indices_acc, ones, flavor_det));
+                auto ones = fb.full({1., args.batch_size});
+                adaptive_probs.push_back(fb.batch_scatter(
+                    result.indices_acc(), ones, flavor_det
+                ));
             }
         }, _discrete_after);
     }
+    result.weight_after_cuts() = weights_after_cuts.size() == 0 ?
+        fb.full({1., batch_size_acc}) : fb.product(weights_after_cuts);
+    result.adaptive_prob() = adaptive_probs.size() == 0 ?
+        fb.full({1., args.batch_size}) : fb.product(adaptive_probs);
+    return result;
+}
+
+ValueVec Integrand::build_common_part(
+    FunctionBuilder& fb,
+    const Integrand::ChannelArgs& args,
+    Integrand::ChannelResult& result
+) const {
+    // if _prop_chan_weights is given, compute channel weight based
+    // on denominators of propagators
+    Value chan_weights_acc;
+    std::size_t channel_count =
+        _chan_weight_remap.size() > 0 ? _remapped_chan_count :
+        _subchan_weights ? _subchan_weights->channel_count() : _diff_xs.channel_count();
+    if (channel_count > 1 && _prop_chan_weights) {
+        chan_weights_acc = _prop_chan_weights->build_function(
+            fb, {result.momenta_acc()}
+        ).at(0);
+    }
 
     // evaluate differential cross section
-    ValueVec xs_args {momenta_acc, x1_acc, x2_acc, flavor_id};
-    if (has_mirror) xs_args.push_back(mirror_id);
-    xs_args.insert(xs_args.end(), xs_cache.begin(), xs_cache.end());
+    ValueVec xs_args {
+        result.momenta_acc(), result.x1_acc(), result.x2_acc(), result.flavor_id()
+    };
+    if (args.has_mirror) xs_args.push_back(result.mirror_id());
+    if (args.has_pdf_prior) {
+        xs_args.push_back(result.pdf1_cache());
+        xs_args.push_back(result.pdf2_cache());
+        xs_args.push_back(result.scale_cache());
+    }
     auto dxs_vec = _diff_xs.build_function(fb, xs_args);
     auto diff_xs_acc = dxs_vec.at(0);
-    weights_after_cuts.push_back(diff_xs_acc);
+    ValueVec weights_after_cuts{result.weight_after_cuts(), diff_xs_acc};
     if (!_prop_chan_weights) {
         chan_weights_acc = dxs_vec.at(1);
+    }
+    if (channel_count > 1 && _subchan_weights) {
+        chan_weights_acc = _subchan_weights->build_function(
+            fb, {result.momenta_acc(), chan_weights_acc}
+        ).at(0);
+    }
+    if (_chan_weight_remap.size() > 0) {
+        chan_weights_acc = fb.collect_channel_weights(
+            chan_weights_acc, _chan_weight_remap, _remapped_chan_count
+        );
     }
 
     // if given, apply channel weight network
     auto prior_chan_weights_acc = chan_weights_acc;
     if (_chan_weight_net) {
         chan_weights_acc = _chan_weight_net.value().build_function(
-            fb, {momenta_acc, x1_acc, x2_acc, chan_weights_acc}
+            fb, {result.momenta_acc(), result.x1_acc(), result.x2_acc(), chan_weights_acc}
         ).at(0);
     }
 
     // compute full phase-space weight
     Value selected_chan_weight_acc;
-    if (has_multi_channel) {
-        //TODO fixme
-        Value chan_index_acc;
-        if (has_permutations) {
-            chan_index_acc = fb.batch_gather(indices_acc, chan_index);
-        } else {
-            chan_index_acc = static_cast<me_int_t>(_channel_indices.at(0));
-        }
+    if (channel_count > 1) {
+        Value chan_index_acc = fb.batch_gather(result.indices_acc(), result.chan_index());
         selected_chan_weight_acc = fb.gather(chan_index_acc, chan_weights_acc);
         weights_after_cuts.push_back(selected_chan_weight_acc);
     } else {
         selected_chan_weight_acc = 1.;
     }
-    weight = fb.mul(weight, fb.batch_scatter(indices_acc, weight, fb.product(weights_after_cuts)));
+    auto weight = fb.mul(result.weight_before_cuts(), fb.batch_scatter(
+        result.indices_acc(), result.weight_before_cuts(), fb.product(weights_after_cuts)
+    ));
 
     // return results based on _flags
     ValueVec outputs{weight};
     if (_flags & return_momenta) {
-        outputs.push_back(has_mirror ? momenta_mirror : momenta);
+        outputs.push_back(args.has_mirror ? result.momenta_mirror() : result.momenta());
     }
     if (_flags & return_x1_x2) {
-        outputs.push_back(x1);
-        outputs.push_back(x2);
+        outputs.push_back(result.x1());
+        outputs.push_back(result.x2());
     }
     if (_flags & return_random) {
-        outputs.push_back(r);
+        outputs.push_back(result.r());
     }
     if (_flags & return_latent) {
-        outputs.push_back(latent);
-        outputs.push_back(fb.product(adaptive_probs));
+        outputs.push_back(result.latent());
+        outputs.push_back(result.adaptive_prob());
     }
     if (_flags & return_channel) {
-        if (!has_permutations) {
-            chan_index = fb.full({static_cast<me_int_t>(_channel_indices.at(0)), batch_size});
-        }
-        outputs.push_back(chan_index);
+        outputs.push_back(result.chan_index());
     }
     if (_flags & return_chan_weights) {
-        auto chan_count = _diff_xs.channel_count();
         auto cw_flat = fb.full({
-            1. / chan_count, batch_size, static_cast<me_int_t>(chan_count)
+            1. / channel_count, args.batch_size, static_cast<me_int_t>(channel_count)
         });
-        auto ones = fb.full({1., batch_size});
-        if (has_multi_channel) {
-            outputs.push_back(fb.batch_scatter(indices_acc, cw_flat, prior_chan_weights_acc));
-            outputs.push_back(fb.batch_scatter(indices_acc, ones, selected_chan_weight_acc));
+        auto ones = fb.full({1., args.batch_size});
+        if (channel_count > 1) {
+            outputs.push_back(
+                fb.batch_scatter(result.indices_acc(), cw_flat, prior_chan_weights_acc)
+            );
+            outputs.push_back(
+                fb.batch_scatter(result.indices_acc(), ones, selected_chan_weight_acc)
+            );
         } else {
             outputs.push_back(cw_flat);
             outputs.push_back(ones);
@@ -435,37 +497,49 @@ ValueVec Integrand::build_function_impl(
     if (_flags & return_cwnet_input) {
         auto& preproc = _chan_weight_net.value().preprocessing();
         auto cw_preproc_acc = preproc.build_function(
-            fb, {momenta_acc, x1_acc, x2_acc}
+            fb, {result.momenta_acc(), result.x1_acc(), result.x2_acc()}
         ).at(0);
-        auto zeros = fb.full({0., batch_size, static_cast<me_int_t>(preproc.output_dim())});
-        outputs.push_back(fb.batch_scatter(indices_acc, zeros, cw_preproc_acc));
+        auto zeros = fb.full(
+            {0., args.batch_size, static_cast<me_int_t>(preproc.output_dim())}
+        );
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, cw_preproc_acc));
     }
     if (_flags & return_discrete) {
-        if (has_permutations && !std::holds_alternative<std::monostate>(_discrete_before)) {
-            outputs.push_back(chan_index_in_group);
+        if (
+            args.has_permutations &&
+            !std::holds_alternative<std::monostate>(_discrete_before)
+        ) {
+            //TODO: probably doesn't work for multichannel integrand
+            outputs.push_back(result.chan_index_in_group());
         }
-        if (has_multi_flavor && !std::holds_alternative<std::monostate>(_discrete_after)) {
-            auto zeros = fb.full({static_cast<me_int_t>(0), batch_size});
-            outputs.push_back(fb.batch_scatter(indices_acc, zeros, flavor_id));
+        if (
+            args.has_multi_flavor &&
+            !std::holds_alternative<std::monostate>(_discrete_after)
+        ) {
+            auto zeros = fb.full({static_cast<me_int_t>(0), args.batch_size});
+            outputs.push_back(
+                fb.batch_scatter(result.indices_acc(), zeros, result.flavor_id())
+            );
         }
     }
     if (_flags & return_discrete_latent) {
-        if (!has_permutations) {
-            chan_index_in_group = fb.full({static_cast<me_int_t>(_channel_indices.at(0)), batch_size});
-        }
-        outputs.push_back(chan_index_in_group);
+        outputs.push_back(result.chan_index_in_group());
         if (
-            has_multi_flavor &&
+            args.has_multi_flavor &&
             !std::holds_alternative<std::monostate>(_discrete_after)
         ) {
-            auto zeros = fb.full({static_cast<me_int_t>(0), batch_size});
-            outputs.push_back(fb.batch_scatter(indices_acc, zeros, flavor_id));
-            if (has_pdf_prior) {
+            auto zeros = fb.full({static_cast<me_int_t>(0), args.batch_size});
+            outputs.push_back(
+                fb.batch_scatter(result.indices_acc(), zeros, result.flavor_id())
+            );
+            if (args.has_pdf_prior) {
                 auto flav_count = _diff_xs.pid_options().size();
                 auto norm = fb.full({
-                    1. / flav_count, batch_size, static_cast<me_int_t>(flav_count)
+                    1. / flav_count, args.batch_size, static_cast<me_int_t>(flav_count)
                 });
-                outputs.push_back(fb.batch_scatter(indices_acc, norm, pdf_prior));
+                outputs.push_back(
+                    fb.batch_scatter(result.indices_acc(), norm, result.pdf_prior())
+                );
             }
         }
     }
@@ -473,11 +547,97 @@ ValueVec Integrand::build_function_impl(
     if (_flags & unweight) {
         Unweighter unweighter(return_types());
         ValueVec unweighter_args = outputs;
-        unweighter_args.push_back(args.at(1));
+        unweighter_args.push_back(args.max_weight);
         outputs = unweighter.build_function(fb, unweighter_args);
     }
 
     return outputs;
+}
+
+MultiChannelIntegrand::MultiChannelIntegrand(
+    const std::vector<std::shared_ptr<Integrand>>& integrands
+) :
+    FunctionGenerator(
+        "MultiChannelIntegrand",
+        [&] {
+            TypeVec arg_types{multichannel_batch_size(integrands.size())};
+            if (integrands.at(0)->_flags & Integrand::unweight) {
+                arg_types.push_back(single_float);
+            }
+            return arg_types;
+        }(),
+        integrands.at(0)->return_types()
+    ),
+    _integrands(integrands)
+{
+    auto& first_function = integrands.at(0);
+    std::size_t arg_count = first_function->arg_types().size();
+    std::size_t return_count = first_function->return_types().size();
+    for (auto& integrand : integrands) {
+        if (
+            integrand->arg_types().size() != arg_count ||
+            integrand->return_types().size() != return_count
+        ) {
+            throw std::invalid_argument(
+                "All integrands must have the same number of inputs and outputs"
+            );
+        }
+    }
+}
+
+ValueVec MultiChannelIntegrand::build_function_impl(
+    FunctionBuilder& fb, const ValueVec& args
+) const {
+    auto& first_integrand = _integrands.at(0);
+    bool has_multi_flavor = first_integrand->_diff_xs.pid_options().size() > 1;
+    auto batch_sizes = args.at(0);
+    auto all_batch_sizes = fb.unstack_sizes(batch_sizes);
+    Integrand::ChannelArgs common_args {
+        .has_permutations = first_integrand->_mapping.channel_count() > 1,
+        .has_multi_flavor = has_multi_flavor,
+        .has_mirror = first_integrand->_diff_xs.has_mirror(),
+        .has_pdf_prior = first_integrand->_pdf1 && first_integrand->_energy_scale
+            && has_multi_flavor,
+    };
+    if (first_integrand->_flags & Integrand::unweight) {
+        common_args.max_weight = args.at(1);
+    }
+    std::vector<Integrand::ChannelResult> results;
+    for (auto [integrand, chan_size] : zip(_integrands, all_batch_sizes)) {
+        auto channel_args = common_args;
+        channel_args.r = fb.random(chan_size, integrand->_random_dim);
+        channel_args.batch_size = chan_size;
+        channel_args.has_permutations = integrand->_mapping.channel_count() > 1;
+        results.push_back(integrand->build_channel_part(fb, channel_args));
+    }
+
+    Integrand::ChannelResult common_results;
+    for (std::size_t i = 0; i < common_results.values.size(); ++i) {
+        bool is_set = true;
+        ValueVec values;
+        values.reserve(results.size());
+        for (auto& result : results) {
+            auto& value = result.values[i];
+            if (!value) {
+                is_set = false;
+                break;
+            }
+            values.push_back(value);
+        }
+        if (is_set) {
+            auto [cat, cat_sizes] = fb.batch_cat(values);
+            auto& value = common_results.values[i];
+            if (&value == &common_results.indices_acc()) {
+                value = fb.add_int(
+                    fb.offset_indices(batch_sizes, cat_sizes), cat
+                );
+            } else {
+                value = cat;
+            }
+        }
+    }
+    common_args.batch_size = fb.batch_size({common_results.momenta()});
+    return _integrands.at(0)->build_common_part(fb, common_args, common_results);
 }
 
 IntegrandProbability::IntegrandProbability(const Integrand& integrand) :

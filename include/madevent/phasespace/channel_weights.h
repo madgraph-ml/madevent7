@@ -10,7 +10,7 @@ public:
     PropagatorChannelWeights(
         const std::vector<Topology>& topologies,
         const std::vector<std::vector<std::vector<std::size_t>>>& permutations,
-        const std::vector<std::vector<std::size_t>> channel_indices
+        const std::vector<std::vector<std::size_t>>& channel_indices
     );
 
 private:
@@ -20,6 +20,29 @@ private:
     std::vector<std::vector<me_int_t>> _invariant_indices;
     std::vector<std::vector<double>> _masses;
     std::vector<std::vector<double>> _widths;
+};
+
+class SubchannelWeights : public FunctionGenerator {
+public:
+    SubchannelWeights(
+        const std::vector<std::vector<Topology>>& topologies,
+        const std::vector<std::vector<std::vector<std::size_t>>>& permutations,
+        const std::vector<std::vector<std::size_t>>& channel_indices
+    );
+
+    std::size_t channel_count() const { return _channel_indices.size(); }
+
+private:
+    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+
+    std::vector<std::vector<double>> _momentum_factors;
+    std::vector<std::vector<double>> _masses;
+    std::vector<std::vector<double>> _widths;
+    std::vector<std::vector<me_int_t>> _invariant_indices;
+    std::vector<std::vector<me_int_t>> _on_shell;
+    std::vector<me_int_t> _group_sizes;
+    std::vector<me_int_t> _channel_indices;
+    std::vector<me_int_t> _subchannel_indices;
 };
 
 }

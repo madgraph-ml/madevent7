@@ -13,7 +13,6 @@ DifferentialCrossSection::DifferentialCrossSection(
     const EnergyScale& energy_scale,
     bool simple_matrix_element,
     std::size_t channel_count,
-    const std::vector<me_int_t>& amp2_remap,
     bool has_mirror
 ) :
     FunctionGenerator(
@@ -52,16 +51,14 @@ DifferentialCrossSection::DifferentialCrossSection(
         matrix_element_index,
         pid_options.at(0).size(),
         simple_matrix_element,
-        channel_count,
-        amp2_remap
+        channel_count
     ),
     _running_coupling(running_coupling),
     _e_cm2(cm_energy * cm_energy),
     _energy_scale(energy_scale),
     _simple_matrix_element(simple_matrix_element),
     _has_mirror(has_mirror),
-    _channel_count(channel_count),
-    _amp2_remap(amp2_remap)
+    _channel_count(channel_count)
 {
     if (pdf_grid) {
         std::vector<int> pids1, pids2;

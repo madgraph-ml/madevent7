@@ -88,6 +88,18 @@ batch_size:
   class: BatchSizeInstruction
   custom_op: True
 
+offset_indices:
+  inputs:
+    - name: batch_sizes_offset
+      desc:
+    - name: batch_sizes_out
+      desc:
+  outputs:
+    - name: offsets
+      desc:
+  class: OffsetIndicesInstruction
+  custom_op: True
+
 full:
   inputs: any
   outputs:
@@ -132,6 +144,21 @@ add:
   outputs:
     - name: out
       type: [float, ...]
+      desc: sum of the two inputs
+  desc: Computes the sum of the two inputs.
+  dims: 0
+
+add_int:
+  inputs:
+    - name: in1
+      type: [int, ...]
+      desc: first input to addition
+    - name: in2
+      type: [int, ...]
+      desc: second input to addition
+  outputs:
+    - name: out
+      type: [int, ...]
       desc: sum of the two inputs
   desc: Computes the sum of the two inputs.
   dims: 0
@@ -516,6 +543,50 @@ sde2_channel_weights:
   outputs:
     - name: channel_weights
       type: [float, c]
+      desc:
+
+subchannel_weights:
+  inputs:
+    - name: invariants
+      type: [float, m]
+      desc:
+    - name: masses
+      type: [float, c, n]
+      desc:
+    - name: widths
+      type: [float, c, n]
+      desc:
+    - name: indices
+      type: [int, c, n]
+      desc:
+    - name: on_shell
+      type: [int, c, n]
+      desc:
+    - name: group_sizes
+      type: [int, single, g]
+      desc:
+  outputs:
+    - name: channel_weights
+      type: [float, c]
+      desc:
+
+apply_subchannel_weights:
+  inputs:
+    - name: channel_weights_in
+      type: [float, c]
+      desc:
+    - name: subchannel_weights
+      type: [float, n]
+      desc:
+    - name: channel_indices
+      type: [int, d]
+      desc:
+    - name: subchannel_indices
+      type: [int, d]
+      desc:
+  outputs:
+    - name: channel_weights_out
+      type: [float, d]
       desc:
 
 pt_eta_phi_x:
