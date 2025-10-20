@@ -182,31 +182,42 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     auto cos_theta = 2. * r_cos_theta - 1.;
     auto beta = PI * (2. * r_beta - 1.);
     auto det_omega = 8 * PI * PI;
-    auto m0_clip = max(m0, EPS);
+
+    // Define mass squares
+    auto m1sq = m1 * m1;
+    auto m2sq = m2 * m2;
+    auto m3sq = m3 * m3;    
 
     // this is based on section G.3 in
     // https://inspirehep.net/literature/1784296
-    auto E1a = m0 / 2 + (m1 * m1 - (m2 + m3) * (m2 + m3)) / (2 * m0_clip);
+    auto E1a = m0 / 2 + (m1sq - (m2 + m3) * (m2 + m3)) / (2 * m0);
     auto p10 = m1 + (E1a - m1) * r_p10;
     auto det_p10 = E1a - m1;
 
-    auto Delta = 2 * m0 * (m0 / 2 - p10) + m1 * m1;
-    auto Delta23 = m2 * m2 - m3 * m3;
-    auto dE2 = (p10 * p10 - m1 * m1) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2 * m2 * Delta);
+    auto Delta = 2 * m0 * (m0 / 2 - p10) + m1sq;
+    auto Delta23 = m2sq - m3sq;
+    auto dE2 = (p10 * p10 - m1sq) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2sq * Delta);
     auto E2a = 1 / (2 * Delta) * ((m0 - p10) * (Delta + Delta23) - sqrt(dE2));
-    auto E2b = 1 / (2 * Delta) * ((m0 - p10) * (Delta + Delta23) - sqrt(dE2));
-    auto p20 = E2a + (E2b - E2a) * r_p20;
-    auto det_p20 = E2b - E2a;
+    auto E2b = 1 / (2 * Delta) * ((m0 - p10) * (Delta + Delta23) + sqrt(dE2));
+    auto E2_min = min(E2a, E2b);
+    auto E2_max = max(E2a, E2b);
+    auto p20 = E2_min + (E2_max - E2_min) * r_p20;
+    auto det_p20 = E2_max - E2_min;
+
+    // calculate abs momentas
+    auto pp1s = p10 * p10 - m1sq;
+    auto pp1 = where(m1sq == 0, p10, sqrt(max(pp1s, EPS)));
+    auto pp2s = p20 * p20 - m2sq;
+    auto pp2 = where(m2sq == 0, p20, sqrt(max(pp2s, EPS)));
 
     // calculate cosalpha
     auto num_alpha_1 = 2 * m0 * (m0 / 2 - p10 - p20);
-    auto num_alpha_2 = m1 * m1 + m2 * m2 + 2 * p10 * p20 - m3 * m3;
-    auto denom_alpha = 2 * sqrt(p10 * p10 - m1 * m1) * sqrt(p20 * p20 - m2 * m2);
+    auto num_alpha_2 = m1sq + m2sq + 2 * p10 * p20 - m3sq;
+    auto denom_alpha = 2 * pp1 * pp2;
     auto cos_alpha = (num_alpha_1 + num_alpha_2) / denom_alpha;
 
     // build momenta p1
     auto sin_theta = sqrt((1. - cos_theta) * (1 + cos_theta));
-    auto pp1 = sqrt(p10 * p10 - m1 * m1);
     FourMom<T> p1{
         max(p10, 0.),
         pp1 * sin_theta * cos(phi),
@@ -216,12 +227,11 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
 
     // build momenta p2
     auto sin_alpha = sqrt((1. - cos_alpha) * (1 + cos_alpha));
-    auto pp2 = sqrt(p20 * p20 - m2 * m2);
     FourMom<T> p2{
         max(p20, 0.),
-        pp2 * sin_alpha * cos(beta),
-        pp2 * sin_alpha * sin(beta),
-        pp2 * cos_alpha
+        pp2 * (sin_alpha * cos(beta) * cos_theta * cos(phi) + cos_alpha * sin_theta * cos(phi) - sin_alpha * sin(beta) * sin(phi)),
+        pp2 * (sin_alpha * sin(beta) * cos(phi) + sin_alpha * cos(beta) * cos_theta * sin(phi) + cos_alpha * sin_theta * sin(phi)),
+        pp2 * (cos_alpha * cos_theta - sin_alpha * cos(beta) * sin_theta)
     };
 
     auto det = det_omega * det_p10 * det_p20 / 8 ;
@@ -429,7 +439,7 @@ KERNELSPEC void kernel_three_body_decay(
     det = det_tmp;
     auto e3 = p0[0] - p1[0] - p2[0];
     p3[0] = max(e3, 0.);
-    p3[1] = p0[1] - p1[1] - p1[1];
+    p3[1] = p0[1] - p1[1] - p2[1];
     p3[2] = p0[2] - p1[2] - p2[2];
     p3[3] = p0[3] - p1[3] - p2[3];
 }
