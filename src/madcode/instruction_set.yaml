@@ -343,7 +343,7 @@ diff_cross_section:
       type: [float]
       desc:
 
-two_particle_decay_com:
+two_body_decay_com:
   inputs:
     - name: r_phi
       type: [float]
@@ -371,7 +371,7 @@ two_particle_decay_com:
       type: [float]
       desc:
 
-two_particle_decay:
+two_body_decay:
   inputs:
     - name: r_phi
       type: [float]
@@ -402,7 +402,7 @@ two_particle_decay:
       type: [float]
       desc:
 
-two_particle_scattering_com:
+two_to_two_particle_scattering_com:
   inputs:
     - name: r_phi
       type: [float]
@@ -433,7 +433,7 @@ two_particle_scattering_com:
       type: [float]
       desc:
 
-two_particle_scattering:
+two_to_two_particle_scattering:
   inputs:
     - name: r_phi
       type: [float]
@@ -458,6 +458,95 @@ two_particle_scattering:
       type: [float, 4]
       desc:
     - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+three_body_decay_com:
+  inputs:
+    - name: r_p10
+      type: [float]
+      desc:
+    - name: r_p20
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+three_body_decay:
+  inputs:
+    - name: r_p10
+      type: [float]
+      desc:
+    - name: r_p20
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
       type: [float, 4]
       desc:
     - name: det

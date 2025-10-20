@@ -119,7 +119,7 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         bool is_com_decay = decay.index == 0;
         if (decay.index != 0 || !has_t_channel) {
             if (decay.child_indices.size() == 2) {
-                _s_decays.push_back(TwoParticleDecay(is_com_decay));
+                _s_decays.push_back(TwoBodyDecay(is_com_decay));
             } else {
                 _s_decays.push_back(
                     FastRamboMapping(decay.child_indices.size(), false, is_com_decay)

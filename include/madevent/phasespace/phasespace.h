@@ -61,7 +61,7 @@ private:
     std::variant<
         TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate
     > _t_mapping;
-    std::vector<std::variant<TwoParticleDecay, FastRamboMapping>> _s_decays;
+    std::vector<std::variant<TwoBodyDecay, FastRamboMapping>> _s_decays;
     std::vector<std::vector<me_int_t>> _permutations;
 };
 

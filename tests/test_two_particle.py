@@ -23,7 +23,7 @@ def mapping_and_args(request):
     com = request.param["com"]
     zeros = np.zeros(N)
     if request.param["decay"]:
-        mapping = me.TwoParticleDecay(com=com)
+        mapping = me.TwoBodyDecay(com=com)
         if com:
             def make_args(point):
                 p0 = np.stack([point.m0, zeros, zeros, zeros], axis=1)
@@ -40,7 +40,7 @@ def mapping_and_args(request):
                     point.p0
                 )
     else:
-        mapping = me.TwoParticleScattering(com=com)
+        mapping = me.TwoToTwoParticleScattering(com=com)
         if com:
             def make_args(point):
                 e0 = point.m0 / 2
