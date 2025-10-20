@@ -35,6 +35,10 @@ Value batch_size(ValueVec args) {
     return instruction("batch_size", args)[0];
 }
 
+Value offset_indices(Value batch_sizes_offset, Value batch_sizes_out) {
+    return instruction("offset_indices", {batch_sizes_offset, batch_sizes_out})[0];
+}
+
 Value full(ValueVec args) {
     return instruction("full", args)[0];
 }
@@ -49,6 +53,10 @@ Value unsqueeze(Value input) {
 
 Value add(Value in1, Value in2) {
     return instruction("add", {in1, in2})[0];
+}
+
+Value add_int(Value in1, Value in2) {
+    return instruction("add_int", {in1, in2})[0];
 }
 
 Value sub(Value in1, Value in2) {

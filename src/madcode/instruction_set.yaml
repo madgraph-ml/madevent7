@@ -88,6 +88,18 @@ batch_size:
   class: BatchSizeInstruction
   custom_op: True
 
+offset_indices:
+  inputs:
+    - name: batch_sizes_offset
+      desc:
+    - name: batch_sizes_out
+      desc:
+  outputs:
+    - name: offsets
+      desc:
+  class: OffsetIndicesInstruction
+  custom_op: True
+
 full:
   inputs: any
   outputs:
@@ -132,6 +144,21 @@ add:
   outputs:
     - name: out
       type: [float, ...]
+      desc: sum of the two inputs
+  desc: Computes the sum of the two inputs.
+  dims: 0
+
+add_int:
+  inputs:
+    - name: in1
+      type: [int, ...]
+      desc: first input to addition
+    - name: in2
+      type: [int, ...]
+      desc: second input to addition
+  outputs:
+    - name: out
+      type: [int, ...]
       desc: sum of the two inputs
   desc: Computes the sum of the two inputs.
   dims: 0
