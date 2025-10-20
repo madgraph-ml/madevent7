@@ -119,6 +119,13 @@ public:
     TypeVec signature(const ValueVec& args) const override;
 };
 
+class OffsetIndicesInstruction : public Instruction {
+public:
+    OffsetIndicesInstruction(int opcode, bool differentiable) :
+        Instruction("offset_indices", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
 class FullInstruction : public Instruction {
 public:
     FullInstruction(int opcode, bool differentiable) :
