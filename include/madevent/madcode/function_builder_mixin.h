@@ -134,13 +134,13 @@ std::array<Value, 3> two_to_two_particle_scattering(Value r_phi, Value pa, Value
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 4> three_body_decay_com(Value r_p10, Value r_p20, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3) {
-    auto output_vector = instruction("three_body_decay_com", {r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3});
+std::array<Value, 4> three_body_decay_com(Value r_e1, Value r_e2, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3) {
+    auto output_vector = instruction("three_body_decay_com", {r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-std::array<Value, 4> three_body_decay(Value r_p10, Value r_p20, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3, Value p0) {
-    auto output_vector = instruction("three_body_decay", {r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, p0});
+std::array<Value, 4> three_body_decay(Value r_e1, Value r_e2, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3, Value p0) {
+    auto output_vector = instruction("three_body_decay", {r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, p0});
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 

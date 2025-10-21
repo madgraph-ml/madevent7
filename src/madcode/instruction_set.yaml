@@ -493,10 +493,10 @@ two_to_two_particle_scattering:
 
 three_body_decay_com:
   inputs:
-    - name: r_p10
+    - name: r_e1
       type: [float]
       desc:
-    - name: r_p20
+    - name: r_e2
       type: [float]
       desc:
     - name: r_phi
@@ -536,10 +536,10 @@ three_body_decay_com:
 
 three_body_decay:
   inputs:
-    - name: r_p10
+    - name: r_e1
       type: [float]
       desc:
-    - name: r_p20
+    - name: r_e2
       type: [float]
       desc:
     - name: r_phi

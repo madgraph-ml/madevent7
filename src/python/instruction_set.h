@@ -44,8 +44,8 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("two_body_decay", &FunctionBuilder::two_body_decay, py::arg("r_phi"), py::arg("r_cos_theta"), py::arg("m0"), py::arg("m1"), py::arg("m2"), py::arg("p0"));
     fb.def("two_to_two_particle_scattering_com", &FunctionBuilder::two_to_two_particle_scattering_com, py::arg("r_phi"), py::arg("pa"), py::arg("pb"), py::arg("t"), py::arg("m1"), py::arg("m2"));
     fb.def("two_to_two_particle_scattering", &FunctionBuilder::two_to_two_particle_scattering, py::arg("r_phi"), py::arg("pa"), py::arg("pb"), py::arg("t"), py::arg("m1"), py::arg("m2"));
-    fb.def("three_body_decay_com", &FunctionBuilder::three_body_decay_com, py::arg("r_p10"), py::arg("r_p20"), py::arg("r_phi"), py::arg("r_cos_theta"), py::arg("r_beta"), py::arg("m0"), py::arg("m1"), py::arg("m2"), py::arg("m3"));
-    fb.def("three_body_decay", &FunctionBuilder::three_body_decay, py::arg("r_p10"), py::arg("r_p20"), py::arg("r_phi"), py::arg("r_cos_theta"), py::arg("r_beta"), py::arg("m0"), py::arg("m1"), py::arg("m2"), py::arg("m3"), py::arg("p0"));
+    fb.def("three_body_decay_com", &FunctionBuilder::three_body_decay_com, py::arg("r_e1"), py::arg("r_e2"), py::arg("r_phi"), py::arg("r_cos_theta"), py::arg("r_beta"), py::arg("m0"), py::arg("m1"), py::arg("m2"), py::arg("m3"));
+    fb.def("three_body_decay", &FunctionBuilder::three_body_decay, py::arg("r_e1"), py::arg("r_e2"), py::arg("r_phi"), py::arg("r_cos_theta"), py::arg("r_beta"), py::arg("m0"), py::arg("m1"), py::arg("m2"), py::arg("m3"), py::arg("p0"));
     fb.def("t_inv_min_max", &FunctionBuilder::t_inv_min_max, py::arg("pa"), py::arg("pb"), py::arg("m1"), py::arg("m2"));
     fb.def("invariants_from_momenta", &FunctionBuilder::invariants_from_momenta, py::arg("p_ext"), py::arg("factors"));
     fb.def("sde2_channel_weights", &FunctionBuilder::sde2_channel_weights, py::arg("invariants"), py::arg("masses"), py::arg("widths"), py::arg("indices"));

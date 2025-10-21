@@ -5,12 +5,12 @@ using namespace madevent;
 Mapping::Result ThreeBodyDecay::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    auto r_p10 = inputs.at(0), r_p20 = inputs.at(1);
+    auto r_e1 = inputs.at(0), r_e2 = inputs.at(1);
     auto r_phi = inputs.at(2), r_cos_theta = inputs.at(3), r_beta = inputs.at(4);
     auto m0 = inputs.at(5), m1 = inputs.at(6), m2 = inputs.at(7), m3 = inputs.at(8);
     auto [p1, p2, p3, det] = _com ?
-        fb.three_body_decay_com(r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3) :
-        fb.three_body_decay(r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, inputs.at(9));
+        fb.three_body_decay_com(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3) :
+        fb.three_body_decay(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, inputs.at(9));
     return {{p1, p2, p3}, det};
 }
 

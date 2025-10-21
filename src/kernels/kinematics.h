@@ -46,17 +46,97 @@ KERNELSPEC FVal<T> kaellen(FVal<T> x, FVal<T> y, FVal<T> z) {
 }
 
 template<typename T>
-KERNELSPEC FVal<T> bk_g(FVal<T> x, FVal<T> y, FVal<T> z, FVal<T> u, FVal<T> v, FVal<T> w) {
-    // Definition of the Byckling–Kajantie G-function as defined in Eq. (A5) in [1]
-    //  E. Byckling and K. Kajantie, Phys. Rev. 187 (1969), doi:10.1103/PhysRev.187.2008.
-    auto zuvw = z + u + v + w;
-    auto xyvw = x + y + v + w;
-    auto xyzu = x + y + z + u;
-    auto G = x * x * y + x * y * y + z * z * u 
-        + z * u * u + v * v * w + v * w * w
-        + x * z * w + x * u * v + y * z * v + y * u * w
-        - x * y * zuvw - z * u * xyvw - v * w * xyzu;
-    return G;
+KERNELSPEC FVal<T> bk_V(
+    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> t1, FVal<T> t2, FVal<T> s2) {
+    // Determinant of the 3x3 V-matrix,
+    // see Eq.(11) in 10.1103/PhysRev.187.2008.
+    auto a11 = 2.0 * s2;
+    auto a12 = ma_2 + s2 - t2;
+    auto a13 = s2 + m1_2 - m2_2;
+    auto a22 = 2.0 * ma_2;
+    auto a23 = ma_2 + m1_2 - t1;
+    auto a31 = m0_2 + s2 - m3_2;
+    auto a32 = m0_2 + ma_2 - mb_2;
+
+    // Computes the determinant of the 3x3 V-matrix (hard-coded because easier)
+    auto det = a12 * a23 * a31 + a12 * a13 * a32 - a11 * a23 * a32 - a13 * a22 * a31;
+    return -det / 8.0;
+}
+
+template<typename T>
+KERNELSPEC FVal<T> bk_gram4(
+    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> t1, FVal<T> t2, FVal<T> s12, FVal<T> s23) {
+    // omputes the 4x4 Gram determinant,
+    // see Eq.(B6) in 10.1103/PhysRev.187.2008.
+
+    // Get upper triangular matrix components which are non-zero
+    // as the Gram matrix is symmetric, i.e. (a_{ij} = a_{ji})
+    auto a11 = 2.0 * ma_2;
+    auto a12 = ma_2 + t1 - m1_2;
+    auto a13 = ma_2 + t2 - s12;
+    auto a14 = ma_2 + mb_2 - m0_2;
+    auto a22 = 2.0 * t1;
+    auto a23 = t1 + t2 - m2_2;
+    auto a24 = t1 + mb_2 - s23;
+    auto a33 = 2.0 * t2;
+    auto a34 = t2 + mb_2 - m3_2;
+    auto a44 = 2.0 * mb_2;
+
+    // Computes the determinant of the 4x4 Gram matrix (hard-coded because easier)
+    auto det =  a14 * a23 * a14 * a23
+            + a13 * a24 * a13 * a24
+            + a12 * a34 * a12 * a34
+            - a14 * a14 * a22 * a33
+            - a13 * a13 * a22 * a44
+            - a12 * a12 * a33 * a44
+            - a23 * a23 * a11 * a44
+            - a24 * a24 * a11 * a33
+            - a34 * a34 * a11 * a22
+            + 2 * a11 * a23 * a24 * a34
+            + 2 * a12 * a13 * a23 * a44
+            + 2 * a12 * a14 * a24 * a33
+            + 2 * a13 * a14 * a22 * a34
+            - 2 * a12 * a13 * a24 * a34
+            - 2 * a12 * a14 * a23 * a34
+            - 2 * a13 * a14 * a23 * a24
+            + a11 * a22 * a33 * a44;
+    return det / 16.0;
+}
+
+template<typename T>
+KERNELSPEC FVal<T> bk_sqrt_g3i_g3im1(
+    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> t1, FVal<T> t2, FVal<T> s12) {
+    // This is the squaet root of the product of the two 3x3 Gram determinants g3i and g3im1,
+    // as in Eq.(11) in 10.1103/PhysRev.187.2008.
+    auto a11 = 2 * s12;
+    auto a12 = s12 + ma_2 - t2;
+    auto a13 = s12 + m0_2 - m3_2;
+    auto b13 = s12 + m1_2 - m2_2;
+    auto a22 = 2 * ma_2;
+    auto a23 = ma_2 + m0_2 - mb_2;
+    auto b23 = ma_2 + m1_2 - t1;
+    auto a33 = 2 * m0_2;
+    auto b33 = 2 * m1_2;
+
+    // Calculate the two gramm determinants g3i and g3im1
+    // (ard-coded because easier)
+    auto g3i = a11 * a22 * a33
+        + 2 * a12 * a23 * a13
+        - a11 * a23 * a23
+        - a22 * a13 * a13
+        - a33 * a12 * a12;
+    auto g3im1 = a11 * a22 * b33
+        + 2 * a12 * b23 * b13
+        - a11 * b23 * b23
+        - a22 * b13 * b13
+        - b33 * a12 * a12;
+    return sqrt(g3i * g3im1) / 8.0;
 }
 
 template<typename T>
@@ -175,9 +255,13 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_to_two_particle_scattering(
 
 template<typename T>
 KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
-    FVal<T> r_p10, FVal<T> r_p20, FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> r_beta, 
+    FVal<T> r_e1, FVal<T> r_e2, FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> r_beta,
     FVal<T> m0, FVal<T> m1, FVal<T> m2, FVal<T> m3
 ) {
+    // this is based on section G.3 in
+    // https://inspirehep.net/literature/1784296
+
+    // define angles and determinants
     auto phi = PI * (2. * r_phi - 1.);
     auto cos_theta = 2. * r_cos_theta - 1.;
     auto beta = PI * (2. * r_beta - 1.);
@@ -188,38 +272,38 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     auto m2sq = m2 * m2;
     auto m3sq = m3 * m3;    
 
-    // this is based on section G.3 in
-    // https://inspirehep.net/literature/1784296
-    auto E1a = m0 / 2 + (m1sq - (m2 + m3) * (m2 + m3)) / (2 * m0);
-    auto p10 = m1 + (E1a - m1) * r_p10;
-    auto det_p10 = E1a - m1;
+    // define energy E1
+    auto E1_max = m0 / 2 + (m1sq - (m2 + m3) * (m2 + m3)) / (2 * m0);
+    auto E1 = m1 + (E1_max - m1) * r_e1;
+    auto det_E1 = E1_max - m1;
 
-    auto Delta = 2 * m0 * (m0 / 2 - p10) + m1sq;
+    // get boundaries
+    auto Delta = 2 * m0 * (m0 / 2 - E1) + m1sq;
     auto Delta23 = m2sq - m3sq;
-    auto dE2 = (p10 * p10 - m1sq) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2sq * Delta);
-    auto E2a = 1 / (2 * Delta) * ((m0 - p10) * (Delta + Delta23) - sqrt(dE2));
-    auto E2b = 1 / (2 * Delta) * ((m0 - p10) * (Delta + Delta23) + sqrt(dE2));
+    auto dE2 = (E1 * E1 - m1sq) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2sq * Delta);
+    auto E2a = 1 / (2 * Delta) * ((m0 - E1) * (Delta + Delta23) - sqrt(dE2));
+    auto E2b = 1 / (2 * Delta) * ((m0 - E1) * (Delta + Delta23) + sqrt(dE2));
     auto E2_min = min(E2a, E2b);
     auto E2_max = max(E2a, E2b);
-    auto p20 = E2_min + (E2_max - E2_min) * r_p20;
-    auto det_p20 = E2_max - E2_min;
+    auto E2 = E2_min + (E2_max - E2_min) * r_e2;
+    auto det_E2 = E2_max - E2_min;
 
     // calculate abs momentas
-    auto pp1s = p10 * p10 - m1sq;
-    auto pp1 = where(m1sq == 0, p10, sqrt(max(pp1s, EPS)));
-    auto pp2s = p20 * p20 - m2sq;
-    auto pp2 = where(m2sq == 0, p20, sqrt(max(pp2s, EPS)));
+    auto pp1s = E1 * E1 - m1sq;
+    auto pp1 = where(m1sq == 0, E1, sqrt(max(pp1s, EPS)));
+    auto pp2s = E2 * E2 - m2sq;
+    auto pp2 = where(m2sq == 0, E2, sqrt(max(pp2s, EPS)));
 
     // calculate cosalpha
-    auto num_alpha_1 = 2 * m0 * (m0 / 2 - p10 - p20);
-    auto num_alpha_2 = m1sq + m2sq + 2 * p10 * p20 - m3sq;
+    auto num_alpha_1 = 2 * m0 * (m0 / 2 - E1 - E2);
+    auto num_alpha_2 = m1sq + m2sq + 2 * E1 * E2 - m3sq;
     auto denom_alpha = 2 * pp1 * pp2;
     auto cos_alpha = (num_alpha_1 + num_alpha_2) / denom_alpha;
 
     // build momenta p1
     auto sin_theta = sqrt((1. - cos_theta) * (1 + cos_theta));
     FourMom<T> p1{
-        max(p10, 0.),
+        max(E1, 0.),
         pp1 * sin_theta * cos(phi),
         pp1 * sin_theta * sin(phi),
         pp1 * cos_theta
@@ -228,13 +312,13 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     // build momenta p2
     auto sin_alpha = sqrt((1. - cos_alpha) * (1 + cos_alpha));
     FourMom<T> p2{
-        max(p20, 0.),
+        max(E2, 0.),
         pp2 * (sin_alpha * cos(beta) * cos_theta * cos(phi) + cos_alpha * sin_theta * cos(phi) - sin_alpha * sin(beta) * sin(phi)),
         pp2 * (sin_alpha * sin(beta) * cos(phi) + sin_alpha * cos(beta) * cos_theta * sin(phi) + cos_alpha * sin_theta * sin(phi)),
         pp2 * (cos_alpha * cos_theta - sin_alpha * cos(beta) * sin_theta)
     };
 
-    auto det = det_omega * det_p10 * det_p20 / 8 ;
+    auto det = det_omega * det_E1 * det_E2 / 8 ;
     return {p1, p2, det};
 }
 
@@ -406,11 +490,11 @@ KERNELSPEC void kernel_two_to_two_particle_scattering(
 
 template<typename T>
 KERNELSPEC void kernel_three_body_decay_com(
-    FIn<T,0> r_p10, FIn<T,0> r_p20, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta, 
+    FIn<T,0> r_e1, FIn<T,0> r_e2, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta,
     FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
 ) {
-    auto decay_out = three_body_decay<T>(r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
+    auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
     auto det_tmp = decay_out.third;
@@ -426,11 +510,11 @@ KERNELSPEC void kernel_three_body_decay_com(
 
 template<typename T>
 KERNELSPEC void kernel_three_body_decay(
-    FIn<T,0> r_p10, FIn<T,0> r_p20, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta, 
+    FIn<T,0> r_e1, FIn<T,0> r_e2, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta,
     FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3, FIn<T,1> p0,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
 ) {
-    auto decay_out = three_body_decay<T>(r_p10, r_p20, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
+    auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
     auto det_tmp = decay_out.third;
