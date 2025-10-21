@@ -50,7 +50,7 @@ private:
     std::atomic<std::size_t> _done_queue_end;
     std::atomic<std::size_t> _done_queue_write;
     std::size_t _busy_threads;
-    std::size_t _listener_id;
+    std::size_t _listener_id = 0;
     std::unordered_map<std::size_t, std::function<void(std::size_t)>> _listeners;
     bool _buffer_submit;
 };
@@ -95,7 +95,7 @@ public:
     const T& get(std::size_t thread_id) const { return _resources.at(thread_id); }
 
 private:
-    ThreadPool* _pool;
+    ThreadPool* _pool = nullptr;
     std::vector<T> _resources;
     std::size_t _listener_id;
 };
