@@ -83,6 +83,8 @@ public:
     DevicePtr device() { return _device; }
 
 private:
+    // make sure that ThreadPool outlives any Context instance
+    inline static ThreadPool& thread_pool_ref = default_thread_pool();
     DevicePtr _device;
     std::unordered_map<std::string, std::tuple<Tensor, bool>> globals;
     std::vector<MatrixElementApi> matrix_elements;
