@@ -234,6 +234,16 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<ThreeBodyDecay, Mapping>(m, "ThreeBodyDecay")
         .def(py::init<bool>(), py::arg("com"));
 
+    py::classh<TwoToThreeParticleScattering, Mapping>(m, "TwoToThreeParticleScattering")
+        .def(py::init<bool, double, double, double, double, double, double>(),
+             py::arg("com"),
+             py::arg("t_invariant_power")=0.,
+             py::arg("t_mass")=0.,
+             py::arg("t_width")=0.,
+             py::arg("s_invariant_power")=0.,
+             py::arg("s_mass")=0.,
+             py::arg("s_width")=0.);
+
     py::classh<Propagator>(m, "Propagator")
         .def(py::init<double, double, int, double, double>(),
              py::arg("mass")=0.,

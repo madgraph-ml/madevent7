@@ -33,28 +33,32 @@ private:
 };
 
 
-// class TwoToThreeParticleScattering : public Mapping {
-// public:
-//     TwoToThreeParticleScattering(
-//         bool com, double invariant_power = 0, double mass = 0, double width = 0
-//     ) :
-//         Mapping(
-//             "TwoToThreeParticleScattering",
-//             {batch_float, batch_float, batch_float, batch_float},
-//             {batch_four_vec, batch_four_vec},
-//             {batch_four_vec, batch_four_vec}
-//         ), _com(com), _invariant(invariant_power, mass, width) {}
+class TwoToThreeParticleScattering : public Mapping {
+public:
+    TwoToThreeParticleScattering(
+        bool com, double t_invariant_power = 0, double t_mass = 0, double t_width = 0,
+        double s_invariant_power = 0, double s_mass = 0, double s_width = 0
+    ) :
+        Mapping(
+            "TwoToThreeParticleScattering",
+            {batch_float, batch_float, batch_float, batch_float, batch_float},
+            {batch_four_vec, batch_four_vec, batch_four_vec},
+            {batch_four_vec, batch_four_vec, batch_four_vec}
+        ), _com(com),
+        _t_invariant(t_invariant_power, t_mass, t_width),
+        _s_invariant(s_invariant_power, s_mass, s_width) {}
 
-// private:
-//     Result build_forward_impl(
-//         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
-//     ) const override;
-//     Result build_inverse_impl(
-//         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
-//     ) const override;
+private:
+    Result build_forward_impl(
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
+    ) const override;
+    Result build_inverse_impl(
+        FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
+    ) const override;
 
-//     bool _com;
-//     Invariant _invariant;
-// };
+    bool _com;
+    Invariant _t_invariant;
+    Invariant _s_invariant;
+};
 
 }

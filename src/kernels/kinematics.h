@@ -49,15 +49,15 @@ template<typename T>
 KERNELSPEC FVal<T> bk_V(
     FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
     FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
-    FVal<T> t1, FVal<T> t2, FVal<T> s2) {
+    FVal<T> t1, FVal<T> t2, FVal<T> s12) {
     // Determinant of the 3x3 V-matrix,
     // see Eq.(11) in 10.1103/PhysRev.187.2008.
-    auto a11 = 2.0 * s2;
-    auto a12 = ma_2 + s2 - t2;
-    auto a13 = s2 + m1_2 - m2_2;
+    auto a11 = 2.0 * s12;
+    auto a12 = ma_2 + s12 - t2;
+    auto a13 = s12  + m1_2 - m2_2;
     auto a22 = 2.0 * ma_2;
     auto a23 = ma_2 + m1_2 - t1;
-    auto a31 = m0_2 + s2 - m3_2;
+    auto a31 = m0_2 + s12 - m3_2;
     auto a32 = m0_2 + ma_2 - mb_2;
 
     // Computes the determinant of the 3x3 V-matrix (hard-coded because easier)
@@ -224,7 +224,7 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_body_decay(
 
 template<typename T>
 KERNELSPEC Pair<FourMom<T>, FVal<T>> two_to_two_particle_scattering(
-    FVal<T> r_phi, FourMom<T> pa_com, FVal<T> s_tot, FVal<T> t,
+    FourMom<T> pa_com, FVal<T> s_tot, FVal<T> phi, FVal<T> t,
     FVal<T> m1, FVal<T> m2, FVal<T> ma_2, FVal<T> mb_2
 ) {
     // this function is based on the gentcms subroutine in MG5 (genps.f)
@@ -245,7 +245,6 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_to_two_particle_scattering(
     p1_com[3] = -(m1 * m1 + ma_2 + t - 2. * p1_com[0] * pa_com[0]) / (2.0 * pa_com_mag);
     auto pt2 = pp * pp - p1_com[3] * p1_com[3];
     auto pt = sqrt(max(pt2, 0.));
-    auto phi = PI * (2. * r_phi - 1.);
     p1_com[1] = pt * cos(phi);
     p1_com[2] = pt * sin(phi);
 
@@ -322,36 +321,26 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     return {p1, p2, det};
 }
 
-// template<typename T>
-// KERNELSPEC Pair<FourMom<T>, FVal<T>> two_to_three_particle_scattering(
-//     FourMom<T> pa, FourMom<T> pb, FVal<T> t1, FVal<T> t2, FVal<T> s12, FVal<T> s23,
-//     FVal<T> ma_2, FVal<T> mb_2, FVal<T> m1, FVal<T> m2, FVal<T> m3
-// ) {
-//     // this function is based on the gentcms subroutine in MG5 (genps.f)
-//     auto m_tot = sqrt(s_tot);
-
-//     auto ed = (m1 - m2) * (m1 + m2) / m_tot;
-//     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + s_tot;
-//     auto pp = 0.5 * where(
-//         m1 * m2 == 0., m_tot - fabs(ed), sqrt(max(pp2, EPS))
-//     );
-
-//     auto pa_com_mag = sqrt(
-//         pa_com[1] * pa_com[1] + pa_com[2] * pa_com[2] + pa_com[3] * pa_com[3]
-//     );
-//     FourMom<T> p1_com;
-//     auto e1_com = 0.5 * (m_tot + ed);
-//     p1_com[0] = max(e1_com, 0.);
-//     p1_com[3] = -(m1 * m1 + ma_2 + t - 2. * p1_com[0] * pa_com[0]) / (2.0 * pa_com_mag);
-//     auto pt2 = pp * pp - p1_com[3] * p1_com[3];
-//     auto pt = sqrt(max(pt2, 0.));
-//     auto phi = PI * (2. * r_phi - 1.);
-//     p1_com[1] = pt * cos(phi);
-//     p1_com[2] = pt * sin(phi);
-
-//     auto det = PI / (2. * sqrt(kaellen<T>(s_tot, ma_2, mb_2)));
-//     return {p1_com, det};
-// }
+template<typename T>
+KERNELSPEC FVal<T> get_phi_from_s23(
+    FVal<T> phi_choice, FVal<T> m0_2, FVal<T> s23, FVal<T> s12, FVal<T> t1, FVal<T> t2,
+    FVal<T> ma_2, FVal<T> mb_2, FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2) {
+    // Computes the azimuthal angle phi from s23, using the formulae
+    // in appendix B of 10.1103/PhysRev.187.2008
+    auto sqrtGG = bk_sqrt_g3i_g3im1<T>(
+        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1, t2, s12
+    );
+    auto V = bk_V<T>(
+        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1, t2, s23
+    );
+    auto lambda = kaellen<T>(s12, ma_2, t2);
+    auto cos_phi = (lambda * (s23 - m0_2 - m1_2) - 8 * V) / (8 * sqrtGG );
+    auto phi = acos(cos_phi);
+    if (phi_choice < 0.5) {
+        phi = -phi + 2. * PI;
+    }
+    return phi;
+}
 
 // Kernels
 
@@ -451,8 +440,9 @@ KERNELSPEC void kernel_two_to_two_particle_scattering_com(
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto phi = PI * (2. * r_phi - 1.);
     auto scatter_out = two_to_two_particle_scattering<T>(
-        r_phi, load_mom<T>(pa), s_tot, t, m1, m2, ma_2, mb_2
+        load_mom<T>(pa), s_tot, phi, t, m1, m2, ma_2, mb_2
     );
     auto p1_com = scatter_out.first;
     auto det_tmp = scatter_out.second;
@@ -468,24 +458,56 @@ KERNELSPEC void kernel_two_to_two_particle_scattering(
 ) {
     FourMom<T> p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
-    //auto load_pa = load_mom<T>(pa);
-    //auto load_pb = load_mom<T>(pb);
     auto pa_com = boost<T>(load_mom<T>(pa), p_tot, -1.);
-    //auto pb_com = boost<T>(load_mom<T>(pb), p_tot, -1.);//TODO:remove
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto phi = PI * (2. * r_phi - 1.);
     auto scatter_out = two_to_two_particle_scattering<T>(
-        r_phi, pa_com, s_tot, t, m1, m2, ma_2, mb_2
+        pa_com, s_tot, phi, t, m1, m2, ma_2, mb_2
     );
     auto p1_com = scatter_out.first;
     auto det_tmp = scatter_out.second;
-    //auto m1_test_com = sqrt(lsquare<T>(p1_com));
     auto p1_rot = rotate<T>(p1_com, pa_com);
-    //auto m1_test_rot = sqrt(lsquare<T>(p1_rot));
     auto p1_lab = boost<T>(p1_rot, p_tot, 1.);
     store_mom<T>(p1, p1_lab);
     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_lab[i];
     det = det_tmp;
+}
+
+template<typename T>
+KERNELSPEC void kernel_two_to_three_particle_scattering(
+    FIn<T,0> phi_choice, FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
+    FIn<T,0> s23, FIn<T,0> t1, FIn<T,0> m1, FIn<T,0> m2,
+    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+) {
+    FourMom<T> p_12, p_tot;
+    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
+    auto pa_com = boost<T>(load_mom<T>(pa), p_12, -1.);
+    auto s12 = lsquare<T>(p_12);
+    auto ma_2 = lsquare<T>(load_mom<T>(pa)), t2 = lsquare<T>(load_mom<T>(pb));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto m0_2 = lsquare<T>(p_tot);
+    auto m1_2 = m1 * m1;
+    auto m2_2 = m2 * m2;
+
+    auto phi = get_phi_from_s23<T>(
+        phi_choice, m0_2, s23, s12, t1, t2, ma_2, mb_2, m1_2, m2_2, m3_2
+    );
+    auto scatter_out = two_to_two_particle_scattering<T>(
+        pa_com, s12, phi, t1, m1, m2, ma_2, t2
+    );
+    auto p1_com = scatter_out.first;
+    auto gram4 = bk_gram4<T>(
+        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1, t2, s12, s23
+    );
+    auto det_2to3 = 1 / (8 * sqrt(max(-gram4, EPS)));
+    auto p1_rot = rotate<T>(p1_com, pa_com);
+    auto p1_lab = boost<T>(p1_rot, p_12, 1.);
+    store_mom<T>(p1, p1_lab);
+    for (int i = 0; i < 4; ++i) p2[i] = p_12[i] - p1_lab[i];
+    det = det_2to3 / 2; // factor 1/2 as acos allows for two choices of phi
 }
 
 template<typename T>
@@ -528,33 +550,6 @@ KERNELSPEC void kernel_three_body_decay(
     p3[3] = p0[3] - p1[3] - p2[3];
 }
 
-// template<typename T>
-// KERNELSPEC void kernel_two_to_three_particle_scattering(
-//     FIn<T,0> r_phi, FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> t, FIn<T,0> m1, FIn<T,0> m2,
-//     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
-// ) {
-//     FourMom<T> p_tot;
-//     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
-//     //auto load_pa = load_mom<T>(pa);
-//     //auto load_pb = load_mom<T>(pb);
-//     auto pa_com = boost<T>(load_mom<T>(pa), p_tot, -1.);
-//     //auto pb_com = boost<T>(load_mom<T>(pb), p_tot, -1.);//TODO:remove
-//     auto s_tot = lsquare<T>(p_tot);
-//     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
-//     auto scatter_out = two_to_two_particle_scattering<T>(
-//         r_phi, pa_com, s_tot, t, m1, m2, ma_2, mb_2
-//     );
-//     auto p1_com = scatter_out.first;
-//     auto det_tmp = scatter_out.second;
-//     //auto m1_test_com = sqrt(lsquare<T>(p1_com));
-//     auto p1_rot = rotate<T>(p1_com, pa_com);
-//     //auto m1_test_rot = sqrt(lsquare<T>(p1_rot));
-//     auto p1_lab = boost<T>(p1_rot, p_tot, 1.);
-//     store_mom<T>(p1, p1_lab);
-//     for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_lab[i];
-//     det = det_tmp;
-// }
-
 template<typename T>
 KERNELSPEC void kernel_t_inv_min_max(
     FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> m1, FIn<T,0> m2,
@@ -581,6 +576,39 @@ KERNELSPEC void kernel_t_inv_min_max(
     auto t_max_tmp = - min(y1, y2);
     t_min = max(t_min_tmp, 0.);
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
+}
+
+template<typename T>
+KERNELSPEC void kernel_s_inv_min_max(
+    FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
+    FIn<T,0> t1, FIn<T,0> m1, FIn<T,0> m2,
+    FOut<T,0> s_min, FOut<T,0> s_max
+) {
+    // this function is based on the sminmax subroutine from Rikkert
+    FourMom<T> p_tot,p_12, pt2;
+    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
+    for (int i = 0; i < 4; ++i) pt2[i] = pb[i] - p3[i];
+    auto m0_2 = lsquare<T>(p_tot);
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto s12 = lsquare<T>(p_12);
+    auto m1_2 = m1 * m1;
+    auto m2_2 = m2 * m2;
+    auto t2 = lsquare<T>(pt2);
+    auto sqrtGG = bk_sqrt_g3i_g3im1<T>(
+        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1, t2, s12
+    );
+    auto V = bk_V<T>(
+        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1, t2, s12
+    );
+    auto lambda = kaellen<T>(s12, ma_2, t2);
+
+    auto sa = m0_2 + m1_2 + 8 * (V + sqrtGG) / (lambda);
+    auto sb = m0_2 + m1_2 + 8 * (V - sqrtGG) / (lambda);
+    s_min = min(sa, sb);
+    s_max = max(sa, sb);
 }
 
 template<typename T>
