@@ -324,7 +324,8 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
 template<typename T>
 KERNELSPEC FVal<T> get_phi_from_s23(
     FVal<T> phi_choice, FVal<T> m0_2, FVal<T> s23, FVal<T> s12, FVal<T> t1, FVal<T> t2,
-    FVal<T> ma_2, FVal<T> mb_2, FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2) {
+    FVal<T> ma_2, FVal<T> mb_2, FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2
+) {
     // Computes the azimuthal angle phi from s23, using the formulae
     // in appendix B of 10.1103/PhysRev.187.2008
     auto sqrtGG = bk_sqrt_g3i_g3im1<T>(
@@ -402,6 +403,17 @@ KERNELSPEC void kernel_two_body_decay_com(
     FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
+    /*---------------------------------
+        Two-body decay kinematics
+    -----------------------------------
+                      >--- p1 (m1)
+                     /
+     (m0) p0 --->---*
+                     \
+                      >--- p2 (m2)
+    ----------------------------------
+    p0 = (m0, 0, 0, 0), in COM frame
+    ----------------------------------*/
     auto decay_out = two_body_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
     auto p1_tmp = decay_out.first;
     auto det_tmp = decay_out.second;
@@ -419,6 +431,17 @@ KERNELSPEC void kernel_two_body_decay(
     FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,1> p0,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
+    /*------------------------------------
+        Two-body decay kinematics
+    --------------------------------------
+                      >--- p1 (m1)
+                     /
+     (m0) p0 --->---*
+                     \
+                      >--- p2 (m2)
+    ---------------------------------------
+     p0 = (E0, px0, py0, pz0) in lab frame
+    ---------------------------------------*/
     auto decay_out = two_body_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
     auto p1_tmp = decay_out.first;
     auto det_tmp = decay_out.second;
@@ -436,6 +459,17 @@ KERNELSPEC void kernel_two_to_two_particle_scattering_com(
     FIn<T,0> r_phi, FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> t, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
+    /*-------------------------------------
+        2-to-2 particle scattering
+    ---------------------------------------
+      (ma) pa --->---*--->--- p1 (m1)
+                     |
+                   t |
+                     |
+      (mb) pb --->---*--->--- p2 (m2)
+    ---------------------------------------
+      p_tot = pa + pb, in COM frame
+    ---------------------------------------*/
     FourMom<T> p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     auto s_tot = lsquare<T>(p_tot);
@@ -456,6 +490,17 @@ KERNELSPEC void kernel_two_to_two_particle_scattering(
     FIn<T,0> r_phi, FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> t, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
 ) {
+    /*-------------------------------------
+        2-to-2 particle scattering
+    ---------------------------------------
+      (ma) pa --->---*--->--- p1 (m1)
+                     |
+                   t |
+                     |
+      (mb) pb --->---*--->--- p2 (m2)
+    ---------------------------------------
+      p_tot = pa + pb, in lab frame
+    ---------------------------------------*/
     FourMom<T> p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     auto pa_com = boost<T>(load_mom<T>(pa), p_tot, -1.);
@@ -479,16 +524,44 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
     FIn<T,0> phi_choice, FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
     FIn<T,0> s23, FIn<T,0> t1, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
-) {
-    FourMom<T> p_12, p_tot;
+) { 
+    /*--------------------------------------
+        2-to-3 particle scattering
+    ----------------------------------------
+      (ma) pa --->---*--->--- p1 (m1)
+                     |        
+                  t1 |          
+                     |
+                     *--->--- p2 (m2)
+                     |        
+                  t2 ^ pc
+                     |         
+      (mb) pb --->---*--->--- p3 (m3)
+    ----------------------------------------
+      Calculated invariants from parent
+      pa + pb -> p12 + p3:
+    
+      m0^2 = (pa + pb)^2 = (p12 + p3)^2
+      s12  = (p1 + p2)^2 = (p12)^2
+      t2   = (pb - p3)^2 = (pc)^2
+      - - - - - - - - - - - - - - - - - - -
+      Sampled invariants for daughter:
+      pa + pc -> p1 + p2:
+
+      t1   = (pa - p1)^2 = (pb - p2 - p3)^2
+      s23  = (p2 + p3)^2 = (pa + pb - p1)^2
+    ----------------------------------------*/
+    FourMom<T> p_12, p_c, p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
+    for (int i = 0; i < 4; ++i) p_c[i] = pb[i] - p3[i];
     auto pa_com = boost<T>(load_mom<T>(pa), p_12, -1.);
-    auto s12 = lsquare<T>(p_12);
-    auto ma_2 = lsquare<T>(load_mom<T>(pa)), t2 = lsquare<T>(load_mom<T>(pb));
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
     auto mb_2 = lsquare<T>(load_mom<T>(pb));
     auto m3_2 = lsquare<T>(load_mom<T>(p3));
     auto m0_2 = lsquare<T>(p_tot);
+    auto s12 = lsquare<T>(p_12);
+    auto t2 = lsquare<T>(p_c);
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
 
@@ -516,6 +589,17 @@ KERNELSPEC void kernel_three_body_decay_com(
     FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
 ) {
+    /*--------------------------------------
+        Three-body decay kinematics:
+    ----------------------------------------
+                       >--- p1 (m1)
+                      /
+      (m0) p0 --->---*->--- p2 (m2)
+                      \
+                       >--- p3 (m3)
+    ----------------------------------------
+     p0 = (m0, 0, 0, 0) in com frame
+    ----------------------------------------*/
     auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
@@ -536,6 +620,17 @@ KERNELSPEC void kernel_three_body_decay(
     FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3, FIn<T,1> p0,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
 ) {
+    /*-------------------------------------
+        Three-body decay kinematics:
+    ---------------------------------------
+                      >--- p1 (m1)
+                     /
+     (m0) p0 --->---*->--- p2 (m2)
+                     \
+                      >--- p3 (m3)
+    ----------------------------------------
+     p0 = (E0, px0, py0, pz0) in lab frame
+    ----------------------------------------*/
     auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
