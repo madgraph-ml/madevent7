@@ -1,13 +1,14 @@
-import pytest
-from pytest import approx
 import madevent7 as me
-from madevent7.torch import FunctionModule
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from madevent7.torch import FunctionModule
+from pytest import approx
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(3210)
+
 
 @pytest.fixture
 def mlp():
@@ -16,10 +17,12 @@ def mlp():
     mlp.initialize_globals(ctx)
     return FunctionModule(mlp.function(), ctx)
 
+
 def test_properties():
     mlp = me.MLP(10, 1, 32, 3, me.MLP.leaky_relu, "")
     assert mlp.input_dim() == 10
     assert mlp.output_dim() == 1
+
 
 def test_initialization(mlp):
     assert torch.all(mlp.global_params["layer1:weight"] != 0)
@@ -29,11 +32,11 @@ def test_initialization(mlp):
     assert torch.all(mlp.global_params["layer3:weight"] == 0)
     assert torch.all(mlp.global_params["layer3:bias"] == 0)
 
-@pytest.fixture(params=[
-    "relu", "leaky_relu", "elu", "gelu", "sigmoid", "softplus"
-])
+
+@pytest.fixture(params=["relu", "leaky_relu", "elu", "gelu", "sigmoid", "softplus"])
 def activation(request):
     return request.param
+
 
 def test_activation(mlp, activation):
     fb = me.FunctionBuilder([me.batch_float_array(10)], [me.batch_float_array(10)])
@@ -54,19 +57,20 @@ def test_activation(mlp, activation):
     assert y_me.detach() == approx(y_torch.detach())
     assert grad_me == approx(grad_torch)
 
+
 def test_training(mlp):
     mlp_torch = nn.Sequential(
-        nn.Linear(10,32),
+        nn.Linear(10, 32),
         nn.LeakyReLU(),
-        nn.Linear(32,32),
+        nn.Linear(32, 32),
         nn.LeakyReLU(),
-        nn.Linear(32,1),
+        nn.Linear(32, 1),
     )
 
     with torch.no_grad():
         for i in range(3):
-            mlp_torch[2*i].weight[:] = mlp.global_params[f"layer{i+1}:weight"][0]
-            mlp_torch[2*i].bias[:] = mlp.global_params[f"layer{i+1}:bias"][0]
+            mlp_torch[2 * i].weight[:] = mlp.global_params[f"layer{i+1}:weight"][0]
+            mlp_torch[2 * i].bias[:] = mlp.global_params[f"layer{i+1}:bias"][0]
 
     opt_me7 = torch.optim.Adam(mlp.parameters(), lr=1e-3)
     opt_torch = torch.optim.Adam(mlp_torch.parameters(), lr=1e-3)
@@ -87,14 +91,14 @@ def test_training(mlp):
         with torch.no_grad():
             for i in range(3):
                 assert mlp.global_params[f"layer{i+1}:weight"][0].numpy() == approx(
-                    mlp_torch[2*i].weight.numpy()
+                    mlp_torch[2 * i].weight.numpy()
                 )
                 assert mlp.global_params[f"layer{i+1}:bias"][0].numpy() == approx(
-                    mlp_torch[2*i].bias.numpy()
+                    mlp_torch[2 * i].bias.numpy()
                 )
-                assert mlp.global_params[f"layer{i+1}:weight"].grad[0].numpy() == approx(
-                    mlp_torch[2*i].weight.grad.numpy()
-                )
+                assert mlp.global_params[f"layer{i+1}:weight"].grad[
+                    0
+                ].numpy() == approx(mlp_torch[2 * i].weight.grad.numpy())
                 assert mlp.global_params[f"layer{i+1}:bias"].grad[0].numpy() == approx(
-                    mlp_torch[2*i].bias.grad.numpy()
+                    mlp_torch[2 * i].bias.grad.numpy()
                 )

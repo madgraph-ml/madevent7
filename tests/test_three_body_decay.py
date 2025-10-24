@@ -1,8 +1,9 @@
-import pytest
-from pytest import approx
+from collections import namedtuple
+
 import madevent7 as me
 import numpy as np
-from collections import namedtuple
+import pytest
+from pytest import approx
 
 
 @pytest.fixture
@@ -67,7 +68,7 @@ def mapping_and_args(request):
 
     else:
         raise NotImplementedError("Only 1->3 decay is implemented in this test.")
-    return (mapping, make_args)
+    return (mapping, make_args, com)
 
 
 def mass(momentum):
@@ -112,14 +113,14 @@ def input_points(rng):
 
 
 def test_momentum_conservation(mapping_and_args, input_points):
-    mapping, make_args = mapping_and_args
+    mapping, make_args, com = mapping_and_args
     inputs, conditions, p0 = make_args(input_points)
     (p1, p2, p3), det = mapping.map_forward(inputs, conditions)
     assert p1 + p2 + p3 == approx(p0)
 
 
 def test_outgoing_masses(mapping_and_args, input_points):
-    mapping, make_args = mapping_and_args
+    mapping, make_args, com = mapping_and_args
     inputs, conditions, p0 = make_args(input_points)
     (p1, p2, p3), det = mapping.map_forward(inputs, conditions)
     m0 = mass(p1 + p2 + p3)
@@ -133,3 +134,70 @@ def test_outgoing_masses(mapping_and_args, input_points):
     assert m1 == approx(input_points.m1)
     assert m2 == approx(input_points.m2)
     assert m3 == approx(input_points.m3)
+
+
+def test_phase_space_via_two_2body(mapping_and_args, rng):
+    mapping_13, make_args, com = mapping_and_args  # your ThreeBodyDecay
+    N = 50000
+    r = rng.random((N, 5))  # 5 random numbers for 1->3 decay
+    u = r[:, 0]  # first random number for s12
+
+    # Fix parent in COM for clarity (or use your fixture’s p0)
+    m0, m1, m2, m3 = 120.0, 10.0, 15.0, 5.0
+    zeros = np.zeros(N)
+    p0 = np.stack([np.full(N, m0), zeros, zeros, zeros], axis=1)
+
+    smin = (m1 + m2) ** 2
+    smax = (m0 - m3) ** 2
+    s12 = smin + u * (smax - smin)
+    mQ = np.sqrt(s12)
+
+    # --- First 2-body: 0 -> Q + 3 ---
+    mapping1 = me.TwoBodyDecay(com=True)
+    inputs1 = [r[:, 1], r[:, 2], np.full(N, m0), np.full(N, mQ), np.full(N, m3)]
+    (pQ, p3), det1 = mapping1.map_forward(inputs1, [])
+
+    # Ensure pQ has invariant mass sqrt(s12)
+    assert approx(np.sqrt(pQ[:, 0] ** 2 - (pQ[:, 1:] ** 2).sum(1))) == mQ
+
+    # --- Second 2-body: Q -> 1 + 2 ---
+    mapping2 = me.TwoBodyDecay(com=False)  # use actual pQ (boosted)
+    inputs2 = [r[:, 3], r[:, 4], mQ, np.full(N, m1), np.full(N, m2), pQ]
+    (p1, p2), det2 = mapping2.map_forward(inputs2, [])
+
+    # Reference Jacobian
+    J_ref = det1 * det2 * (smax - smin)
+
+    # --- Our 1->3 mapping under test ---
+    if com:
+        inputs13 = [
+            r[:, 0],
+            r[:, 1],
+            r[:, 2],
+            r[:, 3],
+            r[:, 4],
+            np.full(N, m0),
+            np.full(N, m1),
+            np.full(N, m2),
+            np.full(N, m3),
+        ]
+    else:
+        inputs13 = [
+            r[:, 0],
+            r[:, 1],
+            r[:, 2],
+            r[:, 3],
+            r[:, 4],
+            np.full(N, m0),
+            np.full(N, m1),
+            np.full(N, m2),
+            np.full(N, m3),
+            p0,
+        ]
+    (p1a, p2a, p3a), det = mapping_13.map_forward(inputs13, [])
+
+    # Total volume match (mean Jacobian)
+    error1 = np.sqrt(np.var(det) / N)
+    error2 = np.sqrt(np.var(J_ref) / N)
+    print(f"Mean det error: {error1:.3e}, ref: {error2:.3e}")
+    assert np.mean(det) == approx(np.mean(J_ref), abs=3 * max(error1, error2))
