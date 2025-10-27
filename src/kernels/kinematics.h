@@ -340,7 +340,7 @@ KERNELSPEC FVal<T> get_phi_from_s23(
     );
     auto lambda = kaellen<T>(s12, ma_2, t2);
     auto cos_phi = (lambda * (s23 - m0_2 - m1_2) - 8 * V) / (8 * sqrtGG );
-    auto phi = (phi_choice == 1) ? (-acos(cos_phi) + 2. * PI) : acos(cos_phi);
+    auto phi = where(phi_choice == 1, (-acos(cos_phi) + 2. * PI), acos(cos_phi));
     return phi;
 }
 

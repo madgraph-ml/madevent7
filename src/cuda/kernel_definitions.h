@@ -47,6 +47,7 @@ using ::log;
 using ::log1p;
 using ::tan;
 using ::atan;
+using ::acos;
 using ::exp;
 using ::expm1;
 using ::erf;

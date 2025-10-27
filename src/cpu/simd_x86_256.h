@@ -169,6 +169,7 @@ inline FVec fabs(FVec arg1) { return Sleef_fabsd4_avx2(arg1); }
 inline FVec log(FVec arg1) { return Sleef_logd4_u10avx2(arg1); }
 inline FVec tan(FVec arg1) { return Sleef_tand4_u10avx2(arg1); }
 inline FVec atan(FVec arg1) { return Sleef_atand4_u10avx2(arg1); }
+inline FVec acos(FVec arg1) { return Sleef_acosd4_u10avx2(arg1); }
 inline FVec atanh(FVec arg1) { return Sleef_atanhd4_u10avx2(arg1); }
 inline FVec exp(FVec arg1) { return Sleef_expd4_u10avx2(arg1); }
 inline FVec log1p(FVec arg1) { return Sleef_log1pd4_u10avx2(arg1); }

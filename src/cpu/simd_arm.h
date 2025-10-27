@@ -143,6 +143,7 @@ inline FVec fabs(FVec arg1) { return Sleef_fabsd2(arg1); }
 inline FVec log(FVec arg1) { return Sleef_logd2_u10(arg1); }
 inline FVec tan(FVec arg1) { return Sleef_tand2_u10(arg1); }
 inline FVec atan(FVec arg1) { return Sleef_atand2_u10(arg1); }
+inline FVec acos(FVec arg1) { return Sleef_acosd2_u10(arg1); }
 inline FVec atanh(FVec arg1) { return Sleef_atanhd2_u10(arg1); }
 inline FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
 inline FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
