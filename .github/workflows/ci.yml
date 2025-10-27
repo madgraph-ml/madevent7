@@ -72,6 +72,7 @@ jobs:
 
       - name: Build wheel
         run: python -m pip wheel --no-build-isolation -Cbuild-dir=build .
+        if: github.event_name != 'pull_request'
 
       - name: Move latest tag
         uses: actions/github-script@v7
@@ -91,8 +92,10 @@ jobs:
                 sha: context.sha
               });
             })
+        if: github.event_name != 'pull_request'
 
       - name: Upload wheel to latest release
         run: "gh release upload --clobber latest *.whl"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: github.event_name != 'pull_request'
