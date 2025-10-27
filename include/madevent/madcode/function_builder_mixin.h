@@ -114,28 +114,48 @@ Value diff_cross_section(Value x1, Value x2, Value pdf1, Value pdf2, Value matri
     return instruction("diff_cross_section", {x1, x2, pdf1, pdf2, matrix_element, e_cm2})[0];
 }
 
-std::array<Value, 3> two_particle_decay_com(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2) {
-    auto output_vector = instruction("two_particle_decay_com", {r_phi, r_cos_theta, m0, m1, m2});
+std::array<Value, 3> two_body_decay_com(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2) {
+    auto output_vector = instruction("two_body_decay_com", {r_phi, r_cos_theta, m0, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_particle_decay(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2, Value p0) {
-    auto output_vector = instruction("two_particle_decay", {r_phi, r_cos_theta, m0, m1, m2, p0});
+std::array<Value, 3> two_body_decay(Value r_phi, Value r_cos_theta, Value m0, Value m1, Value m2, Value p0) {
+    auto output_vector = instruction("two_body_decay", {r_phi, r_cos_theta, m0, m1, m2, p0});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
-    auto output_vector = instruction("two_particle_scattering_com", {r_phi, pa, pb, t, m1, m2});
+std::array<Value, 3> two_to_two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_two_particle_scattering_com", {r_phi, pa, pb, t_abs, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_particle_scattering(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
-    auto output_vector = instruction("two_particle_scattering", {r_phi, pa, pb, t, m1, m2});
+std::array<Value, 3> two_to_two_particle_scattering(Value r_phi, Value pa, Value pb, Value t_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_two_particle_scattering", {r_phi, pa, pb, t_abs, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 3> two_to_three_particle_scattering(Value phi_choice, Value pa, Value pb, Value p3, Value s23, Value t1_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_three_particle_scattering", {phi_choice, pa, pb, p3, s23, t1_abs, m1, m2});
+    return {output_vector[0], output_vector[1], output_vector[2]};
+}
+
+std::array<Value, 4> three_body_decay_com(Value r_e1, Value r_e2, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3) {
+    auto output_vector = instruction("three_body_decay_com", {r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
+}
+
+std::array<Value, 4> three_body_decay(Value r_e1, Value r_e2, Value r_phi, Value r_cos_theta, Value r_beta, Value m0, Value m1, Value m2, Value m3, Value p0) {
+    auto output_vector = instruction("three_body_decay", {r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, p0});
+    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
 std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
     auto output_vector = instruction("t_inv_min_max", {pa, pb, m1, m2});
+    return {output_vector[0], output_vector[1]};
+}
+
+std::array<Value, 2> s_inv_min_max(Value pa, Value pb, Value p3, Value t1_abs, Value m1, Value m2) {
+    auto output_vector = instruction("s_inv_min_max", {pa, pb, p3, t1_abs, m1, m2});
     return {output_vector[0], output_vector[1]};
 }
 

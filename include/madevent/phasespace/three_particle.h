@@ -5,21 +5,21 @@
 
 namespace madevent {
 
-class TwoBodyDecay : public Mapping {
+class ThreeBodyDecay : public Mapping {
 public:
-    TwoBodyDecay(bool com) : Mapping(
-        "TwoBodyDecay",
+    ThreeBodyDecay(bool com) : Mapping(
+        "ThreeBodyDecay",
         [&] {
-            TypeVec input_types(5, batch_float);
+            TypeVec input_types(9, batch_float);
             if (!com) {
                 input_types.push_back(batch_four_vec);
             }
             return input_types;
         }(),
-        {batch_four_vec, batch_four_vec},
+        {batch_four_vec, batch_four_vec, batch_four_vec},
         {}
     ), _com(com) {}
-    std::size_t random_dim() const { return 2; }
+    std::size_t random_dim() const { return 5; }
 
 private:
     Result build_forward_impl(
@@ -33,17 +33,18 @@ private:
 };
 
 
-class TwoToTwoParticleScattering : public Mapping {
+class TwoToThreeParticleScattering : public Mapping {
 public:
-    TwoToTwoParticleScattering(
-        bool com, double invariant_power = 0, double mass = 0, double width = 0
+    TwoToThreeParticleScattering(
+        double t_invariant_power = 0, double t_mass = 0, double t_width = 0,
+        double s_invariant_power = 0, double s_mass = 0, double s_width = 0
     ) :
         Mapping(
-            "TwoToTwoParticleScattering",
-            {batch_float, batch_float, batch_float, batch_float},
+            "TwoToThreeParticleScattering",
+            {batch_float, batch_float, batch_float, batch_float, batch_float},
             {batch_four_vec, batch_four_vec},
-            {batch_four_vec, batch_four_vec}
-        ), _com(com), _invariant(invariant_power, mass, width) {}
+            {batch_four_vec, batch_four_vec, batch_four_vec}
+        ), _t_invariant(t_invariant_power, t_mass, t_width), _s_invariant(s_invariant_power, s_mass, s_width) {}
 
 private:
     Result build_forward_impl(
@@ -53,8 +54,8 @@ private:
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const override;
 
-    bool _com;
-    Invariant _invariant;
+    Invariant _t_invariant;
+    Invariant _s_invariant;
 };
 
 }

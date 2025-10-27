@@ -31,8 +31,8 @@ private:
     std::vector<std::size_t> _integration_order;
     std::vector<bool> _sample_sides;
     Invariant _uniform_invariant;
-    TwoParticleScattering _com_scattering;
-    TwoParticleScattering _lab_scattering;
+    TwoToTwoParticleScattering _com_scattering;
+    TwoToTwoParticleScattering _lab_scattering;
 };
 
 }
