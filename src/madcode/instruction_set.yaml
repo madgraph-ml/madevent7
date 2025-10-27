@@ -440,7 +440,7 @@ two_to_two_particle_scattering_com:
     - name: pb
       type: [float, 4]
       desc:
-    - name: t
+    - name: t_abs
       type: [float]
       desc:
     - name: m1
@@ -471,7 +471,7 @@ two_to_two_particle_scattering:
     - name: pb
       type: [float, 4]
       desc:
-    - name: t
+    - name: t_abs
       type: [float]
       desc:
     - name: m1
@@ -494,7 +494,7 @@ two_to_two_particle_scattering:
 two_to_three_particle_scattering:
   inputs:
     - name: phi_choice
-      type: [float]
+      type: [int]
       desc:
     - name: pa
       type: [float, 4]
@@ -508,7 +508,7 @@ two_to_three_particle_scattering:
     - name: s23
       type: [float]
       desc:
-    - name: t1
+    - name: t1_abs
       type: [float]
       desc:
     - name: m1
@@ -650,7 +650,7 @@ s_inv_min_max:
     - name: p3
       type: [float, 4]
       desc:
-    - name: t1
+    - name: t1_abs
       type: [float]
       desc:
     - name: m1

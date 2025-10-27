@@ -124,18 +124,18 @@ std::array<Value, 3> two_body_decay(Value r_phi, Value r_cos_theta, Value m0, Va
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_to_two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
-    auto output_vector = instruction("two_to_two_particle_scattering_com", {r_phi, pa, pb, t, m1, m2});
+std::array<Value, 3> two_to_two_particle_scattering_com(Value r_phi, Value pa, Value pb, Value t_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_two_particle_scattering_com", {r_phi, pa, pb, t_abs, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_to_two_particle_scattering(Value r_phi, Value pa, Value pb, Value t, Value m1, Value m2) {
-    auto output_vector = instruction("two_to_two_particle_scattering", {r_phi, pa, pb, t, m1, m2});
+std::array<Value, 3> two_to_two_particle_scattering(Value r_phi, Value pa, Value pb, Value t_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_two_particle_scattering", {r_phi, pa, pb, t_abs, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
-std::array<Value, 3> two_to_three_particle_scattering(Value phi_choice, Value pa, Value pb, Value p3, Value s23, Value t1, Value m1, Value m2) {
-    auto output_vector = instruction("two_to_three_particle_scattering", {phi_choice, pa, pb, p3, s23, t1, m1, m2});
+std::array<Value, 3> two_to_three_particle_scattering(Value phi_choice, Value pa, Value pb, Value p3, Value s23, Value t1_abs, Value m1, Value m2) {
+    auto output_vector = instruction("two_to_three_particle_scattering", {phi_choice, pa, pb, p3, s23, t1_abs, m1, m2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
@@ -154,8 +154,8 @@ std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 2> s_inv_min_max(Value pa, Value pb, Value p3, Value t1, Value m1, Value m2) {
-    auto output_vector = instruction("s_inv_min_max", {pa, pb, p3, t1, m1, m2});
+std::array<Value, 2> s_inv_min_max(Value pa, Value pb, Value p3, Value t1_abs, Value m1, Value m2) {
+    auto output_vector = instruction("s_inv_min_max", {pa, pb, p3, t1_abs, m1, m2});
     return {output_vector[0], output_vector[1]};
 }
 

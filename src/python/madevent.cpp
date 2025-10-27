@@ -235,8 +235,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<bool>(), py::arg("com"));
 
     py::classh<TwoToThreeParticleScattering, Mapping>(m, "TwoToThreeParticleScattering")
-        .def(py::init<bool, double, double, double, double, double, double>(),
-             py::arg("com"),
+        .def(py::init<double, double, double, double, double, double>(),
              py::arg("t_invariant_power")=0.,
              py::arg("t_mass")=0.,
              py::arg("t_width")=0.,
