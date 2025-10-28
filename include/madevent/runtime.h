@@ -8,3 +8,4 @@
 #include "runtime/io.h"
 #include "runtime/vegas_optimizer.h"
 #include "runtime/discrete_optimizer.h"
+#include "runtime/lhe_output.h"

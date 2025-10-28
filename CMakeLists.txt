@@ -98,6 +98,7 @@ add_library(
     src/runtime/vegas_optimizer.cpp
     src/runtime/discrete_optimizer.cpp
     src/runtime/runtime_base.cpp
+    src/runtime/lhe_output.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
@@ -137,6 +138,7 @@ add_library(
     include/madevent/runtime/vegas_optimizer.h
     include/madevent/runtime/discrete_optimizer.h
     include/madevent/runtime/runtime_base.h
+    include/madevent/runtime/lhe_output.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h
