@@ -1,10 +1,11 @@
 import pytest
-from pytest import approx
-import madevent7 as me
-from madevent7.torch import FunctionModule
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pytest import approx
+
+import madevent7 as me
+from madevent7.torch import FunctionModule
 
 torch.set_default_dtype(torch.float64)
 torch.manual_seed(3210)

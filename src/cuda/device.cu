@@ -98,4 +98,3 @@ void AsyncCudaDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
 extern "C" DevicePtr get_device() {
     return &CudaDevice::instance();
 }
-

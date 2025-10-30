@@ -223,13 +223,25 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("s_lab"), py::arg("s_hat_min"), py::arg("s_hat_max")=0.,
              py::arg("invariant_power")=0., py::arg("mass")=0., py::arg("width")=0.);
 
-    py::classh<TwoParticleDecay, Mapping>(m, "TwoParticleDecay")
+    py::classh<TwoBodyDecay, Mapping>(m, "TwoBodyDecay")
         .def(py::init<bool>(), py::arg("com"));
 
-    py::classh<TwoParticleScattering, Mapping>(m, "TwoParticleScattering")
+    py::classh<TwoToTwoParticleScattering, Mapping>(m, "TwoToTwoParticleScattering")
         .def(py::init<bool, double, double, double>(),
              py::arg("com"), py::arg("invariant_power")=0.,
              py::arg("mass")=0., py::arg("width")=0.);
+
+    py::classh<ThreeBodyDecay, Mapping>(m, "ThreeBodyDecay")
+        .def(py::init<bool>(), py::arg("com"));
+
+    py::classh<TwoToThreeParticleScattering, Mapping>(m, "TwoToThreeParticleScattering")
+        .def(py::init<double, double, double, double, double, double>(),
+             py::arg("t_invariant_power")=0.,
+             py::arg("t_mass")=0.,
+             py::arg("t_width")=0.,
+             py::arg("s_invariant_power")=0.,
+             py::arg("s_mass")=0.,
+             py::arg("s_width")=0.);
 
     py::classh<Propagator>(m, "Propagator")
         .def(py::init<double, double, int, double, double, int>(),

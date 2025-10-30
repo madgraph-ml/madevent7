@@ -14,8 +14,8 @@ stack:
 
 unstack:
   inputs:
-    - name: in
-      desc: 
+    - name: in1
+      desc:
   outputs: any
   desc:
   class: UnstackInstruction
@@ -24,16 +24,16 @@ unstack:
 
 unstack_sizes:
   inputs:
-    - name: in
-      desc: 
+    - name: in1
+      desc:
   outputs: any
-  desc: 
+  desc:
   class: UnstackSizesInstruction
   custom_op: True
 
 pop:
   inputs:
-    - name: in
+    - name: in1
       type: [float, n, ...]
       desc:
   outputs:
@@ -60,7 +60,7 @@ batch_cat:
 
 batch_split:
   inputs:
-    - name: in
+    - name: in1
       desc:
     - name: counts
       desc:
@@ -196,7 +196,7 @@ mul:
 
 reduce_product:
   inputs:
-    - name: in
+    - name: in1
       type: [float, n]
       desc:
   outputs:
@@ -207,7 +207,7 @@ reduce_product:
 
 sqrt:
   inputs:
-    - name: in
+    - name: in1
       type: [float]
       desc:
   outputs:
@@ -217,7 +217,7 @@ sqrt:
 
 square:
   inputs:
-    - name: in
+    - name: in1
       type: [float]
       desc:
   outputs:
@@ -370,7 +370,7 @@ diff_cross_section:
       type: [float]
       desc:
 
-two_particle_decay_com:
+two_body_decay_com:
   inputs:
     - name: r_phi
       type: [float]
@@ -398,7 +398,7 @@ two_particle_decay_com:
       type: [float]
       desc:
 
-two_particle_decay:
+two_body_decay:
   inputs:
     - name: r_phi
       type: [float]
@@ -429,7 +429,7 @@ two_particle_decay:
       type: [float]
       desc:
 
-two_particle_scattering_com:
+two_to_two_particle_scattering_com:
   inputs:
     - name: r_phi
       type: [float]
@@ -440,7 +440,7 @@ two_particle_scattering_com:
     - name: pb
       type: [float, 4]
       desc:
-    - name: t
+    - name: t_abs
       type: [float]
       desc:
     - name: m1
@@ -460,7 +460,7 @@ two_particle_scattering_com:
       type: [float]
       desc:
 
-two_particle_scattering:
+two_to_two_particle_scattering:
   inputs:
     - name: r_phi
       type: [float]
@@ -471,7 +471,7 @@ two_particle_scattering:
     - name: pb
       type: [float, 4]
       desc:
-    - name: t
+    - name: t_abs
       type: [float]
       desc:
     - name: m1
@@ -485,6 +485,132 @@ two_particle_scattering:
       type: [float, 4]
       desc:
     - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_to_three_particle_scattering:
+  inputs:
+    - name: phi_choice
+      type: [int]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: s23
+      type: [float]
+      desc:
+    - name: t1_abs
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+three_body_decay_com:
+  inputs:
+    - name: r_e1
+      type: [float]
+      desc:
+    - name: r_e2
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+three_body_decay:
+  inputs:
+    - name: r_e1
+      type: [float]
+      desc:
+    - name: r_e2
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
       type: [float, 4]
       desc:
     - name: det
@@ -510,6 +636,34 @@ t_inv_min_max:
       type: [float]
       desc:
     - name: t_max
+      type: [float]
+      desc:
+
+s_inv_min_max:
+  inputs:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: t1_abs
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+  outputs:
+    - name: s_min
+      type: [float]
+      desc:
+    - name: s_max
       type: [float]
       desc:
 
@@ -1196,7 +1350,7 @@ matmul:
 
 relu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1208,7 +1362,7 @@ relu:
 
 leaky_relu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1220,7 +1374,7 @@ leaky_relu:
 
 elu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1232,7 +1386,7 @@ elu:
 
 gelu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1244,7 +1398,7 @@ gelu:
 
 sigmoid:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1257,7 +1411,7 @@ sigmoid:
 
 softplus:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1471,7 +1625,7 @@ permute_momenta:
   outputs:
     - name: output
       type: [float, n, 4]
-      desc: 
+      desc:
 
 gather:
   inputs:
@@ -1651,4 +1805,3 @@ vegas_histogram:
       type: [int, single, n, b]
       desc:
   custom_op: True
-

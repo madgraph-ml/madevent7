@@ -107,6 +107,7 @@ add_library(
     src/phasespace/base.cpp
     src/phasespace/invariants.cpp
     src/phasespace/two_particle.cpp
+    src/phasespace/three_particle.cpp
     src/phasespace/luminosity.cpp
     src/phasespace/topology.cpp
     src/phasespace/t_propagator_mapping.cpp
@@ -150,6 +151,7 @@ add_library(
     include/madevent/phasespace/base.h
     include/madevent/phasespace/invariants.h
     include/madevent/phasespace/two_particle.h
+    include/madevent/phasespace/three_particle.h
     include/madevent/phasespace/luminosity.h
     include/madevent/phasespace/topology.h
     include/madevent/phasespace/t_propagator_mapping.h
@@ -300,4 +302,3 @@ python_add_library(
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
 target_link_libraries(_madevent_py PUBLIC madevent)
 install(TARGETS _madevent_py DESTINATION madevent7)
-

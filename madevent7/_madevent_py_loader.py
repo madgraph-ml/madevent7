@@ -7,22 +7,19 @@ ctypes.CDLL(
     os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "lib",
-        "libmadevent.dylib" if platform.system() == "Darwin" else "libmadevent.so"
+        "libmadevent.dylib" if platform.system() == "Darwin" else "libmadevent.so",
     ),
-    mode=ctypes.RTLD_GLOBAL
+    mode=ctypes.RTLD_GLOBAL,
 )
 
 from ._madevent_py import *
+
 
 def _init():
     """
     Monkey-patch classes for a more pythonic experience.
     """
-    set_lib_path(
-        os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "lib"
-        )
-    )
+    set_lib_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
     def call_and_convert(runtime, args):
         if len(args) == 0:
@@ -33,9 +30,11 @@ def _init():
         # Convert outputs, lazy-loading torch or numpy
         if tensorlib == "torch":
             import torch
+
             return tuple(torch.from_dlpack(out) for out in outputs)
         else:
             import numpy
+
             return tuple(numpy.from_dlpack(out) for out in outputs)
 
     def runtime_call(self, *args):
@@ -76,11 +75,13 @@ def _init():
         return outputs[:-1], outputs[-1]
 
     def tensor_numpy(tensor):
-        import numpy # Lazy-load numpy, to make it optional dependency
+        import numpy  # Lazy-load numpy, to make it optional dependency
+
         return numpy.from_dlpack(tensor)
 
     def tensor_torch(tensor):
-        import torch # Lazy-load torch, to make it optional dependency
+        import torch  # Lazy-load torch, to make it optional dependency
+
         return torch.from_dlpack(tensor)
 
     FunctionRuntime.__call__ = runtime_call
@@ -90,5 +91,6 @@ def _init():
     Mapping.map_inverse = map_inverse
     Tensor.numpy = tensor_numpy
     Tensor.torch = tensor_torch
+
 
 _init()

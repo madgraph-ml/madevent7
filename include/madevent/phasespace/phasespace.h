@@ -8,6 +8,7 @@
 #include "madevent/phasespace/rambo.h"
 #include "madevent/phasespace/cuts.h"
 #include "madevent/phasespace/chili.h"
+#include "madevent/phasespace/three_particle.h"
 
 namespace madevent {
 
@@ -61,7 +62,7 @@ private:
     std::variant<
         TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate
     > _t_mapping;
-    std::vector<std::variant<TwoParticleDecay, FastRamboMapping>> _s_decays;
+    std::vector<std::variant<TwoBodyDecay, ThreeBodyDecay, FastRamboMapping>> _s_decays;
     std::vector<std::vector<me_int_t>> _permutations;
 };
 

@@ -1,13 +1,16 @@
+import os
+
+import numpy as np
 import pytest
 from pytest import approx
+
 import madevent7 as me
-import numpy as np
-import os
 
 PDF_SET = "NNPDF40_nlo_as_01180"
 
 try:
     import lhapdf
+
     lhapdf.setVerbosity(0)
     reference_pdf = lhapdf.mkPDF(PDF_SET, 0)
 except ImportError:
@@ -22,6 +25,7 @@ pytestmark = [
         reference_pdf is None, reason=f"pdf set {PDF_SET} required to run this test"
     ),
 ]
+
 
 def test_pdf():
     ctx = me.default_context()
@@ -42,6 +46,7 @@ def test_pdf():
     result = pdf(x, q2)
     reference = np.array(reference_pdf.xfxQ2(pids, x.tolist(), q2.tolist()))
     assert result == approx(reference)
+
 
 def test_alpha_s():
     ctx = me.default_context()
