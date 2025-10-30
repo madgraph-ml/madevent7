@@ -76,7 +76,7 @@ LHECompleter::LHECompleter(
         std::vector<int> momentum_masks;
         std::vector<std::tuple<int, int>> prop_colors;
         std::vector<int> decay_colors, decay_anti_colors;
-        std::vector<std::size_t> resonant_prop_indices;
+        std::vector<int> resonant_prop_indices;
 
         std::size_t diagram_count = 0;
         for (auto [topo, permutations, diag_indices, diag_colors] : zip(
@@ -98,6 +98,7 @@ LHECompleter::LHECompleter(
                 prop_colors.clear();
                 prop_colors.resize(topo.decays().size() * colors.size());
                 resonant_prop_indices.clear();
+                resonant_prop_indices.resize(topo.decays().size(), -1);
                 for (auto [index, mass, perm_index] : zip(
                     topo.outgoing_indices(),
                     topo.outgoing_masses(),
@@ -105,7 +106,6 @@ LHECompleter::LHECompleter(
                 )) {
                     e_min.at(index) = mass;
                     momentum_masks.at(index) = 1 << perm_index;
-                    println("decay_index = {}, perm_index = {}", index, perm_index);
                     for (std::size_t i = 0; std::size_t color_index : colors) {
                         prop_colors.at(colors.size() * index + i) =
                             args.color_flows.at(color_index).at(perm_index);
@@ -118,19 +118,22 @@ LHECompleter::LHECompleter(
 
                     double& e_min_item = e_min.at(decay.index);
                     int& momentum_mask = momentum_masks.at(decay.index);
+                    int child_prop_mask = 0;
                     for (std::size_t child_index : decay.child_indices) {
                         e_min_item += e_min.at(child_index);
                         momentum_mask |= momentum_masks.at(child_index);
+                        int child_prop_index = resonant_prop_indices.at(child_index);
+                        if (child_prop_index != -1) {
+                            child_prop_mask |= 1 << child_prop_index;
+                        }
                     }
                     if (e_min_item >= decay.mass) continue;
 
-                    println("prop[{}] = ({} {} {} {})", _propagators.size(),
-                            decay.pdg_id, momentum_mask, decay.mass, decay.width);
-                    resonant_prop_indices.push_back(decay.index);
+                    resonant_prop_indices.at(decay.index) = _propagators.size() - prop_offset;
                     _propagators.push_back({
                         .pdg_id = decay.pdg_id,
                         .momentum_mask = momentum_mask,
-                        .child_prop_mask = 0,
+                        .child_prop_mask = child_prop_mask,
                         .mass = decay.mass,
                         .width = decay.width,
                     });
@@ -140,7 +143,6 @@ LHECompleter::LHECompleter(
                         decay_anti_colors.clear();
                         for (std::size_t child_index : decay.child_indices) {
                             auto [color, anti_color] = prop_colors.at(colors.size() * child_index + i);
-                            println("child {}: {} {}", child_index, color, anti_color);
                             decay_colors.push_back(color);
                             decay_anti_colors.push_back(anti_color);
                         }
@@ -173,7 +175,6 @@ LHECompleter::LHECompleter(
                             }
                             prop_color = {0, 0};
                         } else if (color_type == 3) {
-                            println("{}, {}", decay_colors.size(), decay_anti_colors.size());
                             if (decay_colors.size() != 1 || decay_anti_colors.size() > 0) {
                                 throw std::runtime_error("Incompatible with color triplet");
                             }
@@ -191,8 +192,6 @@ LHECompleter::LHECompleter(
                         } else {
                             throw std::runtime_error("Invalid color type");
                         }
-                        println("color {} {}", std::get<0>(prop_color),
-                                std::get<1>(prop_color));
                         ++i;
                     }
                 }
@@ -200,18 +199,17 @@ LHECompleter::LHECompleter(
                 if (prop_count > 0) {
                     for (std::size_t i = 0; std::size_t color : colors) {
                         std::size_t prop_color_offset = _propagator_colors.size();
-                        for (std::size_t prop_index : resonant_prop_indices) {
-                            _propagator_colors.push_back(
-                                prop_colors.at(colors.size() * prop_index + i)
-                            );
-                            println("push color {} {}", std::get<0>(_propagator_colors.back()),
-                                    std::get<1>(_propagator_colors.back()));
+                        for (std::size_t j = 0; int prop_index : resonant_prop_indices) {
+                            if (prop_index != -1) {
+                                _propagator_colors.push_back(
+                                    prop_colors.at(colors.size() * j + i)
+                                );
+                            }
+                            ++j;
                         }
                         _propagator_index_and_count[cantor_pairing(
                             subproc_index, diag_index, color
                         )] = {prop_offset, prop_color_offset, prop_count};
-                        println("pic[{} {} {}] = ({} {})", subproc_index, diag_index, color,
-                            prop_offset, _propagators.size() - prop_offset);
                         ++i;
                     }
                 }
@@ -304,7 +302,8 @@ void LHECompleter::complete_event_data(
     if (find_propagators == _propagator_index_and_count.end()) return;
     auto [prop_offset, prop_color_offset, prop_count] = find_propagators->second;
     std::vector<LHEParticle> new_particles;
-    for (auto [propagator, prop_color] : zip(
+    int resonant_prop_mask = 0;
+    for (std::size_t prop_index = 0; auto [propagator, prop_color] : zip(
         std::span(
             _propagators.begin() + prop_offset,
             _propagators.begin() + prop_offset + prop_count
@@ -328,13 +327,14 @@ void LHECompleter::complete_event_data(
         double m2 = e * e - px * px - py * py - pz * pz;
         double m_min = propagator.mass - _bw_cutoff * propagator.width;
         double m_max = propagator.mass + _bw_cutoff * propagator.width;
-        println("{} {} {} {}", e, px, py, pz);
-        println("{} < {} < {} ? {:b}", m_min, std::sqrt(m2), m_max, propagator.momentum_mask);
         if (m2 > m_min * m_min && m2 < m_max * m_max) {
             auto [color, anti_color] = prop_color;
+            resonant_prop_mask |= 1 << prop_index;
             new_particles.push_back({
                 .pdg_id = propagator.pdg_id,
                 .status_code = 2,
+                .mother1 = 1,
+                .mother2 = 2,
                 .color = color,
                 .anti_color = anti_color,
                 .p_x = px,
@@ -346,10 +346,50 @@ void LHECompleter::complete_event_data(
                 .spin = 9,
             });
         }
+        ++prop_index;
     }
     event.particles.insert(
         event.particles.begin() + 2, new_particles.rbegin(), new_particles.rend()
     );
+    for (
+        std::size_t prop_index = prop_count, res_index = 0;
+        auto& propagator : std::views::reverse(std::span(
+            _propagators.begin() + prop_offset,
+            _propagators.begin() + prop_offset + prop_count
+        ))
+    ) {
+        --prop_index;
+        if (resonant_prop_mask & (1 << prop_index)) {
+            int child_prop_mask = propagator.child_prop_mask;
+            for (
+                int child_prop_index = prop_index - 1,
+                child_res_index = res_index + 1;
+                child_prop_index >= 0;
+                --child_prop_index
+            ) {
+                if (resonant_prop_mask & (1 << child_prop_index)) {
+                    auto& child_particle = event.particles.at(child_res_index + 2);
+                    child_particle.mother1 = res_index + 3;
+                    child_particle.mother2 = res_index + 3;
+                    ++child_res_index;
+                }
+            }
+
+            int momentum_mask = propagator.momentum_mask >> 2;
+            for (auto& particle : std::span(
+                event.particles.begin() + 2 + new_particles.size(),
+                event.particles.end()
+            )) {
+                if (momentum_mask & 1) {
+                    particle.mother1 = res_index + 3;
+                    particle.mother2 = res_index + 3;
+                }
+                momentum_mask >>= 1;
+            }
+
+            ++res_index;
+        }
+    }
 }
 
 LHEFileWriter::LHEFileWriter(
