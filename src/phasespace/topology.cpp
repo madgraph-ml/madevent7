@@ -110,7 +110,8 @@ void build_decays(
             propagator.mass,
             propagator.width,
             propagator.e_min,
-            propagator.e_max
+            propagator.e_max,
+            propagator.pdg_id,
         });
         decay_indices.push_back(decay_index);
         integration_order.push_back(propagator.integration_order);

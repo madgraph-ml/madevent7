@@ -26,7 +26,7 @@ endif()
 # Load dependencies                                                                        #
 ############################################################################################
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 include(FetchContent)
 include(ExternalProject)
 

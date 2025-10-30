@@ -232,17 +232,19 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("mass")=0., py::arg("width")=0.);
 
     py::classh<Propagator>(m, "Propagator")
-        .def(py::init<double, double, int, double, double>(),
+        .def(py::init<double, double, int, double, double, int>(),
              py::arg("mass")=0.,
              py::arg("width")=0.,
              py::arg("integration_order")=0,
              py::arg("e_min")=0.,
-             py::arg("e_max")=0.)
+             py::arg("e_max")=0.,
+             py::arg("pdg_id")=0)
         .def_readonly("mass", &Propagator::mass)
         .def_readonly("width", &Propagator::width)
         .def_readonly("integration_order", &Propagator::integration_order)
         .def_readonly("e_min", &Propagator::e_min)
-        .def_readonly("e_max", &Propagator::e_max);
+        .def_readonly("e_max", &Propagator::e_max)
+        .def_readonly("pdg_id", &Propagator::pdg_id);
 
     py::classh<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<std::size_t>, double>(),
@@ -323,6 +325,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("width", &Topology::Decay::width)
         .def_readonly("e_min", &Topology::Decay::e_min)
         .def_readonly("e_max", &Topology::Decay::e_max)
+        .def_readonly("pdg_id", &Topology::Decay::pdg_id)
         .def_readonly("on_shell", &Topology::Decay::on_shell);
     auto& topology = py::classh<Topology>(m, "Topology")
         .def(py::init<const Diagram&>(), py::arg("diagram"))
@@ -764,6 +767,7 @@ PYBIND11_MODULE(_madevent_py, m) {
                       std::vector<Topology>,
                       std::vector<std::vector<std::vector<std::size_t>>>,
                       std::vector<std::vector<std::size_t>>,
+                      std::vector<std::vector<std::vector<std::size_t>>>,
                       std::vector<std::vector<std::tuple<int, int>>>,
                       std::unordered_map<int, int>,
                       std::vector<std::vector<double>>,
@@ -771,7 +775,8 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("process_id")=0,
              py::arg("topologies")=std::vector<Topology>{},
              py::arg("permutations")=std::vector<std::vector<std::vector<std::size_t>>>{},
-             py::arg("channel_indices")=std::vector<std::vector<std::size_t>>{},
+             py::arg("diagram_indices")=std::vector<std::vector<std::size_t>>{},
+             py::arg("diagram_color_indices")=std::vector<std::vector<std::vector<std::size_t>>>{},
              py::arg("color_flows")=std::vector<std::vector<std::tuple<int, int>>>{},
              py::arg("pdg_color_types")=std::unordered_map<int, int>{},
              py::arg("helicities")=std::vector<std::vector<double>>{},
@@ -779,7 +784,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("process_id", &LHECompleter::SubprocArgs::process_id)
         .def_readwrite("topologies", &LHECompleter::SubprocArgs::topologies)
         .def_readwrite("permutations", &LHECompleter::SubprocArgs::permutations)
-        .def_readwrite("channel_indices", &LHECompleter::SubprocArgs::channel_indices)
+        .def_readwrite("diagram_indices", &LHECompleter::SubprocArgs::diagram_indices)
+        .def_readwrite("diagram_color_indices", &LHECompleter::SubprocArgs::diagram_color_indices)
         .def_readwrite("color_flows", &LHECompleter::SubprocArgs::color_flows)
         .def_readwrite("pdg_color_types", &LHECompleter::SubprocArgs::pdg_color_types)
         .def_readwrite("helicities", &LHECompleter::SubprocArgs::helicities)
