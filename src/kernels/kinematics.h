@@ -48,7 +48,7 @@ KERNELSPEC FVal<T> kaellen(FVal<T> x, FVal<T> y, FVal<T> z) {
 template<typename T>
 KERNELSPEC FVal<T> bk_V(
     FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
     FVal<T> t1_abs, FVal<T> t2, FVal<T> s12) {
     // Determinant of the 3x3 V-matrix,
     // see Eq.(11) in 10.1103/PhysRev.187.2008.
@@ -69,7 +69,7 @@ KERNELSPEC FVal<T> bk_V(
 template<typename T>
 KERNELSPEC FVal<T> bk_gram4(
     FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
     FVal<T> t1_abs, FVal<T> t2, FVal<T> s12, FVal<T> s23) {
     // omputes the 4x4 Gram determinant,
     // see Eq.(B6) in 10.1103/PhysRev.187.2008.
@@ -112,7 +112,7 @@ KERNELSPEC FVal<T> bk_gram4(
 template<typename T>
 KERNELSPEC FVal<T> bk_sqrt_g3i_g3im1(
     FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2, 
+    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
     FVal<T> t1_abs, FVal<T> t2, FVal<T> s12) {
     // This is the squaet root of the product of the two 3x3 Gram determinants g3i and g3im1,
     // as in Eq.(11) in 10.1103/PhysRev.187.2008.
@@ -273,7 +273,7 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     // Define mass squares
     auto m1sq = m1 * m1;
     auto m2sq = m2 * m2;
-    auto m3sq = m3 * m3;    
+    auto m3sq = m3 * m3;
 
     // define energy E1
     auto E1_max = m0 / 2 + (m1sq - (m2 + m3) * (m2 + m3)) / (2 * m0);
@@ -481,7 +481,7 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
     IIn<T,0> phi_index, FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
     FIn<T,0> s23, FIn<T,0> t1_abs, FIn<T,0> m1, FIn<T,0> m2,
     FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
-) { 
+) {
     FourMom<T> p_12, p_c, p_tot;
     for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
     for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
@@ -526,7 +526,7 @@ KERNELSPEC void kernel_three_body_decay_com(
     auto p2_tmp = decay_out.second;
     auto det_tmp = decay_out.third;
     store_mom<T>(p1, p1_tmp);
-    store_mom<T>(p2, p2_tmp); 
+    store_mom<T>(p2, p2_tmp);
     det = det_tmp;
     auto e3 = m0 - p1_tmp[0] - p2_tmp[0];
     p3[0] = max(e3, 0.);

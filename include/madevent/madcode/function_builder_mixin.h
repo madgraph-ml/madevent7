@@ -5,16 +5,16 @@ Value stack(ValueVec args) {
     return instruction("stack", args)[0];
 }
 
-ValueVec unstack(Value in) {
-    return instruction("unstack", {in});
+ValueVec unstack(Value in1) {
+    return instruction("unstack", {in1});
 }
 
-ValueVec unstack_sizes(Value in) {
-    return instruction("unstack_sizes", {in});
+ValueVec unstack_sizes(Value in1) {
+    return instruction("unstack_sizes", {in1});
 }
 
-std::array<Value, 2> pop(Value in) {
-    auto output_vector = instruction("pop", {in});
+std::array<Value, 2> pop(Value in1) {
+    auto output_vector = instruction("pop", {in1});
     return {output_vector[0], output_vector[1]};
 }
 
@@ -23,8 +23,8 @@ std::array<Value, 2> batch_cat(ValueVec args) {
     return {output_vector[0], output_vector[1]};
 }
 
-ValueVec batch_split(Value in, Value counts) {
-    return instruction("batch_split", {in, counts});
+ValueVec batch_split(Value in1, Value counts) {
+    return instruction("batch_split", {in1, counts});
 }
 
 Value cat(ValueVec args) {
@@ -67,16 +67,16 @@ Value mul(Value in1, Value in2) {
     return instruction("mul", {in1, in2})[0];
 }
 
-Value reduce_product(Value in) {
-    return instruction("reduce_product", {in})[0];
+Value reduce_product(Value in1) {
+    return instruction("reduce_product", {in1})[0];
 }
 
-Value sqrt(Value in) {
-    return instruction("sqrt", {in})[0];
+Value sqrt(Value in1) {
+    return instruction("sqrt", {in1})[0];
 }
 
-Value square(Value in) {
-    return instruction("square", {in})[0];
+Value square(Value in1) {
+    return instruction("square", {in1})[0];
 }
 
 Value min(Value in1, Value in2) {
@@ -313,28 +313,28 @@ Value matmul(Value x, Value weight, Value bias) {
     return instruction("matmul", {x, weight, bias})[0];
 }
 
-Value relu(Value in) {
-    return instruction("relu", {in})[0];
+Value relu(Value in1) {
+    return instruction("relu", {in1})[0];
 }
 
-Value leaky_relu(Value in) {
-    return instruction("leaky_relu", {in})[0];
+Value leaky_relu(Value in1) {
+    return instruction("leaky_relu", {in1})[0];
 }
 
-Value elu(Value in) {
-    return instruction("elu", {in})[0];
+Value elu(Value in1) {
+    return instruction("elu", {in1})[0];
 }
 
-Value gelu(Value in) {
-    return instruction("gelu", {in})[0];
+Value gelu(Value in1) {
+    return instruction("gelu", {in1})[0];
 }
 
-Value sigmoid(Value in) {
-    return instruction("sigmoid", {in})[0];
+Value sigmoid(Value in1) {
+    return instruction("sigmoid", {in1})[0];
 }
 
-Value softplus(Value in) {
-    return instruction("softplus", {in})[0];
+Value softplus(Value in1) {
+    return instruction("softplus", {in1})[0];
 }
 
 std::array<Value, 3> rqs_reshape(Value input, Value bin_count) {
@@ -444,4 +444,3 @@ std::array<Value, 2> vegas_histogram(Value input, Value weights, Value bin_count
     auto output_vector = instruction("vegas_histogram", {input, weights, bin_count});
     return {output_vector[0], output_vector[1]};
 }
-

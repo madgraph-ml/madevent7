@@ -84,4 +84,3 @@ void madevent::initialize_vegas_grid(ContextPtr context, const std::string& grid
         grid_global.copy_from(grid);
     }
 }
-

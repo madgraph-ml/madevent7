@@ -14,8 +14,8 @@ stack:
 
 unstack:
   inputs:
-    - name: in
-      desc: 
+    - name: in1
+      desc:
   outputs: any
   desc:
   class: UnstackInstruction
@@ -24,16 +24,16 @@ unstack:
 
 unstack_sizes:
   inputs:
-    - name: in
-      desc: 
+    - name: in1
+      desc:
   outputs: any
-  desc: 
+  desc:
   class: UnstackSizesInstruction
   custom_op: True
 
 pop:
   inputs:
-    - name: in
+    - name: in1
       type: [float, n, ...]
       desc:
   outputs:
@@ -60,7 +60,7 @@ batch_cat:
 
 batch_split:
   inputs:
-    - name: in
+    - name: in1
       desc:
     - name: counts
       desc:
@@ -196,7 +196,7 @@ mul:
 
 reduce_product:
   inputs:
-    - name: in
+    - name: in1
       type: [float, n]
       desc:
   outputs:
@@ -207,7 +207,7 @@ reduce_product:
 
 sqrt:
   inputs:
-    - name: in
+    - name: in1
       type: [float]
       desc:
   outputs:
@@ -217,7 +217,7 @@ sqrt:
 
 square:
   inputs:
-    - name: in
+    - name: in1
       type: [float]
       desc:
   outputs:
@@ -1350,7 +1350,7 @@ matmul:
 
 relu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1362,7 +1362,7 @@ relu:
 
 leaky_relu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1374,7 +1374,7 @@ leaky_relu:
 
 elu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1386,7 +1386,7 @@ elu:
 
 gelu:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1398,7 +1398,7 @@ gelu:
 
 sigmoid:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1411,7 +1411,7 @@ sigmoid:
 
 softplus:
   inputs:
-    - name: in
+    - name: in1
       type: [float, ...]
       desc:
   outputs:
@@ -1625,7 +1625,7 @@ permute_momenta:
   outputs:
     - name: output
       type: [float, n, 4]
-      desc: 
+      desc:
 
 gather:
   inputs:
@@ -1805,4 +1805,3 @@ vegas_histogram:
       type: [int, single, n, b]
       desc:
   custom_op: True
-

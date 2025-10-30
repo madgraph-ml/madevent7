@@ -300,4 +300,3 @@ python_add_library(
 target_link_libraries(_madevent_py PRIVATE pybind11::headers)
 target_link_libraries(_madevent_py PUBLIC madevent)
 install(TARGETS _madevent_py DESTINATION madevent7)
-

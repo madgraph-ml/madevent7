@@ -11,4 +11,3 @@
 #include "vegas.h"
 #include "pdf.h"
 #include "scale.h"
-

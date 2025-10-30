@@ -149,4 +149,3 @@ inline FVec exp(FVec arg1) { return Sleef_expd2_u10(arg1); }
 inline FVec log1p(FVec arg1) { return Sleef_log1pd2_u10(arg1); }
 inline FVec expm1(FVec arg1) { return Sleef_expm1d2_u10(arg1); }
 inline FVec erf(FVec arg1) { return Sleef_erfd2_u10(arg1); }
-

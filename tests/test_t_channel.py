@@ -1,9 +1,10 @@
 import math
 
-import madevent7 as me
 import numpy as np
 import pytest
 from pytest import approx
+
+import madevent7 as me
 
 
 @pytest.fixture

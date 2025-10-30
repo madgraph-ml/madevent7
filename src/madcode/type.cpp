@@ -226,4 +226,3 @@ void madevent::from_json(const json& j, DataType& dtype) {
         throw std::invalid_argument("invalid data type");
     }
 }
-

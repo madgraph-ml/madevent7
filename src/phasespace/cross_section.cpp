@@ -122,4 +122,3 @@ ValueVec DifferentialCrossSection::build_function_impl(
         return me_result;
     }
 }
-

@@ -1134,4 +1134,3 @@ std::tuple<
 extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent) {
     return new CpuRuntime(function, context, concurrent);
 }
-

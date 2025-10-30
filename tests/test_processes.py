@@ -3,10 +3,11 @@ import math
 import os
 from glob import glob
 
-import madevent7 as me
 import numpy as np
 import pytest
 from pytest import approx
+
+import madevent7 as me
 
 BATCH_SIZE = 1000
 CM_ENERGY = 13000.0

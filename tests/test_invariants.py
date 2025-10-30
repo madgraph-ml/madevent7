@@ -1,7 +1,8 @@
-import madevent7 as me
 import numpy as np
 import pytest
 from pytest import approx
+
+import madevent7 as me
 
 COUNT = 10000
 SQRT_S_MAX = 13000.0

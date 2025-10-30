@@ -14,11 +14,11 @@ namespace {
 
 void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("stack", &FunctionBuilder::stack, py::arg("args"));
-    fb.def("unstack", &FunctionBuilder::unstack, py::arg("in"));
-    fb.def("unstack_sizes", &FunctionBuilder::unstack_sizes, py::arg("in"));
-    fb.def("pop", &FunctionBuilder::pop, py::arg("in"));
+    fb.def("unstack", &FunctionBuilder::unstack, py::arg("in1"));
+    fb.def("unstack_sizes", &FunctionBuilder::unstack_sizes, py::arg("in1"));
+    fb.def("pop", &FunctionBuilder::pop, py::arg("in1"));
     fb.def("batch_cat", &FunctionBuilder::batch_cat, py::arg("args"));
-    fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in"), py::arg("counts"));
+    fb.def("batch_split", &FunctionBuilder::batch_split, py::arg("in1"), py::arg("counts"));
     fb.def("cat", &FunctionBuilder::cat, py::arg("args"));
     fb.def("batch_size", &FunctionBuilder::batch_size, py::arg("args"));
     fb.def("offset_indices", &FunctionBuilder::offset_indices, py::arg("batch_sizes_offset"), py::arg("batch_sizes_out"));
@@ -29,9 +29,9 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("add_int", &FunctionBuilder::add_int, py::arg("in1"), py::arg("in2"));
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
-    fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in"));
-    fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in"));
-    fb.def("square", &FunctionBuilder::square, py::arg("in"));
+    fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in1"));
+    fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in1"));
+    fb.def("square", &FunctionBuilder::square, py::arg("in1"));
     fb.def("min", &FunctionBuilder::min, py::arg("in1"), py::arg("in2"));
     fb.def("max", &FunctionBuilder::max, py::arg("in1"), py::arg("in2"));
     fb.def("boost_beam", &FunctionBuilder::boost_beam, py::arg("p1"), py::arg("x1"), py::arg("x2"));
@@ -84,12 +84,12 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("interpolate_pdf", &FunctionBuilder::interpolate_pdf, py::arg("x"), py::arg("q2"), py::arg("pid_indices"), py::arg("grid_logx"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("interpolate_alpha_s", &FunctionBuilder::interpolate_alpha_s, py::arg("q2"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("matmul", &FunctionBuilder::matmul, py::arg("x"), py::arg("weight"), py::arg("bias"));
-    fb.def("relu", &FunctionBuilder::relu, py::arg("in"));
-    fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in"));
-    fb.def("elu", &FunctionBuilder::elu, py::arg("in"));
-    fb.def("gelu", &FunctionBuilder::gelu, py::arg("in"));
-    fb.def("sigmoid", &FunctionBuilder::sigmoid, py::arg("in"));
-    fb.def("softplus", &FunctionBuilder::softplus, py::arg("in"));
+    fb.def("relu", &FunctionBuilder::relu, py::arg("in1"));
+    fb.def("leaky_relu", &FunctionBuilder::leaky_relu, py::arg("in1"));
+    fb.def("elu", &FunctionBuilder::elu, py::arg("in1"));
+    fb.def("gelu", &FunctionBuilder::gelu, py::arg("in1"));
+    fb.def("sigmoid", &FunctionBuilder::sigmoid, py::arg("in1"));
+    fb.def("softplus", &FunctionBuilder::softplus, py::arg("in1"));
     fb.def("rqs_reshape", &FunctionBuilder::rqs_reshape, py::arg("input"), py::arg("bin_count"));
     fb.def("rqs_find_bin", &FunctionBuilder::rqs_find_bin, py::arg("input"), py::arg("in_sizes"), py::arg("out_sizes"), py::arg("derivatives"));
     fb.def("rqs_forward", &FunctionBuilder::rqs_forward, py::arg("input"), py::arg("condition"));
