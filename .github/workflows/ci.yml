@@ -44,7 +44,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-15-intel, macos-15]
+        os: [macos-15-intel, macos-14]
 
     steps:
       - uses: actions/checkout@v5
@@ -52,6 +52,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.2.1
         env:
+          MACOSX_DEPLOYMENT_TARGET: 14.5
           CIBW_TEST_REQUIRES: pytest numpy torch
           CIBW_TEST_COMMAND: pytest {project}/tests
 
