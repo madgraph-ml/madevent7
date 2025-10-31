@@ -26,7 +26,7 @@ endif()
 # Load dependencies                                                                        #
 ############################################################################################
 
-find_package(Python REQUIRED COMPONENTS Interpreter Development)
+find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 include(FetchContent)
 include(ExternalProject)
 
@@ -224,9 +224,9 @@ if(COMPILE_CUDA)
         src/cuda/device.h
         ${KERNEL_SRC}
     )
-    #set_target_properties(
-    #    madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
-    #)
+    set_target_properties(
+        madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
+    )
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
     target_link_libraries(madevent_cuda PRIVATE madevent)
