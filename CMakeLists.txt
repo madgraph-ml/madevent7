@@ -153,6 +153,7 @@ add_library(
     include/madevent/phasespace/luminosity.h
     include/madevent/phasespace/topology.h
     include/madevent/phasespace/t_propagator_mapping.h
+    include/madevent/phasespace/color_ordered_mapping.h
     include/madevent/phasespace/phasespace.h
     include/madevent/phasespace/multichannel.h
     include/madevent/phasespace/rambo.h
