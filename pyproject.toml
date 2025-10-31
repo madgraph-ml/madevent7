@@ -16,10 +16,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = [
-  #"numpy",
-  #"torch",
-]
+dependencies = []
 
 [tool.scikit-build]
 wheel.expand-macos-universal-tags = true
