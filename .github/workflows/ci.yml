@@ -14,9 +14,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            CIBW_BUILD: cp311-manylinux_x86_64 cp312-manylinux_x86_64
+            build_small: cp312-manylinux_x86_64
+            build_full: cp3*-manylinux_x86_64
             CIBW_BEFORE_ALL: >
-              yum clean all &&
               yum -y install openblas-devel yum-utils &&
               yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo &&
               yum -y install cuda-nvcc-12-8 cuda-cudart-devel-12-8 cuda-thrust-12-8 libcublas-devel-12-8 libcurand-devel-12-8
@@ -30,7 +30,8 @@ jobs:
               -w {dest_dir} {wheel}
             CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin
           - os: macos-14
-            CIBW_BUILD: cp311-macosx_arm64 cp312-macosx_arm64
+            build_small: cp312-macosx_arm64
+            build_full: cp3*-macosx_arm64
             MACOSX_DEPLOYMENT_TARGET: 14.5
             CIBW_REPAIR_WHEEL_COMMAND: >
               delocate-wheel
@@ -43,7 +44,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.2.1
         env:
-            CIBW_BUILD: ${{ matrix.CIBW_BUILD }}
+            CIBW_BUILD: ${{ (github.event_name == 'release' || github.ref == 'refs/heads/main') && matrix.build_full || matrix.build_small }}
             CIBW_BEFORE_ALL: ${{ matrix.CIBW_BEFORE_ALL }}
             CIBW_REPAIR_WHEEL_COMMAND: ${{ matrix.CIBW_REPAIR_WHEEL_COMMAND }}
             CIBW_ENVIRONMENT: ${{ matrix.CIBW_ENVIRONMENT }}
@@ -99,9 +100,7 @@ jobs:
       - name: Sign the dists with Sigstore
         uses: sigstore/gh-action-sigstore-python@v3.0.0
         with:
-          inputs: >-
-            ./dist/*.tar.gz
-            ./dist/*.whl
+          inputs: ./dist/*.whl
       - name: Upload artifact signatures to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
