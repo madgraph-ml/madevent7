@@ -2,6 +2,7 @@
 
 #include <optional>
 #include <vector>
+#include <random>
 
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
@@ -101,7 +102,8 @@ private:
     struct ChannelState {
         std::size_t index;
         RuntimePtr runtime;
-        EventFile writer;
+        EventFile event_file;
+        EventFile weight_file;
         std::optional<VegasGridOptimizer> vegas_optimizer;
         RuntimePtr vegas_histogram;
         std::optional<DiscreteOptimizer> discrete_optimizer;
@@ -116,9 +118,8 @@ private:
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
-        //std::multiset<double, std::greater<double>> large_weights;
         std::vector<double> large_weights;
-        std::size_t job_count;
+        std::size_t job_count = 0;
     };
     struct RunningJob {
         std::size_t channel_index;
@@ -130,14 +131,13 @@ private:
     ContextPtr _context;
     Config _config;
     std::vector<ChannelState> _channels;
-    double _max_weight;
     RuntimePtr _unweighter;
     Status _status_all;
-    EventFile _writer;
     std::unordered_map<std::size_t, RunningJob> _running_jobs;
     std::size_t _job_id;
 
     void unweight_all();
+    void unweight_channel(ChannelState& channel, std::mt19937 rand_gen);
     void combine();
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
         ChannelState& channel, TensorVec& events, bool always_optimize

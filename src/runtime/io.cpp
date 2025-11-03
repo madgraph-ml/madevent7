@@ -66,7 +66,25 @@ json parse_header(std::fstream& file_stream) {
     return json::parse(header);
 }
 
-std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(std::fstream& file_stream) {
+std::vector<FieldDescr> full_descr(
+    std::size_t particle_count,
+    std::span<FieldDescr> event_field_descr,
+    std::span<FieldDescr> particle_field_descr
+) {
+    std::vector<FieldDescr> field_descr{event_field_descr.begin(), event_field_descr.end()};
+    for (std::size_t i = 1; i <= particle_count; ++i) {
+        for (auto& [field_name, field_type] : particle_field_descr) {
+            field_descr.push_back({std::format("part{}_{}", i, field_name), field_type});
+        }
+    }
+    return field_descr;
+}
+
+std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(
+    std::fstream& file_stream,
+    std::span<FieldDescr> event_field_descr,
+    std::span<FieldDescr> particle_field_descr
+) {
     json header = parse_header(file_stream);
     if (!header.is_object()) {
         throw std::runtime_error("Invalid header");
@@ -76,7 +94,8 @@ std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(std::fstream
     json header_shape = header.at("shape");
     if (
         !descr.is_array() ||
-        (descr.size() - 1) % 5 != 0 ||
+        descr.size() < event_field_descr.size() ||
+        (descr.size() - event_field_descr.size()) % particle_field_descr.size() != 0 ||
         !fortran_order.is_boolean() ||
         fortran_order.get<bool>() ||
         header_shape.is_array() ||
@@ -84,48 +103,36 @@ std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(std::fstream
     ) {
         throw std::runtime_error("Invalid header for event file");
     }
-    auto particle_count = (descr.size() - 1) / 5;
-    auto event_count = (descr.size() - 1) / 5;
-    json weight_descr = descr.at(0);
-    if (
-        !weight_descr.is_array() ||
-        weight_descr.size() != 2 ||
-        weight_descr.at(0) != "w" ||
-        weight_descr.at(1) != "<i8"
-    ) {
-        throw std::runtime_error("Invalid header for event file");
-    }
-    auto descr_iter = descr.begin() + 1;
-    const std::tuple<std::string,std::string> particle_descr[5] = {
-        {"pid", "<i8"}, {"e", "<f8"}, {"px", "<f8"}, {"py", "<f8"}, {"pz", "<f8"}
-    };
-    for (std::size_t i = 1; i <= particle_count; ++i) {
-        for (auto& [name_str, desc_str] : particle_descr) {
-            auto& descr_item = *(descr_iter++);
-            if (
-                !descr_item.is_array() ||
-                descr_item.size() != 2 ||
-                descr_item.at(0) != std::format("{}{}", name_str, i) ||
-                descr_item.at(1) != desc_str
-            ) {
-                throw std::runtime_error("Invalid header for event file");
-            }
+    std::size_t particle_count = (descr.size() - event_field_descr.size()) / 5;
+    std::size_t event_count = header_shape.at(0).get<std::size_t>();
+
+    auto field_descr = full_descr(particle_count, event_field_descr, particle_field_descr);
+    for (auto [descr_item, descr_expected] : zip(descr, field_descr)) {
+        if (
+            !descr_item.is_array() ||
+            descr_item.size() != 2 ||
+            descr_item.at(0) != descr_expected.first ||
+            descr_item.at(1) != descr_expected.second
+        ) {
+            throw std::runtime_error("Invalid header for event file");
         }
     }
-    auto header_size = 0;
+    std::size_t header_size = 0;
     return {header_size, particle_count, event_count};
 }
 
 std::tuple<std::size_t, std::size_t> write_event_header(
-    std::fstream& file_stream, std::size_t particle_count, std::size_t header_size = 0
+    std::fstream& file_stream,
+    std::size_t particle_count,
+    std::span<FieldDescr> event_field_descr,
+    std::span<FieldDescr> particle_field_descr,
+    std::size_t header_size = 0
 ) {
     using namespace std::string_literals;
     file_stream << "\x93NUMPY\x01\x00\x00\x00{'descr':[('w','<f8'),"s;
-    for (std::size_t i = 1; i <= particle_count; ++i) {
-        file_stream << std::format(
-            "('pid{}','<i8'),('e{}','<f8'),('px{}','<f8'),('py{}','<f8'),('pz{}','<f8'),",
-            i, i, i, i, i
-        );
+    auto field_descr = full_descr(particle_count, event_field_descr, particle_field_descr);
+    for (auto [field_name, field_type] : field_descr) {
+        file_stream << std::format("('{}','{}'),", field_name, field_type);
     }
     file_stream << "],'fortran_order':False,'shape':(";
     std::size_t shape_pos = file_stream.tellp();
@@ -200,8 +207,9 @@ void madevent::save_tensor(const std::string& file, Tensor tensor) {
 
 EventFile::EventFile(
     const std::string& file_name,
+    EventFile::DataDescr descr,
     std::size_t particle_count,
-    EventFile::Mode mode,
+    Mode mode,
     bool delete_on_close
 ) :
     _file_name(file_name),
@@ -209,6 +217,7 @@ EventFile::EventFile(
     _current_event(0),
     _capacity(0),
     _particle_count(particle_count),
+    _event_size(descr.event_size + particle_count * descr.particle_size),
     _mode(mode),
     _delete_on_close(delete_on_close)
 {
@@ -223,87 +232,24 @@ EventFile::EventFile(
         throw std::runtime_error(std::format("Could not open file {}", file_name));
     }
     if (mode == EventFile::create) {
-        std::tie(_header_size, _shape_pos) =
-            write_event_header(_file_stream, _particle_count);
+        std::tie(_header_size, _shape_pos) = write_event_header(
+            _file_stream, particle_count, descr.event_fields, descr.particle_fields
+        );
     } else {
         std::tie(_header_size, _particle_count, _event_count) =
-            read_event_header(_file_stream);
+            read_event_header(_file_stream, descr.event_fields, descr.particle_fields);
         if (mode == EventFile::load) {
             std::tie(_header_size, _shape_pos) = write_event_header(
-                _file_stream, _particle_count, _header_size
+                _file_stream, particle_count, descr.event_fields, descr.particle_fields, _header_size
             );
         }
         _capacity = _event_count;
     }
 }
 
-void EventFile::write(const EventBuffer& event) {
-    if (_mode == EventFile::load) {
-        throw std::runtime_error("Event file opened in read mode.");
-    }
-    if (event.particles().size() != _particle_count) {
-        throw std::invalid_argument("Wrong number of particles");
-    }
-    _file_stream.write(event.data(), event.size());
-    ++_current_event;
-    if (_current_event > _event_count) {
-        _event_count = _current_event;
-    }
-}
-
-bool EventFile::read(EventBuffer& event) {
-    if (_current_event == _event_count) return false;
-    auto count = event.particles().size();
-    if (count == _particle_count) {
-        _file_stream.read(event.data(), event.size());
-    } else if (count > _particle_count) {
-        _file_stream.read(event.data(), EventBuffer::size(_particle_count));
-        event.clear_rest(_particle_count);
-    } else {
-        throw std::invalid_argument("Wrong number of particles");
-    }
-    //if (_file_stream.fail()) return false;
-    ++_current_event;
-    return true;
-}
-
 void EventFile::seek(std::size_t index) {
     _current_event = index;
-    _file_stream.seekp(_header_size + index * EventBuffer::size(_particle_count));
-}
-
-std::size_t EventFile::unweight(double max_weight, std::function<double()> random_generator) {
-    if (_mode == EventFile::load) {
-        throw std::runtime_error("Event file opened in read mode.");
-    }
-
-    std::size_t buf_size = 1000;
-    std::vector<EventBuffer> buffers(buf_size, EventBuffer(_particle_count));
-    std::size_t accept_count = 0;
-    for (std::size_t i = 0; i < _event_count; i += buf_size) {
-        seek(i);
-        std::size_t buf_size = i;
-        for (auto& buffer : buffers) {
-            if (buf_size >= _event_count) break;
-            read(buffer);
-            double& weight = buffer.event().weight;
-            if (weight / max_weight < random_generator()) {
-                weight = 0;
-            } else {
-                weight = std::max(weight, max_weight);
-                ++accept_count;
-            }
-            ++buf_size;
-        }
-        seek(i);
-        for (auto& buffer : buffers) {
-            if (buf_size == 0) break;
-            write(buffer);
-            --buf_size;
-        }
-    }
-
-    return accept_count;
+    _file_stream.seekp(_header_size + index * _event_size);
 }
 
 void EventFile::clear() {

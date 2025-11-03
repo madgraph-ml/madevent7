@@ -3,7 +3,6 @@
 #include <filesystem>
 #include <format>
 #include <cmath>
-#include <random>
 #include <ranges>
 
 #include "madevent/runtime/format.h"
@@ -23,7 +22,6 @@ EventGenerator::EventGenerator(
 ) :
     _context(context),
     _config(config),
-    _max_weight(0.),
     _unweighter(build_runtime(
         Unweighter(
             {channels.at(0).return_types().at(0), channels.at(0).return_types().at(1)}
@@ -33,12 +31,6 @@ EventGenerator::EventGenerator(
     )),
     _status_all(
         {0, 0., 0., 0., 0, 0, 0., static_cast<double>(config.target_count), false, false}
-    ),
-    _writer(
-        file_name,
-        std::ranges::max(std::views::transform(channels, [] (auto& chan) {
-            return chan.particle_count();
-        }))
     ),
     _job_id(0)
 {
@@ -52,7 +44,6 @@ EventGenerator::EventGenerator(
             );
         }
         auto chan_path = temp_path / file_path.stem();
-        chan_path += std::format(".channel{}.npy", i);
         std::optional<VegasGridOptimizer> vegas_optimizer;
         RuntimePtr vegas_histogram = nullptr;
         if (const auto& name = channel.vegas_grid_name(); name) {
@@ -81,14 +72,27 @@ EventGenerator::EventGenerator(
             discrete_histogram = build_runtime(hist.function(), context, false);
         }
         _channels.push_back({
-            i,
-            build_runtime(channel.function(), context, false),
-            EventFile(chan_path.string(), channel.particle_count(), EventFile::create, true),
-            vegas_optimizer,
-            std::move(vegas_histogram),
-            discrete_optimizer,
-            std::move(discrete_histogram),
-            config.start_batch_size
+            .index = i,
+            .runtime = build_runtime(channel.function(), context, false),
+            .event_file = EventFile(
+                std::format("{}.channel{}_events.npy", chan_path.string(), i),
+                EventFile::descr<EventRecord, ParticleRecord>(),
+                channel.particle_count(),
+                EventFile::create,
+                true
+            ),
+            .weight_file = EventFile(
+                std::format("{}.channel{}_weights.npy", chan_path.string(), i),
+                EventFile::descr<EventWeightRecord, EmptyParticleRecord>(),
+                0,
+                EventFile::create,
+                true
+            ),
+            .vegas_optimizer = vegas_optimizer,
+            .vegas_histogram = std::move(vegas_histogram),
+            .discrete_optimizer = discrete_optimizer,
+            .discrete_histogram = std::move(discrete_histogram),
+            .batch_size = config.start_batch_size,
         });
         ++i;
     }
@@ -189,23 +193,15 @@ void EventGenerator::generate() {
             if (_status_all.done) break;
         }
     }
-    combine();
 }
 
 void EventGenerator::unweight_all() {
     std::random_device rand_device;
     std::mt19937 rand_gen(rand_device());
-    std::uniform_real_distribution<double> rand_dist;
     bool done = true;
     double total_eff_count = 0.;
     for (auto& channel : _channels) {
-        channel.max_weight = std::max(
-            channel.max_weight, _max_weight * channel.integral_fraction
-        );
-        auto ecb = channel.eff_count;
-        channel.eff_count = channel.writer.unweight(
-            channel.max_weight, [&]() { return rand_dist(rand_gen); }
-        );
+        unweight_channel(channel, rand_gen);
 
         double chan_target = channel.integral_fraction * _config.target_count;
         if (channel.eff_count < chan_target) {
@@ -219,7 +215,38 @@ void EventGenerator::unweight_all() {
     _status_all.done = done;
 }
 
+void EventGenerator::unweight_channel(ChannelState& channel, std::mt19937 rand_gen) {
+    std::size_t buf_size = 1000000;
+    std::uniform_real_distribution<double> rand_dist;
+    EventBuffer<EventWeightRecord, EmptyParticleRecord> buffer(0, 0);
+    std::size_t accept_count = 0;
+    for (std::size_t i = 0; i < channel.weight_file.event_count(); i += buf_size) {
+        channel.weight_file.seek(i);
+        channel.weight_file.read(buffer, buf_size);
+        for (std::size_t j = 0; j < buffer.event_count(); ++j) {
+            double weight = buffer.event(j).weight;
+            if (weight / channel.max_weight < rand_dist(rand_gen)) {
+                weight = 0;
+            } else {
+                weight = std::max(weight, channel.max_weight);
+                ++accept_count;
+            }
+            buffer.set_event(j, {weight});
+        }
+        channel.weight_file.seek(i);
+        channel.weight_file.write(buffer);
+    }
+    channel.eff_count = accept_count;
+}
+
 void EventGenerator::combine() {
+    /*_writer(
+        file_name,
+        std::ranges::max(std::views::transform(channels, [] (auto& chan) {
+            return chan.particle_count();
+        }))
+    ),*/
+
     std::vector<std::size_t> channel_counts;
     std::size_t count_sum = 0;
     for (auto& channel : _channels) {
@@ -370,7 +397,8 @@ void EventGenerator::start_vegas_jobs(ChannelState& channel) {
 void EventGenerator::clear_channel(ChannelState& channel) {
     channel.eff_count = 0;
     channel.max_weight = 0;
-    channel.writer.clear();
+    channel.event_file.clear();
+    channel.weight_file.clear();
     channel.cross_section.reset();
     channel.large_weights.clear();
 }
@@ -379,7 +407,6 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
     if (channel.eff_count > _config.freeze_max_weight_after) return;
 
     auto w_view = weights.view<double,1>();
-    double chan_max_weight = _max_weight * channel.integral_fraction;
     double w_min_nonzero = 0.;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         double w = std::abs(w_view[i]);
@@ -426,22 +453,31 @@ void EventGenerator::unweight_and_write(
     auto unw_momenta = unw_events.at(1).cpu();
     auto mom_view = unw_momenta.view<double,3>();
 
-    EventBuffer buffer(channel.writer.particle_count());
-    auto& buf_event = buffer.event();
-    auto buf_particles = buffer.particles();
+    EventBuffer<EventRecord, ParticleRecord> event_buffer(
+        w_view.size(), channel.event_file.particle_count()
+    );
+    EventBuffer<EventWeightRecord, EmptyParticleRecord> weight_buffer(w_view.size(), 0);
     for (std::size_t i = 0; i < w_view.size(); ++i) {
-        buf_event.weight = w_view[i];
+        weight_buffer.set_event(i, {w_view[i]});
+        event_buffer.set_event(i, {
+            .diagram_index = 0,
+            .color_index = 0,
+            .flavor_index = 0,
+            .helicity_index = 0,
+        });
         auto event_mom = mom_view[i];
         for (std::size_t j = 0; j < event_mom.size(); ++j) {
             auto particle_mom = event_mom[j];
-            auto& buf_particle = buf_particles[j];
-            buf_particle.e = particle_mom[0];
-            buf_particle.px = particle_mom[1];
-            buf_particle.py = particle_mom[2];
-            buf_particle.pz = particle_mom[3];
+            event_buffer.set_particle(i, j, {
+                .energy = particle_mom[0],
+                .px = particle_mom[1],
+                .py = particle_mom[2],
+                .pz = particle_mom[3],
+            });
         }
-        channel.writer.write(buffer);
     }
+    channel.event_file.write(event_buffer);
+    channel.weight_file.write(weight_buffer);
 
     channel.eff_count += w_view.size();
     double total_eff_count = 0.;

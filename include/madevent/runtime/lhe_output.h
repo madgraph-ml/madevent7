@@ -43,7 +43,7 @@ struct LHEParticle {
     int status_code;
     int mother1, mother2;
     int color, anti_color;
-    double p_x, p_y, p_z, energy, mass;
+    double px, py, pz, energy, mass;
     double lifetime;
     double spin;
 };
