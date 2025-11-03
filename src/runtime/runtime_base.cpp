@@ -78,7 +78,8 @@ const LoadedRuntime& cpu_runtime() {
 #ifdef __APPLE__
             vector_size = 1;
 #else
-            vector_size = supported_vector_sizes.back();
+            //vector_size = supported_vector_sizes.back();
+            vector_size = 1;
 #endif
         } else if (
             std::find(

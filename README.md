@@ -2,27 +2,16 @@
 
 ### Installation
 
-#### Binary wheels
+#### Package
 
-Binary wheels based on the last commit that passes all unit tests are built automatically
-for Linux and MacOS X (with Apple silicon), for Python 3.11 and 3.12. Use one of the
-following commands based on your OS and Python version:
+Packages on PyPI are available for Linux and MacOS X (with Apple silicon),
+for Python 3.11 to 3.14.
 
 ```sh
-# Linux, Python 3.11
-pip install https://github.com/madgraph-ml/madevent7/releases/download/latest/madevent7-0.1.0-cp311-cp311-linux_x86_64.whl
-
-# Linux, Python 3.12
-pip install https://github.com/madgraph-ml/madevent7/releases/download/latest/madevent7-0.1.0-cp312-cp312-linux_x86_64.whl
-
-# MacOS X, Python 3.11
-pip install https://github.com/madgraph-ml/madevent7/releases/download/latest/madevent7-0.1.0-cp311-cp311-macosx_14_0_arm64.whl
-
-# MacOS X, Python 3.12
-pip install https://github.com/madgraph-ml/madevent7/releases/download/latest/madevent7-0.1.0-cp312-cp312-macosx_14_0_arm64.whl
+pip install madevent7
 ```
 
-#### Development version
+#### Build
 
 First install `scikit_build_core` with
 
@@ -42,6 +31,12 @@ Then check out the `madevent7` repository and build and install it with
 ```sh
 git clone git@github.com:madgraph-ml/madevent7.git
 cd madevent7
+pip install .
+```
+
+For a development version allowing for incremental build, use the following command instead:
+
+```sh
 pip install --no-build-isolation -Cbuild-dir=build -Ccmake.build-type=RelWithDebInfo .
 ```
 
