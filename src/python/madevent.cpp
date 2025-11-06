@@ -685,14 +685,14 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<EventGenerator>(m, "EventGenerator")
         .def_readonly_static("default_config", &EventGenerator::default_config)
         .def(py::init<ContextPtr, const std::vector<Integrand>&,
-                      const std::string&, const EventGenerator::Config&,
-                      const std::optional<std::string>&>(),
-             py::arg("context"), py::arg("channels"), py::arg("file_name"),
+                      const std::string&, const EventGenerator::Config&>(),
+             py::arg("context"), py::arg("channels"), py::arg("temp_file_prefix"),
              py::arg_v("default_config", EventGenerator::default_config,
-                       "EventGenerator.default_config"),
-             py::arg("temp_file_dir")=std::nullopt)
+                       "EventGenerator.default_config"))
         .def("survey", &EventGenerator::survey)
         .def("generate", &EventGenerator::generate)
+        .def("combine_to_compact_npy", &EventGenerator::combine_to_compact_npy,
+             py::arg("file_name"))
         .def("status", &EventGenerator::status)
         .def("channel_status", &EventGenerator::channel_status)
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
@@ -753,9 +753,9 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("mother2", &LHEParticle::mother2)
         .def_readwrite("color", &LHEParticle::color)
         .def_readwrite("anti_color", &LHEParticle::anti_color)
-        .def_readwrite("p_x", &LHEParticle::p_x)
-        .def_readwrite("p_y", &LHEParticle::p_y)
-        .def_readwrite("p_z", &LHEParticle::p_z)
+        .def_readwrite("px", &LHEParticle::px)
+        .def_readwrite("py", &LHEParticle::py)
+        .def_readwrite("pz", &LHEParticle::pz)
         .def_readwrite("energy", &LHEParticle::energy)
         .def_readwrite("mass", &LHEParticle::mass)
         .def_readwrite("lifetime", &LHEParticle::lifetime)

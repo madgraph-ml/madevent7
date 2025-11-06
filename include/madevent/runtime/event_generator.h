@@ -3,6 +3,7 @@
 #include <optional>
 #include <vector>
 #include <random>
+#include <chrono>
 
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
@@ -90,14 +91,21 @@ public:
     EventGenerator(
         ContextPtr context,
         const std::vector<Integrand>& channels,
-        const std::string& file_name,
-        const Config& config = default_config,
-        const std::optional<std::string>& temp_file_dir = std::nullopt
+        const std::string& temp_file_prefix,
+        const Config& config = default_config
     );
     void survey();
     void generate();
+    void combine_to_compact_npy(const std::string& file_name);
+    void combine_to_lhe_npy(
+        const std::string& file_name, const LHECompleter& lhe_completer
+    );
+    void combine_to_lhe(
+        const std::string& file_name, const LHECompleter& lhe_completer
+    );
     Status status() const { return _status_all; }
     std::vector<Status> channel_status() const;
+
 private:
     struct ChannelState {
         std::size_t index;
@@ -126,6 +134,13 @@ private:
         TensorVec events;
         std::size_t vegas_job_count;
     };
+    struct CombineChannelData {
+        std::size_t cum_count;
+        double norm_factor;
+        EventBuffer event_buffer;
+        EventBuffer weight_buffer;
+        std::size_t buffer_index;
+    };
     inline static std::function<void(void)> _abort_check_function = []{};
 
     ContextPtr _context;
@@ -135,13 +150,16 @@ private:
     Status _status_all;
     std::unordered_map<std::size_t, RunningJob> _running_jobs;
     std::size_t _job_id;
+    std::chrono::time_point<std::chrono::steady_clock> _start_time;
+    std::chrono::time_point<std::chrono::steady_clock> _last_print_time;
 
+    void reset_start_time();
     void unweight_all();
     void unweight_channel(ChannelState& channel, std::mt19937 rand_gen);
-    void combine();
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
         ChannelState& channel, TensorVec& events, bool always_optimize
     );
+    double channel_weight_average(ChannelState& channel, std::size_t event_count);
     void start_job(
         ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count=0
     );
@@ -149,8 +167,21 @@ private:
     void clear_channel(ChannelState& channel);
     void update_max_weight(ChannelState& channel, Tensor weights);
     void unweight_and_write(ChannelState& channel, const std::vector<Tensor>& momenta);
+    std::size_t max_particle_count();
+    std::tuple<std::vector<CombineChannelData>, std::size_t> init_combine();
+    void read_and_combine(
+        std::vector<CombineChannelData>& channel_data, EventBuffer& buffer
+    );
+    void fill_lhe_event(
+        const LHECompleter& lhe_completer,
+        LHEEvent& lhe_event,
+        EventBuffer& buffer,
+        std::size_t event_index
+    );
     void print_gen_init();
     void print_gen_update();
+    void print_combine_init();
+    void print_combine_update(std::size_t count);
 };
 
 }

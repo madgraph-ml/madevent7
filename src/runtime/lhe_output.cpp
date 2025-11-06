@@ -318,9 +318,9 @@ void LHECompleter::complete_event_data(
         for (auto& particle : event.particles) {
             if (momentum_mask & 1) {
                 e += particle.energy;
-                px += particle.p_x;
-                py += particle.p_y;
-                pz += particle.p_z;
+                px += particle.px;
+                py += particle.py;
+                pz += particle.pz;
             }
             momentum_mask >>= 1;
         }
@@ -337,9 +337,9 @@ void LHECompleter::complete_event_data(
                 .mother2 = 2,
                 .color = color,
                 .anti_color = anti_color,
-                .p_x = px,
-                .p_y = py,
-                .p_z = pz,
+                .px = px,
+                .py = py,
+                .pz = pz,
                 .energy = e,
                 .mass = std::sqrt(m2),
                 .lifetime = 0,
@@ -442,7 +442,7 @@ void LHEFileWriter::write(const LHEEvent& event) {
             particle.pdg_id, particle.status_code,
             particle.mother1, particle.mother2,
             particle.color, particle.anti_color,
-            particle.p_x, particle.p_y, particle.p_z, particle.energy, particle.mass,
+            particle.px, particle.py, particle.pz, particle.energy, particle.mass,
             particle.lifetime,
             particle.spin
         );
