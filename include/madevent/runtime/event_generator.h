@@ -11,6 +11,7 @@
 #include "madevent/runtime/vegas_optimizer.h"
 #include "madevent/runtime/discrete_optimizer.h"
 #include "madevent/runtime/runtime_base.h"
+#include "madevent/runtime/format.h"
 
 namespace madevent {
 
@@ -152,6 +153,8 @@ private:
     std::size_t _job_id;
     std::chrono::time_point<std::chrono::steady_clock> _start_time;
     std::chrono::time_point<std::chrono::steady_clock> _last_print_time;
+    PrettyBox _pretty_box_upper;
+    PrettyBox _pretty_box_lower;
 
     void reset_start_time();
     void unweight_all();

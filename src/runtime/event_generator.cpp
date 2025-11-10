@@ -4,7 +4,6 @@
 #include <cmath>
 #include <ranges>
 
-#include "madevent/runtime/format.h"
 #include "madevent/util.h"
 
 using namespace madevent;
@@ -707,35 +706,36 @@ void EventGenerator::fill_lhe_event(
 
 void EventGenerator::print_gen_init() {
     _last_print_time = std::chrono::steady_clock::now();
-    println(
-        "┌ Integration and unweighting ────────────────────────────────────────────────────────────┐\n"
-        "│ Result:                                                                                 │\n"
-        "│ Rel. error:                                                                             │\n"
-        "│ Rel. stddev:                                                                            │\n"
-        "│ Number of events:                                                                       │\n"
-        "│ Unweighting eff.:                                                                       │\n"
-        "│ Unweighted events:                                                                      │\n"
-        "│ Run time:                                                                               │\n"
-        "└─────────────────────────────────────────────────────────────────────────────────────────┘\n"
-    );
 
+    std::size_t offset = 0;
     if (_channels.size() > 1) {
-        println(
-            "┌ Individual channels ────────────────────────────────────────────────────────────────────┐\n"
-            "│ #   integral ↓      RSD      uweff    N      opt    unweighted                          │"
+        _pretty_box_lower = PrettyBox(
+            "Individual channels",
+            _channels.size() < 21 ? _channels.size() + 1 : 22,
+            {4, 16, 9, 9, 7, 7, 0}
         );
-        for (std::size_t i = 0; i < _channels.size(); ++i) {
-            if (i == 20) {
-                println("│ ..{:<86}│", "");
-                break;
-            } else {
-                println("│{:<89}│", i);
-            }
+        _pretty_box_lower.set_row(
+            0, {"#", "integral ↓", "RSD", "uweff", "N", "opt", "unweighted"}
+        );
+        if (_channels.size() > 20) {
+            _pretty_box_lower.set_cell(21, 0, "..");
         }
-        println(
-            "└─────────────────────────────────────────────────────────────────────────────────────────┘\n"
-        );
+        offset = _pretty_box_lower.line_count();
     }
+    _pretty_box_upper = PrettyBox(
+        "Integration and unweighting", 7, {19, 0}, offset
+    );
+    _pretty_box_upper.set_column(0, {
+        "Result:",
+        "Rel. error:",
+        "Rel. stddev:",
+        "Number of events:",
+        "Unweighting eff.:",
+        "Unweighted events:",
+        "Run time:"
+    });
+    _pretty_box_upper.print_first();
+    if (_channels.size() > 1) _pretty_box_lower.print_first();
 }
 
 void EventGenerator::print_gen_update() {
@@ -759,6 +759,9 @@ void EventGenerator::print_gen_update() {
         format_si_prefix(_status_all.count_unweighted),
         format_si_prefix(_status_all.count_target)
     );
+    std::string time_str = std::format(
+        "{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(now - _start_time)
+    );
     if (!_status_all.done) {
         unw_str = std::format(
             "{:<15} {}",
@@ -766,26 +769,16 @@ void EventGenerator::print_gen_update() {
             format_progress(_status_all.count_unweighted / _status_all.count_target, 52)
         );
     }
-    print(
-        "\0337\033[{}F" // save cursor position, go up {} lines
-        "\033[2K│ Result:            {:<69}│\n"
-        "\033[2K│ Rel. error:        {:<69}│\n"
-        "\033[2K│ Rel. stddev:       {:<69}│\n"
-        "\033[2K│ Unweighting eff.:  {:<69}│\n"
-        "\033[2K│ Number of events:  {:<69}│\n"
-        "\033[2K│ Unweighted events: {:<69}│\n"
-        "\033[2K│ Run time:          {:<69%H:%M:%S}│\n",
-        _channels.size() == 1 ? 9 : (
-            _channels.size() > 20 ? 34 : _channels.size() + 13
-        ),
+    _pretty_box_upper.set_column(1, {
         int_str,
         rel_str,
         rsd_str,
         uweff_str,
         format_si_prefix(_status_all.count),
         unw_str,
-        std::chrono::round<std::chrono::seconds>(now - _start_time)
-    );
+        time_str
+    });
+    _pretty_box_upper.print_update();
 
     if (_channels.size() > 1) {
         auto channels = channel_status();
@@ -797,8 +790,8 @@ void EventGenerator::print_gen_update() {
             }
         );
 
-        print("\n\n\n\n");
-        for (auto& channel : channels | std::views::take(20)) {
+        for (std::size_t row = 1; auto& channel : channels | std::views::take(20)) {
+            std::string index_str = std::format("{}", channel.index);
             std::string int_str, rsd_str, count_str, unw_str, opt_str;
             if (!std::isnan(channel.error)) {
                 int_str = format_with_error(channel.mean, channel.error);
@@ -821,38 +814,32 @@ void EventGenerator::print_gen_update() {
                 }
                 unw_str = std::format("{:<15} {:<19}", unw_count_str, progress);
             }
-            madevent::println(
-                "\033[2K│ {:<4}{:<16}{:<9}{:<9}{:<7}{:<7}{} │",
-                channel.index, int_str, rsd_str, uweff_str, count_str, opt_str, unw_str
-            );
+            _pretty_box_lower.set_row(row, {
+                index_str, int_str, rsd_str, uweff_str, count_str, opt_str, unw_str
+            });
+            ++row;
         }
+        _pretty_box_lower.print_update();
     }
-
-    // restore cursor position
-    print("\0338");
-    std::cout << std::flush;
 }
 
 void EventGenerator::print_combine_init() {
-    println(
-        "┌ Writing final output ───────────────────────────────────────────────────────────────────┐\n"
-        "│ Events:                                                                                 │\n"
-        "│ Run time:                                                                               │\n"
-        "└─────────────────────────────────────────────────────────────────────────────────────────┘\n"
-    );
+    _pretty_box_upper = PrettyBox("Writing final output", 2, {10, 0});
+    _pretty_box_upper.set_column(0, {"Events:", "Run time:"});
+    _pretty_box_upper.print_first();
 }
 
 void EventGenerator::print_combine_update(std::size_t count) {
-    print(
-        "\0337\033[4F" // save cursor position, go up {} lines
-        "\033[2K│ Events:   {:>5} / {:>5}   {} │\n"
-        "\033[2K│ Run time: {:<77%H:%M:%S} │\n"
-        "\0338", // restore cursor position
-        format_si_prefix(count),
-        format_si_prefix(_config.target_count),
-        format_progress(static_cast<double>(count) / _config.target_count, 60),
-        std::chrono::round<std::chrono::seconds>(
+    _pretty_box_upper.set_column(1, {
+        std::format(
+            "{:>5} / {:>5}   {}",
+            format_si_prefix(count),
+            format_si_prefix(_config.target_count),
+            format_progress(static_cast<double>(count) / _config.target_count, 60)
+        ),
+        std::format("{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(
             std::chrono::steady_clock::now() - _start_time
-        )
-    );
+        ))
+    });
+    _pretty_box_upper.print_update();
 }

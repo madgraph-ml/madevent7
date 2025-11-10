@@ -3,6 +3,8 @@
 #include <cmath>
 #include <format>
 #include <sstream>
+#include <iostream>
+#include <span>
 
 using namespace madevent;
 
@@ -60,4 +62,73 @@ std::string madevent::format_progress(double progress, int width) {
     }
     for (int i = 0; i < n_remaining; ++i) str << progress_symbols.front();
     return str.str();
+}
+
+PrettyBox::PrettyBox(
+    const std::string& title,
+    std::size_t rows,
+    const std::vector<std::size_t>& column_sizes,
+    std::size_t offset,
+    std::size_t box_width
+) :
+    _rows(rows),
+    _columns(column_sizes.size()),
+    _offset(offset),
+    _content(rows * column_sizes.size())
+{
+
+    std::size_t column = 3;
+    _column_ends.reserve(column_sizes.size());
+    for (const std::size_t& size : column_sizes) {
+        column += size;
+        if (&size == &column_sizes.back() && column < box_width) {
+            _column_ends.push_back(box_width);
+        } else {
+            _column_ends.push_back(column);
+        }
+    }
+    box_width = _column_ends.at(_column_ends.size() - 1);
+
+    _header = std::format("┌ {} ", title);
+    for (std::size_t i = title.size() + 3; i < box_width - 1; ++i) _header += "─";
+    _header += "┐";
+
+    _footer = "└";
+    for (std::size_t i = 1; i < box_width - 1; ++i) _footer += "─";
+    _footer += "┘";
+}
+
+void PrettyBox::print_first() const {
+    std::cout << _header << "\n";
+    for (std::size_t row = 0; row < _rows; ++row) {
+        std::cout << "│ ";
+        for (std::size_t column = 0; column < _columns; ++column) {
+            std::cout << std::format(
+                "{}\033[{}G",
+                _content.at(row * _columns + column),
+                _column_ends.at(column)
+            );
+        }
+        std::cout << "│\n";
+    }
+    std::cout << _footer << "\n\n" << std::flush;
+}
+
+void PrettyBox::print_update() const {
+    // save cursor position, go up {} lines, print header
+    std::cout << std::format("\0337\033[{}F\033[2K{}\n", _rows + _offset + 3, _header);
+    for (std::size_t row = 0; row < _rows; ++row) {
+        std::cout << "\033[2K│ ";
+        for (std::size_t column = 0; column < _columns; ++column) {
+            std::cout << std::format(
+                "{}\033[{}G",
+                _content.at(row * _columns + column),
+                _column_ends.at(column)
+            );
+        }
+        std::cout << "│\n";
+    }
+
+    // restore cursor position
+    std::cout << "\033[2K" << _footer << "\0338" << std::flush;
 }

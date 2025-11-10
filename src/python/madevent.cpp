@@ -814,12 +814,27 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("file_name"), py::arg("meta"))
         .def("write", &LHEFileWriter::write, py::arg("event"));
 
-    m.def("set_thread_count", [](int new_count) {
-        default_thread_pool().set_thread_count(new_count);
-    }, py::arg("new_count"));
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
+    py::classh<PrettyBox>(m, "PrettyBox")
+        .def(py::init<const std::string&, std::size_t,
+                      const std::vector<std::size_t>&, std::size_t, std::size_t>(),
+             py::arg("title"), py::arg("rows"), py::arg("columns"),
+             py::arg("offset")=0, py::arg("box_width")=91)
+        .def("set_row", &PrettyBox::set_row,
+             py::arg("row"), py::arg("values"))
+        .def("set_column", &PrettyBox::set_column,
+             py::arg("column"), py::arg("values"))
+        .def("set_cell", &PrettyBox::set_cell,
+             py::arg("row"), py::arg("column"), py::arg("value"))
+        .def("print_first", &PrettyBox::print_first)
+        .def("print_update", &PrettyBox::print_update)
+        .def_property_readonly("line_count", &PrettyBox::line_count);
+
+    m.def("set_thread_count", [](int new_count) {
+        default_thread_pool().set_thread_count(new_count);
+    }, py::arg("new_count"));
     m.def("initialize_vegas_grid", &initialize_vegas_grid,
           py::arg("context"), py::arg("grid_name"));
     m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));
