@@ -222,19 +222,18 @@ set(
 # GPU runtimes                                                                         #
 ########################################################################################
 
-set(
-    GPU_SRC
-    src/gpu/runtime.cu
-    src/gpu/device.cu
-    src/gpu/kernel_definitions.h
-    src/gpu/runtime.h
-    src/gpu/tensor.h
-    src/gpu/device.h
-    ${KERNEL_SRC}
-)
-
 if(COMPILE_CUDA)
-    add_library(madevent_cuda SHARED ${GPU_SRC})
+    add_library(
+        madevent_cuda
+        SHARED
+        src/gpu/runtime.cu
+        src/gpu/device.cu
+        src/gpu/kernel_definitions.h
+        src/gpu/runtime.h
+        src/gpu/tensor.h
+        src/gpu/device.h
+        ${KERNEL_SRC}
+    )
     set_target_properties(
         madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
     )
@@ -247,7 +246,17 @@ if(COMPILE_CUDA)
 endif()
 
 if(COMPILE_HIP)
-    add_library(madevent_hip SHARED ${GPU_SRC})
+    add_library(
+        madevent_hip
+        SHARED
+        src/gpu/runtime.hip
+        src/gpu/device.hip
+        src/gpu/kernel_definitions.h
+        src/gpu/runtime.h
+        src/gpu/tensor.h
+        src/gpu/device.h
+        ${KERNEL_SRC}
+    )
     set_target_properties(
         madevent_hip PROPERTIES HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx950;gfx1150;gfx1151"
     )
