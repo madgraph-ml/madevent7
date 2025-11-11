@@ -2,8 +2,8 @@
 
 #include "madevent/constants.h"
 
-#ifdef __CUDACC__
-#include "../cuda/kernel_definitions.h"
+#if defined(__CUDACC__) || defined(__HIPCC__)
+#include "../gpu/kernel_definitions.h"
 #else
 #include "../cpu/kernel_definitions.h"
 #endif

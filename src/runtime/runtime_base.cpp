@@ -104,6 +104,11 @@ const LoadedRuntime& cuda_runtime() {
     return runtime;
 }
 
+const LoadedRuntime& hip_runtime() {
+    static LoadedRuntime runtime("libmadevent_hip");
+    return runtime;
+}
+
 }
 
 RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
@@ -111,6 +116,8 @@ RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context,
         return RuntimePtr(cpu_runtime().build_runtime(function, context, concurrent));
     } else if (context->device() == cuda_device()) {
         return RuntimePtr(cuda_runtime().build_runtime(function, context, concurrent));
+    } else if (context->device() == hip_device()) {
+        return RuntimePtr(hip_runtime().build_runtime(function, context, concurrent));
     } else {
         throw std::runtime_error("Invalid device");
     }
@@ -122,6 +129,10 @@ DevicePtr madevent::cpu_device() {
 
 DevicePtr madevent::cuda_device() {
     return cuda_runtime().get_device();
+}
+
+DevicePtr madevent::hip_device() {
+    return hip_runtime().get_device();
 }
 
 void madevent::set_lib_path(const std::string& lib_path) {

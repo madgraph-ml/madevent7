@@ -165,6 +165,7 @@ using DevicePtr = const Device*;
 // defined in runtime_base.cpp, but need to declare them here
 DevicePtr cpu_device();
 DevicePtr cuda_device();
+DevicePtr hip_device();
 
 class Tensor {
 public:
