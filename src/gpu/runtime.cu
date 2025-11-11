@@ -178,7 +178,7 @@ void backward_op_matmul(
 
     double alpha = 1., beta = 1.;
     gpublasHandle_t handle = instruction.runtime.gpublas_handle();
-    gpudaStream_t stream = device.stream();
+    gpuStream_t stream = device.stream();
     check_error(gpublasSetStream(handle, stream));
 
     // compute input_grad += output_grad * weight
@@ -517,7 +517,7 @@ void op_unweight(
     );
 
     Tensor indices_compacted(DataType::dt_int, {batch_size}, device);
-    check_error(gpudaStreamSynchronize(stream));
+    check_error(gpuStreamSynchronize(stream));
     auto ptr_all = thrust::device_pointer_cast(
         static_cast<me_int_t*>(indices_tmp.data())
     );

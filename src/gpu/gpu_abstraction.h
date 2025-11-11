@@ -31,8 +31,10 @@
 
 #define gpublasStatus_t cublasStatus_t
 #define gpublasHandle_t cublasHandle_t
+#define gpublasGetStatusString cublasGetStatusString
 #define GPUBLAS_STATUS_SUCCESS CUBLAS_STATUS_SUCCESS
 #define gpublasCreate cublasCreate
+#define gpublasDestroy cublasDestroy
 #define gpublasSetStream cublasSetStream
 #define gpublasDgemm cublasDgemm
 #define gpublasDgemv cublasDgemv
@@ -42,12 +44,14 @@
 #define gpurandStatus_t curandStatus_t
 #define gpurandGenerator_t curandGenerator_t
 #define gpurandCreateGenerator curandCreateGenerator
+#define gpurandDestroyGenerator curandDestroyGenerator
 #define gpurandSetPseudoRandomGeneratorSeed curandSetPseudoRandomGeneratorSeed
 #define gpurandSetStream curandSetStream
 #define gpurandGenerateUniformDouble curandGenerateUniformDouble
 #define GPURAND_STATUS_SUCCESS CURAND_STATUS_SUCCESS
+#define GPURAND_RNG_PSEUDO_DEFAULT CURAND_RNG_PSEUDO_DEFAULT
 
-namespace thrust_par = thrust::cuda::par.on;
+#define thrust_par thrust::cuda::par;
 
 #elif defined __HIPCC__
 
@@ -80,8 +84,10 @@ namespace thrust_par = thrust::cuda::par.on;
 
 #define gpublasStatus_t rocblasStatus_t
 #define gpublasHandle_t rocblasHandle_t
+#define gpublasGetStatusString rocblasGetStatusString
 #define GPUBLAS_STATUS_SUCCESS ROCBLAS_STATUS_SUCCESS
 #define gpublasCreate rocblasCreate
+#define gpublasDestroy rocblasDestroy
 #define gpublasSetStream rocblasSetStream
 #define gpublasDgemm rocblasDgemm
 #define gpublasDgemv rocblasDgemv
@@ -91,11 +97,13 @@ namespace thrust_par = thrust::cuda::par.on;
 #define gpurandStatus_t rocrandStatus_t
 #define gpurandGenerator_t rocrandGenerator_t
 #define gpurandCreateGenerator rocrandCreateGenerator
+#define gpurandDestroyGenerator rocrandDestroyGenerator
 #define gpurandSetPseudoRandomGeneratorSeed rocrandSetPseudoRandomGeneratorSeed
 #define gpurandSetStream rocrandSetStream
 #define gpurandGenerateUniformDouble rocrandGenerateUniformDouble
 #define GPURAND_STATUS_SUCCESS ROCRAND_STATUS_SUCCESS
+#define GPURAND_RNG_PSEUDO_DEFAULT ROCRAND_RNG_PSEUDO_DEFAULT
 
-namespace thrust_par = thrust::hip_rocprim::par.on;
+#define thrust_par thrust::hip_rocprim::par;
 
 #endif
