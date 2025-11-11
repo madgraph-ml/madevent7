@@ -20,7 +20,7 @@ jobs:
               yum -y install openblas-devel yum-utils &&
               yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo &&
               yum-config-manager --add-repo /project/.github/workflows/rocm.repo &&
-              yum -y install cuda-nvcc-12-8 cuda-cudart-devel-12-8 cuda-thrust-12-8 libcublas-devel-12-8 libcurand-devel-12-8 rocm-hip-runtime-devel
+              yum -y install cuda-nvcc-12-8 cuda-cudart-devel-12-8 cuda-thrust-12-8 libcublas-devel-12-8 libcurand-devel-12-8 rocm-hip-runtime-devel rocblas-devel rocrand-devel rocthrust-devel
             CIBW_REPAIR_WHEEL_COMMAND: >
               auditwheel repair
               --exclude libmadevent.so
