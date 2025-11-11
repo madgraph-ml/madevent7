@@ -51,7 +51,7 @@
 #define GPURAND_STATUS_SUCCESS CURAND_STATUS_SUCCESS
 #define GPURAND_RNG_PSEUDO_DEFAULT CURAND_RNG_PSEUDO_DEFAULT
 
-#define thrust_par thrust::cuda::par;
+#define thrust_par thrust::cuda::par
 
 #elif defined __HIPCC__
 
