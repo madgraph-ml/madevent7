@@ -28,6 +28,7 @@ jobs:
               --exclude 'libcurand.so.*'
               --exclude 'libcublasLt.so.*'
               --exclude 'libcudart.so.*'
+              --exclude 'libamdhip64.so.*'
               -w {dest_dir} {wheel}
             CIBW_ENVIRONMENT: >
                 PATH=$PATH:/usr/local/cuda/bin

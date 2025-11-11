@@ -1,6 +1,6 @@
 [rocm]
-name=ROCm 6.4 repository
-baseurl=https://repo.radeon.com/rocm/el8/6.4/main
+name=ROCm 7.1 repository
+baseurl=https://repo.radeon.com/rocm/el8/7.1/main
 enabled=1
 priority=50
 gpgcheck=1
