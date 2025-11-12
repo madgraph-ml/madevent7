@@ -12,8 +12,8 @@ std::size_t cantor_pairing(std::size_t i, std::size_t j) {
     return (i + j) * (i + j + 1) / 2 + i;
 }
 
-std::size_t cantor_pairing(std::size_t i, std::size_t j, std::size_t k) {
-    return cantor_pairing(cantor_pairing(i, j), k);
+std::size_t cantor_pairing(std::size_t i, std::size_t j, std::size_t k, std::size_t l) {
+    return cantor_pairing(cantor_pairing(i, j), cantor_pairing(k, l));
 }
 
 }
@@ -38,20 +38,42 @@ LHECompleter::LHECompleter(
             _helicities.insert(_helicities.end(), helicities.begin(), helicities.end());
         }
 
-        for (auto& color_flows : args.color_flows) {
-            if (color_flows.size() != particle_count) {
-                throw std::invalid_argument("Invalid number of colors");
+        std::size_t matrix_flavor_count = args.color_flows.size();
+        std::size_t color_count = args.color_flows.at(0).size();
+        for (auto& flavor_color_flows : args.color_flows) {
+            if (flavor_color_flows.size() != color_count) {
+                throw std::invalid_argument("Invalid number of colors per flavor");
             }
-            _colors.insert(_colors.end(), color_flows.begin(), color_flows.end());
+            for (auto& color_flows : flavor_color_flows) {
+                if (color_flows.size() != particle_count) {
+                    throw std::invalid_argument("Invalid number of particles per color");
+                }
+                _colors.insert(_colors.end(), color_flows.begin(), color_flows.end());
+            }
         }
 
-        for (auto& pdg_id_options : args.pdg_ids) {
+        if (args.pdg_ids.size() != args.matrix_flavor_indices.size()) {
+            throw std::invalid_argument(
+                "pdg_ids and matrix_flavor_indices must have same size"
+            );
+        }
+
+        for (auto [pdg_id_options, matrix_flavor_index] : zip(
+            args.pdg_ids, args.matrix_flavor_indices
+        )) {
             if (pdg_id_options.size() == 0) {
                 throw std::invalid_argument(
                     "Must provide at least one option per flavor index"
                 );
             }
-            _pdg_id_index_and_count.push_back({_pdg_ids.size(), pdg_id_options.size()});
+            if (matrix_flavor_index >= matrix_flavor_count) {
+                throw std::invalid_argument(
+                    "Invalid matrix element flavor index"
+                );
+            }
+            _pdg_id_index_and_count.push_back({
+                _pdg_ids.size(), matrix_flavor_index, pdg_id_options.size()
+            });
             for (auto& pdg_ids : pdg_id_options) {
                 if (pdg_ids.size() != particle_count) {
                     throw std::invalid_argument("Invalid number of particles ids");
@@ -91,126 +113,138 @@ LHECompleter::LHECompleter(
             )) {
                 diagram_count += diag_indices.size();
 
-                e_min.clear();
-                e_min.resize(topo.decays().size());
-                momentum_masks.clear();
-                momentum_masks.resize(topo.decays().size());
-                prop_colors.clear();
-                prop_colors.resize(topo.decays().size() * colors.size());
-                resonant_prop_indices.clear();
-                resonant_prop_indices.resize(topo.decays().size(), -1);
-                for (auto [index, mass, perm_index] : zip(
-                    topo.outgoing_indices(),
-                    topo.outgoing_masses(),
-                    std::span(permutation.begin() + 2, permutation.end())
-                )) {
-                    e_min.at(index) = mass;
-                    momentum_masks.at(index) = 1 << perm_index;
-                    for (std::size_t i = 0; std::size_t color_index : colors) {
-                        prop_colors.at(colors.size() * index + i) =
-                            args.color_flows.at(color_index).at(perm_index);
-                        ++i;
-                    }
-                }
-                for (auto& decay : std::views::reverse(topo.decays())) {
-                    if (decay.child_indices.size() == 0) continue;
-                    if (decay.index == 0 && topo.t_integration_order().size() > 0) continue;
-
-                    double& e_min_item = e_min.at(decay.index);
-                    int& momentum_mask = momentum_masks.at(decay.index);
-                    int child_prop_mask = 0;
-                    for (std::size_t child_index : decay.child_indices) {
-                        e_min_item += e_min.at(child_index);
-                        momentum_mask |= momentum_masks.at(child_index);
-                        int child_prop_index = resonant_prop_indices.at(child_index);
-                        if (child_prop_index != -1) {
-                            child_prop_mask |= 1 << child_prop_index;
+                for (
+                    std::size_t matrix_flavor_index = 0;
+                    matrix_flavor_index < matrix_flavor_count;
+                    ++matrix_flavor_index
+                ) {
+                    e_min.clear();
+                    e_min.resize(topo.decays().size());
+                    momentum_masks.clear();
+                    momentum_masks.resize(topo.decays().size());
+                    prop_colors.clear();
+                    prop_colors.resize(topo.decays().size() * colors.size());
+                    resonant_prop_indices.clear();
+                    resonant_prop_indices.resize(topo.decays().size(), -1);
+                    for (auto [index, mass, perm_index] : zip(
+                        topo.outgoing_indices(),
+                        topo.outgoing_masses(),
+                        std::span(permutation.begin() + 2, permutation.end())
+                    )) {
+                        e_min.at(index) = mass;
+                        momentum_masks.at(index) = 1 << perm_index;
+                        for (std::size_t i = 0; std::size_t color_index : colors) {
+                            prop_colors.at(colors.size() * index + i) =
+                                args.color_flows.at(matrix_flavor_index).at(color_index).at(perm_index);
+                            ++i;
                         }
                     }
-                    if (e_min_item >= decay.mass) continue;
+                    for (auto& decay : std::views::reverse(topo.decays())) {
+                        if (decay.child_indices.size() == 0) continue;
+                        if (decay.index == 0 && topo.t_integration_order().size() > 0) continue;
 
-                    resonant_prop_indices.at(decay.index) = _propagators.size() - prop_offset;
-                    _propagators.push_back({
-                        .pdg_id = decay.pdg_id,
-                        .momentum_mask = momentum_mask,
-                        .child_prop_mask = child_prop_mask,
-                        .mass = decay.mass,
-                        .width = decay.width,
-                    });
-                    int color_type = args.pdg_color_types.at(decay.pdg_id);
-                    for (std::size_t i = 0; std::size_t color_index : colors) {
-                        decay_colors.clear();
-                        decay_anti_colors.clear();
+                        double& e_min_item = e_min.at(decay.index);
+                        int& momentum_mask = momentum_masks.at(decay.index);
+                        int child_prop_mask = 0;
                         for (std::size_t child_index : decay.child_indices) {
-                            auto [color, anti_color] = prop_colors.at(colors.size() * child_index + i);
-                            decay_colors.push_back(color);
-                            decay_anti_colors.push_back(anti_color);
+                            e_min_item += e_min.at(child_index);
+                            momentum_mask |= momentum_masks.at(child_index);
+                            int child_prop_index = resonant_prop_indices.at(child_index);
+                            if (child_prop_index != -1) {
+                                child_prop_mask |= 1 << child_prop_index;
+                            }
                         }
-                        for (int& color : decay_colors) {
-                            for (int& anti_color : decay_anti_colors) {
-                                if (color == anti_color) {
-                                    color = 0;
-                                    anti_color = 0;
+                        if (e_min_item >= decay.mass) continue;
+
+                        resonant_prop_indices.at(decay.index) = _propagators.size() - prop_offset;
+                        _propagators.push_back({
+                            .pdg_id = decay.pdg_id,
+                            .momentum_mask = momentum_mask,
+                            .child_prop_mask = child_prop_mask,
+                            .mass = decay.mass,
+                            .width = decay.width,
+                        });
+                        int color_type = args.pdg_color_types.at(decay.pdg_id);
+                        for (std::size_t i = 0; std::size_t color_index : colors) {
+                            decay_colors.clear();
+                            decay_anti_colors.clear();
+                            for (std::size_t child_index : decay.child_indices) {
+                                auto [color, anti_color] = prop_colors.at(colors.size() * child_index + i);
+                                decay_colors.push_back(color);
+                                decay_anti_colors.push_back(anti_color);
+                            }
+                            for (int& color : decay_colors) {
+                                for (int& anti_color : decay_anti_colors) {
+                                    if (color == anti_color) {
+                                        color = 0;
+                                        anti_color = 0;
+                                    }
                                 }
                             }
+                            decay_colors.erase(
+                                std::remove_if(
+                                    decay_colors.begin(), decay_colors.end(),
+                                    [](int color) { return color == 0; }
+                                ),
+                                decay_colors.end()
+                            );
+                            decay_anti_colors.erase(
+                                std::remove_if(
+                                    decay_anti_colors.begin(), decay_anti_colors.end(),
+                                    [](int color) { return color == 0; }
+                                ),
+                                decay_anti_colors.end()
+                            );
+                            auto& prop_color = prop_colors.at(colors.size() * decay.index + i);
+                            if (color_type == 1) {
+                                if (decay_colors.size() > 0 || decay_anti_colors.size() > 0) {
+                                    throw std::runtime_error("Incompatible with color singlet");
+                                }
+                                prop_color = {0, 0};
+                            } else if (color_type == 3) {
+                                if (decay_colors.size() != 1 || decay_anti_colors.size() > 0) {
+                                    throw std::runtime_error("Incompatible with color triplet");
+                                }
+                                prop_color = {decay_colors.at(0), 0};
+                            } else if (color_type == -3) {
+                                if (decay_colors.size() > 0 || decay_anti_colors.size() != 1) {
+                                    throw std::runtime_error("Incompatible with anti-color triplet");
+                                }
+                                prop_color = {0, decay_anti_colors.at(0)};
+                            } else if (color_type == 8) {
+                                if (decay_colors.size() != 1 || decay_anti_colors.size() != 1) {
+                                    throw std::runtime_error("Incompatible with color octet");
+                                }
+                                prop_color = {decay_colors.at(0), decay_anti_colors.at(0)};
+                            } else {
+                                throw std::runtime_error("Invalid color type");
+                            }
+                            ++i;
                         }
-                        decay_colors.erase(
-                            std::remove_if(
-                                decay_colors.begin(), decay_colors.end(),
-                                [](int color) { return color == 0; }
-                            ),
-                            decay_colors.end()
-                        );
-                        decay_anti_colors.erase(
-                            std::remove_if(
-                                decay_anti_colors.begin(), decay_anti_colors.end(),
-                                [](int color) { return color == 0; }
-                            ),
-                            decay_anti_colors.end()
-                        );
-                        auto& prop_color = prop_colors.at(colors.size() * decay.index + i);
-                        if (color_type == 1) {
-                            if (decay_colors.size() > 0 || decay_anti_colors.size() > 0) {
-                                throw std::runtime_error("Incompatible with color singlet");
-                            }
-                            prop_color = {0, 0};
-                        } else if (color_type == 3) {
-                            if (decay_colors.size() != 1 || decay_anti_colors.size() > 0) {
-                                throw std::runtime_error("Incompatible with color triplet");
-                            }
-                            prop_color = {decay_colors.at(0), 0};
-                        } else if (color_type == -3) {
-                            if (decay_colors.size() > 0 || decay_anti_colors.size() != 1) {
-                                throw std::runtime_error("Incompatible with anti-color triplet");
-                            }
-                            prop_color = {0, decay_anti_colors.at(0)};
-                        } else if (color_type == 8) {
-                            if (decay_colors.size() != 1 || decay_anti_colors.size() != 1) {
-                                throw std::runtime_error("Incompatible with color octet");
-                            }
-                            prop_color = {decay_colors.at(0), decay_anti_colors.at(0)};
-                        } else {
-                            throw std::runtime_error("Invalid color type");
-                        }
-                        ++i;
                     }
-                }
-                std::size_t prop_count = _propagators.size() - prop_offset;
-                if (prop_count > 0) {
-                    for (std::size_t i = 0; std::size_t color : colors) {
-                        std::size_t prop_color_offset = _propagator_colors.size();
-                        for (std::size_t j = 0; int prop_index : resonant_prop_indices) {
-                            if (prop_index != -1) {
-                                _propagator_colors.push_back(
-                                    prop_colors.at(colors.size() * j + i)
-                                );
+                    std::size_t prop_count = _propagators.size() - prop_offset;
+                    if (prop_count > 0) {
+                        for (std::size_t i = 0; std::size_t color : colors) {
+                            std::size_t prop_color_offset = _propagator_colors.size();
+                            for (
+                                std::size_t j = resonant_prop_indices.size();
+                                int prop_index : std::views::reverse(resonant_prop_indices)
+                            ) {
+                                --j;
+                                if (prop_index != -1) {
+                                    _propagator_colors.push_back(
+                                        prop_colors.at(colors.size() * j + i)
+                                    );
+                                }
                             }
-                            ++j;
+                            _propagator_index_and_count[cantor_pairing(
+                                subproc_index,
+                                diag_index,
+                                color,
+                                matrix_flavor_index
+                            )] = {prop_offset, prop_color_offset, prop_count};
+                            ++i;
                         }
-                        _propagator_index_and_count[cantor_pairing(
-                            subproc_index, diag_index, color
-                        )] = {prop_offset, prop_color_offset, prop_count};
-                        ++i;
                     }
                 }
             }
@@ -223,14 +257,15 @@ LHECompleter::LHECompleter(
             .helicity_offset = helicity_offset,
             .mass_offset = mass_offset,
             .particle_count = particle_count,
-            .color_count = args.color_flows.size(),
+            .color_count = color_count,
             .flavor_count = args.pdg_ids.size(),
+            .matrix_flavor_count = matrix_flavor_count,
             .diagram_count = diagram_count,
             .helicity_count = args.helicities.size(),
         });
 
         helicity_offset += particle_count * args.helicities.size();
-        color_offset += particle_count * args.color_flows.size();
+        color_offset += particle_count * color_count * matrix_flavor_count;
         pdg_id_offset += args.pdg_ids.size();
         mass_offset += particle_count;
         ++subproc_index;
@@ -270,7 +305,7 @@ void LHECompleter::complete_event_data(
         subproc_data.helicity_offset + subproc_data.particle_count * helicity_index;
     std::size_t mass_offset = subproc_data.mass_offset;
 
-    auto [pdg_index, pdg_count] = _pdg_id_index_and_count.at(
+    auto [pdg_index, matrix_flavor_index, pdg_count] = _pdg_id_index_and_count.at(
         subproc_data.pdg_id_offset + flavor_index
     );
     std::uniform_int_distribution<std::size_t> dist(0, pdg_count - 1);
@@ -297,7 +332,10 @@ void LHECompleter::complete_event_data(
     }
 
     auto find_propagators = _propagator_index_and_count.find(cantor_pairing(
-        subprocess_index, diagram_index, color_index
+        subprocess_index,
+        diagram_index,
+        color_index,
+        matrix_flavor_index
     ));
     if (find_propagators == _propagator_index_and_count.end()) return;
     auto [prop_offset, prop_color_offset, prop_count] = find_propagators->second;

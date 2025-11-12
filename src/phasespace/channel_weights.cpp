@@ -6,8 +6,8 @@ using namespace madevent;
 
 PropagatorChannelWeights::PropagatorChannelWeights(
     const std::vector<Topology>& topologies,
-    const std::vector<std::vector<std::vector<std::size_t>>>& permutations,
-    const std::vector<std::vector<std::size_t>>& channel_indices
+    const nested_vector3<std::size_t>& permutations,
+    const nested_vector2<std::size_t>& channel_indices
 ) :
     FunctionGenerator(
         "PropagatorChannelWeights",
@@ -78,9 +78,9 @@ ValueVec PropagatorChannelWeights::build_function_impl(
 }
 
 SubchannelWeights::SubchannelWeights(
-    const std::vector<std::vector<Topology>>& topologies,
-    const std::vector<std::vector<std::vector<std::size_t>>>& permutations,
-    const std::vector<std::vector<std::size_t>>& channel_indices
+    const nested_vector2<Topology>& topologies,
+    const nested_vector3<std::size_t>& permutations,
+    const nested_vector2<std::size_t>& channel_indices
 ) :
     FunctionGenerator(
         "SubchannelWeights",
@@ -119,7 +119,7 @@ SubchannelWeights::SubchannelWeights(
 
         auto mom_terms = topos.at(0).propagator_momentum_terms(true);
         std::vector<std::size_t> on_shell_counts(mom_terms.size());
-        std::vector<std::vector<bool>> on_shell_configs;
+        nested_vector2<bool> on_shell_configs;
         for (auto& topo : topos) {
             std::size_t decay_index = 0;
             auto& configs = on_shell_configs.emplace_back();

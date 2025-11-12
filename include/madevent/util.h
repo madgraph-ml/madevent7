@@ -10,6 +10,13 @@ namespace madevent {
 template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
 
+template<typename T>
+using nested_vector2 = std::vector<std::vector<T>>;
+template<typename T>
+using nested_vector3 = std::vector<std::vector<std::vector<T>>>;
+template<typename T>
+using nested_vector4 = std::vector<std::vector<std::vector<std::vector<T>>>>;
+
 // Unfortunately nvcc does not support C++23 yet, so we implement our own zip function
 // here (based on https://github.com/alemuntoni/zip-views), otherwise use the standard
 // library function

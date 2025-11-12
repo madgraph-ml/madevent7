@@ -361,7 +361,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     psmap
         .def(py::init<const Topology&, double, bool, double,
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
+                      const nested_vector2<std::size_t>&>(),
              py::arg("topology"), py::arg("cm_energy"),
              py::arg("leptonic")=false, py::arg("invariant_power")=0.8,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
@@ -430,14 +430,14 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
         .def(py::init<const std::vector<Topology>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
+                      const nested_vector3<std::size_t>&,
+                      const nested_vector2<std::size_t>&>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
 
     py::classh<SubchannelWeights, FunctionGenerator>(m, "SubchannelWeights")
-        .def(py::init<const std::vector<std::vector<Topology>>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>>(),
+        .def(py::init<const nested_vector2<Topology>&,
+                      const nested_vector3<std::size_t>&,
+                      const nested_vector2<std::size_t>>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"))
         .def("channel_count", &SubchannelWeights::channel_count);
 
@@ -575,7 +575,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("fact_scale2"));
 
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<me_int_t>>&, std::size_t,
+        .def(py::init<const nested_vector2<me_int_t>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
                       const EnergyScale&, bool, std::size_t, bool>(),
              py::arg("pid_options"),
@@ -777,22 +777,24 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<LHECompleter::SubprocArgs>(m, "SubprocArgs")
         .def(py::init<int,
                       std::vector<Topology>,
-                      std::vector<std::vector<std::vector<std::size_t>>>,
-                      std::vector<std::vector<std::size_t>>,
-                      std::vector<std::vector<std::vector<std::size_t>>>,
-                      std::vector<std::vector<std::tuple<int, int>>>,
+                      nested_vector3<std::size_t>,
+                      nested_vector2<std::size_t>,
+                      nested_vector3<std::size_t>,
+                      nested_vector3<std::tuple<int, int>>,
                       std::unordered_map<int, int>,
-                      std::vector<std::vector<double>>,
-                      std::vector<std::vector<std::vector<int>>>>(),
+                      nested_vector2<double>,
+                      nested_vector3<int>,
+                      std::vector<std::size_t>>(),
              py::arg("process_id")=0,
              py::arg("topologies")=std::vector<Topology>{},
-             py::arg("permutations")=std::vector<std::vector<std::vector<std::size_t>>>{},
-             py::arg("diagram_indices")=std::vector<std::vector<std::size_t>>{},
-             py::arg("diagram_color_indices")=std::vector<std::vector<std::vector<std::size_t>>>{},
-             py::arg("color_flows")=std::vector<std::vector<std::tuple<int, int>>>{},
+             py::arg("permutations")=nested_vector3<std::size_t>{},
+             py::arg("diagram_indices")=nested_vector2<std::size_t>{},
+             py::arg("diagram_color_indices")=nested_vector3<std::size_t>{},
+             py::arg("color_flows")=nested_vector3<std::tuple<int, int>>{},
              py::arg("pdg_color_types")=std::unordered_map<int, int>{},
-             py::arg("helicities")=std::vector<std::vector<double>>{},
-             py::arg("pdg_ids")=std::vector<std::vector<std::vector<int>>>{})
+             py::arg("helicities")=nested_vector2<double>{},
+             py::arg("pdg_ids")=nested_vector3<int>{},
+             py::arg("matrix_flavor_indices")=std::vector<std::size_t>{})
         .def_readwrite("process_id", &LHECompleter::SubprocArgs::process_id)
         .def_readwrite("topologies", &LHECompleter::SubprocArgs::topologies)
         .def_readwrite("permutations", &LHECompleter::SubprocArgs::permutations)
@@ -801,7 +803,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("color_flows", &LHECompleter::SubprocArgs::color_flows)
         .def_readwrite("pdg_color_types", &LHECompleter::SubprocArgs::pdg_color_types)
         .def_readwrite("helicities", &LHECompleter::SubprocArgs::helicities)
-        .def_readwrite("pdg_ids", &LHECompleter::SubprocArgs::pdg_ids);
+        .def_readwrite("pdg_ids", &LHECompleter::SubprocArgs::pdg_ids)
+        .def_readwrite("matrix_flavor_indices", &LHECompleter::SubprocArgs::matrix_flavor_indices);
     py::classh<LHECompleter>(m, "LHECompleter")
         .def(py::init<const std::vector<LHECompleter::SubprocArgs>&, double>(),
              py::arg("subproc_args"), py::arg("bw_cutoff"))

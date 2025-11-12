@@ -7,6 +7,7 @@
 #include <random>
 
 #include "madevent/phasespace/topology.h"
+#include "madevent/util.h"
 
 namespace madevent {
 
@@ -63,13 +64,14 @@ public:
     struct SubprocArgs {
         int process_id;
         std::vector<Topology> topologies;
-        std::vector<std::vector<std::vector<std::size_t>>> permutations;
-        std::vector<std::vector<std::size_t>> diagram_indices;
-        std::vector<std::vector<std::vector<std::size_t>>> diagram_color_indices;
-        std::vector<std::vector<std::tuple<int, int>>> color_flows;
+        nested_vector3<std::size_t> permutations;
+        nested_vector2<std::size_t> diagram_indices;
+        nested_vector3<std::size_t> diagram_color_indices;
+        nested_vector3<std::tuple<int, int>> color_flows;
         std::unordered_map<int, int> pdg_color_types;
-        std::vector<std::vector<double>> helicities;
-        std::vector<std::vector<std::vector<int>>> pdg_ids;
+        nested_vector2<double> helicities;
+        nested_vector3<int> pdg_ids;
+        std::vector<std::size_t> matrix_flavor_indices;
     };
 
     LHECompleter(const std::vector<SubprocArgs>& subproc_args, double bw_cutoff);
@@ -87,7 +89,8 @@ private:
     struct SubprocData {
         int process_id;
         std::size_t color_offset, pdg_id_offset, helicity_offset, mass_offset;
-        std::size_t particle_count, color_count, flavor_count, diagram_count, helicity_count;
+        std::size_t particle_count, color_count, flavor_count, matrix_flavor_count;
+        std::size_t diagram_count, helicity_count;
     };
     struct PropagatorData {
         int pdg_id;
@@ -100,9 +103,9 @@ private:
     std::vector<double> _masses;
     std::vector<std::tuple<int, int>> _colors;
     std::vector<double> _helicities;
-    std::vector<std::tuple<std::size_t, std::size_t>> _pdg_id_index_and_count;
+    std::vector<std::array<std::size_t, 3>> _pdg_id_index_and_count;
     std::vector<int> _pdg_ids;
-    std::unordered_map<std::size_t, std::tuple<std::size_t, std::size_t, std::size_t>> _propagator_index_and_count;
+    std::unordered_map<std::size_t, std::array<std::size_t, 3>> _propagator_index_and_count;
     std::vector<PropagatorData> _propagators;
     std::vector<std::tuple<int, int>> _propagator_colors;
     double _bw_cutoff;
