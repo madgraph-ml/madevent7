@@ -29,6 +29,10 @@ public:
         std::memcpy(_ptr, &value, sizeof(T));
         return *this;
     }
+    UnalignedRef<T> operator=(const UnalignedRef<T>& value) {
+        std::memcpy(_ptr, value._ptr, sizeof(T));
+        return *this;
+    }
 private:
     void* _ptr;
 };
@@ -224,7 +228,7 @@ public:
 
     template<typename T>
     T particle(std::size_t event_index, std::size_t particle_index) {
-        return {&_data.data()[particle_offset(particle_index, event_index)]};
+        return {&_data.data()[particle_offset(event_index, particle_index)]};
     }
 
     template<typename T>

@@ -192,7 +192,7 @@ void EventGenerator::generate() {
 
 void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
     reset_start_time();
-    auto [channel_data, particle_count] = init_combine();
+    auto [channel_data, particle_count, norm_factor] = init_combine();
     EventBuffer buffer(
         0, particle_count, DataLayout::of<EventFullRecord, ParticleRecord>()
     );
@@ -206,7 +206,7 @@ void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
     std::size_t last_update_count = 0;
     print_combine_init();
     while (true) {
-        read_and_combine(channel_data, buffer);
+        read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) break;
         event_count += buffer.event_count();
         if (event_count - last_update_count > 100000) {
@@ -222,7 +222,7 @@ void EventGenerator::combine_to_lhe_npy(
     const std::string& file_name, const LHECompleter& lhe_completer
 ) {
     reset_start_time();
-    auto [channel_data, particle_count] = init_combine();
+    auto [channel_data, particle_count, norm_factor] = init_combine();
     EventBuffer buffer(
         0, particle_count, DataLayout::of<EventFullRecord, ParticleRecord>()
     );
@@ -242,7 +242,7 @@ void EventGenerator::combine_to_lhe_npy(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
-        read_and_combine(channel_data, buffer);
+        read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) break;
         event_count += buffer.event_count();
         for (std::size_t i = 0; i < buffer.event_count(); ++i) {
@@ -273,7 +273,7 @@ void EventGenerator::combine_to_lhe(
     const std::string& file_name, const LHECompleter& lhe_completer
 ) {
     reset_start_time();
-    auto [channel_data, particle_count] = init_combine();
+    auto [channel_data, particle_count, norm_factor] = init_combine();
     EventBuffer buffer(
         0, particle_count, DataLayout::of<EventFullRecord, ParticleRecord>()
     );
@@ -283,7 +283,7 @@ void EventGenerator::combine_to_lhe(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
-        read_and_combine(channel_data, buffer);
+        read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) break;
         event_count += buffer.event_count();
         for (std::size_t i = 0; i < buffer.event_count(); ++i) {
@@ -345,26 +345,30 @@ void EventGenerator::unweight_channel(ChannelState& channel, std::mt19937 rand_g
     channel.eff_count = accept_count;
 }
 
-double EventGenerator::channel_weight_average(
+double EventGenerator::channel_weight_sum(
     ChannelState& channel, std::size_t event_count
 ) {
     std::size_t buf_size = 1000000;
     EventBuffer buffer(0, 0, DataLayout::of<EventWeightRecord, EmptyParticleRecord>());
     double weight_sum = 0;
     channel.weight_file.seek(0);
+    std::size_t unweighted_count = 0;
     for (std::size_t i = 0; i < channel.weight_file.event_count(); i += buf_size) {
         channel.weight_file.read(buffer, buf_size);
         bool done = false;
         for (std::size_t j = 0; j < buffer.event_count(); ++j) {
-            if (i + j == event_count) {
+            if (unweighted_count == event_count) {
                 done = true;
                 break;
             }
-            weight_sum += buffer.event<EventWeightRecord>(j).weight();
+            double weight = buffer.event<EventWeightRecord>(j).weight();
+            if (weight == 0.) continue;
+            weight_sum += weight / channel.max_weight;
+            ++unweighted_count;
         }
         if (done) break;
     }
-    return weight_sum / event_count;
+    return weight_sum;
 }
 
 std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
@@ -586,11 +590,12 @@ void EventGenerator::unweight_and_write(
 }
 
 std::tuple<
-    std::vector<EventGenerator::CombineChannelData>, std::size_t
+    std::vector<EventGenerator::CombineChannelData>, std::size_t, double
 > EventGenerator::init_combine() {
     std::vector<EventGenerator::CombineChannelData> channel_data;
     std::size_t count_sum = 0;
     std::size_t particle_count = 0;
+    double weight_sum = 0.;
     for (auto& channel : _channels) {
         particle_count = std::max(particle_count, channel.event_file.particle_count());
         std::size_t count = std::round(
@@ -598,11 +603,10 @@ std::tuple<
         );
         count_sum += count;
         channel.event_file.seek(0);
-        double weight_avg = channel_weight_average(channel, count);
+        weight_sum += channel_weight_sum(channel, count);
         channel.weight_file.seek(0);
         channel_data.push_back({
             .cum_count = count_sum,
-            .norm_factor = _status_all.mean / weight_avg,
             .event_buffer = EventBuffer(
                 0,
                 channel.event_file.particle_count(),
@@ -614,11 +618,13 @@ std::tuple<
             .buffer_index = 0,
         });
     }
-    return {channel_data, particle_count};
+    return {channel_data, particle_count, _status_all.mean * count_sum / weight_sum};
 }
 
 void EventGenerator::read_and_combine(
-    std::vector<EventGenerator::CombineChannelData>& channel_data, EventBuffer& buffer
+    std::vector<EventGenerator::CombineChannelData>& channel_data,
+    EventBuffer& buffer,
+    double norm_factor
 ) {
     std::size_t batch_size = 1000;
     std::size_t event_count = std::min(batch_size, channel_data.back().cum_count);
@@ -646,7 +652,7 @@ void EventGenerator::read_and_combine(
                 channel.weight_file.read(sampled_chan->weight_buffer, batch_size);
                 sampled_chan->buffer_index = 0;
             }
-            double weight = sampled_chan->weight_buffer.event<EventWeightRecord>(
+            weight = sampled_chan->weight_buffer.event<EventWeightRecord>(
                 sampled_chan->buffer_index
             ).weight();
             if (weight != 0.) break;
@@ -655,8 +661,7 @@ void EventGenerator::read_and_combine(
 
         auto event_in = sampled_chan->event_buffer.event<EventIndicesRecord>(event_index);
         auto event_out = buffer.event<EventFullRecord>(event_index);
-        event_out.weight() =
-            std::max(1., weight / channel.max_weight) * sampled_chan->norm_factor;
+        event_out.weight() = std::max(1., weight / channel.max_weight) * norm_factor;
         event_out.diagram_index() = event_in.diagram_index();
         event_out.color_index() = event_in.color_index();
         event_out.flavor_index() = event_in.flavor_index();

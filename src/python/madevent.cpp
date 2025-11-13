@@ -693,6 +693,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("generate", &EventGenerator::generate)
         .def("combine_to_compact_npy", &EventGenerator::combine_to_compact_npy,
              py::arg("file_name"))
+        .def("combine_to_lhe_npy", &EventGenerator::combine_to_lhe_npy,
+             py::arg("file_name"), py::arg("lhe_completer"))
+        .def("combine_to_lhe", &EventGenerator::combine_to_lhe,
+             py::arg("file_name"), py::arg("lhe_completer"))
         .def("status", &EventGenerator::status)
         .def("channel_status", &EventGenerator::channel_status)
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);

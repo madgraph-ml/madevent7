@@ -137,7 +137,6 @@ private:
     };
     struct CombineChannelData {
         std::size_t cum_count;
-        double norm_factor;
         EventBuffer event_buffer;
         EventBuffer weight_buffer;
         std::size_t buffer_index;
@@ -162,7 +161,7 @@ private:
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
         ChannelState& channel, TensorVec& events, bool always_optimize
     );
-    double channel_weight_average(ChannelState& channel, std::size_t event_count);
+    double channel_weight_sum(ChannelState& channel, std::size_t event_count);
     void start_job(
         ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count=0
     );
@@ -171,9 +170,11 @@ private:
     void update_max_weight(ChannelState& channel, Tensor weights);
     void unweight_and_write(ChannelState& channel, const std::vector<Tensor>& momenta);
     std::size_t max_particle_count();
-    std::tuple<std::vector<CombineChannelData>, std::size_t> init_combine();
+    std::tuple<std::vector<CombineChannelData>, std::size_t, double> init_combine();
     void read_and_combine(
-        std::vector<CombineChannelData>& channel_data, EventBuffer& buffer
+        std::vector<CombineChannelData>& channel_data,
+        EventBuffer& buffer,
+        double norm_factor
     );
     void fill_lhe_event(
         const LHECompleter& lhe_completer,
