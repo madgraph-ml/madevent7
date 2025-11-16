@@ -307,8 +307,9 @@ void EventGenerator::combine_to_lhe(
         event_count += buffer.event_count();
         for (std::size_t i = 0; i < buffer.event_count(); ++i) {
             fill_lhe_event(lhe_completer, lhe_event, buffer, i);
-            event_file.write(lhe_event);
+            event_file.add_to_buffer(lhe_event);
         }
+        event_file.write_buffer();
         if (event_count - last_update_count > 10000) {
             print_combine_update(event_count);
             last_update_count = event_count;

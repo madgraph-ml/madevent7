@@ -466,7 +466,12 @@ LHEFileWriter::LHEFileWriter(
 }
 
 void LHEFileWriter::write(const LHEEvent& event) {
-    _file_stream << std::format(
+    add_to_buffer(event);
+    write_buffer();
+}
+
+void LHEFileWriter::add_to_buffer(const LHEEvent& event) {
+    _buffer += std::format(
         "<event>\n{:4} {:4} {:+.10e} {:.10e} {:.10e} {:.10e}\n",
         event.particles.size(),
         event.process_id,
@@ -476,7 +481,7 @@ void LHEFileWriter::write(const LHEEvent& event) {
         event.alpha_qcd
     );
     for (auto particle : event.particles) {
-        _file_stream << std::format(
+        _buffer += std::format(
             "{:4} {:4} {:4} {:4} {:4} {:4} {:+.10e} {:+.10e} {:+.10e} {:.10e} {:.10e} {:.4e} {:+.4e}\n",
             particle.pdg_id, particle.status_code,
             particle.mother1, particle.mother2,
@@ -486,7 +491,12 @@ void LHEFileWriter::write(const LHEEvent& event) {
             particle.spin
         );
     }
-    _file_stream << "</event>\n";
+    _buffer += "</event>\n";
+}
+
+void LHEFileWriter::write_buffer() {
+    _file_stream << _buffer;
+    _buffer.clear();
 }
 
 LHEFileWriter::~LHEFileWriter() {

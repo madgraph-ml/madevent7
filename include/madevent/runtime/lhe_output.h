@@ -119,8 +119,8 @@ public:
         const std::string& file_name, const LHEMeta& meta
     );
     void write(const LHEEvent& event);
-    //void add_to_buffer(const LHEEvent& event);
-    //void write_buffer(const LHEEvent& event);
+    void add_to_buffer(const LHEEvent& event);
+    void write_buffer();
     ~LHEFileWriter();
 
 private:
