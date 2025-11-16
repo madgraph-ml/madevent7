@@ -93,16 +93,18 @@ public:
         ContextPtr context,
         const std::vector<Integrand>& channels,
         const std::string& temp_file_prefix,
-        const Config& config = default_config
+        const Config& config = default_config,
+        const std::vector<std::size_t>& channel_subprocesses = {},
+        const std::vector<std::string>& channel_names = {}
     );
     void survey();
     void generate();
     void combine_to_compact_npy(const std::string& file_name);
     void combine_to_lhe_npy(
-        const std::string& file_name, const LHECompleter& lhe_completer
+        const std::string& file_name, LHECompleter& lhe_completer
     );
     void combine_to_lhe(
-        const std::string& file_name, const LHECompleter& lhe_completer
+        const std::string& file_name, LHECompleter& lhe_completer
     );
     Status status() const { return _status_all; }
     std::vector<Status> channel_status() const;
@@ -118,6 +120,8 @@ private:
         std::optional<DiscreteOptimizer> discrete_optimizer;
         RuntimePtr discrete_histogram;
         std::size_t batch_size;
+        std::string name;
+        std::size_t subprocess_index;
         RunningIntegral cross_section;
         bool needs_optimization = true;
         double max_weight = 0.;
@@ -151,11 +155,13 @@ private:
     std::unordered_map<std::size_t, RunningJob> _running_jobs;
     std::size_t _job_id;
     std::chrono::time_point<std::chrono::steady_clock> _start_time;
+    std::size_t _start_cpu_microsec;
     std::chrono::time_point<std::chrono::steady_clock> _last_print_time;
     PrettyBox _pretty_box_upper;
     PrettyBox _pretty_box_lower;
 
     void reset_start_time();
+    std::string format_run_time() const;
     void unweight_all();
     void unweight_channel(ChannelState& channel, std::mt19937 rand_gen);
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
@@ -177,7 +183,7 @@ private:
         double norm_factor
     );
     void fill_lhe_event(
-        const LHECompleter& lhe_completer,
+        LHECompleter& lhe_completer,
         LHEEvent& lhe_event,
         EventBuffer& buffer,
         std::size_t event_index

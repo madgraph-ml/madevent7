@@ -52,23 +52,32 @@ struct ParticleRecord {
 };
 
 constexpr int record_weight = 1;
-constexpr int record_indices = 2;
+constexpr int record_subproc_index = 2;
+constexpr int record_indices = 4;
 
 template<int fields>
 struct EventRecord {
     static constexpr std::size_t size =
         (fields & record_weight ? 8 : 0) +
+        (fields & record_subproc_index ? 4 : 0) +
         (fields & record_indices ? 16 : 0);
-    static constexpr std::size_t indices_offset = fields & record_weight ? 8 : 0;
+    static constexpr std::size_t subproc_index_offset = fields & record_weight ? 8 : 0;
+    static constexpr std::size_t indices_offset =
+        subproc_index_offset + (fields & record_subproc_index ? 4 : 0);
 
     static constexpr std::size_t field_count =
         (fields & record_weight ? 1 : 0) +
+        (fields & record_subproc_index ? 1 : 0) +
         (fields & record_indices ? 4 : 0);
     static constexpr std::array<FieldLayout, field_count> layout = []{
         std::array<FieldLayout, field_count> layout;
         std::size_t offset = 0;
         if (fields & record_weight) {
             layout[0] = {"weight", "<f8"};
+            offset += 1;
+        }
+        if (fields & record_subproc_index) {
+            layout[offset] = {"subprocess_index", "<i4"};
             offset += 1;
         }
         if (fields & record_indices) {
@@ -82,6 +91,7 @@ struct EventRecord {
     }();
 
     UnalignedRef<double> weight() { return &data[0]; }
+    UnalignedRef<int> subprocess_index() { return &data[subproc_index_offset + 0]; }
     UnalignedRef<int> diagram_index() { return &data[indices_offset + 0]; }
     UnalignedRef<int> color_index() { return &data[indices_offset + 4]; }
     UnalignedRef<int> flavor_index() { return &data[indices_offset + 8]; }
@@ -92,7 +102,9 @@ struct EventRecord {
 
 using EventWeightRecord = EventRecord<record_weight>;
 using EventIndicesRecord = EventRecord<record_indices>;
-using EventFullRecord = EventRecord<record_weight | record_indices>;
+using EventFullRecord = EventRecord<
+    record_weight | record_subproc_index | record_indices
+>;
 
 struct EmptyParticleRecord {
     static constexpr std::size_t size = 0;
@@ -313,7 +325,8 @@ public:
         } else {
             throw std::invalid_argument("Wrong number of particles");
         }
-        //if (_file_stream.fail()) return false;
+        //if (_file_stream.fail()) println("FAIL!");
+        //if (_file_stream.eof()) println("EOF!");
         _current_event += count;
         return true;
     }

@@ -685,10 +685,15 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<EventGenerator>(m, "EventGenerator")
         .def_readonly_static("default_config", &EventGenerator::default_config)
         .def(py::init<ContextPtr, const std::vector<Integrand>&,
-                      const std::string&, const EventGenerator::Config&>(),
-             py::arg("context"), py::arg("channels"), py::arg("temp_file_prefix"),
+                      const std::string&, const EventGenerator::Config&,
+                      std::vector<std::size_t>, std::vector<std::string>>(),
+             py::arg("context"),
+             py::arg("channels"),
+             py::arg("temp_file_prefix"),
              py::arg_v("default_config", EventGenerator::default_config,
-                       "EventGenerator.default_config"))
+                       "EventGenerator.default_config"),
+             py::arg("channel_subprocesses")=std::vector<std::size_t>{},
+             py::arg("channel_names")=std::vector<std::string>{})
         .def("survey", &EventGenerator::survey)
         .def("generate", &EventGenerator::generate)
         .def("combine_to_compact_npy", &EventGenerator::combine_to_compact_npy,

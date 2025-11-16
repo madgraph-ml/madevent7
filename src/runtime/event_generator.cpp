@@ -3,10 +3,22 @@
 #include <format>
 #include <cmath>
 #include <ranges>
+#include <sys/resource.h>
 
 #include "madevent/util.h"
 
 using namespace madevent;
+
+namespace {
+
+std::size_t cpu_time_microsec() {
+    struct rusage usage;
+    getrusage(RUSAGE_SELF, &usage);
+    return 1000000 * (usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)
+        + usage.ru_utime.tv_usec + usage.ru_stime.tv_usec;
+}
+
+}
 
 const EventGenerator::Config EventGenerator::default_config = {};
 
@@ -14,7 +26,9 @@ EventGenerator::EventGenerator(
     ContextPtr context,
     const std::vector<Integrand>& channels,
     const std::string& temp_file_prefix,
-    const Config& config
+    const Config& config,
+    const std::vector<std::size_t>& channel_subprocesses,
+    const std::vector<std::string>& channel_names
 ) :
     _context(context),
     _config(config),
@@ -86,6 +100,10 @@ EventGenerator::EventGenerator(
             .discrete_optimizer = discrete_optimizer,
             .discrete_histogram = std::move(discrete_histogram),
             .batch_size = config.start_batch_size,
+            .name = channel_names.size() > 0 ?
+                channel_names.at(i) : std::format("{}", i),
+            .subprocess_index = channel_subprocesses.size() > 0 ?
+                channel_subprocesses.at(i) : 0,
         });
         ++i;
     }
@@ -209,17 +227,17 @@ void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) break;
         event_count += buffer.event_count();
-        if (event_count - last_update_count > 100000) {
+        if (event_count - last_update_count > 10000) {
             print_combine_update(event_count);
             last_update_count = event_count;
         }
         event_file.write(buffer);
     }
-    print_combine_update(event_count);
+    print_combine_update(_config.target_count);
 }
 
 void EventGenerator::combine_to_lhe_npy(
-    const std::string& file_name, const LHECompleter& lhe_completer
+    const std::string& file_name, LHECompleter& lhe_completer
 ) {
     reset_start_time();
     auto [channel_data, particle_count, norm_factor] = init_combine();
@@ -245,6 +263,7 @@ void EventGenerator::combine_to_lhe_npy(
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) break;
         event_count += buffer.event_count();
+        buffer_out.resize(buffer.event_count());
         for (std::size_t i = 0; i < buffer.event_count(); ++i) {
             fill_lhe_event(lhe_completer, lhe_event, buffer, i);
             buffer_out.event<PackedLHEEvent>(i).from_lhe_event(lhe_event);
@@ -261,16 +280,16 @@ void EventGenerator::combine_to_lhe_npy(
             }
         }
         event_file.write(buffer_out);
-        if (event_count - last_update_count > 100000) {
+        if (event_count - last_update_count > 10000) {
             print_combine_update(event_count);
             last_update_count = event_count;
         }
     }
-    print_combine_update(event_count);
+    print_combine_update(_config.target_count);
 }
 
 void EventGenerator::combine_to_lhe(
-    const std::string& file_name, const LHECompleter& lhe_completer
+    const std::string& file_name, LHECompleter& lhe_completer
 ) {
     reset_start_time();
     auto [channel_data, particle_count, norm_factor] = init_combine();
@@ -290,16 +309,26 @@ void EventGenerator::combine_to_lhe(
             fill_lhe_event(lhe_completer, lhe_event, buffer, i);
             event_file.write(lhe_event);
         }
-        if (event_count - last_update_count > 100000) {
+        if (event_count - last_update_count > 10000) {
             print_combine_update(event_count);
             last_update_count = event_count;
         }
     }
-    print_combine_update(event_count);
+    print_combine_update(_config.target_count);
 }
 
 void EventGenerator::reset_start_time() {
     _start_time = std::chrono::steady_clock::now();
+    _start_cpu_microsec = cpu_time_microsec();
+}
+
+std::string EventGenerator::format_run_time() const {
+    std::size_t diff = cpu_time_microsec() - _start_cpu_microsec;
+    std::chrono::duration<double, std::ratio<1, 100>> cpu_duration(diff / 10000);
+    std::chrono::duration<double, std::ratio<1, 100>> wall_duration(
+        std::chrono::steady_clock::now() - _start_time
+    );
+    return std::format("{:%H:%M:%S} wall, {:%H:%M:%S} cpu", wall_duration, cpu_duration);
 }
 
 void EventGenerator::unweight_all() {
@@ -659,9 +688,12 @@ void EventGenerator::read_and_combine(
             ++sampled_chan->buffer_index;
         }
 
-        auto event_in = sampled_chan->event_buffer.event<EventIndicesRecord>(event_index);
+        auto event_in = sampled_chan->event_buffer.event<EventIndicesRecord>(
+            sampled_chan->buffer_index
+        );
         auto event_out = buffer.event<EventFullRecord>(event_index);
         event_out.weight() = std::max(1., weight / channel.max_weight) * norm_factor;
+        event_out.subprocess_index() = channel.subprocess_index;
         event_out.diagram_index() = event_in.diagram_index();
         event_out.color_index() = event_in.color_index();
         event_out.flavor_index() = event_in.flavor_index();
@@ -669,8 +701,9 @@ void EventGenerator::read_and_combine(
 
         std::size_t i = 0;
         for (; i < sampled_chan->event_buffer.particle_count(); ++i) {
-            auto particle_in =
-                sampled_chan->event_buffer.particle<ParticleRecord>(event_index, i);
+            auto particle_in = sampled_chan->event_buffer.particle<ParticleRecord>(
+                sampled_chan->buffer_index, i
+            );
             auto particle_out = buffer.particle<ParticleRecord>(event_index, i);
             particle_out.energy() = particle_in.energy();
             particle_out.px() = particle_in.px();
@@ -689,7 +722,7 @@ void EventGenerator::read_and_combine(
 }
 
 void EventGenerator::fill_lhe_event(
-    const LHECompleter& lhe_completer,
+    LHECompleter& lhe_completer,
     LHEEvent& lhe_event,
     EventBuffer& buffer,
     std::size_t event_index
@@ -706,6 +739,14 @@ void EventGenerator::fill_lhe_event(
             .energy = particle_in.energy(),
         });
     }
+    lhe_completer.complete_event_data(
+        lhe_event,
+        event_in.subprocess_index(),
+        event_in.diagram_index(),
+        event_in.color_index(),
+        event_in.flavor_index(),
+        event_in.helicity_index()
+    );
 }
 
 
@@ -764,14 +805,17 @@ void EventGenerator::print_gen_update() {
         format_si_prefix(_status_all.count_unweighted),
         format_si_prefix(_status_all.count_target)
     );
-    std::string time_str = std::format(
-        "{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(now - _start_time)
-    );
-    if (!_status_all.done) {
+    std::string time_str;
+    if (_status_all.done) {
+        time_str = format_run_time();
+    } else {
         unw_str = std::format(
             "{:<15} {}",
             unw_str,
             format_progress(_status_all.count_unweighted / _status_all.count_target, 52)
+        );
+        time_str = std::format(
+            "{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(now - _start_time)
         );
     }
     _pretty_box_upper.set_column(1, {
@@ -835,16 +879,27 @@ void EventGenerator::print_combine_init() {
 }
 
 void EventGenerator::print_combine_update(std::size_t count) {
-    _pretty_box_upper.set_column(1, {
-        std::format(
-            "{:>5} / {:>5}   {}",
-            format_si_prefix(count),
-            format_si_prefix(_config.target_count),
-            format_progress(static_cast<double>(count) / _config.target_count, 60)
-        ),
-        std::format("{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(
-            std::chrono::steady_clock::now() - _start_time
-        ))
-    });
+    if (count == _config.target_count) {
+        _pretty_box_upper.set_column(1, {
+            std::format(
+                "{:>5} / {:>5}",
+                format_si_prefix(count),
+                format_si_prefix(_config.target_count)
+            ),
+            format_run_time()
+        });
+    } else {
+        _pretty_box_upper.set_column(1, {
+            std::format(
+                "{:>5} / {:>5}   {}",
+                format_si_prefix(count),
+                format_si_prefix(_config.target_count),
+                format_progress(static_cast<double>(count) / _config.target_count, 60)
+            ),
+            std::format("{:%H:%M:%S}", std::chrono::round<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - _start_time
+            ))
+        });
+    }
     _pretty_box_upper.print_update();
 }
