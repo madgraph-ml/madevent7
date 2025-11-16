@@ -11,7 +11,7 @@ namespace madevent {
 Tensor load_tensor(const std::string& file);
 void save_tensor(const std::string& file, Tensor tensor);
 
-using FieldLayout = std::pair<std::string, std::string>;
+using FieldLayout = std::pair<std::string_view, std::string_view>;
 
 template<typename T>
 class UnalignedRef {

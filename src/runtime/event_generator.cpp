@@ -729,6 +729,7 @@ void EventGenerator::fill_lhe_event(
     std::size_t event_index
 ) {
     EventRecord event_in = buffer.event<EventFullRecord>(event_index);
+    lhe_event.weight = event_in.weight();
     lhe_event.particles.clear();
     for (std::size_t i = 0; i < buffer.particle_count(); ++i) {
         auto particle_in = buffer.particle<ParticleRecord>(event_index, i);
