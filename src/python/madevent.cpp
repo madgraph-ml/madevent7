@@ -167,6 +167,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<Device> device(m, "Device");
     m.def("cpu_device", &cpu_device, py::return_value_policy::reference);
     m.def("cuda_device", &cuda_device, py::return_value_policy::reference);
+    m.def("hip_device", &hip_device, py::return_value_policy::reference);
 
     py::classh<MatrixElementApi>(m, "MatrixElementApi")
         .def(py::init<const std::string&, const std::string&, std::size_t>(),
@@ -204,6 +205,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("device", &Context::device, py::return_value_policy::reference);
     m.def("default_context", &default_context);
     m.def("default_cuda_context", &default_cuda_context);
+    m.def("default_hip_context", &default_hip_context);
 
     py::classh<FunctionRuntime>(m, "FunctionRuntime", py::dynamic_attr())
         .def(py::init<Function>(), py::arg("function"))

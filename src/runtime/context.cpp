@@ -161,3 +161,8 @@ ContextPtr madevent::default_cuda_context() {
     static ContextPtr context = std::make_shared<Context>(cuda_device());
     return context;
 }
+
+ContextPtr madevent::default_hip_context() {
+    static ContextPtr context = std::make_shared<Context>(hip_device());
+    return context;
+}

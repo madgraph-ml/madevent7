@@ -20,8 +20,8 @@ def main():
     instruction_set_mixin(commands)
     runtime_mixin(commands, "cpu")
     runtime_backward_mixin(commands, "cpu")
-    runtime_mixin(commands, "cuda")
-    runtime_backward_mixin(commands, "cuda")
+    runtime_mixin(commands, "gpu")
+    runtime_backward_mixin(commands, "gpu")
 
 
 def write_autogen(f):
@@ -186,8 +186,8 @@ def runtime_mixin(commands, device):
                     else:
                         kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<CpuTypes>"
                     device_arg = ", DeviceType"
-                elif device == "cuda":
-                    kernel = f"kernel_{name}<CudaTypes>"
+                elif device == "gpu":
+                    kernel = f"kernel_{name}<GpuTypes>"
                     device_arg = ""
                 foreach_func = (
                     f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}{device_arg}>"
@@ -247,8 +247,8 @@ def runtime_backward_mixin(commands, device):
                             f"backward_kernel_{name}<CpuTypes>"
                         )
                     device_arg = ", DeviceType"
-                elif device == "cuda":
-                    kernel = f"backward_kernel_{name}<CudaTypes>"
+                elif device == "gpu":
+                    kernel = f"backward_kernel_{name}<GpuTypes>"
                     device_arg = ""
 
                 dims = cmd.get("dims", 1)

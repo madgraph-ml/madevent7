@@ -3,15 +3,14 @@
 #include "madevent/runtime/tensor.h"
 #include "madevent/runtime/runtime_base.h"
 #include "madevent/madcode/function.h"
+#include "gpu_abstraction.h"
 
 #include <memory>
-#include <cublas_v2.h>
-#include <curand.h>
 
 namespace madevent {
-namespace cuda {
+namespace gpu {
 
-class CudaRuntime : public Runtime {
+class GpuRuntime : public Runtime {
 public:
     struct Instruction {
         int opcode;
@@ -20,18 +19,18 @@ public:
         std::vector<DataType> output_dtypes;
         std::vector<SizeVec> output_shapes;
         std::size_t batch_size_index;
-        CudaRuntime& runtime;
+        GpuRuntime& runtime;
         bool differentiable;
-        cudaStream_t stream;
-        cudaStream_t backward_stream;
-        std::vector<cudaEvent_t> wait_events;
-        cudaEvent_t record_event;
-        std::vector<cudaEvent_t> backward_wait_events;
-        cudaEvent_t backward_record_event;
+        gpuStream_t stream;
+        gpuStream_t backward_stream;
+        std::vector<gpuEvent_t> wait_events;
+        gpuEvent_t record_event;
+        std::vector<gpuEvent_t> backward_wait_events;
+        gpuEvent_t backward_record_event;
     };
 
-    CudaRuntime(const Function& function, ContextPtr context);
-    ~CudaRuntime();
+    GpuRuntime(const Function& function, ContextPtr context);
+    ~GpuRuntime();
     TensorVec run(const TensorVec& inputs) const override;
     std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad(
         const TensorVec& inputs, const std::vector<bool>& input_requires_grad
@@ -44,8 +43,8 @@ public:
         const std::vector<bool>& eval_grad
     ) const override;
     Context& context() { return *_context; }
-    cublasHandle_t cublas_handle() { return _cublas_handle; }
-    curandGenerator_t curand_generator() { return _curand_generator; }
+    gpublasHandle_t gpublas_handle() { return _gpublas_handle; }
+    gpurandGenerator_t gpurand_generator() { return _gpurand_generator; }
 
 private:
     std::vector<Instruction> instructions;
@@ -55,13 +54,15 @@ private:
     std::vector<bool> requires_grad_init;
     std::vector<std::tuple<std::string, std::size_t>> grad_global_indices;
     ContextPtr _context;
-    std::vector<cudaStream_t> streams;
-    std::vector<cudaEvent_t> events;
-    cublasHandle_t _cublas_handle;
-    curandGenerator_t _curand_generator;
+    std::vector<gpuStream_t> streams;
+    std::vector<gpuEvent_t> events;
+    gpublasHandle_t _gpublas_handle;
+    gpurandGenerator_t _gpurand_generator;
 };
 
-extern "C" Runtime* build_runtime(const Function& function, ContextPtr context, bool concurrent);
+extern "C" Runtime* build_runtime(
+    const Function& function, ContextPtr context, bool concurrent
+);
 
 }
 }

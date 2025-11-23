@@ -7,19 +7,19 @@
 #include <algorithm>
 
 namespace madevent {
-namespace cuda {
+namespace gpu {
 
 constexpr std::size_t THREADS_MULTIPLE = 32;
 constexpr std::size_t MAX_THREADS_PER_BLOCK = 256;
 
 template<ScalarType T, int _dim, bool packed=false>
-class CudaTensorView {
+class GpuTensorView {
 public:
     using DType = T;
     using SizeType = std::conditional_t<packed, std::size_t[_dim], std::size_t*>;
     static const int dim = _dim;
 
-    CudaTensorView(const TensorView<T, _dim>& view) requires (packed) :
+    GpuTensorView(const TensorView<T, _dim>& view) requires (packed) :
         _data(view.data())
     {
         if constexpr (_dim > 0) {
@@ -28,42 +28,42 @@ public:
         }
     }
 
-    CudaTensorView(const CudaTensorView<T, _dim, packed>& view) = default;
+    GpuTensorView(const GpuTensorView<T, _dim, packed>& view) = default;
 
-    __host__ __device__ CudaTensorView(const CudaTensorView<T, _dim, true>& view)
+    __host__ __device__ GpuTensorView(const GpuTensorView<T, _dim, true>& view)
     requires (!packed) :
         _data(view._data), _stride(&view._stride), _shape(&view._shape)
     {}
 
-    CudaTensorView<T, _dim, packed>& operator=(
-        CudaTensorView<T, _dim, packed>& value
+    GpuTensorView<T, _dim, packed>& operator=(
+        GpuTensorView<T, _dim, packed>& value
     ) requires (packed) = default;
 
-    __device__ CudaTensorView(T* data, std::size_t* stride, std::size_t* shape)
+    __device__ GpuTensorView(T* data, std::size_t* stride, std::size_t* shape)
     requires (!packed) :
         _data(data), _stride(stride), _shape(shape)
     {}
 
-    __device__ CudaTensorView(T& value) requires (!packed) :
+    __device__ GpuTensorView(T& value) requires (!packed) :
         _data(&value), _stride(nullptr), _shape(nullptr)
     {}
 
-    __device__ CudaTensorView<T, _dim, packed>& operator=(
-        CudaTensorView<T, _dim, packed>& value
+    __device__ GpuTensorView<T, _dim, packed>& operator=(
+        GpuTensorView<T, _dim, packed>& value
     ) = delete;
 
-    __device__ const CudaTensorView<T, _dim-1> operator[](std::size_t index) const
+    __device__ const GpuTensorView<T, _dim-1> operator[](std::size_t index) const
     requires (_dim != 0)
     {
         return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
-    __device__ CudaTensorView<T, _dim-1> operator[](std::size_t index) requires (_dim != 0) {
+    __device__ GpuTensorView<T, _dim-1> operator[](std::size_t index) requires (_dim != 0) {
         return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
     template<typename... I>
-    __device__ const CudaTensorView<T, _dim - sizeof...(I)> get(I... index) const
+    __device__ const GpuTensorView<T, _dim - sizeof...(I)> get(I... index) const
     requires (_dim >= sizeof...(I))
     {
         T* ptr = _data;
@@ -73,7 +73,7 @@ public:
     }
 
     template<typename... I>
-    __device__ CudaTensorView<T, _dim - sizeof...(I)> get(I... index)
+    __device__ GpuTensorView<T, _dim - sizeof...(I)> get(I... index)
     requires (_dim >= sizeof...(I))
     {
         T* ptr = _data;
@@ -114,7 +114,7 @@ private:
     SizeType _shape;
 };
 
-// return the tuple of packed CudaTensorViews where the type is extracted from
+// return the tuple of packed GpuTensorViews where the type is extracted from
 // the signature of F
 template<typename F, int dims> struct get_views;
 template<typename... TParam, int dims>
@@ -122,7 +122,7 @@ struct get_views<void(*)(TParam...), dims> {
     template <typename... TArg>
     auto operator()(TArg&&... args) {
         return std::make_tuple(
-            CudaTensorView<typename TParam::DType, TParam::dim + dims, true>(
+            GpuTensorView<typename TParam::DType, TParam::dim + dims, true>(
                 args->template view<typename TParam::DType, TParam::dim + dims>()
             )...
         );
@@ -182,7 +182,7 @@ __global__ void run_kernel(std::size_t batch_size, V... views) {
 }
 
 template<typename F, typename... Args>
-void launch_kernel(F kernel, std::size_t total_count, cudaStream_t stream, Args... args) {
+void launch_kernel(F kernel, std::size_t total_count, gpuStream_t stream, Args... args) {
     if (total_count == 0) return;
     std::size_t n_threads = std::min(
         MAX_THREADS_PER_BLOCK,
@@ -198,7 +198,7 @@ void tensor_foreach(
     std::array<const Tensor*, n_in>& inputs,
     std::array<Tensor*, n_out>& outputs,
     std::size_t batch_size,
-    const AsyncCudaDevice& device
+    const AsyncGpuDevice& device
 ) {
     // get views to the tensors with the correct types based on the signature of func
     auto views = std::apply(
@@ -235,7 +235,7 @@ void tensor_foreach_dynamic(
     std::array<const Tensor*, n_in> inputs,
     std::array<Tensor*, n_out> outputs,
     std::size_t batch_size,
-    const AsyncCudaDevice& device
+    const AsyncGpuDevice& device
 ) {
     switch (std::get<0>(inputs)->shape().size() - first_param<decltype(func)>::dim) {
         case 1:

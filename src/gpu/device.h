@@ -1,42 +1,40 @@
 #pragma once
 
 #include "madevent/runtime/tensor.h"
+#include "gpu_abstraction.h"
 
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
-#include <curand.h>
 #include <format>
 
 namespace madevent {
-namespace cuda {
+namespace gpu {
 
-inline void check_error(cublasStatus_t status) {
-    if (status != CUBLAS_STATUS_SUCCESS) {
-        const char *error_str = cublasGetStatusString(status);
-        throw std::runtime_error(std::format("CUBLAS error: {}", error_str));
+inline void check_error(gpublasStatus_t status) {
+    if (status != GPUBLAS_STATUS_SUCCESS) {
+        const char *error_str = gpublasGetStatusString(status);
+        throw std::runtime_error(std::format("BLAS error: {}", error_str));
     }
 }
 
-inline void check_error(curandStatus_t status) {
-    if (status != CURAND_STATUS_SUCCESS) {
+inline void check_error(gpurandStatus_t status) {
+    if (status != GPURAND_STATUS_SUCCESS) {
         throw std::runtime_error(
-            std::format("CURAND error: error code {}", static_cast<int>(status))
+            std::format("RAND error: error code {}", static_cast<int>(status))
         );
     }
 }
 
-inline void check_error(cudaError_t error) {
-    if (error != cudaSuccess) {
-        const char *error_str = cudaGetErrorString(error);
-        throw std::runtime_error(std::format("CUDA error: {}", error_str));
+inline void check_error(gpuError_t error) {
+    if (error != gpuSuccess) {
+        const char *error_str = gpuGetErrorString(error);
+        throw std::runtime_error(std::format("GPU error: {}", error_str));
     }
 }
 
 inline void check_error() {
-    check_error(cudaGetLastError());
+    check_error(gpuGetLastError());
 }
 
-class CudaDevice : public Device {
+class GpuDevice : public Device {
 public:
     void* allocate(std::size_t size) const override;
     void free(void* ptr) const override;
@@ -48,19 +46,19 @@ public:
     void tensor_cpu(const Tensor& source, Tensor& target) const override;
     DevicePtr device_ptr() const override { return &instance(); }
 
-    CudaDevice(const CudaDevice&) = delete;
-    CudaDevice& operator=(CudaDevice&) = delete;
-    static const CudaDevice& instance() {
-        static CudaDevice device;
+    GpuDevice(const GpuDevice&) = delete;
+    GpuDevice& operator=(GpuDevice&) = delete;
+    static const GpuDevice& instance() {
+        static GpuDevice device;
         return device;
     }
 private:
-    CudaDevice() = default;
+    GpuDevice() = default;
 };
 
-class AsyncCudaDevice {
+class AsyncGpuDevice {
 public:
-    AsyncCudaDevice(cudaStream_t stream) : _stream(stream) {}
+    AsyncGpuDevice(gpuStream_t stream) : _stream(stream) {}
 
     void* allocate(std::size_t size) const;
     void free(void* ptr) const;
@@ -70,12 +68,12 @@ public:
     void tensor_zero(Tensor& tensor) const;
     void tensor_add(const Tensor& source, Tensor& target) const;
     void tensor_cpu(const Tensor& source, Tensor& target) const;
-    DevicePtr device_ptr() const { return &CudaDevice::instance(); }
+    DevicePtr device_ptr() const { return &GpuDevice::instance(); }
     void sync_barrier() const {};
-    cudaStream_t stream() const { return _stream; }
+    gpuStream_t stream() const { return _stream; }
 
 private:
-    cudaStream_t _stream;
+    gpuStream_t _stream;
 };
 
 extern "C" DevicePtr get_device();
