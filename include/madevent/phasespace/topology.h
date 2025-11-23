@@ -13,6 +13,7 @@ struct Propagator {
     int integration_order;
     double e_min;
     double e_max;
+    int pdg_id;
 };
 
 class Diagram {
@@ -69,6 +70,7 @@ public:
         double width;
         double e_min;
         double e_max;
+        int pdg_id;
         bool on_shell;
     };
 

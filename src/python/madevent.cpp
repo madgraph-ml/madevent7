@@ -246,17 +246,19 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("s_width")=0.);
 
     py::classh<Propagator>(m, "Propagator")
-        .def(py::init<double, double, int, double, double>(),
+        .def(py::init<double, double, int, double, double, int>(),
              py::arg("mass")=0.,
              py::arg("width")=0.,
              py::arg("integration_order")=0,
              py::arg("e_min")=0.,
-             py::arg("e_max")=0.)
+             py::arg("e_max")=0.,
+             py::arg("pdg_id")=0)
         .def_readonly("mass", &Propagator::mass)
         .def_readonly("width", &Propagator::width)
         .def_readonly("integration_order", &Propagator::integration_order)
         .def_readonly("e_min", &Propagator::e_min)
-        .def_readonly("e_max", &Propagator::e_max);
+        .def_readonly("e_max", &Propagator::e_max)
+        .def_readonly("pdg_id", &Propagator::pdg_id);
 
     py::classh<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
         .def(py::init<std::vector<std::size_t>, double>(),
@@ -337,6 +339,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("width", &Topology::Decay::width)
         .def_readonly("e_min", &Topology::Decay::e_min)
         .def_readonly("e_max", &Topology::Decay::e_max)
+        .def_readonly("pdg_id", &Topology::Decay::pdg_id)
         .def_readonly("on_shell", &Topology::Decay::on_shell);
     auto& topology = py::classh<Topology>(m, "Topology")
         .def(py::init<const Diagram&>(), py::arg("diagram"))
@@ -360,7 +363,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     psmap
         .def(py::init<const Topology&, double, bool, double,
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
+                      const nested_vector2<std::size_t>&>(),
              py::arg("topology"), py::arg("cm_energy"),
              py::arg("leptonic")=false, py::arg("invariant_power")=0.8,
              py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
@@ -429,14 +432,14 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
         .def(py::init<const std::vector<Topology>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
+                      const nested_vector3<std::size_t>&,
+                      const nested_vector2<std::size_t>&>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
 
     py::classh<SubchannelWeights, FunctionGenerator>(m, "SubchannelWeights")
-        .def(py::init<const std::vector<std::vector<Topology>>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>>(),
+        .def(py::init<const nested_vector2<Topology>&,
+                      const nested_vector3<std::size_t>&,
+                      const nested_vector2<std::size_t>>(),
              py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"))
         .def("channel_count", &SubchannelWeights::channel_count);
 
@@ -574,7 +577,7 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("fact_scale2"));
 
     py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<me_int_t>>&, std::size_t,
+        .def(py::init<const nested_vector2<me_int_t>&, std::size_t,
                       const RunningCoupling&, const std::optional<PdfGrid>&, double,
                       const EnergyScale&, bool, std::size_t, bool>(),
              py::arg("pid_options"),
@@ -684,24 +687,163 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<EventGenerator>(m, "EventGenerator")
         .def_readonly_static("default_config", &EventGenerator::default_config)
         .def(py::init<ContextPtr, const std::vector<Integrand>&,
-                      const std::string&, const EventGenerator::Config&,
-                      const std::optional<std::string>&>(),
-             py::arg("context"), py::arg("channels"), py::arg("file_name"),
+                      const std::string&, const EventGenerator::Config&>(),
+             py::arg("context"), py::arg("channels"), py::arg("temp_file_prefix"),
              py::arg_v("default_config", EventGenerator::default_config,
-                       "EventGenerator.default_config"),
-             py::arg("temp_file_dir")=std::nullopt)
+                       "EventGenerator.default_config"))
         .def("survey", &EventGenerator::survey)
         .def("generate", &EventGenerator::generate)
+        .def("combine_to_compact_npy", &EventGenerator::combine_to_compact_npy,
+             py::arg("file_name"))
+        .def("combine_to_lhe_npy", &EventGenerator::combine_to_lhe_npy,
+             py::arg("file_name"), py::arg("lhe_completer"))
+        .def("combine_to_lhe", &EventGenerator::combine_to_lhe,
+             py::arg("file_name"), py::arg("lhe_completer"))
         .def("status", &EventGenerator::status)
         .def("channel_status", &EventGenerator::channel_status)
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
 
-    m.def("set_thread_count", [](int new_count) {
-        default_thread_pool().set_thread_count(new_count);
-    }, py::arg("new_count"));
+    py::classh<LHEHeader>(m, "LHEHeader")
+        .def(py::init<std::string, std::string, bool>(),
+             py::arg("name")="", py::arg("content")="", py::arg("escape_content")=false)
+        .def_readwrite("name", &LHEHeader::name)
+        .def_readwrite("content", &LHEHeader::content)
+        .def_readwrite("escape_content", &LHEHeader::escape_content);
+    py::classh<LHEProcess>(m, "LHEProcess")
+        .def(py::init<double, double, double, int>(),
+             py::arg("cross_section")=0.,
+             py::arg("cross_section_error")=0.,
+             py::arg("max-weight")=0.,
+             py::arg("process_id")=0)
+        .def_readwrite("cross_section", &LHEProcess::cross_section)
+        .def_readwrite("cross_section_error", &LHEProcess::cross_section_error)
+        .def_readwrite("max_weight", &LHEProcess::max_weight)
+        .def_readwrite("process_id", &LHEProcess::process_id);
+    py::classh<LHEMeta>(m, "LHEMeta")
+        .def(py::init<int, int, double, double, int, int, int, int, int,
+                      std::vector<LHEProcess>, std::vector<LHEHeader>>(),
+             py::arg("beam1_pdg_id")=0, py::arg("beam2_pdg_id")=0,
+             py::arg("beam1_energy")=0., py::arg("beam2_energy")=0.,
+             py::arg("beam1_pdf_authors")=0, py::arg("beam2_pdf_authors")=0,
+             py::arg("beam1_pdf_id")=0, py::arg("beam2_pdf_id")=0,
+             py::arg("weight_mode")=0,
+             py::arg("processes")=std::vector<LHEProcess>{},
+             py::arg("headers")=std::vector<LHEHeader>{})
+        .def_readwrite("beam1_pdg_id", &LHEMeta::beam1_pdg_id)
+        .def_readwrite("beam2_pdg_id", &LHEMeta::beam2_pdg_id)
+        .def_readwrite("beam1_energy", &LHEMeta::beam1_energy)
+        .def_readwrite("beam2_energy", &LHEMeta::beam2_energy)
+        .def_readwrite("beam1_pdf_authors", &LHEMeta::beam1_pdf_authors)
+        .def_readwrite("beam2_pdf_authors", &LHEMeta::beam2_pdf_authors)
+        .def_readwrite("beam1_pdf_id", &LHEMeta::beam1_pdf_id)
+        .def_readwrite("beam2_pdf_id", &LHEMeta::beam2_pdf_id)
+        .def_readwrite("weight_mode", &LHEMeta::weight_mode)
+        .def_readwrite("processes", &LHEMeta::processes)
+        .def_readwrite("headers", &LHEMeta::headers);
+    py::classh<LHEParticle>(m, "LHEParticle")
+        .def(py::init<int, int, int, int, int, int,
+                      double, double, double, double, double, double, double>(),
+             py::arg("pdg_id")=0, py::arg("status_code")=0,
+             py::arg("mother1")=0, py::arg("mother2")=0,
+             py::arg("color")=0, py::arg("anti_color")=0,
+             py::arg("p_x")=0., py::arg("p_y")=0., py::arg("p_z")=0.,
+             py::arg("energy")=0., py::arg("mass")=0.,
+             py::arg("lifetime")=0., py::arg("spin")=0.)
+        .def_readonly_static("status_incoming", &LHEParticle::status_incoming)
+        .def_readonly_static("status_outgoing", &LHEParticle::status_outgoing)
+        .def_readonly_static("status_intermediate_resonance",
+                             &LHEParticle::status_intermediate_resonance)
+        .def_readwrite("pdg_id", &LHEParticle::pdg_id)
+        .def_readwrite("status_code", &LHEParticle::status_code)
+        .def_readwrite("mother1", &LHEParticle::mother1)
+        .def_readwrite("mother2", &LHEParticle::mother2)
+        .def_readwrite("color", &LHEParticle::color)
+        .def_readwrite("anti_color", &LHEParticle::anti_color)
+        .def_readwrite("px", &LHEParticle::px)
+        .def_readwrite("py", &LHEParticle::py)
+        .def_readwrite("pz", &LHEParticle::pz)
+        .def_readwrite("energy", &LHEParticle::energy)
+        .def_readwrite("mass", &LHEParticle::mass)
+        .def_readwrite("lifetime", &LHEParticle::lifetime)
+        .def_readwrite("spin", &LHEParticle::spin);
+    py::classh<LHEEvent>(m, "LHEEvent")
+        .def(py::init<int, double, double, double, double, std::vector<LHEParticle>>(),
+             py::arg("process_id")=0,
+             py::arg("weight")=0.,
+             py::arg("scale")=0.,
+             py::arg("alpha_qed")=0.,
+             py::arg("alpha_qcd")=0.,
+             py::arg("particles")=std::vector<LHEParticle>{})
+        .def_readwrite("process_id", &LHEEvent::process_id)
+        .def_readwrite("weight", &LHEEvent::weight)
+        .def_readwrite("scale", &LHEEvent::scale)
+        .def_readwrite("alpha_qed", &LHEEvent::alpha_qed)
+        .def_readwrite("alpha_qcd", &LHEEvent::process_id)
+        .def_readwrite("particles", &LHEEvent::particles);
+    py::classh<LHECompleter::SubprocArgs>(m, "SubprocArgs")
+        .def(py::init<int,
+                      std::vector<Topology>,
+                      nested_vector3<std::size_t>,
+                      nested_vector2<std::size_t>,
+                      nested_vector3<std::size_t>,
+                      nested_vector3<std::tuple<int, int>>,
+                      std::unordered_map<int, int>,
+                      nested_vector2<double>,
+                      nested_vector3<int>,
+                      std::vector<std::size_t>>(),
+             py::arg("process_id")=0,
+             py::arg("topologies")=std::vector<Topology>{},
+             py::arg("permutations")=nested_vector3<std::size_t>{},
+             py::arg("diagram_indices")=nested_vector2<std::size_t>{},
+             py::arg("diagram_color_indices")=nested_vector3<std::size_t>{},
+             py::arg("color_flows")=nested_vector3<std::tuple<int, int>>{},
+             py::arg("pdg_color_types")=std::unordered_map<int, int>{},
+             py::arg("helicities")=nested_vector2<double>{},
+             py::arg("pdg_ids")=nested_vector3<int>{},
+             py::arg("matrix_flavor_indices")=std::vector<std::size_t>{})
+        .def_readwrite("process_id", &LHECompleter::SubprocArgs::process_id)
+        .def_readwrite("topologies", &LHECompleter::SubprocArgs::topologies)
+        .def_readwrite("permutations", &LHECompleter::SubprocArgs::permutations)
+        .def_readwrite("diagram_indices", &LHECompleter::SubprocArgs::diagram_indices)
+        .def_readwrite("diagram_color_indices", &LHECompleter::SubprocArgs::diagram_color_indices)
+        .def_readwrite("color_flows", &LHECompleter::SubprocArgs::color_flows)
+        .def_readwrite("pdg_color_types", &LHECompleter::SubprocArgs::pdg_color_types)
+        .def_readwrite("helicities", &LHECompleter::SubprocArgs::helicities)
+        .def_readwrite("pdg_ids", &LHECompleter::SubprocArgs::pdg_ids)
+        .def_readwrite("matrix_flavor_indices", &LHECompleter::SubprocArgs::matrix_flavor_indices);
+    py::classh<LHECompleter>(m, "LHECompleter")
+        .def(py::init<const std::vector<LHECompleter::SubprocArgs>&, double>(),
+             py::arg("subproc_args"), py::arg("bw_cutoff"))
+        .def("complete_event_data", &LHECompleter::complete_event_data,
+             py::arg("event"), py::arg("subprocess_index"), py::arg("diagram_index"),
+             py::arg("color_index"), py::arg("flavor_index"), py::arg("helicity_index"))
+        .def_property_readonly("max_particle_count", &LHECompleter::max_particle_count);
+    py::classh<LHEFileWriter>(m, "LHEFileWriter")
+        .def(py::init<const std::string&, const LHEMeta&>(),
+             py::arg("file_name"), py::arg("meta"))
+        .def("write", &LHEFileWriter::write, py::arg("event"));
+
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
+    py::classh<PrettyBox>(m, "PrettyBox")
+        .def(py::init<const std::string&, std::size_t,
+                      const std::vector<std::size_t>&, std::size_t, std::size_t>(),
+             py::arg("title"), py::arg("rows"), py::arg("columns"),
+             py::arg("offset")=0, py::arg("box_width")=91)
+        .def("set_row", &PrettyBox::set_row,
+             py::arg("row"), py::arg("values"))
+        .def("set_column", &PrettyBox::set_column,
+             py::arg("column"), py::arg("values"))
+        .def("set_cell", &PrettyBox::set_cell,
+             py::arg("row"), py::arg("column"), py::arg("value"))
+        .def("print_first", &PrettyBox::print_first)
+        .def("print_update", &PrettyBox::print_update)
+        .def_property_readonly("line_count", &PrettyBox::line_count);
+
+    m.def("set_thread_count", [](int new_count) {
+        default_thread_pool().set_thread_count(new_count);
+    }, py::arg("new_count"));
     m.def("initialize_vegas_grid", &initialize_vegas_grid,
           py::arg("context"), py::arg("grid_name"));
     m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));

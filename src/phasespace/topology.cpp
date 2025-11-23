@@ -110,7 +110,8 @@ void build_decays(
             propagator.mass,
             propagator.width,
             propagator.e_min,
-            propagator.e_max
+            propagator.e_max,
+            propagator.pdg_id,
         });
         decay_indices.push_back(decay_index);
         integration_order.push_back(propagator.integration_order);
@@ -317,7 +318,7 @@ std::vector<Topology> Topology::topologies(const Diagram& diagram) {
             }
             if (decay.mass == 0) continue;
             if ((i >> j) & 1) {
-                if (e_min_item > decay.mass) {
+                if (e_min_item >= decay.mass) {
                     possible = false;
                     break;
                 } else {

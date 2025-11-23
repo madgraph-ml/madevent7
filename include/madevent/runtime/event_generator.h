@@ -2,6 +2,8 @@
 
 #include <optional>
 #include <vector>
+#include <random>
+#include <chrono>
 
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
@@ -9,6 +11,7 @@
 #include "madevent/runtime/vegas_optimizer.h"
 #include "madevent/runtime/discrete_optimizer.h"
 #include "madevent/runtime/runtime_base.h"
+#include "madevent/runtime/format.h"
 
 namespace madevent {
 
@@ -89,19 +92,27 @@ public:
     EventGenerator(
         ContextPtr context,
         const std::vector<Integrand>& channels,
-        const std::string& file_name,
-        const Config& config = default_config,
-        const std::optional<std::string>& temp_file_dir = std::nullopt
+        const std::string& temp_file_prefix,
+        const Config& config = default_config
     );
     void survey();
     void generate();
+    void combine_to_compact_npy(const std::string& file_name);
+    void combine_to_lhe_npy(
+        const std::string& file_name, const LHECompleter& lhe_completer
+    );
+    void combine_to_lhe(
+        const std::string& file_name, const LHECompleter& lhe_completer
+    );
     Status status() const { return _status_all; }
     std::vector<Status> channel_status() const;
+
 private:
     struct ChannelState {
         std::size_t index;
         RuntimePtr runtime;
-        EventFile writer;
+        EventFile event_file;
+        EventFile weight_file;
         std::optional<VegasGridOptimizer> vegas_optimizer;
         RuntimePtr vegas_histogram;
         std::optional<DiscreteOptimizer> discrete_optimizer;
@@ -116,32 +127,41 @@ private:
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
-        //std::multiset<double, std::greater<double>> large_weights;
         std::vector<double> large_weights;
-        std::size_t job_count;
+        std::size_t job_count = 0;
     };
     struct RunningJob {
         std::size_t channel_index;
         TensorVec events;
         std::size_t vegas_job_count;
     };
+    struct CombineChannelData {
+        std::size_t cum_count;
+        EventBuffer event_buffer;
+        EventBuffer weight_buffer;
+        std::size_t buffer_index;
+    };
     inline static std::function<void(void)> _abort_check_function = []{};
 
     ContextPtr _context;
     Config _config;
     std::vector<ChannelState> _channels;
-    double _max_weight;
     RuntimePtr _unweighter;
     Status _status_all;
-    EventFile _writer;
     std::unordered_map<std::size_t, RunningJob> _running_jobs;
     std::size_t _job_id;
+    std::chrono::time_point<std::chrono::steady_clock> _start_time;
+    std::chrono::time_point<std::chrono::steady_clock> _last_print_time;
+    PrettyBox _pretty_box_upper;
+    PrettyBox _pretty_box_lower;
 
+    void reset_start_time();
     void unweight_all();
-    void combine();
+    void unweight_channel(ChannelState& channel, std::mt19937 rand_gen);
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
         ChannelState& channel, TensorVec& events, bool always_optimize
     );
+    double channel_weight_sum(ChannelState& channel, std::size_t event_count);
     void start_job(
         ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count=0
     );
@@ -149,8 +169,23 @@ private:
     void clear_channel(ChannelState& channel);
     void update_max_weight(ChannelState& channel, Tensor weights);
     void unweight_and_write(ChannelState& channel, const std::vector<Tensor>& momenta);
+    std::size_t max_particle_count();
+    std::tuple<std::vector<CombineChannelData>, std::size_t, double> init_combine();
+    void read_and_combine(
+        std::vector<CombineChannelData>& channel_data,
+        EventBuffer& buffer,
+        double norm_factor
+    );
+    void fill_lhe_event(
+        const LHECompleter& lhe_completer,
+        LHEEvent& lhe_event,
+        EventBuffer& buffer,
+        std::size_t event_index
+    );
     void print_gen_init();
     void print_gen_update();
+    void print_combine_init();
+    void print_combine_update(std::size_t count);
 };
 
 }
