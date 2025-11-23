@@ -27,8 +27,8 @@ public:
             return cpu_device();
         case UMAMI_DEVICE_CUDA:
             return cuda_device();
-        // case UMAMI_DEVICE_HIP:
-        // return hip_device();
+        case UMAMI_DEVICE_HIP:
+            return hip_device();
         default:
             throw_error("matrix element device not known");
         }

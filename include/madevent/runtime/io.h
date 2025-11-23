@@ -322,8 +322,6 @@ public:
         } else {
             throw std::invalid_argument("Wrong number of particles");
         }
-        // if (_file_stream.fail()) println("FAIL!");
-        // if (_file_stream.eof()) println("EOF!");
         _current_event += count;
         return true;
     }
