@@ -9,53 +9,62 @@ constexpr double INV_GEV2_TO_PB = 0.38937937217186e9;
 
 // Helper functions
 
-template<typename T>
+template <typename T>
 struct FourMom {
     KERNELSPEC FVal<T>& operator[](int i) { return p[i]; }
     KERNELSPEC FVal<T>& operator[](int i) const { return p[i]; }
     FVal<T> p[4];
 };
 
-template<typename F, typename S>
+template <typename F, typename S>
 struct Pair {
     F first;
     S second;
 };
 
-template<typename A, typename B, typename C>
+template <typename A, typename B, typename C>
 struct Triplet {
     A first;
     B second;
     C third;
 };
 
-template<typename T>
-KERNELSPEC FourMom<T> load_mom(FIn<T,1> p) {
+template <typename T>
+KERNELSPEC FourMom<T> load_mom(FIn<T, 1> p) {
     return {p[0], p[1], p[2], p[3]};
 }
 
-template<typename T>
-KERNELSPEC void store_mom(FOut<T,1> p_to, FourMom<T> p_from) {
-    for (int i = 0; i < 4; ++i) p_to[i] = p_from[i];
+template <typename T>
+KERNELSPEC void store_mom(FOut<T, 1> p_to, FourMom<T> p_from) {
+    for (int i = 0; i < 4; ++i) {
+        p_to[i] = p_from[i];
+    }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> kaellen(FVal<T> x, FVal<T> y, FVal<T> z) {
     auto xyz = x - y - z;
     return xyz * xyz - 4 * y * z;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> bk_V(
-    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
-    FVal<T> t1_abs, FVal<T> t2, FVal<T> s12) {
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12
+) {
     // Determinant of the 3x3 V-matrix,
     // see Eq.(11) in 10.1103/PhysRev.187.2008.
     // Note: expects the absolute value of t1
     auto a11 = 2.0 * s12;
     auto a12 = ma_2 + s12 - t2;
-    auto a13 = s12  + m1_2 - m2_2;
+    auto a13 = s12 + m1_2 - m2_2;
     auto a22 = 2.0 * ma_2;
     auto a23 = ma_2 + m1_2 + t1_abs;
     auto a31 = m0_2 + s12 - m3_2;
@@ -66,11 +75,19 @@ KERNELSPEC FVal<T> bk_V(
     return -det / 8.0;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> bk_gram4(
-    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
-    FVal<T> t1_abs, FVal<T> t2, FVal<T> s12, FVal<T> s23) {
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12,
+    FVal<T> s23
+) {
     // omputes the 4x4 Gram determinant,
     // see Eq.(B6) in 10.1103/PhysRev.187.2008.
     // Note: expects the absolute value of t1
@@ -81,7 +98,7 @@ KERNELSPEC FVal<T> bk_gram4(
     auto a12 = ma_2 - t1_abs - m1_2;
     auto a13 = ma_2 + t2 - s12;
     auto a14 = ma_2 + mb_2 - m0_2;
-    auto a22 = - 2.0 * t1_abs;
+    auto a22 = -2.0 * t1_abs;
     auto a23 = t2 - t1_abs - m2_2;
     auto a24 = mb_2 - t1_abs - s23;
     auto a33 = 2.0 * t2;
@@ -89,34 +106,31 @@ KERNELSPEC FVal<T> bk_gram4(
     auto a44 = 2.0 * mb_2;
 
     // Computes the determinant of the 4x4 Gram matrix (hard-coded because easier)
-    auto det =  a14 * a23 * a14 * a23
-            + a13 * a24 * a13 * a24
-            + a12 * a34 * a12 * a34
-            - a14 * a14 * a22 * a33
-            - a13 * a13 * a22 * a44
-            - a12 * a12 * a33 * a44
-            - a23 * a23 * a11 * a44
-            - a24 * a24 * a11 * a33
-            - a34 * a34 * a11 * a22
-            + 2 * a11 * a23 * a24 * a34
-            + 2 * a12 * a13 * a23 * a44
-            + 2 * a12 * a14 * a24 * a33
-            + 2 * a13 * a14 * a22 * a34
-            - 2 * a12 * a13 * a24 * a34
-            - 2 * a12 * a14 * a23 * a34
-            - 2 * a13 * a14 * a23 * a24
-            + a11 * a22 * a33 * a44;
+    auto det = a14 * a23 * a14 * a23 + a13 * a24 * a13 * a24 + a12 * a34 * a12 * a34 -
+        a14 * a14 * a22 * a33 - a13 * a13 * a22 * a44 - a12 * a12 * a33 * a44 -
+        a23 * a23 * a11 * a44 - a24 * a24 * a11 * a33 - a34 * a34 * a11 * a22 +
+        2 * a11 * a23 * a24 * a34 + 2 * a12 * a13 * a23 * a44 +
+        2 * a12 * a14 * a24 * a33 + 2 * a13 * a14 * a22 * a34 -
+        2 * a12 * a13 * a24 * a34 - 2 * a12 * a14 * a23 * a34 -
+        2 * a13 * a14 * a23 * a24 + a11 * a22 * a33 * a44;
     return det / 16.0;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> bk_sqrt_g3i_g3im1(
-    FVal<T> m0_2, FVal<T> ma_2, FVal<T> mb_2,
-    FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2,
-    FVal<T> t1_abs, FVal<T> t2, FVal<T> s12) {
-    // This is the squaet root of the product of the two 3x3 Gram determinants g3i and g3im1,
-    // as in Eq.(11) in 10.1103/PhysRev.187.2008.
-    // Note: expects the absolute value of t1
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12
+) {
+    // This is the squaet root of the product of the two 3x3 Gram determinants g3i and
+    // g3im1, as in Eq.(11) in 10.1103/PhysRev.187.2008. Note: expects the absolute
+    // value of t1
     auto a11 = 2 * s12;
     auto a12 = s12 + ma_2 - t2;
     auto a13 = s12 + m0_2 - m3_2;
@@ -129,25 +143,19 @@ KERNELSPEC FVal<T> bk_sqrt_g3i_g3im1(
 
     // Calculate the two gramm determinants g3i and g3im1
     // (ard-coded because easier)
-    auto g3i = a11 * a22 * a33
-        + 2 * a12 * a23 * a13
-        - a11 * a23 * a23
-        - a22 * a13 * a13
-        - a33 * a12 * a12;
-    auto g3im1 = a11 * a22 * b33
-        + 2 * a12 * b23 * b13
-        - a11 * b23 * b23
-        - a22 * b13 * b13
-        - b33 * a12 * a12;
+    auto g3i = a11 * a22 * a33 + 2 * a12 * a23 * a13 - a11 * a23 * a23 -
+        a22 * a13 * a13 - a33 * a12 * a12;
+    auto g3im1 = a11 * a22 * b33 + 2 * a12 * b23 * b13 - a11 * b23 * b23 -
+        a22 * b13 * b13 - b33 * a12 * a12;
     return sqrt(g3i * g3im1) / 8.0;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> lsquare(FourMom<T> p) {
     return p[0] * p[0] - p[1] * p[1] - p[2] * p[2] - p[3] * p[3];
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FourMom<T> rotate(FourMom<T> p, FourMom<T> q) {
     // this function is based on the rotxxx subroutine from HELAS
     // used in MG5 (aloha_functions.f)
@@ -162,7 +170,7 @@ KERNELSPEC FourMom<T> rotate(FourMom<T> p, FourMom<T> q) {
     };
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FourMom<T> boost(FourMom<T> k, FourMom<T> p_boost, FVal<T> sign) {
     // Perform the boost
     // This is in fact a numerically more stable implementation than often used
@@ -172,17 +180,13 @@ KERNELSPEC FourMom<T> boost(FourMom<T> k, FourMom<T> p_boost, FVal<T> sign) {
     auto e = (k[0] * p_boost[0] + sign * k_dot_p) / rsq;
     auto c1 = sign * (k[0] + e) / (rsq + p_boost[0]);
     return FourMom<T>{
-        e,
-        k[1] + c1 * p_boost[1],
-        k[2] + c1 * p_boost[2],
-        k[3] + c1 * p_boost[3]
+        e, k[1] + c1 * p_boost[1], k[2] + c1 * p_boost[2], k[3] + c1 * p_boost[3]
     };
 }
 
-template<typename T>
-KERNELSPEC void boost_beam(
-    FIn<T,2> q, FVal<T> x1, FVal<T> x2, FVal<T> sign, FOut<T,2> p_out
-) {
+template <typename T>
+KERNELSPEC void
+boost_beam(FIn<T, 2> q, FVal<T> x1, FVal<T> x2, FVal<T> sign, FOut<T, 2> p_out) {
     auto exp_rap = sqrt(x1 / x2);
     auto exp_rap_inv = 1. / exp_rap;
     auto cosh_rap = 0.5 * (exp_rap + exp_rap_inv);
@@ -197,10 +201,9 @@ KERNELSPEC void boost_beam(
     }
 }
 
-template<typename T>
-KERNELSPEC Pair<FourMom<T>, FVal<T>> two_body_decay(
-    FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> m0, FVal<T> m1, FVal<T> m2
-) {
+template <typename T>
+KERNELSPEC Pair<FourMom<T>, FVal<T>>
+two_body_decay(FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> m0, FVal<T> m1, FVal<T> m2) {
     auto phi = PI * (2. * r_phi - 1.);
     auto cos_theta = 2. * r_cos_theta - 1.;
     auto m0_clip = max(m0, EPS);
@@ -209,9 +212,7 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_body_decay(
     // used in MG5 (aloha_functions.f)
     auto ed = (m1 - m2) * (m1 + m2) / m0_clip;
     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + m0 * m0;
-    auto pp = 0.5 * where(
-        m1 * m2 == 0., m0 - fabs(ed), sqrt(max(pp2, EPS))
-    );
+    auto pp = 0.5 * where(m1 * m2 == 0., m0 - fabs(ed), sqrt(max(pp2, EPS)));
     auto sin_theta = sqrt((1. - cos_theta) * (1 + cos_theta));
     auto e1 = 0.5 * (m0 + ed);
     FourMom<T> p1{
@@ -225,10 +226,16 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> two_body_decay(
     return {p1, det};
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC Pair<FourMom<T>, FVal<T>> p1com_from_tabs_phi(
-    FourMom<T> pa_com, FVal<T> s_tot, FVal<T> phi, FVal<T> t_abs,
-    FVal<T> m1, FVal<T> m2, FVal<T> ma_2, FVal<T> mb_2
+    FourMom<T> pa_com,
+    FVal<T> s_tot,
+    FVal<T> phi,
+    FVal<T> t_abs,
+    FVal<T> m1,
+    FVal<T> m2,
+    FVal<T> ma_2,
+    FVal<T> mb_2
 ) {
     // this function is based on the gentcms subroutine in MG5 (genps.f)
     // Note: expects t_abs (positive t-ivariant)
@@ -236,17 +243,15 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> p1com_from_tabs_phi(
 
     auto ed = (m1 - m2) * (m1 + m2) / m_tot;
     auto pp2 = ed * ed - 2. * (m1 * m1 + m2 * m2) + s_tot;
-    auto pp = 0.5 * where(
-        m1 * m2 == 0., m_tot - fabs(ed), sqrt(max(pp2, EPS))
-    );
+    auto pp = 0.5 * where(m1 * m2 == 0., m_tot - fabs(ed), sqrt(max(pp2, EPS)));
 
-    auto pa_com_mag = sqrt(
-        pa_com[1] * pa_com[1] + pa_com[2] * pa_com[2] + pa_com[3] * pa_com[3]
-    );
+    auto pa_com_mag =
+        sqrt(pa_com[1] * pa_com[1] + pa_com[2] * pa_com[2] + pa_com[3] * pa_com[3]);
     FourMom<T> p1_com;
     auto e1_com = 0.5 * (m_tot + ed);
     p1_com[0] = max(e1_com, 0.);
-    p1_com[3] = -(m1 * m1 + ma_2 + t_abs - 2. * p1_com[0] * pa_com[0]) / (2.0 * pa_com_mag);
+    p1_com[3] =
+        -(m1 * m1 + ma_2 + t_abs - 2. * p1_com[0] * pa_com[0]) / (2.0 * pa_com_mag);
     auto pt2 = pp * pp - p1_com[3] * p1_com[3];
     auto pt = sqrt(max(pt2, 0.));
     p1_com[1] = pt * cos(phi);
@@ -256,10 +261,17 @@ KERNELSPEC Pair<FourMom<T>, FVal<T>> p1com_from_tabs_phi(
     return {p1_com, det};
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
-    FVal<T> r_e1, FVal<T> r_e2, FVal<T> r_phi, FVal<T> r_cos_theta, FVal<T> r_beta,
-    FVal<T> m0, FVal<T> m1, FVal<T> m2, FVal<T> m3
+    FVal<T> r_e1,
+    FVal<T> r_e2,
+    FVal<T> r_phi,
+    FVal<T> r_cos_theta,
+    FVal<T> r_beta,
+    FVal<T> m0,
+    FVal<T> m1,
+    FVal<T> m2,
+    FVal<T> m3
 ) {
     // this is based on section G.3 in
     // https://inspirehep.net/literature/1784296
@@ -283,7 +295,8 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     // get boundaries
     auto Delta = 2 * m0 * (m0 / 2 - E1) + m1sq;
     auto Delta23 = m2sq - m3sq;
-    auto dE2 = (E1 * E1 - m1sq) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2sq * Delta);
+    auto dE2 =
+        (E1 * E1 - m1sq) * ((Delta + Delta23) * (Delta + Delta23) - 4 * m2sq * Delta);
     auto E2a = 1 / (2 * Delta) * ((m0 - E1) * (Delta + Delta23) - sqrt(dE2));
     auto E2b = 1 / (2 * Delta) * ((m0 - E1) * (Delta + Delta23) + sqrt(dE2));
     auto E2_min = min(E2a, E2b);
@@ -316,48 +329,61 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
     auto sin_alpha = sqrt((1. - cos_alpha) * (1 + cos_alpha));
     FourMom<T> p2{
         max(E2, 0.),
-        pp2 * (sin_alpha * cos(beta) * cos_theta * cos(phi) + cos_alpha * sin_theta * cos(phi) - sin_alpha * sin(beta) * sin(phi)),
-        pp2 * (sin_alpha * sin(beta) * cos(phi) + sin_alpha * cos(beta) * cos_theta * sin(phi) + cos_alpha * sin_theta * sin(phi)),
+        pp2 *
+            (sin_alpha * cos(beta) * cos_theta * cos(phi) +
+             cos_alpha * sin_theta * cos(phi) - sin_alpha * sin(beta) * sin(phi)),
+        pp2 *
+            (sin_alpha * sin(beta) * cos(phi) +
+             sin_alpha * cos(beta) * cos_theta * sin(phi) +
+             cos_alpha * sin_theta * sin(phi)),
         pp2 * (cos_alpha * cos_theta - sin_alpha * cos(beta) * sin_theta)
     };
 
-    auto det = det_omega * det_E1 * det_E2 / 8 ;
+    auto det = det_omega * det_E1 * det_E2 / 8;
     return {p1, p2, det};
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> get_phi_from_s23(
-    IVal<T> phi_choice, FVal<T> m0_2, FVal<T> s23, FVal<T> s12, FVal<T> t1_abs, FVal<T> t2,
-    FVal<T> ma_2, FVal<T> mb_2, FVal<T> m1_2, FVal<T> m2_2, FVal<T> m3_2
+    IVal<T> phi_choice,
+    FVal<T> m0_2,
+    FVal<T> s23,
+    FVal<T> s12,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2
 ) {
     // Computes the azimuthal angle phi from s23, using the formulae
     // in appendix B of 10.1103/PhysRev.187.2008
-    auto sqrtGG = bk_sqrt_g3i_g3im1<T>(
-        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12
-    );
-    auto V = bk_V<T>(
-        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12
-    );
+    auto sqrtGG =
+        bk_sqrt_g3i_g3im1<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
     auto lambda = kaellen<T>(s12, ma_2, t2);
-    auto cos_phi = (lambda * (s23 - m0_2 - m1_2) - 8 * V) / (8 * sqrtGG );
+    auto cos_phi = (lambda * (s23 - m0_2 - m1_2) - 8 * V) / (8 * sqrtGG);
     auto phi = where(phi_choice == 1, (-acos(cos_phi) + 2. * PI), acos(cos_phi));
     return phi;
 }
 
 // Kernels
 
-template<typename T>
-KERNELSPEC void kernel_boost_beam(FIn<T,2> p1, FIn<T,0> x1, FIn<T,0> x2, FOut<T,2> p_out) {
+template <typename T>
+KERNELSPEC void
+kernel_boost_beam(FIn<T, 2> p1, FIn<T, 0> x1, FIn<T, 0> x2, FOut<T, 2> p_out) {
     boost_beam<T>(p1, x1, x2, 1.0, p_out);
 }
 
-template<typename T>
-KERNELSPEC void kernel_boost_beam_inverse(FIn<T,2> p1, FIn<T,0> x1, FIn<T,0> x2, FOut<T,2> p_out) {
+template <typename T>
+KERNELSPEC void
+kernel_boost_beam_inverse(FIn<T, 2> p1, FIn<T, 0> x1, FIn<T, 0> x2, FOut<T, 2> p_out) {
     boost_beam<T>(p1, x1, x2, -1.0, p_out);
 }
 
-template<typename T>
-KERNELSPEC void kernel_com_p_in(FIn<T,0> e_cm, FOut<T,1> p1, FOut<T,1> p2) {
+template <typename T>
+KERNELSPEC void kernel_com_p_in(FIn<T, 0> e_cm, FOut<T, 1> p1, FOut<T, 1> p2) {
     auto p_com = e_cm / 2;
     p1[0] = p_com;
     p1[1] = 0;
@@ -369,9 +395,14 @@ KERNELSPEC void kernel_com_p_in(FIn<T,0> e_cm, FOut<T,1> p1, FOut<T,1> p2) {
     p2[3] = -p_com;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_r_to_x1x2(
-    FIn<T,0> r, FIn<T,0> s_hat, FIn<T,0> s_lab, FOut<T,0> x1, FOut<T,0> x2, FOut<T,0> det
+    FIn<T, 0> r,
+    FIn<T, 0> s_hat,
+    FIn<T, 0> s_lab,
+    FOut<T, 0> x1,
+    FOut<T, 0> x2,
+    FOut<T, 0> det
 ) {
     auto tau = s_hat / s_lab;
     x1 = pow(tau, r);
@@ -379,9 +410,9 @@ KERNELSPEC void kernel_r_to_x1x2(
     det = fabs(log(tau)) / s_lab;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_x1x2_to_r(
-    FIn<T,0> x1, FIn<T,0> x2, FIn<T,0> s_lab, FOut<T,0> r, FOut<T,0> det
+    FIn<T, 0> x1, FIn<T, 0> x2, FIn<T, 0> s_lab, FOut<T, 0> r, FOut<T, 0> det
 ) {
     auto tau = x1 * x2;
     auto log_tau = log(tau);
@@ -389,20 +420,30 @@ KERNELSPEC void kernel_x1x2_to_r(
     det = fabs(1 / log_tau) * s_lab;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_diff_cross_section(
-    FIn<T,0> x1, FIn<T,0> x2, FIn<T,0> pdf1, FIn<T,0> pdf2,
-    FIn<T,0> matrix_element, FIn<T,0> e_cm2,
-    FOut<T,0> result
+    FIn<T, 0> x1,
+    FIn<T, 0> x2,
+    FIn<T, 0> pdf1,
+    FIn<T, 0> pdf2,
+    FIn<T, 0> matrix_element,
+    FIn<T, 0> e_cm2,
+    FOut<T, 0> result
 ) {
-    result = INV_GEV2_TO_PB * matrix_element * pdf1 * pdf2
-        / (2. * e_cm2 * x1 * x1 * x2 * x2);
+    result = INV_GEV2_TO_PB * matrix_element * pdf1 * pdf2 /
+        (2. * e_cm2 * x1 * x1 * x2 * x2);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_two_body_decay_com(
-    FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+    FIn<T, 0> r_phi,
+    FIn<T, 0> r_cos_theta,
+    FIn<T, 0> m0,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 0> det
 ) {
     auto decay_out = two_body_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
     auto p1_tmp = decay_out.first;
@@ -416,10 +457,17 @@ KERNELSPEC void kernel_two_body_decay_com(
     p2[3] = -p1_tmp[3];
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_two_body_decay(
-    FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,1> p0,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+    FIn<T, 0> r_phi,
+    FIn<T, 0> r_cos_theta,
+    FIn<T, 0> m0,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FIn<T, 1> p0,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 0> det
 ) {
     auto decay_out = two_body_decay<T>(r_phi, r_cos_theta, m0, m1, m2);
     auto p1_tmp = decay_out.first;
@@ -433,59 +481,93 @@ KERNELSPEC void kernel_two_body_decay(
     p2[3] = p0[3] - p1[3];
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_two_to_two_particle_scattering_com(
-    FIn<T,0> r_phi, FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> t_abs, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+    FIn<T, 0> r_phi,
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 0> t_abs,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 0> det
 ) {
     FourMom<T> p_tot;
-    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+    }
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
     auto phi = PI * (2. * r_phi - 1.);
-    auto scatter_out = p1com_from_tabs_phi<T>(
-        load_mom<T>(pa), s_tot, phi, t_abs, m1, m2, ma_2, mb_2
-    );
+    auto scatter_out =
+        p1com_from_tabs_phi<T>(load_mom<T>(pa), s_tot, phi, t_abs, m1, m2, ma_2, mb_2);
     auto p1_com = scatter_out.first;
     auto det_tmp = scatter_out.second;
     store_mom<T>(p1, p1_com);
-    for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_com[i];
+    for (int i = 0; i < 4; ++i) {
+        p2[i] = p_tot[i] - p1_com[i];
+    }
     det = det_tmp;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_two_to_two_particle_scattering(
-    FIn<T,0> r_phi, FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> t_abs, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+    FIn<T, 0> r_phi,
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 0> t_abs,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 0> det
 ) {
     FourMom<T> p_tot;
-    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+    }
     auto pa_com = boost<T>(load_mom<T>(pa), p_tot, -1.);
     auto s_tot = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa)), mb_2 = lsquare<T>(load_mom<T>(pb));
     auto phi = PI * (2. * r_phi - 1.);
-    auto scatter_out = p1com_from_tabs_phi<T>(
-        pa_com, s_tot, phi, t_abs, m1, m2, ma_2, mb_2
-    );
+    auto scatter_out =
+        p1com_from_tabs_phi<T>(pa_com, s_tot, phi, t_abs, m1, m2, ma_2, mb_2);
     auto p1_com = scatter_out.first;
     auto det_tmp = scatter_out.second;
     auto p1_rot = rotate<T>(p1_com, pa_com);
     auto p1_lab = boost<T>(p1_rot, p_tot, 1.);
     store_mom<T>(p1, p1_lab);
-    for (int i = 0; i < 4; ++i) p2[i] = p_tot[i] - p1_lab[i];
+    for (int i = 0; i < 4; ++i) {
+        p2[i] = p_tot[i] - p1_lab[i];
+    }
     det = det_tmp;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_two_to_three_particle_scattering(
-    IIn<T,0> phi_index, FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
-    FIn<T,0> s23, FIn<T,0> t1_abs, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,0> det
+    IIn<T, 0> phi_index,
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 1> p3,
+    FIn<T, 0> s23,
+    FIn<T, 0> t1_abs,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 0> det
 ) {
     FourMom<T> p_12, p_c, p_tot;
-    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
-    for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
-    for (int i = 0; i < 4; ++i) p_c[i] = pb[i] - p3[i];
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+    }
+    for (int i = 0; i < 4; ++i) {
+        p_12[i] = pa[i] + pb[i] - p3[i];
+    }
+    for (int i = 0; i < 4; ++i) {
+        p_c[i] = pb[i] - p3[i];
+    }
     auto pa_com = boost<T>(load_mom<T>(pa), p_12, -1.);
     auto ma_2 = lsquare<T>(load_mom<T>(pa));
     auto mb_2 = lsquare<T>(load_mom<T>(pb));
@@ -500,28 +582,38 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
         phi_index, m0_2, s23, s12, t1_abs, t2, ma_2, mb_2, m1_2, m2_2, m3_2
     );
 
-    auto scatter_out = p1com_from_tabs_phi<T>(
-        pa_com, s12, phi, t1_abs, m1, m2, ma_2, t2
-    );
+    auto scatter_out =
+        p1com_from_tabs_phi<T>(pa_com, s12, phi, t1_abs, m1, m2, ma_2, t2);
     auto p1_com = scatter_out.first;
-    auto gram4 = bk_gram4<T>(
-        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12, s23
-    );
+    auto gram4 = bk_gram4<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12, s23);
     auto det_2to3 = 1 / (8 * sqrt(max(-gram4, EPS)));
     auto p1_rot = rotate<T>(p1_com, pa_com);
     auto p1_lab = boost<T>(p1_rot, p_12, 1.);
     store_mom<T>(p1, p1_lab);
-    for (int i = 0; i < 4; ++i) p2[i] = p_12[i] - p1_lab[i];
+    for (int i = 0; i < 4; ++i) {
+        p2[i] = p_12[i] - p1_lab[i];
+    }
     det = det_2to3 / 2; // factor 1/2 as acos allows for two choices of phi
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_three_body_decay_com(
-    FIn<T,0> r_e1, FIn<T,0> r_e2, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta,
-    FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
+    FIn<T, 0> r_e1,
+    FIn<T, 0> r_e2,
+    FIn<T, 0> r_phi,
+    FIn<T, 0> r_cos_theta,
+    FIn<T, 0> r_beta,
+    FIn<T, 0> m0,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FIn<T, 0> m3,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 1> p3,
+    FOut<T, 0> det
 ) {
-    auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
+    auto decay_out =
+        three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
     auto det_tmp = decay_out.third;
@@ -535,13 +627,25 @@ KERNELSPEC void kernel_three_body_decay_com(
     p3[3] = -p1_tmp[3] - p2_tmp[3];
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_three_body_decay(
-    FIn<T,0> r_e1, FIn<T,0> r_e2, FIn<T,0> r_phi, FIn<T,0> r_cos_theta, FIn<T,0> r_beta,
-    FIn<T,0> m0, FIn<T,0> m1, FIn<T,0> m2, FIn<T,0> m3, FIn<T,1> p0,
-    FOut<T,1> p1, FOut<T,1> p2, FOut<T,1> p3, FOut<T,0> det
+    FIn<T, 0> r_e1,
+    FIn<T, 0> r_e2,
+    FIn<T, 0> r_phi,
+    FIn<T, 0> r_cos_theta,
+    FIn<T, 0> r_beta,
+    FIn<T, 0> m0,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FIn<T, 0> m3,
+    FIn<T, 1> p0,
+    FOut<T, 1> p1,
+    FOut<T, 1> p2,
+    FOut<T, 1> p3,
+    FOut<T, 0> det
 ) {
-    auto decay_out = three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
+    auto decay_out =
+        three_body_decay<T>(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3);
     auto p1_tmp = decay_out.first;
     auto p2_tmp = decay_out.second;
     auto det_tmp = decay_out.third;
@@ -555,15 +659,21 @@ KERNELSPEC void kernel_three_body_decay(
     p3[3] = p0[3] - p1[3] - p2[3];
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_t_inv_min_max(
-    FIn<T,1> pa, FIn<T,1> pb, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,0> t_min, FOut<T,0> t_max
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 0> t_min,
+    FOut<T, 0> t_max
 ) {
     // this function is based on the yminmax subroutine in MG5 (genps.f)
     // returns the absolute value of the t invariant
     FourMom<T> p_tot;
-    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+    }
 
     auto s = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa));
@@ -578,24 +688,35 @@ KERNELSPEC void kernel_t_inv_min_max(
     auto s_eps = s + EPS;
     auto y1 = m_sum - 0.5 * (prod - yr) / s_eps;
     auto y2 = m_sum - 0.5 * (prod + yr) / s_eps;
-    auto t_min_tmp = - max(y2, y1);
-    auto t_max_tmp = - min(y1, y2);
+    auto t_min_tmp = -max(y2, y1);
+    auto t_max_tmp = -min(y1, y2);
     t_min = max(t_min_tmp, 0.);
     t_max = where(t_max_tmp > t_min, t_max_tmp, t_min + EPS);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_s_inv_min_max(
-    FIn<T,1> pa, FIn<T,1> pb, FIn<T,1> p3,
-    FIn<T,0> t1_abs, FIn<T,0> m1, FIn<T,0> m2,
-    FOut<T,0> s_min, FOut<T,0> s_max
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 1> p3,
+    FIn<T, 0> t1_abs,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 0> s_min,
+    FOut<T, 0> s_max
 ) {
     // this function is based on the sminmax subroutine from Rikkert
     // expects t1_abs (positive t invariant) as input
-    FourMom<T> p_tot,p_12, pt2;
-    for (int i = 0; i < 4; ++i) p_tot[i] = pa[i] + pb[i];
-    for (int i = 0; i < 4; ++i) p_12[i] = pa[i] + pb[i] - p3[i];
-    for (int i = 0; i < 4; ++i) pt2[i] = pb[i] - p3[i];
+    FourMom<T> p_tot, p_12, pt2;
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+    }
+    for (int i = 0; i < 4; ++i) {
+        p_12[i] = pa[i] + pb[i] - p3[i];
+    }
+    for (int i = 0; i < 4; ++i) {
+        pt2[i] = pb[i] - p3[i];
+    }
     auto m0_2 = lsquare<T>(p_tot);
     auto ma_2 = lsquare<T>(load_mom<T>(pa));
     auto mb_2 = lsquare<T>(load_mom<T>(pb));
@@ -604,12 +725,9 @@ KERNELSPEC void kernel_s_inv_min_max(
     auto m1_2 = m1 * m1;
     auto m2_2 = m2 * m2;
     auto t2 = lsquare<T>(pt2);
-    auto sqrtGG = bk_sqrt_g3i_g3im1<T>(
-        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12
-    );
-    auto V = bk_V<T>(
-        m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12
-    );
+    auto sqrtGG =
+        bk_sqrt_g3i_g3im1<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
     auto lambda = kaellen<T>(s12, ma_2, t2);
 
     auto sa = m0_2 + m1_2 + 8 * (V + sqrtGG) / (lambda);
@@ -618,13 +736,13 @@ KERNELSPEC void kernel_s_inv_min_max(
     s_max = max(sa, sb);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_invariants_from_momenta(
-    FIn<T,2> p_ext, FIn<T,2> factors, FOut<T,1> invariants
+    FIn<T, 2> p_ext, FIn<T, 2> factors, FOut<T, 1> invariants
 ) {
     for (std::size_t i = 0; i < invariants.size(); ++i) {
         auto factors_i = factors[i];
-        FourMom<T> p_sum {0., 0., 0., 0.};
+        FourMom<T> p_sum{0., 0., 0., 0.};
         for (std::size_t j = 0; j < p_ext.size(); ++j) {
             auto p_j = p_ext[j];
             auto factor_ij = factors_i[j];
@@ -637,12 +755,16 @@ KERNELSPEC void kernel_invariants_from_momenta(
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_sde2_channel_weights(
-    FIn<T,1> invariants, FIn<T,2> masses, FIn<T,2> widths, IIn<T,2> indices,
-    FOut<T,1> channel_weights
+    FIn<T, 1> invariants,
+    FIn<T, 2> masses,
+    FIn<T, 2> widths,
+    IIn<T, 2> indices,
+    FOut<T, 1> channel_weights
 ) {
-    // TODO: MG has a special case here if tprid != 0. check what that is and if we need it...
+    // TODO: MG has a special case here if tprid != 0. check what that is and if we need
+    // it...
     FVal<T> channel_weights_norm(0.);
     for (std::size_t i = 0; i < channel_weights.size(); ++i) {
         auto masses_i = masses[i];
@@ -668,11 +790,15 @@ KERNELSPEC void kernel_sde2_channel_weights(
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_subchannel_weights(
-    FIn<T,1> invariants, FIn<T,2> masses, FIn<T,2> widths,
-    IIn<T,2> indices, IIn<T,2> on_shell, IIn<T,1> group_sizes,
-    FOut<T,1> channel_weights
+    FIn<T, 1> invariants,
+    FIn<T, 2> masses,
+    FIn<T, 2> widths,
+    IIn<T, 2> indices,
+    IIn<T, 2> on_shell,
+    IIn<T, 1> group_sizes,
+    FOut<T, 1> channel_weights
 ) {
     FVal<T> channel_weights_norm(0.);
     std::size_t group_size = single_index(group_sizes[0]);
@@ -689,15 +815,16 @@ KERNELSPEC void kernel_subchannel_weights(
             auto mass2 = mass * mass;
             auto tmp = invar - mass2;
             auto tmp2 = mass * width;
-            channel_weight = channel_weight * where(
-                mask, 1., (mass2 * mass2 + tmp2 * tmp2) / (tmp * tmp + tmp2 * tmp2)
-            );
+            channel_weight = channel_weight *
+                where(mask,
+                      1.,
+                      (mass2 * mass2 + tmp2 * tmp2) / (tmp * tmp + tmp2 * tmp2));
         }
         channel_weights[i] = channel_weight;
         channel_weights_norm = channel_weights_norm + channel_weight;
         if (i_group == group_size) {
             for (std::size_t j = 0; j < group_size; ++j) {
-                channel_weights[i-j] = channel_weights[i-j] / channel_weights_norm;
+                channel_weights[i - j] = channel_weights[i - j] / channel_weights_norm;
             }
             ++group_index;
             group_size = single_index(group_sizes[group_index]);
@@ -707,38 +834,41 @@ KERNELSPEC void kernel_subchannel_weights(
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_apply_subchannel_weights(
-    FIn<T,1> channel_weights_in, FIn<T,1> subchannel_weights,
-    IIn<T,1> channel_indices, IIn<T,1> subchannel_indices,
-    FOut<T,1> channel_weights_out
+    FIn<T, 1> channel_weights_in,
+    FIn<T, 1> subchannel_weights,
+    IIn<T, 1> channel_indices,
+    IIn<T, 1> subchannel_indices,
+    FOut<T, 1> channel_weights_out
 ) {
     for (std::size_t i = 0; i < channel_indices.size(); ++i) {
         auto mask = subchannel_indices[i] == -1;
         auto chan_weight = channel_weights_in.gather(channel_indices[i]);
-        auto subchan_weight = subchannel_weights.gather(
-            where(mask, 0, subchannel_indices[i])
-        );
+        auto subchan_weight =
+            subchannel_weights.gather(where(mask, 0, subchannel_indices[i]));
         channel_weights_out[i] = chan_weight * where(mask, 1., subchan_weight);
     }
 }
 
-template<typename T>
-KERNELSPEC void kernel_pt_eta_phi_x(FIn<T,2> p_ext, FIn<T,0> x1, FIn<T,0> x2, FOut<T,1> output) {
+template <typename T>
+KERNELSPEC void
+kernel_pt_eta_phi_x(FIn<T, 2> p_ext, FIn<T, 0> x1, FIn<T, 0> x2, FOut<T, 1> output) {
     output[0] = x1;
     output[1] = x2;
     for (std::size_t i = 2; i < p_ext.size(); ++i) {
         auto p_i = p_ext[i];
         auto px = p_i[1], py = p_i[2], pz = p_i[3];
         auto pt2 = px * px + py * py + 1e-6;
-        output[3*i-4] = 0.5 * log(pt2);
-        output[3*i-3] = atan2(py, px);
-        output[3*i-2] = atanh(pz / sqrt(pt2 + pz * pz));
+        output[3 * i - 4] = 0.5 * log(pt2);
+        output[3 * i - 3] = atan2(py, px);
+        output[3 * i - 2] = atanh(pz / sqrt(pt2 + pz * pz));
     }
 }
 
-template<typename T>
-KERNELSPEC void kernel_mirror_momenta(FIn<T,2> p_ext, IIn<T,0> mirror, FOut<T,2> p_out) {
+template <typename T>
+KERNELSPEC void
+kernel_mirror_momenta(FIn<T, 2> p_ext, IIn<T, 0> mirror, FOut<T, 2> p_out) {
     auto sign = 1. - 2. * FVal<T>(IVal<T>(mirror));
     for (std::size_t i = 0; i < p_ext.size(); ++i) {
         auto p_i = p_ext[i];
@@ -750,5 +880,5 @@ KERNELSPEC void kernel_mirror_momenta(FIn<T,2> p_ext, IIn<T,0> mirror, FOut<T,2>
     }
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

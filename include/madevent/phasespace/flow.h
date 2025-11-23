@@ -50,4 +50,4 @@ private:
     bool _invert_spline;
 };
 
-}
+} // namespace madevent

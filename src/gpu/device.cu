@@ -1,6 +1,6 @@
+#include "../kernels/kernels.h"
 #include "device.h"
 #include "tensor.h"
-#include "../kernels/kernels.h"
 
 using namespace madevent;
 using namespace madevent::gpu;
@@ -12,9 +12,7 @@ void* GpuDevice::allocate(std::size_t size) const {
     return ptr;
 }
 
-void GpuDevice::free(void* ptr) const {
-    check_error(gpuFree(ptr));
-}
+void GpuDevice::free(void* ptr) const { check_error(gpuFree(ptr)); }
 
 void GpuDevice::memcpy(void* to, void* from, std::size_t size) const {
     check_error(gpuMemcpy(to, from, size, gpuMemcpyDefault));
@@ -47,9 +45,7 @@ void* AsyncGpuDevice::allocate(std::size_t size) const {
     return ptr;
 }
 
-void AsyncGpuDevice::free(void* ptr) const {
-    check_error(gpuFreeAsync(ptr, _stream));
-}
+void AsyncGpuDevice::free(void* ptr) const { check_error(gpuFreeAsync(ptr, _stream)); }
 
 void AsyncGpuDevice::memcpy(void* to, void* from, std::size_t size) const {
     check_error(gpuMemcpyAsync(to, from, size, gpuMemcpyDefault, _stream));
@@ -60,7 +56,8 @@ void AsyncGpuDevice::tensor_copy(const Tensor& source, Tensor& target) const {
         tensor_foreach_dynamic<kernel_copy<GpuTypes>, 1, 1>(
             {&source}, {&target}, target.size(0), *this
         );
-    } else if (source.dtype() == DataType::dt_int && target.dtype() == DataType::dt_int) {
+    } else if (source.dtype() == DataType::dt_int &&
+               target.dtype() == DataType::dt_int) {
         tensor_foreach_dynamic<kernel_copy_int<GpuTypes>, 1, 1>(
             {&source}, {&target}, target.size(0), *this
         );
@@ -95,6 +92,4 @@ void AsyncGpuDevice::tensor_cpu(const Tensor& source, Tensor& target) const {
     ));
 }
 
-extern "C" DevicePtr get_device() {
-    return &GpuDevice::instance();
-}
+extern "C" DevicePtr get_device() { return &GpuDevice::instance(); }

@@ -11,7 +11,7 @@ MatrixElement::MatrixElement(
     FunctionGenerator(
         "MatrixElement",
         [&] {
-            TypeVec arg_types {
+            TypeVec arg_types{
                 batch_four_vec_array(particle_count),
                 batch_int,
             };
@@ -20,19 +20,17 @@ MatrixElement::MatrixElement(
             }
             return arg_types;
         }(),
-        simple_matrix_element ?
-            TypeVec{batch_float} :
-            TypeVec{batch_float, batch_float_array(channel_count), batch_int, batch_int, batch_int}
+        simple_matrix_element
+            ? TypeVec{batch_float}
+            : TypeVec{batch_float, batch_float_array(channel_count), batch_int, batch_int, batch_int}
     ),
     _matrix_element_index(matrix_element_index),
     _particle_count(particle_count),
     _simple_matrix_element(simple_matrix_element),
-    _channel_count(channel_count)
-{}
+    _channel_count(channel_count) {}
 
-ValueVec MatrixElement::build_function_impl(
-    FunctionBuilder& fb, const ValueVec& args
-) const {
+ValueVec
+MatrixElement::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
     auto momenta = args.at(0);
     auto flavor = args.at(1);
     if (_simple_matrix_element) {
@@ -41,9 +39,10 @@ ValueVec MatrixElement::build_function_impl(
         auto alpha_s = args.at(2);
         auto batch_size = fb.batch_size({momenta, alpha_s, flavor});
         auto random = fb.random(batch_size, static_cast<me_int_t>(3));
-        auto [me, amp2, diagram_id, color_id, helicity_id] = fb.matrix_element_multichannel(
-            momenta, alpha_s, random, flavor, _matrix_element_index, _channel_count
-        );
+        auto [me, amp2, diagram_id, color_id, helicity_id] =
+            fb.matrix_element_multichannel(
+                momenta, alpha_s, random, flavor, _matrix_element_index, _channel_count
+            );
         return {me, amp2, diagram_id, color_id, helicity_id};
     }
 }

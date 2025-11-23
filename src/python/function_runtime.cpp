@@ -1,8 +1,8 @@
 #include "function_runtime.h"
 
-#include <stdexcept>
 #include <format>
 #include <ranges>
+#include <stdexcept>
 
 #include "dlpack.h"
 
@@ -26,22 +26,22 @@ void deleter(struct DLManagedTensor* self) {
 Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
     Runtime* runtime;
     if (!expected_device) {
-        expected_device = func_runtime.context ?
-            func_runtime.context->device() : cpu_device();
+        expected_device =
+            func_runtime.context ? func_runtime.context->device() : cpu_device();
     }
     if (expected_device == cpu_device()) {
         if (!func_runtime.cpu_runtime) {
             if (func_runtime.context) {
                 if (func_runtime.context->device() != cpu_device()) {
-                    throw std::invalid_argument("Given context does not have device CPU");
+                    throw std::invalid_argument(
+                        "Given context does not have device CPU"
+                    );
                 }
-                func_runtime.cpu_runtime = build_runtime(
-                    func_runtime.function, func_runtime.context
-                );
+                func_runtime.cpu_runtime =
+                    build_runtime(func_runtime.function, func_runtime.context);
             } else {
-                func_runtime.cpu_runtime = build_runtime(
-                    func_runtime.function, madevent::default_context()
-                );
+                func_runtime.cpu_runtime =
+                    build_runtime(func_runtime.function, madevent::default_context());
             }
         }
         runtime = func_runtime.cpu_runtime.get();
@@ -49,13 +49,14 @@ Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
         if (!func_runtime.cuda_runtime) {
             if (func_runtime.context) {
                 if (func_runtime.context->device() != cuda_device()) {
-                    throw std::invalid_argument("Given context does not have device CUDA");
+                    throw std::invalid_argument(
+                        "Given context does not have device CUDA"
+                    );
                 }
-                func_runtime.cuda_runtime = build_runtime(
-                    func_runtime.function, func_runtime.context
-                );
+                func_runtime.cuda_runtime =
+                    build_runtime(func_runtime.function, func_runtime.context);
             } else {
-                //TODO: default cuda context
+                // TODO: default cuda context
                 func_runtime.cuda_runtime = build_runtime(
                     func_runtime.function, madevent::default_cuda_context()
                 );
@@ -71,20 +72,24 @@ std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
     FunctionRuntime& func_runtime,
     bool* dlpack_version_cache
 ) {
-    //TODO: check batch sizes
+    // TODO: check batch sizes
     auto n_args = func_runtime.function.inputs().size();
     if (args.size() != n_args) {
-        throw std::invalid_argument(std::format(
-            "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
-        ));
+        throw std::invalid_argument(
+            std::format(
+                "Wrong number of arguments. Expected {}, got {}", n_args, args.size()
+            )
+        );
     }
     std::vector<Tensor> inputs;
     DevicePtr expected_device = nullptr;
     for (int i = 0; i < n_args; ++i) {
         auto& arg = args.at(i);
         auto& input_type = func_runtime.function.inputs().at(i).type;
-        auto tensor = dlpack_to_tensor(arg, input_type, i, expected_device, dlpack_version_cache);
-        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+        auto tensor =
+            dlpack_to_tensor(arg, input_type, i, expected_device, dlpack_version_cache);
+        if (expected_device == nullptr && tensor &&
+            tensor.dtype() != DataType::batch_sizes) {
             expected_device = tensor.device();
         }
         inputs.push_back(tensor);
@@ -92,7 +97,7 @@ std::tuple<std::vector<Tensor>, Runtime*> check_and_convert_args(
     return {inputs, get_runtime(func_runtime, expected_device)};
 }
 
-}
+} // namespace
 
 std::tuple<int, int> madevent_py::dlpack_device(Tensor tensor) {
     return {tensor.device() == cpu_device() ? kDLCPU : kDLCUDA, 0};
@@ -105,8 +110,10 @@ py::object madevent_py::tensor_to_dlpack(
     std::optional<int> dl_device,
     std::optional<bool> copy
 ) {
-    //TODO: do something with the arguments
-    if (!tensor) return py::none();
+    // TODO: do something with the arguments
+    if (!tensor) {
+        return py::none();
+    }
 
     DLManagedTensor* dl_tensor;
     if (tensor.dtype() == DataType::batch_sizes) {
@@ -117,24 +124,27 @@ py::object madevent_py::tensor_to_dlpack(
             {}
         };
         dl_tensor = new DLManagedTensor{
-            {
-                static_cast<void*>(context->batch_sizes.data()),
-                {kDLCPU, 0},
-                static_cast<int32_t>(context->shape.size()),
-                {kDLInt, 64, 1},
-                context->shape.data(),
-                context->stride.data(),
-                0
-            },
+            {static_cast<void*>(context->batch_sizes.data()),
+             {kDLCPU, 0},
+             static_cast<int32_t>(context->shape.size()),
+             {kDLInt, 64, 1},
+             context->shape.data(),
+             context->stride.data(),
+             0},
             static_cast<void*>(context),
             &deleter
         };
     } else {
         DLDataType dtype;
-        switch(tensor.dtype()) {
-            case DataType::dt_float: dtype = {kDLFloat, 64, 1}; break;
-            case DataType::dt_int: dtype = {kDLInt, 32, 1}; break;
-            default: break;
+        switch (tensor.dtype()) {
+        case DataType::dt_float:
+            dtype = {kDLFloat, 64, 1};
+            break;
+        case DataType::dt_int:
+            dtype = {kDLInt, 32, 1};
+            break;
+        default:
+            break;
         }
         ManagerContext* context = new ManagerContext{
             {tensor.shape().begin(), tensor.shape().end()},
@@ -143,41 +153,34 @@ py::object madevent_py::tensor_to_dlpack(
             tensor
         };
         dl_tensor = new DLManagedTensor{
-            {
-                context->tensor.data(),
-                {tensor.device() == cpu_device() ? kDLCPU : kDLCUDA, 0},
-                static_cast<int32_t>(context->shape.size()),
-                dtype,
-                context->shape.data(),
-                context->stride.data(),
-                tensor.offset() * tensor.dtype_size()
-            },
+            {context->tensor.data(),
+             {tensor.device() == cpu_device() ? kDLCPU : kDLCUDA, 0},
+             static_cast<int32_t>(context->shape.size()),
+             dtype,
+             context->shape.data(),
+             context->stride.data(),
+             tensor.offset() * tensor.dtype_size()},
             static_cast<void*>(context),
             &deleter
         };
     }
 
-    return py::capsule(
-        dl_tensor,
-        "dltensor",
-        [](PyObject* self) {
-            // Implement capsule deleter following the example in
-            // https://dmlc.github.io/dlpack/latest/python_spec.html
-            if (PyCapsule_IsValid(self, "used_dltensor")) {
-                return;
-            }
-            DLManagedTensor *managed = static_cast<DLManagedTensor*>(
-                PyCapsule_GetPointer(self, "dltensor")
-            );
-            if (managed == NULL) {
-                PyErr_WriteUnraisable(self);
-                return;
-            }
-            if (managed->deleter) {
-                managed->deleter(managed);
-            }
+    return py::capsule(dl_tensor, "dltensor", [](PyObject* self) {
+        // Implement capsule deleter following the example in
+        // https://dmlc.github.io/dlpack/latest/python_spec.html
+        if (PyCapsule_IsValid(self, "used_dltensor")) {
+            return;
         }
-    );
+        DLManagedTensor* managed =
+            static_cast<DLManagedTensor*>(PyCapsule_GetPointer(self, "dltensor"));
+        if (managed == NULL) {
+            PyErr_WriteUnraisable(self);
+            return;
+        }
+        if (managed->deleter) {
+            managed->deleter(managed);
+        }
+    });
 }
 
 Tensor madevent_py::dlpack_to_tensor(
@@ -187,22 +190,27 @@ Tensor madevent_py::dlpack_to_tensor(
     DevicePtr expected_device,
     bool* dlpack_version_cache
 ) {
-    if (tensor.is_none()) return {};
+    if (tensor.is_none()) {
+        return {};
+    }
 
     py::object dlpack_func = tensor.attr("__dlpack__");
     py::object capsule_obj;
 
-    // catching exceptions is extremely expensive so we cache whether to use the new or old version
-    // of the dlpack protocol
+    // catching exceptions is extremely expensive so we cache whether to use the new or
+    // old version of the dlpack protocol
     if (dlpack_version_cache == nullptr || !*dlpack_version_cache) {
         try {
             capsule_obj = dlpack_func(
-                "max_version"_a=std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
+                "max_version"_a =
+                    std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
             );
-        } catch (py::error_already_set &e) {
+        } catch (py::error_already_set& e) {
             if (e.matches(PyExc_TypeError)) {
                 capsule_obj = dlpack_func();
-                if (dlpack_version_cache != nullptr) *dlpack_version_cache = true;
+                if (dlpack_version_cache != nullptr) {
+                    *dlpack_version_cache = true;
+                }
             } else {
                 throw;
             }
@@ -210,23 +218,27 @@ Tensor madevent_py::dlpack_to_tensor(
     } else {
         try {
             capsule_obj = dlpack_func();
-        } catch (py::error_already_set &e) {
+        } catch (py::error_already_set& e) {
             capsule_obj = dlpack_func(
-                "max_version"_a=std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
+                "max_version"_a =
+                    std::make_tuple(DLPACK_MAJOR_VERSION, DLPACK_MINOR_VERSION)
             );
             *dlpack_version_cache = false;
         }
-
     }
     PyObject* capsule = capsule_obj.ptr();
-    if (!capsule) throw std::runtime_error("value must support the dlpack protocol");
+    if (!capsule) {
+        throw std::runtime_error("value must support the dlpack protocol");
+    }
 
     void* managed_ptr;
     DLTensor* dl_tensor;
     bool versioned = PyCapsule_IsValid(capsule, "dltensor_versioned");
     if (versioned) {
         managed_ptr = PyCapsule_GetPointer(capsule, "dltensor_versioned");
-        if (!managed_ptr) throw std::runtime_error("value must support the dlpack protocol");
+        if (!managed_ptr) {
+            throw std::runtime_error("value must support the dlpack protocol");
+        }
         auto managed = static_cast<DLManagedTensorVersioned*>(managed_ptr);
         if (managed->version.major > 1) {
             throw std::runtime_error("unsupported dlpack version");
@@ -234,41 +246,35 @@ Tensor madevent_py::dlpack_to_tensor(
         dl_tensor = &managed->dl_tensor;
     } else {
         managed_ptr = PyCapsule_GetPointer(capsule, "dltensor");
-        if (!managed_ptr) throw std::runtime_error("value must support the dlpack protocol");
+        if (!managed_ptr) {
+            throw std::runtime_error("value must support the dlpack protocol");
+        }
         auto managed = static_cast<DLManagedTensor*>(managed_ptr);
         dl_tensor = &managed->dl_tensor;
     }
 
-    bool is_batch_sizes = expected_type ?
-        expected_type->dtype == DataType::batch_sizes : false;
+    bool is_batch_sizes =
+        expected_type ? expected_type->dtype == DataType::batch_sizes : false;
     DataType dtype;
-    if (
-        dl_tensor->dtype.code == kDLFloat &&
-        dl_tensor->dtype.bits == 64 &&
-        dl_tensor->dtype.lanes == 1
-    ) {
+    if (dl_tensor->dtype.code == kDLFloat && dl_tensor->dtype.bits == 64 &&
+        dl_tensor->dtype.lanes == 1) {
         dtype = DataType::dt_float;
         if (expected_type && expected_type->dtype != DataType::dt_float) {
             throw std::invalid_argument(
                 std::format("Argument {}: got unexpected dtype", arg_index + 1)
             );
         }
-    } else if (
-        dl_tensor->dtype.code == kDLInt &&
-        dl_tensor->dtype.bits == 32 &&
-        dl_tensor->dtype.lanes == 1
-    ) {
+    } else if (dl_tensor->dtype.code == kDLInt && dl_tensor->dtype.bits == 32 &&
+               dl_tensor->dtype.lanes == 1) {
         dtype = DataType::dt_int;
-        if (expected_type && expected_type->dtype != DataType::dt_int && !is_batch_sizes) {
+        if (expected_type && expected_type->dtype != DataType::dt_int &&
+            !is_batch_sizes) {
             throw std::invalid_argument(
                 std::format("Argument {}: got unexpected dtype", arg_index + 1)
             );
         }
-    } else if (
-        dl_tensor->dtype.code == kDLInt &&
-        dl_tensor->dtype.bits == 64 &&
-        dl_tensor->dtype.lanes == 1
-    ) {
+    } else if (dl_tensor->dtype.code == kDLInt && dl_tensor->dtype.bits == 64 &&
+               dl_tensor->dtype.lanes == 1) {
         dtype = DataType::batch_sizes;
         is_batch_sizes = true;
         if (!is_batch_sizes && expected_type) {
@@ -277,15 +283,19 @@ Tensor madevent_py::dlpack_to_tensor(
             );
         }
     } else {
-        throw std::invalid_argument(std::format(
-            "Argument {}: input dtype must be 64-bit float or 32-bit int", arg_index + 1
-        ));
+        throw std::invalid_argument(
+            std::format(
+                "Argument {}: input dtype must be 64-bit float or 32-bit int",
+                arg_index + 1
+            )
+        );
     }
 
     DevicePtr device;
     if (dl_tensor->device.device_type == kDLCUDA && dl_tensor->device.device_id == 0) {
         device = cuda_device();
-    } else if (dl_tensor->device.device_type == kDLCPU && dl_tensor->device.device_id == 0) {
+    } else if (dl_tensor->device.device_type == kDLCPU &&
+               dl_tensor->device.device_id == 0) {
         device = cpu_device();
     } else {
         throw std::invalid_argument(
@@ -301,22 +311,32 @@ Tensor madevent_py::dlpack_to_tensor(
     Tensor ret_tensor;
     if (is_batch_sizes) {
         if (dl_tensor->ndim != 1) {
-            throw std::invalid_argument(std::format(
-                "Argument {}: wrong input dimension. Expected 1, got {}",
-                arg_index + 1, dl_tensor->ndim
-            ));
+            throw std::invalid_argument(
+                std::format(
+                    "Argument {}: wrong input dimension. Expected 1, got {}",
+                    arg_index + 1,
+                    dl_tensor->ndim
+                )
+            );
         }
         std::size_t count = dl_tensor->shape[0];
         if (expected_type && count != expected_type->batch_size_list.size()) {
-            throw std::invalid_argument(std::format(
-                "Argument {}, dimension 0: shape mismatch. Expected {}, got {}",
-                arg_index + 1, expected_type->batch_size_list.size(), dl_tensor->shape[0]
-            ));
+            throw std::invalid_argument(
+                std::format(
+                    "Argument {}, dimension 0: shape mismatch. Expected {}, got {}",
+                    arg_index + 1,
+                    expected_type->batch_size_list.size(),
+                    dl_tensor->shape[0]
+                )
+            );
         }
-        if (dl_tensor->device.device_type != kDLCPU || dl_tensor->device.device_id != 0) {
-            throw std::invalid_argument(std::format(
-                "Argument {}: batch size list must have device CPU", arg_index + 1
-            ));
+        if (dl_tensor->device.device_type != kDLCPU ||
+            dl_tensor->device.device_id != 0) {
+            throw std::invalid_argument(
+                std::format(
+                    "Argument {}: batch size list must have device CPU", arg_index + 1
+                )
+            );
         }
         std::vector<std::size_t> batch_sizes(count);
         std::size_t bs_stride = dl_tensor->strides ? dl_tensor->strides[0] : 1;
@@ -334,23 +354,31 @@ Tensor madevent_py::dlpack_to_tensor(
             for (std::size_t i = 0; i < count; ++i) {
                 batch_sizes[i] = data_ptr[bs_stride * i];
             }
-
         }
         if (versioned) {
             auto ptr = static_cast<DLManagedTensorVersioned*>(managed_ptr);
-            if (ptr->deleter) ptr->deleter(ptr);
+            if (ptr->deleter) {
+                ptr->deleter(ptr);
+            }
         } else {
             auto ptr = static_cast<DLManagedTensor*>(managed_ptr);
-            if (ptr->deleter) ptr->deleter(ptr);
+            if (ptr->deleter) {
+                ptr->deleter(ptr);
+            }
         }
         ret_tensor = {batch_sizes};
     } else {
         bool is_batch = !expected_type || expected_type->batch_size != BatchSize::one;
-        if (expected_type && dl_tensor->ndim != expected_type->shape.size() + is_batch) {
-            throw std::invalid_argument(std::format(
-                "Argument {}: wrong input dimension. Expected {}, got {}",
-                arg_index + 1, expected_type->shape.size() + 1, dl_tensor->ndim
-            ));
+        if (expected_type &&
+            dl_tensor->ndim != expected_type->shape.size() + is_batch) {
+            throw std::invalid_argument(
+                std::format(
+                    "Argument {}: wrong input dimension. Expected {}, got {}",
+                    arg_index + 1,
+                    expected_type->shape.size() + 1,
+                    dl_tensor->ndim
+                )
+            );
         }
         std::vector<size_t> shape, stride;
         if (!is_batch) {
@@ -365,9 +393,8 @@ Tensor madevent_py::dlpack_to_tensor(
         } else {
             stride.resize(shape.size());
             std::size_t stride_prod = 1;
-            for (auto [size_i, stride_i] : zip(
-                std::views::reverse(shape), std::views::reverse(stride)
-            )) {
+            for (auto [size_i, stride_i] :
+                 zip(std::views::reverse(shape), std::views::reverse(stride))) {
                 stride_i = stride_prod;
                 stride_prod *= size_i;
             }
@@ -375,10 +402,16 @@ Tensor madevent_py::dlpack_to_tensor(
         if (expected_type) {
             for (int j = is_batch; j < dl_tensor->ndim; ++j) {
                 if (shape.at(j) != expected_type->shape.at(j - is_batch)) {
-                    throw std::invalid_argument(std::format(
-                        "Argument {}, dimension {}: shape mismatch. Expected {}, got {}",
-                        arg_index + 1, j, expected_type->shape.at(j - is_batch), shape.at(j)
-                    ));
+                    throw std::invalid_argument(
+                        std::format(
+                            "Argument {}, dimension {}: shape mismatch. Expected {}, "
+                            "got {}",
+                            arg_index + 1,
+                            j,
+                            expected_type->shape.at(j - is_batch),
+                            shape.at(j)
+                        )
+                    );
                 }
             }
         }
@@ -387,22 +420,26 @@ Tensor madevent_py::dlpack_to_tensor(
         );
         std::function<void()> deleter;
         if (versioned) {
-            deleter = [managed_ptr] () {
+            deleter = [managed_ptr]() {
                 auto ptr = static_cast<DLManagedTensorVersioned*>(managed_ptr);
-                if (ptr->deleter) ptr->deleter(ptr);
+                if (ptr->deleter) {
+                    ptr->deleter(ptr);
+                }
             };
         } else {
-            deleter = [managed_ptr] () {
+            deleter = [managed_ptr]() {
                 auto ptr = static_cast<DLManagedTensor*>(managed_ptr);
-                if (ptr->deleter) ptr->deleter(ptr);
+                if (ptr->deleter) {
+                    ptr->deleter(ptr);
+                }
             };
         }
         ret_tensor = {dtype, shape, stride, device, data_ptr, deleter};
     }
 
     if (PyCapsule_SetName(
-        capsule, versioned ? "used_dltensor_versioned" : "used_dltensor"
-    ) < 0) {
+            capsule, versioned ? "used_dltensor_versioned" : "used_dltensor"
+        ) < 0) {
         throw std::runtime_error("could not rename capsule");
     }
     return ret_tensor;
@@ -413,18 +450,13 @@ std::vector<Tensor> FunctionRuntime::call(std::vector<py::object> args) {
     return runtime->run(inputs);
 }
 
-std::tuple<
-    std::vector<Tensor>,
-    std::vector<std::optional<Tensor>>,
-    std::vector<bool>
-> FunctionRuntime::call_with_grad(
-    const std::vector<py::object>& args,
-    const std::vector<bool>& input_requires_grad
+std::tuple<std::vector<Tensor>, std::vector<std::optional<Tensor>>, std::vector<bool>>
+FunctionRuntime::call_with_grad(
+    const std::vector<py::object>& args, const std::vector<bool>& input_requires_grad
 ) {
     auto [inputs, runtime] = check_and_convert_args(args, *this, &dlpack_version_cache);
-    auto [outputs, loc_grad, eval_grad] = runtime->run_with_grad(
-        inputs, input_requires_grad
-    );
+    auto [outputs, loc_grad, eval_grad] =
+        runtime->run_with_grad(inputs, input_requires_grad);
     std::vector<std::optional<Tensor>> local_grads;
     for (auto& grad : loc_grad) {
         if (grad) {
@@ -438,8 +470,8 @@ std::tuple<
 
 std::tuple<
     std::vector<std::optional<Tensor>>,
-    std::vector<std::tuple<std::string, std::optional<Tensor>>>
-> FunctionRuntime::call_backward(
+    std::vector<std::tuple<std::string, std::optional<Tensor>>>>
+FunctionRuntime::call_backward(
     const std::vector<py::object>& output_grads,
     const std::vector<py::object>& stored_locals,
     const std::vector<bool>& eval_grad
@@ -451,7 +483,8 @@ std::tuple<
         auto tensor = dlpack_to_tensor(
             grad, std::nullopt, arg_index, expected_device, &dlpack_version_cache
         );
-        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+        if (expected_device == nullptr && tensor &&
+            tensor.dtype() != DataType::batch_sizes) {
             expected_device = tensor.device();
         }
         arg_out.push_back(tensor);
@@ -462,7 +495,8 @@ std::tuple<
         auto tensor = dlpack_to_tensor(
             local, std::nullopt, arg_index, expected_device, &dlpack_version_cache
         );
-        if (expected_device == nullptr && tensor && tensor.dtype() != DataType::batch_sizes) {
+        if (expected_device == nullptr && tensor &&
+            tensor.dtype() != DataType::batch_sizes) {
             expected_device = tensor.device();
         }
         arg_locals.push_back(tensor);
@@ -470,9 +504,8 @@ std::tuple<
     }
     // TODO: checks here
     Runtime* runtime = get_runtime(*this, expected_device);
-    auto [ret_in_grads, ret_glob_grads] = runtime->run_backward(
-        arg_out, arg_locals, eval_grad
-    );
+    auto [ret_in_grads, ret_glob_grads] =
+        runtime->run_backward(arg_out, arg_locals, eval_grad);
     std::vector<std::optional<Tensor>> input_grads;
     for (auto& grad : ret_in_grads) {
         if (grad) {

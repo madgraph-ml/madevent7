@@ -10,7 +10,8 @@ public:
     VegasHistogram(std::size_t dimension, std::size_t bin_count);
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::size_t _bin_count;
 };
@@ -28,8 +29,7 @@ public:
         ),
         _dimension(dimension),
         _bin_count(bin_count),
-        _grid_name(prefixed_name(prefix, "vegas_grid"))
-    {}
+        _grid_name(prefixed_name(prefix, "vegas_grid")) {}
     const std::string& grid_name() const { return _grid_name; }
     void initialize_globals(ContextPtr context) const;
     std::size_t dimension() const { return _dimension; }
@@ -50,4 +50,4 @@ private:
 
 void initialize_vegas_grid(ContextPtr context, const std::string& grid_name);
 
-}
+} // namespace madevent

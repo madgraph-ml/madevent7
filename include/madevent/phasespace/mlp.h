@@ -8,14 +8,12 @@ namespace madevent {
 class MLP : public FunctionGenerator {
 public:
     enum Activation { relu, leaky_relu, elu, gelu, sigmoid, softplus, linear };
-    MLP(
-        std::size_t input_dim,
+    MLP(std::size_t input_dim,
         std::size_t output_dim,
         std::size_t hidden_dim = 32,
         std::size_t layers = 3,
         Activation activation = leaky_relu,
-        const std::string& prefix = ""
-    );
+        const std::string& prefix = "");
 
     std::size_t input_dim() const { return _input_dim; }
     std::size_t output_dim() const { return _output_dim; }
@@ -23,8 +21,10 @@ public:
     std::string last_layer_bias_name() const {
         return prefixed_name(_prefix, std::format("layer{}.bias", _layers));
     }
+
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::size_t _input_dim;
     std::size_t _output_dim;
@@ -34,4 +34,4 @@ private:
     std::string _prefix;
 };
 
-}
+} // namespace madevent

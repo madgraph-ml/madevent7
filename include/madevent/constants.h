@@ -14,4 +14,4 @@ inline constexpr double TWO_DIV_SQRT_PI = 1.12837916709551257390;
 inline constexpr double MIN_BIN_SIZE = 1e-3;
 inline constexpr double MIN_DERIVATIVE = 1e-3;
 
-}
+} // namespace madevent

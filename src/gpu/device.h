@@ -1,7 +1,7 @@
 #pragma once
 
-#include "madevent/runtime/tensor.h"
 #include "gpu_abstraction.h"
+#include "madevent/runtime/tensor.h"
 
 #include <format>
 
@@ -10,7 +10,7 @@ namespace gpu {
 
 inline void check_error(gpublasStatus_t status) {
     if (status != GPUBLAS_STATUS_SUCCESS) {
-        const char *error_str = gpublasGetStatusString(status);
+        const char* error_str = gpublasGetStatusString(status);
         throw std::runtime_error(std::format("BLAS error: {}", error_str));
     }
 }
@@ -25,14 +25,12 @@ inline void check_error(gpurandStatus_t status) {
 
 inline void check_error(gpuError_t error) {
     if (error != gpuSuccess) {
-        const char *error_str = gpuGetErrorString(error);
+        const char* error_str = gpuGetErrorString(error);
         throw std::runtime_error(std::format("GPU error: {}", error_str));
     }
 }
 
-inline void check_error() {
-    check_error(gpuGetLastError());
-}
+inline void check_error() { check_error(gpuGetLastError()); }
 
 class GpuDevice : public Device {
 public:
@@ -52,6 +50,7 @@ public:
         static GpuDevice device;
         return device;
     }
+
 private:
     GpuDevice() = default;
 };
@@ -78,5 +77,5 @@ private:
 
 extern "C" DevicePtr get_device();
 
-}
-}
+} // namespace gpu
+} // namespace madevent

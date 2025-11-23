@@ -16,7 +16,8 @@ public:
     std::size_t particle_count() const { return _particle_count; }
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     me_int_t _matrix_element_index;
     std::size_t _particle_count;
@@ -24,4 +25,4 @@ private:
     me_int_t _channel_count;
 };
 
-}
+} // namespace madevent

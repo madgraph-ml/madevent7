@@ -21,12 +21,10 @@ EnergyScale::EnergyScale(
     _fact_scale_fixed(fact_scale_fixed),
     _ren_scale(ren_scale),
     _fact_scale1(fact_scale1),
-    _fact_scale2(fact_scale2)
-{}
+    _fact_scale2(fact_scale2) {}
 
-ValueVec EnergyScale::build_function_impl(
-    FunctionBuilder& fb, const ValueVec& args
-) const {
+ValueVec
+EnergyScale::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
     if (_ren_scale_fixed && _fact_scale_fixed) {
         return {
             _ren_scale * _ren_scale,

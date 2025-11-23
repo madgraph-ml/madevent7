@@ -1,10 +1,10 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <unordered_map>
 #include <fstream>
 #include <random>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "madevent/phasespace/topology.h"
 #include "madevent/util.h"
@@ -105,7 +105,8 @@ private:
     std::vector<double> _helicities;
     std::vector<std::array<std::size_t, 3>> _pdg_id_index_and_count;
     std::vector<int> _pdg_ids;
-    std::unordered_map<std::size_t, std::array<std::size_t, 3>> _propagator_index_and_count;
+    std::unordered_map<std::size_t, std::array<std::size_t, 3>>
+        _propagator_index_and_count;
     std::vector<PropagatorData> _propagators;
     std::vector<std::tuple<int, int>> _propagator_colors;
     double _bw_cutoff;
@@ -115,9 +116,7 @@ private:
 
 class LHEFileWriter {
 public:
-    LHEFileWriter(
-        const std::string& file_name, const LHEMeta& meta
-    );
+    LHEFileWriter(const std::string& file_name, const LHEMeta& meta);
     void write(const LHEEvent& event);
     ~LHEFileWriter();
 
@@ -125,4 +124,4 @@ private:
     std::ofstream _file_stream;
 };
 
-}
+} // namespace madevent

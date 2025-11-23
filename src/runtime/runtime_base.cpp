@@ -1,8 +1,8 @@
 #include "madevent/runtime/runtime_base.h"
 
+#include <cstdlib>
 #include <dlfcn.h>
 #include <format>
-#include <cstdlib>
 
 using namespace madevent;
 
@@ -23,40 +23,44 @@ struct LoadedRuntime {
             [](void* lib) { dlclose(lib); }
         );
         if (!shared_lib) {
-            throw std::runtime_error(std::format(
-                "Could not load shared object {}", file
-            ));
+            throw std::runtime_error(
+                std::format("Could not load shared object {}", file)
+            );
         }
         get_device = reinterpret_cast<decltype(get_device)>(
             dlsym(shared_lib.get(), "get_device")
         );
         if (get_device == nullptr) {
-            throw std::runtime_error(std::format(
-                "Did not find symbol get_device in shared object {}", file
-            ));
+            throw std::runtime_error(
+                std::format("Did not find symbol get_device in shared object {}", file)
+            );
         }
         build_runtime = reinterpret_cast<decltype(build_runtime)>(
             dlsym(shared_lib.get(), "build_runtime")
         );
         if (build_runtime == nullptr) {
-            throw std::runtime_error(std::format(
-                "Did not find symbol build_runtime in shared object {}", file
-            ));
+            throw std::runtime_error(
+                std::format(
+                    "Did not find symbol build_runtime in shared object {}", file
+                )
+            );
         }
     }
 
     std::unique_ptr<void, std::function<void(void*)>> shared_lib;
     DevicePtr (*get_device)();
-    Runtime* (*build_runtime)(const Function& function, ContextPtr context, bool concurrent);
+    Runtime* (*build_runtime)(
+        const Function& function, ContextPtr context, bool concurrent
+    );
 };
 
 const LoadedRuntime& cpu_runtime() {
     static LoadedRuntime runtime = [&] {
-        std::vector<int> supported_vector_sizes {1};
+        std::vector<int> supported_vector_sizes{1};
 #ifdef SIMD_AVAILABLE
 #ifdef __APPLE__
         supported_vector_sizes.push_back(2);
-#else // __APPLE__
+#else  // __APPLE__
         if (__builtin_cpu_supports("avx2")) {
             supported_vector_sizes.push_back(4);
         }
@@ -78,22 +82,26 @@ const LoadedRuntime& cpu_runtime() {
 #ifdef __APPLE__
             vector_size = 1;
 #else
-            //vector_size = supported_vector_sizes.back();
+            // vector_size = supported_vector_sizes.back();
             vector_size = 1;
 #endif
-        } else if (
-            std::find(
-                supported_vector_sizes.begin(), supported_vector_sizes.end(), vector_size
-            ) == supported_vector_sizes.end()
-        ) {
+        } else if (std::find(
+                       supported_vector_sizes.begin(),
+                       supported_vector_sizes.end(),
+                       vector_size
+                   ) == supported_vector_sizes.end()) {
             throw std::runtime_error("unsupported SIMD vector size");
         }
 
         switch (vector_size) {
-            case 2: return LoadedRuntime("libmadevent_cpu_neon");
-            case 4: return LoadedRuntime("libmadevent_cpu_avx2");
-            case 8: return LoadedRuntime("libmadevent_cpu_avx512");
-            default: return LoadedRuntime("libmadevent_cpu");
+        case 2:
+            return LoadedRuntime("libmadevent_cpu_neon");
+        case 4:
+            return LoadedRuntime("libmadevent_cpu_avx2");
+        case 8:
+            return LoadedRuntime("libmadevent_cpu_avx512");
+        default:
+            return LoadedRuntime("libmadevent_cpu");
         }
     }();
     return runtime;
@@ -109,9 +117,10 @@ const LoadedRuntime& hip_runtime() {
     return runtime;
 }
 
-}
+} // namespace
 
-RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
+RuntimePtr
+madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
     if (context->device() == cpu_device()) {
         return RuntimePtr(cpu_runtime().build_runtime(function, context, concurrent));
     } else if (context->device() == cuda_device()) {
@@ -123,17 +132,11 @@ RuntimePtr madevent::build_runtime(const Function& function, ContextPtr context,
     }
 }
 
-DevicePtr madevent::cpu_device() {
-    return cpu_runtime().get_device();
-}
+DevicePtr madevent::cpu_device() { return cpu_runtime().get_device(); }
 
-DevicePtr madevent::cuda_device() {
-    return cuda_runtime().get_device();
-}
+DevicePtr madevent::cuda_device() { return cuda_runtime().get_device(); }
 
-DevicePtr madevent::hip_device() {
-    return hip_runtime().get_device();
-}
+DevicePtr madevent::hip_device() { return hip_runtime().get_device(); }
 
 void madevent::set_lib_path(const std::string& lib_path) {
     LoadedRuntime::lib_path = lib_path;

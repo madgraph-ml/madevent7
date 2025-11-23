@@ -1,7 +1,7 @@
 #pragma once
 
-#include <unordered_map>
 #include <stdint.h>
+#include <unordered_map>
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
@@ -28,9 +28,11 @@ public:
     std::size_t diagram_count() const { return _subprocess_info.diagram_count; }
     std::size_t helicity_count() const { return _subprocess_info.helicity_count; }
 
-    template<typename... T>
-    void call(T... args) const { _compute_matrix_element(std::forward<T>(args)...); }
-    template<typename... T>
+    template <typename... T>
+    void call(T... args) const {
+        _compute_matrix_element(std::forward<T>(args)...);
+    }
+    template <typename... T>
     void call_multichannel(T... args) const {
         _compute_matrix_element_multichannel(std::forward<T>(args)...);
     }
@@ -46,8 +48,19 @@ private:
         void*, std::size_t, std::size_t, const double*, const int*, double*, void*
     );
     void (*_compute_matrix_element_multichannel)(
-        void*, std::size_t, std::size_t, const double*, const double*, const double*,
-        const int*, double*, double*, int*, int*, int*, void*
+        void*,
+        std::size_t,
+        std::size_t,
+        const double*,
+        const double*,
+        const double*,
+        const int*,
+        double*,
+        double*,
+        int*,
+        int*,
+        int*,
+        void*
     );
     void (*_free_subprocess)(void*);
     using InstanceType = std::unique_ptr<void, std::function<void(void*)>>;
@@ -65,14 +78,13 @@ public:
     Context& operator=(Context&&) = default;
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
-    std::size_t load_matrix_element(
-        const std::string& file, const std::string& param_card
-    );
+    std::size_t
+    load_matrix_element(const std::string& file, const std::string& param_card);
     Tensor define_global(
         const std::string& name,
         DataType dtype,
         const SizeVec& shape,
-        bool requires_grad=false
+        bool requires_grad = false
     );
     Tensor global(const std::string& name);
     bool global_requires_grad(const std::string& name);
@@ -100,4 +112,4 @@ inline std::string prefixed_name(const std::string& prefix, const std::string& n
     return prefix == "" ? name : std::format("{}.{}", prefix, name);
 }
 
-}
+} // namespace madevent

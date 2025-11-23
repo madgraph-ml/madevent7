@@ -1,13 +1,13 @@
 #pragma once
 
+#include <initializer_list>
 #include <map>
-#include <vector>
+#include <memory>
 #include <string>
 #include <tuple>
-#include <variant>
-#include <initializer_list>
-#include <memory>
 #include <unordered_map>
+#include <variant>
+#include <vector>
 
 #include "type.h"
 
@@ -17,7 +17,7 @@ namespace opcodes {
 enum Opcode {
 #include "opcode_mixin.h"
 };
-}
+} // namespace opcodes
 
 class Instruction {
 public:
@@ -27,7 +27,7 @@ public:
     virtual TypeVec signature(const ValueVec& args) const = 0;
     const std::string& name() const { return _name; }
     int opcode() const { return _opcode; }
-    bool differentiable() const { return  _differentiable; }
+    bool differentiable() const { return _differentiable; }
 
 protected:
     void check_arg_count(const ValueVec& args, std::size_t count) const;
@@ -43,9 +43,8 @@ public:
     ShapeExpr(const char* expr);
     bool check_and_update(std::map<char, int>& variables, int value) const;
     std::optional<int> evaluate(const std::map<char, int>& variables) const;
-    char first_var_name() const {
-        return std::get<0>(terms.at(0));
-    }
+    char first_var_name() const { return std::get<0>(terms.at(0)); }
+
 private:
     std::vector<std::tuple<char, int>> terms;
 };
@@ -61,7 +60,8 @@ public:
         bool differentiable,
         std::initializer_list<SigType> _inputs,
         std::initializer_list<SigType> _outputs
-    ) : Instruction(name, opcode, differentiable), inputs(_inputs), outputs(_outputs) {}
+    ) :
+        Instruction(name, opcode, differentiable), inputs(_inputs), outputs(_outputs) {}
 
     TypeVec signature(const ValueVec& args) const override;
 
@@ -192,6 +192,7 @@ public:
 using InstructionOwner = std::unique_ptr<const Instruction>;
 using InstructionPtr = Instruction const*;
 const std::unordered_map<std::string, InstructionOwner> build_instruction_set();
-const std::unordered_map<std::string, InstructionOwner> instruction_set = build_instruction_set();
+const std::unordered_map<std::string, InstructionOwner> instruction_set =
+    build_instruction_set();
 
-}
+} // namespace madevent

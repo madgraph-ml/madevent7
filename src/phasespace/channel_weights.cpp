@@ -12,15 +12,14 @@ PropagatorChannelWeights::PropagatorChannelWeights(
     FunctionGenerator(
         "PropagatorChannelWeights",
         {batch_four_vec_array(topologies.at(0).outgoing_masses().size() + 2)},
-        {batch_float_array([&](){
+        {batch_float_array([&]() {
             std::size_t channel_count = 0;
             for (auto& perm : permutations) {
                 channel_count += perm.size();
             }
             return channel_count;
         }())}
-    )
-{
+    ) {
     std::size_t channel_count = return_types().at(0).shape.at(0);
     _invariant_indices.resize(channel_count);
     _masses.resize(channel_count);
@@ -28,9 +27,8 @@ PropagatorChannelWeights::PropagatorChannelWeights(
 
     std::map<std::vector<me_int_t>, std::size_t> found_factors;
     std::size_t max_propagator_count = 0;
-    for (auto [topology, chan_perms, indices] : zip(
-        topologies, permutations, channel_indices
-    )) {
+    for (auto [topology, chan_perms, indices] :
+         zip(topologies, permutations, channel_indices)) {
         auto mom_terms = topology.propagator_momentum_terms();
         if (mom_terms.size() > max_propagator_count) {
             max_propagator_count = mom_terms.size();
@@ -61,9 +59,15 @@ PropagatorChannelWeights::PropagatorChannelWeights(
             }
         }
     }
-    for (auto& masses : _masses) masses.resize(max_propagator_count);
-    for (auto& widths : _widths) widths.resize(max_propagator_count);
-    for (auto& invars : _invariant_indices) invars.resize(max_propagator_count, -1);
+    for (auto& masses : _masses) {
+        masses.resize(max_propagator_count);
+    }
+    for (auto& widths : _widths) {
+        widths.resize(max_propagator_count);
+    }
+    for (auto& invars : _invariant_indices) {
+        invars.resize(max_propagator_count, -1);
+    }
 }
 
 ValueVec PropagatorChannelWeights::build_function_impl(
@@ -71,9 +75,8 @@ ValueVec PropagatorChannelWeights::build_function_impl(
 ) const {
     auto p_ext = args.at(0);
     auto invariants = fb.invariants_from_momenta(p_ext, _momentum_factors);
-    auto channel_weights = fb.sde2_channel_weights(
-        invariants, _masses, _widths, _invariant_indices
-    );
+    auto channel_weights =
+        fb.sde2_channel_weights(invariants, _masses, _widths, _invariant_indices);
     return {channel_weights};
 }
 
@@ -84,31 +87,27 @@ SubchannelWeights::SubchannelWeights(
 ) :
     FunctionGenerator(
         "SubchannelWeights",
-        {
-            batch_four_vec_array(topologies.at(0).at(0).outgoing_masses().size() + 2),
-            batch_float_array([&](){
-                std::size_t channel_count = 0;
-                for (auto& perm : permutations) {
-                    channel_count += perm.size();
-                }
-                return channel_count;
-            }())
-        },
-        {
-            batch_float_array([&](){
-                std::size_t channel_count = 0;
-                for (auto [perm, topos] : zip(permutations, topologies)) {
-                    channel_count += perm.size() * topos.size();
-                }
-                return channel_count;
-            }())
-        }
-    )
-{
+        {batch_four_vec_array(topologies.at(0).at(0).outgoing_masses().size() + 2),
+         batch_float_array([&]() {
+             std::size_t channel_count = 0;
+             for (auto& perm : permutations) {
+                 channel_count += perm.size();
+             }
+             return channel_count;
+         }())},
+        {batch_float_array([&]() {
+            std::size_t channel_count = 0;
+            for (auto [perm, topos] : zip(permutations, topologies)) {
+                channel_count += perm.size() * topos.size();
+            }
+            return channel_count;
+        }())}
+    ) {
     std::map<std::vector<me_int_t>, std::size_t> found_factors;
     std::size_t max_propagator_count = 0;
 
-    for (auto [topos, perms, indices] : zip(topologies, permutations, channel_indices)) {
+    for (auto [topos, perms, indices] :
+         zip(topologies, permutations, channel_indices)) {
         if (topos.size() <= 1) {
             _channel_indices.insert(
                 _channel_indices.end(), indices.begin(), indices.end()
@@ -125,7 +124,9 @@ SubchannelWeights::SubchannelWeights(
             auto& configs = on_shell_configs.emplace_back();
             for (auto& decay : std::views::reverse(topo.decays())) {
                 if (decay.index == 0) {
-                    if (topo.t_integration_order().size() != 0) continue;
+                    if (topo.t_integration_order().size() != 0) {
+                        continue;
+                    }
                 } else if (decay.child_indices.size() == 0) {
                     continue;
                 }
@@ -182,10 +183,18 @@ SubchannelWeights::SubchannelWeights(
             }
         }
     }
-    for (auto& masses : _masses) masses.resize(max_propagator_count);
-    for (auto& widths : _widths) widths.resize(max_propagator_count);
-    for (auto& invars : _invariant_indices) invars.resize(max_propagator_count, -1);
-    for (auto& on_shell : _on_shell) on_shell.resize(max_propagator_count);
+    for (auto& masses : _masses) {
+        masses.resize(max_propagator_count);
+    }
+    for (auto& widths : _widths) {
+        widths.resize(max_propagator_count);
+    }
+    for (auto& invars : _invariant_indices) {
+        invars.resize(max_propagator_count, -1);
+    }
+    for (auto& on_shell : _on_shell) {
+        on_shell.resize(max_propagator_count);
+    }
 }
 
 ValueVec SubchannelWeights::build_function_impl(

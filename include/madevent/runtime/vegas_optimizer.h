@@ -10,7 +10,8 @@ class VegasGridOptimizer {
 public:
     VegasGridOptimizer(
         ContextPtr context, const std::string& grid_name, double damping
-    ) : _context(context), _grid_name(grid_name), _damping(damping) {}
+    ) :
+        _context(context), _grid_name(grid_name), _damping(damping) {}
     void add_data(Tensor weights, Tensor inputs);
     void optimize();
     std::size_t input_dim() const;
@@ -22,4 +23,4 @@ private:
     std::vector<std::tuple<std::vector<std::size_t>, std::vector<double>>> _data;
 };
 
-}
+} // namespace madevent

@@ -2,8 +2,8 @@
 
 #ifdef __CUDACC__
 
-#include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <cuda_runtime.h>
 #include <curand.h>
 
 #define gpuMalloc cudaMalloc

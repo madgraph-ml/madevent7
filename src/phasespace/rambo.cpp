@@ -6,11 +6,15 @@
 
 using namespace madevent;
 
-FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, bool _com) :
+FastRamboMapping::FastRamboMapping(
+    std::size_t _n_particles, bool _massless, bool _com
+) :
     Mapping(
         "FastRamboMapping",
         [&] {
-            TypeVec input_types(3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float);
+            TypeVec input_types(
+                3 * _n_particles - 3 + (_massless ? 0 : _n_particles), batch_float
+            );
             if (!_com) {
                 input_types.push_back(batch_four_vec);
             }
@@ -21,8 +25,7 @@ FastRamboMapping::FastRamboMapping(std::size_t _n_particles, bool _massless, boo
     ),
     n_particles(_n_particles),
     massless(_massless),
-    com(_com)
-{
+    com(_com) {
     if (n_particles < 3 || n_particles > 12) {
         throw std::invalid_argument("The number of particles must be between 3 and 12");
     }

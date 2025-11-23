@@ -1,14 +1,13 @@
 #pragma once
 
-#include <vector>
 #include <pybind11/pybind11.h>
+#include <vector>
 #ifdef TORCH_FOUND
 #include <torch/extension.h>
 #endif
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/runtime_base.h"
-
 
 namespace py = pybind11;
 using namespace madevent;
@@ -39,15 +38,15 @@ struct FunctionRuntime {
     std::tuple<
         std::vector<Tensor>,
         std::vector<std::optional<Tensor>>,
-        std::vector<bool>
-    > call_with_grad(
+        std::vector<bool>>
+    call_with_grad(
         const std::vector<py::object>& args,
         const std::vector<bool>& input_requires_grad
     );
     std::tuple<
         std::vector<std::optional<Tensor>>,
-        std::vector<std::tuple<std::string, std::optional<Tensor>>>
-    > call_backward(
+        std::vector<std::tuple<std::string, std::optional<Tensor>>>>
+    call_backward(
         const std::vector<py::object>& output_grads,
         const std::vector<py::object>& stored_locals,
         const std::vector<bool>& eval_grad
@@ -60,4 +59,4 @@ struct FunctionRuntime {
     bool dlpack_version_cache = false;
 };
 
-}
+} // namespace madevent_py

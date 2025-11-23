@@ -5,14 +5,16 @@ using namespace madevent;
 void VegasGridOptimizer::add_data(Tensor values, Tensor counts) {
     auto values_cpu = values.cpu();
     auto counts_cpu = counts.cpu();
-    //TODO: check all the shapes here
+    // TODO: check all the shapes here
     auto values_view = values_cpu.view<double, 3>()[0];
     auto counts_view = counts_cpu.view<me_int_t, 3>()[0];
     std::size_t n_dims = values_view.size(0);
     std::size_t n_bins = values_view.size(1);
 
     while (_data.size() < n_dims) {
-        _data.push_back({std::vector<std::size_t>(n_bins), std::vector<double>(n_bins)});
+        _data.push_back(
+            {std::vector<std::size_t>(n_bins), std::vector<double>(n_bins)}
+        );
     }
 
     for (std::size_t i_dim = 0; i_dim < n_dims; ++i_dim) {
@@ -40,28 +42,30 @@ void VegasGridOptimizer::optimize() {
         }
 
         // compute averages
-        std::size_t count_tot=0;
+        std::size_t count_tot = 0;
         for (std::size_t i_bin = 0; i_bin < n_bins; ++i_bin) {
             count_tot += bin_counts[i_bin];
-            if (bin_counts[i_bin] > 0) bin_values[i_bin] /= bin_counts[i_bin];
+            if (bin_counts[i_bin] > 0) {
+                bin_values[i_bin] /= bin_counts[i_bin];
+            }
         }
 
         // apply smoothing
         double prev_value = bin_values[0];
         double current_value = bin_values[1];
         double sum = 0.;
-        //bin_values[0] = (7. * prev_value + current_value) / 8.;
+        // bin_values[0] = (7. * prev_value + current_value) / 8.;
         bin_values[0] = (prev_value + current_value) / 2.;
         for (std::size_t i_bin = 1; i_bin < n_bins - 1; ++i_bin) {
             double next_value = bin_values[i_bin + 1];
-            //double new_value = (prev_value + 6. * current_value + next_value) / 8.;
+            // double new_value = (prev_value + 6. * current_value + next_value) / 8.;
             double new_value = (prev_value + current_value + next_value) / 3.;
             bin_values[i_bin] = new_value;
             sum += new_value;
             prev_value = current_value;
             current_value = next_value;
         }
-        //bin_values[n_bins - 1] = (prev_value + 7. * current_value) / 8.;
+        // bin_values[n_bins - 1] = (prev_value + 7. * current_value) / 8.;
         bin_values[n_bins - 1] = (prev_value + current_value) / 2.;
 
         // normalize and apply damping
@@ -77,9 +81,9 @@ void VegasGridOptimizer::optimize() {
         } else {
             for (std::size_t i_bin = 0; i_bin < n_bins; ++i_bin) {
                 double val_norm = std::max(bin_values[i_bin] / sum, tiny);
-                double new_val = val_norm <= 0.99999999 ?
-                    std::pow(-(1 - val_norm) / std::log(val_norm), _damping) :
-                    val_norm;
+                double new_val = val_norm <= 0.99999999
+                    ? std::pow(-(1 - val_norm) / std::log(val_norm), _damping)
+                    : val_norm;
                 bin_values[i_bin] = new_val;
                 damped_avg += new_val;
             }
@@ -92,10 +96,14 @@ void VegasGridOptimizer::optimize() {
         for (std::size_t i_bin = 1; i_bin < n_bins; ++i_bin) {
             while (accumulator < damped_avg) {
                 ++j_bin;
-                if (j_bin == n_bins) break;
+                if (j_bin == n_bins) {
+                    break;
+                }
                 accumulator += bin_values[j_bin];
             }
-            if (j_bin == n_bins) break;
+            if (j_bin == n_bins) {
+                break;
+            }
             double grid_j = grid_view[i_dim][j_bin];
             double grid_j_next = grid_view[i_dim][j_bin + 1];
             double bin_width = grid_j_next - grid_j;
