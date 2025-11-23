@@ -19,16 +19,13 @@ private:
     std::vector<int> ranks;
 };
 
-
 class LastUseOfLocals {
 public:
     LastUseOfLocals(const Function& function);
-    std::vector<int>& local_indices(std::size_t index) {
-        return last_used[index];
-    }
+    std::vector<int>& local_indices(std::size_t index) { return last_used[index]; }
 
 private:
     std::vector<std::vector<int>> last_used;
 };
 
-}
+} // namespace madevent

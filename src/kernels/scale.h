@@ -7,8 +7,8 @@ namespace kernels {
 
 // Helper functions
 
-template<typename T>
-KERNELSPEC FVal<T> transverse_mass(FIn<T,2> momenta) {
+template <typename T>
+KERNELSPEC FVal<T> transverse_mass(FIn<T, 2> momenta) {
     FVal<T> mt_sum(0.);
     for (std::size_t i = 2; i < momenta.size(); ++i) {
         auto p = momenta[i];
@@ -19,8 +19,8 @@ KERNELSPEC FVal<T> transverse_mass(FIn<T,2> momenta) {
 
 // Kernels
 
-template<typename T>
-KERNELSPEC void kernel_scale_transverse_energy(FIn<T,2> momenta, FOut<T,0> scale) {
+template <typename T>
+KERNELSPEC void kernel_scale_transverse_energy(FIn<T, 2> momenta, FOut<T, 0> scale) {
     FVal<T> et_sum(0.);
     for (std::size_t i = 2; i < momenta.size(); ++i) {
         auto p = momenta[i];
@@ -31,25 +31,25 @@ KERNELSPEC void kernel_scale_transverse_energy(FIn<T,2> momenta, FOut<T,0> scale
     scale = et_sum * et_sum;
 }
 
-template<typename T>
-KERNELSPEC void kernel_scale_transverse_mass(FIn<T,2> momenta, FOut<T,0> scale) {
+template <typename T>
+KERNELSPEC void kernel_scale_transverse_mass(FIn<T, 2> momenta, FOut<T, 0> scale) {
     auto mt = transverse_mass<T>(momenta);
     scale = mt * mt;
 }
 
-template<typename T>
-KERNELSPEC void kernel_scale_half_transverse_mass(FIn<T,2> momenta, FOut<T,0> scale) {
+template <typename T>
+KERNELSPEC void kernel_scale_half_transverse_mass(FIn<T, 2> momenta, FOut<T, 0> scale) {
     auto hmt = 0.5 * transverse_mass<T>(momenta);
     scale = hmt * hmt;
 }
 
-template<typename T>
-KERNELSPEC void kernel_scale_partonic_energy(FIn<T,2> momenta, FOut<T,0> scale) {
+template <typename T>
+KERNELSPEC void kernel_scale_partonic_energy(FIn<T, 2> momenta, FOut<T, 0> scale) {
     auto e_tot = momenta[0][0] + momenta[1][0];
     auto pz_tot = momenta[0][3] + momenta[1][3];
     auto epart = sqrt(e_tot * e_tot - pz_tot * pz_tot);
     scale = epart * epart;
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

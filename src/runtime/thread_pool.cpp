@@ -4,13 +4,9 @@
 
 using namespace madevent;
 
-ThreadPool::ThreadPool(int thread_count) {
-    set_thread_count(thread_count);
-}
+ThreadPool::ThreadPool(int thread_count) { set_thread_count(thread_count); }
 
-ThreadPool::~ThreadPool() {
-    set_thread_count(0);
-}
+ThreadPool::~ThreadPool() { set_thread_count(0); }
 
 void ThreadPool::set_thread_count(int new_count) {
     {
@@ -24,7 +20,9 @@ void ThreadPool::set_thread_count(int new_count) {
 
         std::size_t queue_size = _thread_count * QUEUE_SIZE_PER_THREAD;
         std::size_t queue_size_rounded = 1;
-        while (queue_size_rounded < queue_size) queue_size_rounded *= 2;
+        while (queue_size_rounded < queue_size) {
+            queue_size_rounded *= 2;
+        }
         _job_queue.resize(queue_size_rounded);
         _done_queue.resize(queue_size_rounded);
         _queue_mask = queue_size_rounded - 1;
@@ -42,13 +40,17 @@ void ThreadPool::set_thread_count(int new_count) {
         }
     } else if (_threads.size() > _thread_count) {
         _cv_run.notify_all();
-        std::for_each(_threads.begin() + _thread_count, _threads.end(), [](auto& thread) {
-            thread.join();
-        });
+        std::for_each(
+            _threads.begin() + _thread_count, _threads.end(), [](auto& thread) {
+                thread.join();
+            }
+        );
         _threads.erase(_threads.begin() + _thread_count, _threads.end());
     }
 
-    for (auto& [id, listener] : _listeners) listener(_thread_count);
+    for (auto& [id, listener] : _listeners) {
+        listener(_thread_count);
+    }
 }
 
 void ThreadPool::submit(JobFunc job) {
@@ -59,7 +61,7 @@ void ThreadPool::submit(JobFunc job) {
         begin_index = _job_queue_begin.load();
         current_index = _job_queue_end.load();
         next_index = (current_index + 1) & _queue_mask;
-    } while(next_index == begin_index);
+    } while (next_index == begin_index);
     _job_queue[current_index] = std::move(job);
     _job_queue_end.store(next_index);
     _cv_run.notify_one();
@@ -72,36 +74,36 @@ void ThreadPool::submit(std::vector<JobFunc>& jobs) {
         do {
             begin_index = _job_queue_begin.load();
             current_index = _job_queue_end.load();
-        } while(((current_index + 1) & _queue_mask) == begin_index);
-        for (;
-            ((current_index + 1) & _queue_mask) != begin_index && job_index < jobs.size();
-            ++job_index, current_index = (current_index + 1) & _queue_mask
-        ) {
+        } while (((current_index + 1) & _queue_mask) == begin_index);
+        for (; ((current_index + 1) & _queue_mask) != begin_index &&
+             job_index < jobs.size();
+             ++job_index, current_index = (current_index + 1) & _queue_mask) {
             _job_queue[current_index] = std::move(jobs[job_index]);
         }
         _job_queue_end.store(current_index);
         _cv_run.notify_all();
     }
-
 }
 
 bool ThreadPool::fill_done_cache() {
-    if (!_done_queue_cache.empty()) return true;
+    if (!_done_queue_cache.empty()) {
+        return true;
+    }
 
     std::size_t begin_index = _done_queue_begin.load();
     std::size_t end_index = _done_queue_end.load();
     if (begin_index == end_index) {
         std::unique_lock<std::mutex> lock(_mutex);
-        //if (_job_queue_begin == _job_queue_end && _busy_threads == 0) return false;
+        // if (_job_queue_begin == _job_queue_end && _busy_threads == 0) return false;
         bool no_more_jobs;
-        _cv_done.wait(lock, [&]{
+        _cv_done.wait(lock, [&] {
             end_index = _done_queue_end.load();
             no_more_jobs = false;
             if (_busy_threads == 0) {
                 if (_job_queue_begin.load() == _job_queue_end.load()) {
                     no_more_jobs = true;
                 } else {
-                    //TODO: why is this necessary?
+                    // TODO: why is this necessary?
                     _cv_run.notify_all();
                 }
             }
@@ -120,14 +122,18 @@ bool ThreadPool::fill_done_cache() {
 }
 
 std::optional<std::size_t> ThreadPool::wait() {
-    if (!fill_done_cache()) return std::nullopt;
+    if (!fill_done_cache()) {
+        return std::nullopt;
+    }
     std::size_t result = _done_queue_cache.back();
     _done_queue_cache.pop_back();
     return result;
 }
 
 std::vector<std::size_t> ThreadPool::wait_multiple() {
-    if (!fill_done_cache()) return {};
+    if (!fill_done_cache()) {
+        return {};
+    }
     std::vector<std::size_t> ret(_done_queue_cache.rbegin(), _done_queue_cache.rend());
     _done_queue_cache.clear();
     return ret;
@@ -150,17 +156,21 @@ void ThreadPool::thread_loop(std::size_t index) {
     _thread_index = index;
     std::unique_lock<std::mutex> lock(_mutex);
     while (true) {
-        _cv_run.wait(lock, [&]{
+        _cv_run.wait(lock, [&] {
             return _job_queue_begin != _job_queue_end || index >= _thread_count;
         });
-        if (index >= _thread_count) return;
+        if (index >= _thread_count) {
+            return;
+        }
         std::size_t bt = ++_busy_threads;
         lock.unlock();
 
         while (true) {
             // if queue is empty, go to sleep
             std::size_t current_index = _job_queue_read.load();
-            if (current_index == _job_queue_end.load()) break;
+            if (current_index == _job_queue_end.load()) {
+                break;
+            }
 
             // spin until read index was increased
             std::size_t next_index = (current_index + 1) & _queue_mask;
@@ -173,7 +183,7 @@ void ThreadPool::thread_loop(std::size_t index) {
 
             // free up space in the queue
             std::size_t current_index_before = current_index;
-            while(!_job_queue_begin.compare_exchange_weak(current_index, next_index)) {
+            while (!_job_queue_begin.compare_exchange_weak(current_index, next_index)) {
                 current_index = current_index_before;
             }
 
@@ -187,8 +197,10 @@ void ThreadPool::thread_loop(std::size_t index) {
                 done_begin_index = _done_queue_begin.load();
                 current_done_index = _done_queue_write.load();
                 next_done_index = (current_done_index + 1) & _queue_mask;
-                if (next_done_index == done_begin_index) continue;
-            } while(!_done_queue_write.compare_exchange_weak(
+                if (next_done_index == done_begin_index) {
+                    continue;
+                }
+            } while (!_done_queue_write.compare_exchange_weak(
                 current_done_index, next_done_index
             ));
 
@@ -197,7 +209,7 @@ void ThreadPool::thread_loop(std::size_t index) {
 
             // increase end index to make result available
             std::size_t current_done_index_before = current_done_index;
-            while(!_done_queue_end.compare_exchange_weak(
+            while (!_done_queue_end.compare_exchange_weak(
                 current_done_index, next_done_index
             )) {
                 current_done_index = current_done_index_before;

@@ -9,7 +9,9 @@ using namespace madevent;
 
 namespace {
 
-void update_cuts(double& min_cut, double& max_cut, Cuts::LimitType limit_type, double value) {
+void update_cuts(
+    double& min_cut, double& max_cut, Cuts::LimitType limit_type, double value
+) {
     if (limit_type == Cuts::min) {
         if (min_cut < value) {
             min_cut = value;
@@ -19,19 +21,17 @@ void update_cuts(double& min_cut, double& max_cut, Cuts::LimitType limit_type, d
     }
 }
 
-}
+} // namespace
 
-const Cuts::PidVec Cuts::jet_pids {1, 2, 3, 4, -1, -2, -3, -4, 21};
-const Cuts::PidVec Cuts::bottom_pids {-5, 5};
-const Cuts::PidVec Cuts::lepton_pids {11, 13, 15, -11, -13, -15};
-const Cuts::PidVec Cuts::missing_pids {12, 14, 16, -12, -14, -16};
-const Cuts::PidVec Cuts::photon_pids {22};
+const Cuts::PidVec Cuts::jet_pids{1, 2, 3, 4, -1, -2, -3, -4, 21};
+const Cuts::PidVec Cuts::bottom_pids{-5, 5};
+const Cuts::PidVec Cuts::lepton_pids{11, 13, 15, -11, -13, -15};
+const Cuts::PidVec Cuts::missing_pids{12, 14, 16, -12, -14, -16};
+const Cuts::PidVec Cuts::photon_pids{22};
 
 Cuts::Cuts(std::vector<int> pids, std::vector<CutItem> cut_data) :
     FunctionGenerator(
-        "Cuts",
-        {batch_float, batch_four_vec_array(pids.size() + 2)},
-        {batch_float}
+        "Cuts", {batch_float, batch_four_vec_array(pids.size() + 2)}, {batch_float}
     ),
     _pids(pids),
     _cut_data(cut_data) {}
@@ -68,7 +68,9 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
             process_pair_cuts(cut, mass_indices, mass_cuts, has_mass_cuts);
             break;
         case obs_sqrt_s:
-            update_cuts(sqrt_s_cuts.at(0), sqrt_s_cuts.at(1), cut.limit_type, cut.value);
+            update_cuts(
+                sqrt_s_cuts.at(0), sqrt_s_cuts.at(1), cut.limit_type, cut.value
+            );
             has_sqrt_s_cuts = true;
             break;
         }
@@ -104,11 +106,8 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
 double Cuts::sqrt_s_min() const {
     double sqrt_s_min = 0.;
     for (auto& cut : _cut_data) {
-        if (
-            cut.observable == Cuts::obs_sqrt_s &&
-            cut.limit_type == Cuts::min &&
-            sqrt_s_min < cut.value
-        ) {
+        if (cut.observable == Cuts::obs_sqrt_s && cut.limit_type == Cuts::min &&
+            sqrt_s_min < cut.value) {
             sqrt_s_min = cut.value;
         }
     }
@@ -119,9 +118,7 @@ std::vector<double> Cuts::eta_max() const {
     return limits(Cuts::obs_eta, Cuts::max, std::numeric_limits<double>::infinity());
 }
 
-std::vector<double> Cuts::pt_min() const {
-    return limits(Cuts::obs_pt, Cuts::min, 0.);
-}
+std::vector<double> Cuts::pt_min() const { return limits(Cuts::obs_pt, Cuts::min, 0.); }
 
 std::vector<double> Cuts::limits(
     CutObservable observable, LimitType limit_type, double default_value
@@ -130,13 +127,10 @@ std::vector<double> Cuts::limits(
     for (auto& cut : _cut_data) {
         if (cut.observable == observable && cut.limit_type == limit_type) {
             for (auto [limit, pid] : zip(limits, _pids)) {
-                if (
-                    std::find(cut.pids.begin(), cut.pids.end(), pid) != cut.pids.end() &&
-                    (
-                        (limit_type == Cuts::max && (limit > cut.value)) ||
-                        (limit_type == Cuts::min && (limit < cut.value))
-                    )
-                ) {
+                if (std::find(cut.pids.begin(), cut.pids.end(), pid) !=
+                        cut.pids.end() &&
+                    ((limit_type == Cuts::max && (limit > cut.value)) ||
+                     (limit_type == Cuts::min && (limit < cut.value)))) {
                     limit = cut.value;
                 }
             }
@@ -146,7 +140,10 @@ std::vector<double> Cuts::limits(
 }
 
 void Cuts::process_pair_cuts(
-    CutItem cut, std::vector<me_int_t>& indices, std::vector<double>& limits, bool& has_cuts
+    CutItem cut,
+    std::vector<me_int_t>& indices,
+    std::vector<double>& limits,
+    bool& has_cuts
 ) const {
     double inf = std::numeric_limits<double>::infinity();
     std::size_t i = 0;
@@ -155,10 +152,8 @@ void Cuts::process_pair_cuts(
     for (auto pid_i : _pids) {
         std::size_t j = i + 1;
         for (auto pid_j : _pids | std::views::drop(i + 1)) {
-            if (
-                std::find(cut.pids.begin(), cut.pids.end(), pid_i) != cut.pids.end() &&
-                std::find(cut.pids.begin(), cut.pids.end(), pid_j) != cut.pids.end()
-            ) {
+            if (std::find(cut.pids.begin(), cut.pids.end(), pid_i) != cut.pids.end() &&
+                std::find(cut.pids.begin(), cut.pids.end(), pid_j) != cut.pids.end()) {
                 indices.push_back(i);
                 indices2.push_back(j);
                 // TODO: update existing cuts

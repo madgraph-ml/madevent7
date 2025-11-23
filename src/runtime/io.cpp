@@ -74,7 +74,9 @@ std::vector<FieldLayout> full_descr(
     std::vector<FieldLayout> field_descr{event_fields.begin(), event_fields.end()};
     for (std::size_t i = 1; i <= particle_count; ++i) {
         for (auto& [field_name, field_type] : particle_fields) {
-            field_descr.push_back({std::format("part{}_{}", i, field_name), field_type});
+            field_descr.push_back(
+                {std::format("part{}_{}", i, field_name), field_type}
+            );
         }
     }
     return field_descr;
@@ -92,15 +94,10 @@ std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(
     json descr = header.at("descr");
     json fortran_order = header.at("fortran_order");
     json header_shape = header.at("shape");
-    if (
-        !descr.is_array() ||
-        descr.size() < event_fields.size() ||
+    if (!descr.is_array() || descr.size() < event_fields.size() ||
         (descr.size() - event_fields.size()) % particle_fields.size() != 0 ||
-        !fortran_order.is_boolean() ||
-        fortran_order.get<bool>() ||
-        header_shape.is_array() ||
-        header_shape.size() != 1
-    ) {
+        !fortran_order.is_boolean() || fortran_order.get<bool>() ||
+        header_shape.is_array() || header_shape.size() != 1) {
         throw std::runtime_error("Invalid header for event file");
     }
     std::size_t particle_count = (descr.size() - event_fields.size()) / 5;
@@ -108,12 +105,9 @@ std::tuple<std::size_t, std::size_t, std::size_t> read_event_header(
 
     auto field_descr = full_descr(particle_count, event_fields, particle_fields);
     for (auto [descr_item, descr_expected] : zip(descr, field_descr)) {
-        if (
-            !descr_item.is_array() ||
-            descr_item.size() != 2 ||
+        if (!descr_item.is_array() || descr_item.size() != 2 ||
             descr_item.at(0) != descr_expected.first ||
-            descr_item.at(1) != descr_expected.second
-        ) {
+            descr_item.at(1) != descr_expected.second) {
             throw std::runtime_error("Invalid header for event file");
         }
     }
@@ -150,7 +144,7 @@ std::tuple<std::size_t, std::size_t> write_event_header(
     return {header_size, shape_pos};
 }
 
-}
+} // namespace
 
 Tensor madevent::load_tensor(const std::string& file) {
     std::fstream file_stream(file, std::ios::binary);
@@ -161,12 +155,8 @@ Tensor madevent::load_tensor(const std::string& file) {
     json descr = header.at("descr");
     json fortran_order = header.at("fortran_order");
     json header_shape = header.at("shape");
-    if (
-        !descr.is_string() ||
-        !fortran_order.is_boolean() ||
-        !fortran_order.get<bool>() ||
-        header_shape.is_array()
-    ) {
+    if (!descr.is_string() || !fortran_order.is_boolean() ||
+        !fortran_order.get<bool>() || header_shape.is_array()) {
         throw std::runtime_error("Invalid file header");
     }
     DataType dtype = str_to_dtype(descr);
@@ -188,10 +178,8 @@ Tensor madevent::load_tensor(const std::string& file) {
 void madevent::save_tensor(const std::string& file, Tensor tensor) {
     Tensor cpu_tensor = tensor.cpu().contiguous();
     std::ofstream file_stream(file, std::ios::binary);
-    file_stream
-        << "\x93NUMPY\x01\x00\x76\x00{'descr':'"
-        << dtype_to_str(tensor.dtype())
-        << "','fortran_order':True,'shape':(";
+    file_stream << "\x93NUMPY\x01\x00\x76\x00{'descr':'" << dtype_to_str(tensor.dtype())
+                << "','fortran_order':True,'shape':(";
     for (std::size_t size : tensor.shape()) {
         file_stream << size << ",";
     }
@@ -219,8 +207,7 @@ EventFile::EventFile(
     _particle_count(particle_count),
     _event_size(layout.event_size + particle_count * layout.particle_size),
     _mode(mode),
-    _delete_on_close(delete_on_close)
-{
+    _delete_on_close(delete_on_close) {
     auto file_mode = std::ios::binary | std::ios::in;
     if (mode == EventFile::create) {
         file_mode |= std::ios::out | std::ios::trunc;
@@ -236,11 +223,16 @@ EventFile::EventFile(
             _file_stream, particle_count, layout.event_fields, layout.particle_fields
         );
     } else {
-        std::tie(_header_size, _particle_count, _event_count) =
-            read_event_header(_file_stream, layout.event_fields, layout.particle_fields);
+        std::tie(_header_size, _particle_count, _event_count) = read_event_header(
+            _file_stream, layout.event_fields, layout.particle_fields
+        );
         if (mode == EventFile::load) {
             std::tie(_header_size, _shape_pos) = write_event_header(
-                _file_stream, particle_count, layout.event_fields, layout.particle_fields, _header_size
+                _file_stream,
+                particle_count,
+                layout.event_fields,
+                layout.particle_fields,
+                _header_size
             );
         }
         _capacity = _event_count;
@@ -263,7 +255,9 @@ void EventFile::clear() {
 }
 
 EventFile::~EventFile() {
-    if (!_file_stream.is_open() || _mode == EventFile::load) return;
+    if (!_file_stream.is_open() || _mode == EventFile::load) {
+        return;
+    }
     if (_delete_on_close) {
         _file_stream.close();
         std::filesystem::remove(_file_name);
@@ -274,6 +268,8 @@ EventFile::~EventFile() {
     _file_stream << _event_count << ",)}";
     if (_event_count < _capacity) {
         _file_stream.close();
-        std::filesystem::resize_file(_file_name, _header_size + _event_count * _event_size);
+        std::filesystem::resize_file(
+            _file_name, _header_size + _event_count * _event_size
+        );
     }
 }

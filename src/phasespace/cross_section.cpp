@@ -18,7 +18,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     FunctionGenerator(
         "DifferentialCrossSection",
         [&] {
-            TypeVec arg_types {
+            TypeVec arg_types{
                 batch_four_vec_array(pid_options.at(0).size()),
                 batch_float,
                 batch_float,
@@ -39,20 +39,17 @@ DifferentialCrossSection::DifferentialCrossSection(
             }
             return arg_types;
         }(),
-        simple_matrix_element ?
-            TypeVec{batch_float} :
-            TypeVec{
-                batch_float, batch_float_array(channel_count),
-                batch_int, batch_int, batch_int
-            }
+        simple_matrix_element
+            ? TypeVec{batch_float}
+            : TypeVec{batch_float, batch_float_array(channel_count), batch_int, batch_int, batch_int}
     ),
     _pid_options(pid_options),
     _matrix_element(
         matrix_element_index,
         pid_options.at(0).size(),
         {},
-        {},//TODO
-        //simple_matrix_element,
+        {}, // TODO
+        // simple_matrix_element,
         channel_count
     ),
     _running_coupling(running_coupling),
@@ -60,8 +57,7 @@ DifferentialCrossSection::DifferentialCrossSection(
     _energy_scale(energy_scale),
     _simple_matrix_element(simple_matrix_element),
     _has_mirror(has_mirror),
-    _channel_count(channel_count)
-{
+    _channel_count(channel_count) {
     if (pdf_grid) {
         std::vector<int> pids1, pids2;
         for (auto& option : pid_options) {
@@ -77,8 +73,12 @@ DifferentialCrossSection::DifferentialCrossSection(
             pids2.insert(option.at(1));
         }
         for (auto& option : pid_options) {
-            _pdf_indices1.push_back(std::distance(pids1.begin(), pids1.find(option.at(0))));
-            _pdf_indices2.push_back(std::distance(pids2.begin(), pids2.find(option.at(1))));
+            _pdf_indices1.push_back(
+                std::distance(pids1.begin(), pids1.find(option.at(0)))
+            );
+            _pdf_indices2.push_back(
+                std::distance(pids2.begin(), pids2.find(option.at(1)))
+            );
         }
     }
 }
@@ -90,24 +90,23 @@ ValueVec DifferentialCrossSection::build_function_impl(
     auto x1 = args.at(1);
     auto x2 = args.at(2);
     auto flavor_id = args.at(3);
-    //auto mirror_id = args.at(4);
+    // auto mirror_id = args.at(4);
     std::size_t arg_index = 4;
-    if (_has_mirror) ++arg_index;
-    //TODO: need to use mirror_id if we have two different PDFs
+    if (_has_mirror) {
+        ++arg_index;
+    }
+    // TODO: need to use mirror_id if we have two different PDFs
 
     Value pdf1, pdf2, ren_scale;
     if (_pdf1) {
         auto scales = _energy_scale.build_function(fb, {momenta});
-        pdf1 = _pdf1.value().build_function(
-            fb, {x1, scales.at(1), flavor_id}
-        ).at(0);
-        pdf2 = _pdf2.value().build_function(
-            fb, {x2, scales.at(2), flavor_id}
-        ).at(0);
+        pdf1 = _pdf1.value().build_function(fb, {x1, scales.at(1), flavor_id}).at(0);
+        pdf2 = _pdf2.value().build_function(fb, {x2, scales.at(2), flavor_id}).at(0);
         ren_scale = scales.at(0);
     } else {
         pdf1 = fb.gather(fb.gather_int(flavor_id, _pdf_indices1), args.at(arg_index));
-        pdf2 = fb.gather(fb.gather_int(flavor_id, _pdf_indices2), args.at(arg_index + 1));
+        pdf2 =
+            fb.gather(fb.gather_int(flavor_id, _pdf_indices2), args.at(arg_index + 1));
         ren_scale = args.at(arg_index + 2);
     }
 
@@ -117,10 +116,10 @@ ValueVec DifferentialCrossSection::build_function_impl(
     } else {
         auto alpha_s = _running_coupling.build_function(fb, {ren_scale}).at(0);
         Value me2, chan_weights, color_id, diagram_id;
-        auto me_result = _matrix_element.build_function(
-            fb, {momenta, flavor_id, alpha_s}
-        );
-        me_result.at(0) = fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2);
+        auto me_result =
+            _matrix_element.build_function(fb, {momenta, flavor_id, alpha_s});
+        me_result.at(0) =
+            fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2);
         return me_result;
     }
 }

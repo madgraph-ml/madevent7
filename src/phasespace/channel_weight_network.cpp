@@ -8,8 +8,7 @@ MomentumPreprocessing::MomentumPreprocessing(std::size_t particle_count) :
         {batch_four_vec_array(particle_count), batch_float, batch_float},
         {batch_float_array(3 * (particle_count - 2) + 2)}
     ),
-    _output_dim(3 * (particle_count - 2) + 2)
-{}
+    _output_dim(3 * (particle_count - 2) + 2) {}
 
 ValueVec MomentumPreprocessing::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
@@ -27,12 +26,10 @@ ChannelWeightNetwork::ChannelWeightNetwork(
 ) :
     FunctionGenerator(
         "ChannelWeightNetwork",
-        {
-            batch_four_vec_array(particle_count),
-            batch_float,
-            batch_float,
-            batch_float_array(channel_count)
-        },
+        {batch_four_vec_array(particle_count),
+         batch_float,
+         batch_float,
+         batch_float_array(channel_count)},
         {batch_float_array(channel_count)}
     ),
     _preprocessing(particle_count),
@@ -45,8 +42,7 @@ ChannelWeightNetwork::ChannelWeightNetwork(
         prefix
     ),
     _channel_count(channel_count),
-    _mask_name(prefixed_name(prefix, "active_channels_mask"))
-{}
+    _mask_name(prefixed_name(prefix, "active_channels_mask")) {}
 
 ValueVec ChannelWeightNetwork::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
@@ -55,9 +51,8 @@ ValueVec ChannelWeightNetwork::build_function_impl(
     auto x1 = args.at(1);
     auto x2 = args.at(2);
     auto prior = args.at(3);
-    auto mask = fb.global(
-        _mask_name, DataType::dt_float, {static_cast<int>(_channel_count)}
-    );
+    auto mask =
+        fb.global(_mask_name, DataType::dt_float, {static_cast<int>(_channel_count)});
     auto net_input = _preprocessing.build_function(fb, {p_ext, x1, x2});
     auto net_output = _mlp.build_function(fb, net_input).at(0);
     return {fb.softmax_prior(net_output, fb.mul(prior, mask))};

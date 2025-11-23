@@ -8,13 +8,8 @@ namespace madevent {
 
 class DiscreteOptimizer {
 public:
-    DiscreteOptimizer(
-        ContextPtr context, const std::vector<std::string>& prob_names
-    ) :
-        _context(context),
-        _prob_names(prob_names),
-        _sample_count(7000)
-    {}
+    DiscreteOptimizer(ContextPtr context, const std::vector<std::string>& prob_names) :
+        _context(context), _prob_names(prob_names), _sample_count(7000) {}
     void add_data(const std::vector<Tensor>& values_and_counts);
     void optimize();
 
@@ -26,4 +21,4 @@ private:
     std::vector<std::tuple<std::vector<std::size_t>, std::vector<double>>> _data;
 };
 
-}
+} // namespace madevent

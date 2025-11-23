@@ -39,20 +39,22 @@ public:
         const std::vector<MatrixElementInput>& inputs = {momenta_in},
         const std::vector<MatrixElementOutput>& outputs = {matrix_element_out},
         bool sample_random_inputs = false
-    ) : MatrixElement(
-        matrix_element_api.index(),
-        matrix_element_api.particle_count(),
-        inputs,
-        outputs,
-        matrix_element_api.diagram_count(),
-        sample_random_inputs
-    ) {};
+    ) :
+        MatrixElement(
+            matrix_element_api.index(),
+            matrix_element_api.particle_count(),
+            inputs,
+            outputs,
+            matrix_element_api.diagram_count(),
+            sample_random_inputs
+        ) {};
     std::size_t matrix_element_index() const { return _matrix_element_index; }
     std::size_t diagram_count() const { return _diagram_count; }
     std::size_t particle_count() const { return _particle_count; }
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::size_t _matrix_element_index;
     std::size_t _particle_count;
@@ -62,4 +64,4 @@ private:
     bool _sample_random_inputs;
 };
 
-}
+} // namespace madevent

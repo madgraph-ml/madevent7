@@ -6,20 +6,15 @@ VegasHistogram::VegasHistogram(std::size_t dimension, std::size_t bin_count) :
     FunctionGenerator(
         "VegasHistogram",
         {batch_float_array(dimension), batch_float},
-        {
-            single_float_array_2d(dimension, bin_count),
-            single_int_array_2d(dimension, bin_count)
-        }
+        {single_float_array_2d(dimension, bin_count),
+         single_int_array_2d(dimension, bin_count)}
     ),
-    _bin_count(bin_count)
-{}
+    _bin_count(bin_count) {}
 
-ValueVec VegasHistogram::build_function_impl(
-    FunctionBuilder& fb, const ValueVec& args
-) const {
-    auto [values, counts] = fb.vegas_histogram(
-        args.at(0), args.at(1), static_cast<me_int_t>(_bin_count)
-    );
+ValueVec
+VegasHistogram::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
+    auto [values, counts] =
+        fb.vegas_histogram(args.at(0), args.at(1), static_cast<me_int_t>(_bin_count));
     return {values, counts};
 }
 
@@ -48,19 +43,17 @@ Mapping::Result VegasMapping::build_inverse_impl(
 }
 
 void VegasMapping::initialize_globals(ContextPtr context) const {
-    context->define_global(_grid_name, DataType::dt_float, {_dimension, _bin_count + 1});
+    context->define_global(
+        _grid_name, DataType::dt_float, {_dimension, _bin_count + 1}
+    );
     initialize_vegas_grid(context, _grid_name);
 }
 
 void madevent::initialize_vegas_grid(ContextPtr context, const std::string& grid_name) {
     bool is_cpu = context->device() == cpu_device();
     auto grid_global = context->global(grid_name);
-    if (
-        grid_global.shape().size() != 3 ||
-        grid_global.size(0) != 1 ||
-        grid_global.size(2) < 2 ||
-        grid_global.dtype() != DataType::dt_float
-    ) {
+    if (grid_global.shape().size() != 3 || grid_global.size(0) != 1 ||
+        grid_global.size(2) < 2 || grid_global.dtype() != DataType::dt_float) {
         throw std::runtime_error("Invalid vegas grid type");
     }
     Tensor grid;

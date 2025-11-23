@@ -1,20 +1,24 @@
 #pragma once
 
-#include <ranges>
-#include <tuple>
 #include <cstdio>
 #include <format>
+#include <ranges>
+#include <tuple>
 
 namespace madevent {
 
-template<class... Ts> struct Overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> Overloaded(Ts...) -> Overloaded<Ts...>;
+template <class... Ts>
+struct Overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
-template<typename T>
+template <typename T>
 using nested_vector2 = std::vector<std::vector<T>>;
-template<typename T>
+template <typename T>
 using nested_vector3 = std::vector<std::vector<std::vector<T>>>;
-template<typename T>
+template <typename T>
 using nested_vector4 = std::vector<std::vector<std::vector<std::vector<T>>>>;
 
 // Unfortunately nvcc does not support C++23 yet, so we implement our own zip function
@@ -27,7 +31,9 @@ inline void print_impl(
     std::FILE* stream, bool new_line, std::string_view fmt, std::format_args args
 ) {
     std::string str = std::vformat(fmt, args);
-    if (new_line) str.push_back('\n');
+    if (new_line) {
+        str.push_back('\n');
+    }
     fwrite(str.data(), 1, str.size(), stream);
 }
 
@@ -42,7 +48,7 @@ bool any_match_impl(
     return result;
 }
 
-template <typename ... Args>
+template <typename... Args>
 bool any_match(const std::tuple<Args...>& lhs, const std::tuple<Args...>& rhs) {
     return any_match_impl(lhs, rhs, std::index_sequence_for<Args...>{});
 }
@@ -53,12 +59,11 @@ public:
     using value_type = std::tuple<std::ranges::range_reference_t<Rng>...>;
 
     zip_iterator() = delete;
-    zip_iterator(std::ranges::iterator_t<Rng>&&... iters)
-        : _iters{std::forward<std::ranges::iterator_t<Rng>>(iters)...}
-    {}
+    zip_iterator(std::ranges::iterator_t<Rng>&&... iters) :
+        _iters{std::forward<std::ranges::iterator_t<Rng>>(iters)...} {}
 
     zip_iterator& operator++() {
-        std::apply([](auto && ... args){ ((++args), ...); }, _iters);
+        std::apply([](auto&&... args) { ((++args), ...); }, _iters);
         return *this;
     }
 
@@ -68,18 +73,14 @@ public:
         return tmp;
     }
 
-    bool operator!=(const zip_iterator& other) const {
-        return !(*this == other);
-    }
+    bool operator!=(const zip_iterator& other) const { return !(*this == other); }
 
     bool operator==(const zip_iterator& other) const {
         return any_match(_iters, other._iters);
     }
 
     value_type operator*() {
-        return std::apply([](auto && ... args) {
-            return value_type(*args...);
-        }, _iters);
+        return std::apply([](auto&&... args) { return value_type(*args...); }, _iters);
     }
 
 private:
@@ -87,8 +88,7 @@ private:
 };
 
 template <std::ranges::viewable_range... T>
-class zipper
-{
+class zipper {
 public:
     using zip_type = zip_iterator<T...>;
 
@@ -96,53 +96,46 @@ public:
     zipper(Args&&... args) : _args{std::forward<Args>(args)...} {}
 
     zip_type begin() {
-        return std::apply([](auto && ... args){
-            return zip_type(std::ranges::begin(args)...);
-        }, _args);
+        return std::apply(
+            [](auto&&... args) { return zip_type(std::ranges::begin(args)...); }, _args
+        );
     }
     zip_type end() {
-        return std::apply([](auto && ... args){
-            return zip_type(std::ranges::end(args)...);
-        }, _args);
+        return std::apply(
+            [](auto&&... args) { return zip_type(std::ranges::end(args)...); }, _args
+        );
     }
 
 private:
-    std::tuple<T ...> _args;
+    std::tuple<T...> _args;
 };
 
-}
+} // namespace detail
 
 template <std::ranges::viewable_range... T>
-auto zip(T&& ... t) {
+auto zip(T&&... t) {
     return detail::zipper<T...>{std::forward<T>(t)...};
 }
 
-template<typename... Args>
+template <typename... Args>
 inline void print(std::format_string<Args...> fmt, Args&&... args) {
-    detail::print_impl(
-        stdout, false, fmt.get(), std::make_format_args(args...)
-    );
+    detail::print_impl(stdout, false, fmt.get(), std::make_format_args(args...));
 }
 
-template<typename... Args>
+template <typename... Args>
 inline void print(std::FILE* stream, std::format_string<Args...> fmt, Args&&... args) {
-    detail::print_impl(
-        stream, false, fmt.get(), std::make_format_args(args...)
-    );
+    detail::print_impl(stream, false, fmt.get(), std::make_format_args(args...));
 }
 
-template<typename... Args>
+template <typename... Args>
 inline void println(std::format_string<Args...> fmt, Args&&... args) {
-    detail::print_impl(
-        stdout, true, fmt.get(), std::make_format_args(args...)
-    );
+    detail::print_impl(stdout, true, fmt.get(), std::make_format_args(args...));
 }
 
-template<typename... Args>
-inline void println(std::FILE* stream, std::format_string<Args...> fmt, Args&&... args) {
-    detail::print_impl(
-        stream, true, fmt.get(), std::make_format_args(args...)
-    );
+template <typename... Args>
+inline void
+println(std::FILE* stream, std::format_string<Args...> fmt, Args&&... args) {
+    detail::print_impl(stream, true, fmt.get(), std::make_format_args(args...));
 }
 
-}
+} // namespace madevent

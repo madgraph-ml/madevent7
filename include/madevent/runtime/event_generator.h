@@ -1,40 +1,34 @@
 #pragma once
 
-#include <optional>
-#include <vector>
-#include <random>
 #include <chrono>
+#include <optional>
+#include <random>
+#include <vector>
 
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
-#include "madevent/runtime/io.h"
-#include "madevent/runtime/vegas_optimizer.h"
 #include "madevent/runtime/discrete_optimizer.h"
-#include "madevent/runtime/runtime_base.h"
 #include "madevent/runtime/format.h"
+#include "madevent/runtime/io.h"
+#include "madevent/runtime/runtime_base.h"
+#include "madevent/runtime/vegas_optimizer.h"
 
 namespace madevent {
 
 class RunningIntegral {
 public:
     RunningIntegral() : _mean(0), _var_sum(0), _count(0) {}
-    double mean() const {
-        return _mean;
-    }
-    double variance() const {
-        return _count > 1 ? _var_sum / (_count - 1) : 0;
-    }
-    double error() const {
-        return std::sqrt(variance() / _count);
-    }
-    double rel_error() const {
-        return error() / mean();
-    }
-    double rel_std_dev() const {
-        return std::sqrt(variance()) / _mean;
-    }
+    double mean() const { return _mean; }
+    double variance() const { return _count > 1 ? _var_sum / (_count - 1) : 0; }
+    double error() const { return std::sqrt(variance() / _count); }
+    double rel_error() const { return error() / mean(); }
+    double rel_std_dev() const { return std::sqrt(variance()) / _mean; }
     std::size_t count() const { return _count; }
-    void reset() { _mean = 0; _var_sum = 0; _count = 0; }
+    void reset() {
+        _mean = 0;
+        _var_sum = 0;
+        _count = 0;
+    }
     void push(double value) {
         ++_count;
         if (_count == 1) {
@@ -46,6 +40,7 @@ public:
             _var_sum += mean_diff * (value - _mean);
         }
     }
+
 private:
     double _mean;
     double _var_sum;
@@ -54,9 +49,9 @@ private:
 
 class EventGenerator {
 public:
-    static inline const int integrand_flags =
-        Integrand::sample | Integrand::return_momenta |
-        Integrand::return_random | Integrand::return_discrete;
+    static inline const int integrand_flags = Integrand::sample |
+        Integrand::return_momenta | Integrand::return_random |
+        Integrand::return_discrete;
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;
@@ -100,12 +95,8 @@ public:
     void survey();
     void generate();
     void combine_to_compact_npy(const std::string& file_name);
-    void combine_to_lhe_npy(
-        const std::string& file_name, LHECompleter& lhe_completer
-    );
-    void combine_to_lhe(
-        const std::string& file_name, LHECompleter& lhe_completer
-    );
+    void combine_to_lhe_npy(const std::string& file_name, LHECompleter& lhe_completer);
+    void combine_to_lhe(const std::string& file_name, LHECompleter& lhe_completer);
     Status status() const { return _status_all; }
     std::vector<Status> channel_status() const;
 
@@ -145,7 +136,7 @@ private:
         EventBuffer weight_buffer;
         std::size_t buffer_index;
     };
-    inline static std::function<void(void)> _abort_check_function = []{};
+    inline static std::function<void(void)> _abort_check_function = [] {};
 
     ContextPtr _context;
     Config _config;
@@ -169,7 +160,7 @@ private:
     );
     double channel_weight_sum(ChannelState& channel, std::size_t event_count);
     void start_job(
-        ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count=0
+        ChannelState& channel, std::size_t batch_size, std::size_t vegas_job_count = 0
     );
     void start_vegas_jobs(ChannelState& channel);
     void clear_channel(ChannelState& channel);
@@ -194,4 +185,4 @@ private:
     void print_combine_update(std::size_t count);
 };
 
-}
+} // namespace madevent

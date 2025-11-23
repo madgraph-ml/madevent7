@@ -15,27 +15,28 @@ MultiChannelMapping::MultiChannelMapping(
             return condition_types;
         }()
     ),
-    _mappings(mappings)
-{
+    _mappings(mappings) {
     auto& first_mapping = mappings.at(0);
     std::size_t input_count = first_mapping->input_types().size();
     std::size_t output_count = first_mapping->output_types().size();
     std::size_t condition_count = first_mapping->condition_types().size();
     for (auto& mapping : mappings) {
-        if (
-            mapping->input_types().size() != input_count ||
+        if (mapping->input_types().size() != input_count ||
             mapping->output_types().size() != output_count ||
-            mapping->condition_types().size() != condition_count
-        ) {
+            mapping->condition_types().size() != condition_count) {
             throw std::invalid_argument(
-                "All mappings must have the same number of inputs, outputs and conditions"
+                "All mappings must have the same number of inputs, outputs and "
+                "conditions"
             );
         }
     }
 }
 
 Mapping::Result MultiChannelMapping::build_impl(
-    FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions, bool inverse
+    FunctionBuilder& fb,
+    const ValueVec& inputs,
+    const ValueVec& conditions,
+    bool inverse
 ) const {
     auto& counts = conditions.back();
 
@@ -45,7 +46,9 @@ Mapping::Result MultiChannelMapping::build_impl(
     }
     std::vector<ValueVec> split_conditions;
     for (auto& condition : conditions) {
-        if (&condition == &counts) break;
+        if (&condition == &counts) {
+            break;
+        }
         split_conditions.push_back(fb.batch_split(condition, counts));
     }
 
@@ -60,10 +63,8 @@ Mapping::Result MultiChannelMapping::build_impl(
         for (auto& condition : split_conditions) {
             cond.push_back(condition.at(index));
         }
-        auto [output, det] =
-            inverse ?
-            mapping->build_inverse(fb, in, cond) :
-            mapping->build_forward(fb, in, cond);
+        auto [output, det] = inverse ? mapping->build_inverse(fb, in, cond)
+                                     : mapping->build_forward(fb, in, cond);
         auto split_out_iter = split_outputs.begin();
         for (auto& out : output) {
             split_out_iter->push_back(out);
@@ -104,16 +105,13 @@ MultiChannelFunction::MultiChannelFunction(
         }(),
         functions.at(0)->return_types()
     ),
-    _functions(functions)
-{
+    _functions(functions) {
     auto& first_function = functions.at(0);
     std::size_t arg_count = first_function->arg_types().size();
     std::size_t return_count = first_function->return_types().size();
     for (auto& function : functions) {
-        if (
-            function->arg_types().size() != arg_count ||
-            function->return_types().size() != return_count
-        ) {
+        if (function->arg_types().size() != arg_count ||
+            function->return_types().size() != return_count) {
             throw std::invalid_argument(
                 "All functions must have the same number of inputs and outputs"
             );

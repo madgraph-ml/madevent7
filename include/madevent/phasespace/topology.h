@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vector>
-#include <string>
 #include <array>
 #include <ostream>
+#include <string>
+#include <vector>
 
 namespace madevent {
 
@@ -25,6 +25,7 @@ public:
         LineRef(std::string str);
         LineType type() const { return _type; }
         std::size_t index() const { return _index; }
+
     private:
         LineType _type;
         std::size_t _index;
@@ -94,15 +95,10 @@ public:
     const std::vector<std::size_t>& outgoing_indices() const {
         return _outgoing_indices;
     }
-    const std::vector<double>& incoming_masses() const {
-        return _incoming_masses;
-    }
-    const std::vector<double>& outgoing_masses() const {
-        return _outgoing_masses;
-    }
-    std::vector<std::tuple<
-        std::vector<int>, double, double
-    >> propagator_momentum_terms(bool only_decays = false) const;
+    const std::vector<double>& incoming_masses() const { return _incoming_masses; }
+    const std::vector<double>& outgoing_masses() const { return _outgoing_masses; }
+    std::vector<std::tuple<std::vector<int>, double, double>>
+    propagator_momentum_terms(bool only_decays = false) const;
 
 private:
     Topology() = default;
@@ -117,4 +113,4 @@ private:
     std::vector<double> _outgoing_masses;
 };
 
-}
+} // namespace madevent

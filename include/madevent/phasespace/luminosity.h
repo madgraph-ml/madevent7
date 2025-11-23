@@ -3,14 +3,17 @@
 #include "madevent/phasespace/base.h"
 #include "madevent/phasespace/invariants.h"
 
-
 namespace madevent {
 
 class Luminosity : public Mapping {
 public:
     Luminosity(
-        double s_lab, double s_hat_min, double s_hat_max = 0,
-        double invariant_power = 1, double mass = 0, double width = 0
+        double s_lab,
+        double s_hat_min,
+        double s_hat_max = 0,
+        double invariant_power = 1,
+        double mass = 0,
+        double width = 0
     ) :
         Mapping(
             "Luminosity",
@@ -35,4 +38,4 @@ private:
     Invariant _invariant;
 };
 
-}
+} // namespace madevent

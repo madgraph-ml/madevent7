@@ -72,13 +72,11 @@ MatrixElement::MatrixElement(
     _outputs(outputs),
     _particle_count(particle_count),
     _diagram_count(diagram_count),
-    _sample_random_inputs(sample_random_inputs)
-{}
+    _sample_random_inputs(sample_random_inputs) {}
 
-ValueVec MatrixElement::build_function_impl(
-    FunctionBuilder& fb, const ValueVec& args
-) const {
-    ValueVec matrix_args {
+ValueVec
+MatrixElement::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {
+    ValueVec matrix_args{
         static_cast<me_int_t>(_matrix_element_index),
         static_cast<me_int_t>(_inputs.size()),
         static_cast<me_int_t>(_outputs.size())
@@ -87,11 +85,8 @@ ValueVec MatrixElement::build_function_impl(
     if (_sample_random_inputs) {
         std::size_t random_count = 0;
         for (auto& input : _inputs) {
-            if (
-                input == random_color_in ||
-                input == random_helicity_in ||
-                input == random_diagram_in
-            ) {
+            if (input == random_color_in || input == random_helicity_in ||
+                input == random_diagram_in) {
                 ++random_count;
             }
         }
@@ -102,23 +97,35 @@ ValueVec MatrixElement::build_function_impl(
     for (std::size_t arg_index = 0, random_index = 0; auto& input : _inputs) {
         UmamiInputKey input_key;
         switch (input) {
-            case momenta_in: input_key = UMAMI_IN_MOMENTA; break;
-            case alpha_s_in: input_key = UMAMI_IN_ALPHA_S; break;
-            case flavor_in: input_key = UMAMI_IN_FLAVOR_INDEX; break;
-            case random_color_in: input_key = UMAMI_IN_RANDOM_COLOR; break;
-            case random_helicity_in: input_key = UMAMI_IN_RANDOM_HELICITY; break;
-            case random_diagram_in: input_key = UMAMI_IN_RANDOM_DIAGRAM; break;
-            case helicity_in: input_key = UMAMI_IN_HELICITY_INDEX; break;
-            case diagram_in: input_key = UMAMI_IN_DIAGRAM_INDEX; break;
+        case momenta_in:
+            input_key = UMAMI_IN_MOMENTA;
+            break;
+        case alpha_s_in:
+            input_key = UMAMI_IN_ALPHA_S;
+            break;
+        case flavor_in:
+            input_key = UMAMI_IN_FLAVOR_INDEX;
+            break;
+        case random_color_in:
+            input_key = UMAMI_IN_RANDOM_COLOR;
+            break;
+        case random_helicity_in:
+            input_key = UMAMI_IN_RANDOM_HELICITY;
+            break;
+        case random_diagram_in:
+            input_key = UMAMI_IN_RANDOM_DIAGRAM;
+            break;
+        case helicity_in:
+            input_key = UMAMI_IN_HELICITY_INDEX;
+            break;
+        case diagram_in:
+            input_key = UMAMI_IN_DIAGRAM_INDEX;
+            break;
         }
         matrix_args.push_back(static_cast<me_int_t>(input_key));
-        if (
-            _sample_random_inputs && (
-                input == random_color_in ||
-                input == random_helicity_in ||
-                input == random_diagram_in
-            )
-        ) {
+        if (_sample_random_inputs &&
+            (input == random_color_in || input == random_helicity_in ||
+             input == random_diagram_in)) {
             matrix_args.push_back(random.at(random_index));
             ++random_index;
         } else {
@@ -131,14 +138,22 @@ ValueVec MatrixElement::build_function_impl(
         UmamiOutputKey output_key;
         me_int_t size_arg = 0;
         switch (output) {
-            case matrix_element_out: output_key = UMAMI_OUT_MATRIX_ELEMENT; break;
-            case diagram_amp2_out:
-                output_key = UMAMI_OUT_DIAGRAM_AMP2;
-                size_arg = _diagram_count;
-                break;
-            case color_index_out: output_key = UMAMI_OUT_COLOR_INDEX; break;
-            case helicity_index_out: output_key = UMAMI_OUT_HELICITY_INDEX; break;
-            case diagram_index_out: output_key = UMAMI_OUT_DIAGRAM_INDEX; break;
+        case matrix_element_out:
+            output_key = UMAMI_OUT_MATRIX_ELEMENT;
+            break;
+        case diagram_amp2_out:
+            output_key = UMAMI_OUT_DIAGRAM_AMP2;
+            size_arg = _diagram_count;
+            break;
+        case color_index_out:
+            output_key = UMAMI_OUT_COLOR_INDEX;
+            break;
+        case helicity_index_out:
+            output_key = UMAMI_OUT_HELICITY_INDEX;
+            break;
+        case diagram_index_out:
+            output_key = UMAMI_OUT_DIAGRAM_INDEX;
+            break;
         }
         matrix_args.push_back(static_cast<me_int_t>(output_key));
         matrix_args.push_back(size_arg);

@@ -1,9 +1,9 @@
 #pragma once
 
-#include "madevent/runtime/tensor.h"
-#include "madevent/runtime/runtime_base.h"
-#include "madevent/madcode/function.h"
 #include "gpu_abstraction.h"
+#include "madevent/madcode/function.h"
+#include "madevent/runtime/runtime_base.h"
+#include "madevent/runtime/tensor.h"
 
 #include <memory>
 
@@ -35,9 +35,7 @@ public:
     std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad(
         const TensorVec& inputs, const std::vector<bool>& input_requires_grad
     ) const override;
-    std::tuple<
-        TensorVec, std::vector<std::tuple<std::string, Tensor>>
-    > run_backward(
+    std::tuple<TensorVec, std::vector<std::tuple<std::string, Tensor>>> run_backward(
         const TensorVec& output_grads,
         const TensorVec& stored_locals,
         const std::vector<bool>& eval_grad
@@ -60,9 +58,8 @@ private:
     gpurandGenerator_t _gpurand_generator;
 };
 
-extern "C" Runtime* build_runtime(
-    const Function& function, ContextPtr context, bool concurrent
-);
+extern "C" Runtime*
+build_runtime(const Function& function, ContextPtr context, bool concurrent);
 
-}
-}
+} // namespace gpu
+} // namespace madevent

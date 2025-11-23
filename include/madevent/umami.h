@@ -79,7 +79,6 @@ typedef enum {
 
 typedef void* UmamiHandle;
 
-
 /**
  * Creates an instance of the matrix element. Each instance is independent, so thread
  * safety can be achieved by creating a separate one for every thread.
@@ -123,10 +122,7 @@ UmamiStatus umami_initialize(UmamiHandle* handle, char const* param_card_path);
  *     UMAMI_SUCCESS on success, error code otherwise
  */
 UmamiStatus umami_set_parameter(
-    UmamiHandle handle,
-    char const* name,
-    double parameter_real,
-    double parameter_imag
+    UmamiHandle handle, char const* name, double parameter_real, double parameter_imag
 );
 
 /**
@@ -145,10 +141,7 @@ UmamiStatus umami_set_parameter(
  *     UMAMI_SUCCESS on success, error code otherwise
  */
 UmamiStatus umami_get_parameter(
-    UmamiHandle handle,
-    char const* name,
-    double* parameter_real,
-    double* parameter_imag
+    UmamiHandle handle, char const* name, double* parameter_real, double* parameter_imag
 );
 
 /**

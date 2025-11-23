@@ -1,7 +1,7 @@
 #pragma once
 
-#include <unordered_map>
 #include <stdint.h>
+#include <unordered_map>
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
@@ -13,7 +13,7 @@ namespace madevent {
 class MatrixElementApi {
 public:
     MatrixElementApi(
-        const std::string& file, const std::string& param_card, std::size_t index=0
+        const std::string& file, const std::string& param_card, std::size_t index = 0
     );
     MatrixElementApi(MatrixElementApi&&) noexcept = default;
     MatrixElementApi& operator=(MatrixElementApi&&) noexcept = default;
@@ -27,8 +27,8 @@ public:
             return cpu_device();
         case UMAMI_DEVICE_CUDA:
             return cuda_device();
-        //case UMAMI_DEVICE_HIP:
-            //return hip_device();
+        // case UMAMI_DEVICE_HIP:
+        // return hip_device();
         default:
             throw_error("matrix element device not known");
         }
@@ -63,9 +63,16 @@ public:
         void* const* outputs
     ) const {
         check_umami_status(_matrix_element(
-            handle, count, stride, offset,
-            input_count, input_keys, inputs,
-            output_count, output_keys, outputs
+            handle,
+            count,
+            stride,
+            offset,
+            input_count,
+            input_keys,
+            inputs,
+            output_count,
+            output_keys,
+            outputs
         ));
     }
 
@@ -98,14 +105,13 @@ public:
     Context& operator=(Context&&) = default;
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
-    const MatrixElementApi& load_matrix_element(
-        const std::string& file, const std::string& param_card
-    );
+    const MatrixElementApi&
+    load_matrix_element(const std::string& file, const std::string& param_card);
     Tensor define_global(
         const std::string& name,
         DataType dtype,
         const SizeVec& shape,
-        bool requires_grad=false
+        bool requires_grad = false
     );
     Tensor global(const std::string& name);
     bool global_requires_grad(const std::string& name);
@@ -133,4 +139,4 @@ inline std::string prefixed_name(const std::string& prefix, const std::string& n
     return prefix == "" ? name : std::format("{}.{}", prefix, name);
 }
 
-}
+} // namespace madevent

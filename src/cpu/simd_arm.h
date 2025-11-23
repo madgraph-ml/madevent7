@@ -1,6 +1,6 @@
 #include <arm_neon.h>
-#include <sleef.h>
 #include <cstddef>
+#include <sleef.h>
 
 constexpr int simd_vec_size = 2;
 
@@ -10,7 +10,10 @@ struct FVec {
     FVec(double _v) : v(vdupq_n_f64(_v)) {};
     explicit FVec(int64x2_t _v) : v(vcvtq_f64_s64(_v)) {};
     operator float64x2_t() { return v; }
-    FVec operator+=(FVec _v) { v = vaddq_f64(v, _v); return v; }
+    FVec operator+=(FVec _v) {
+        v = vaddq_f64(v, _v);
+        return v;
+    }
     float64x2_t v;
 };
 
@@ -20,7 +23,10 @@ struct IVec {
     IVec(int _v) : v(vdupq_n_s64(_v)) {};
     explicit IVec(float64x2_t _v) : v(vcvtq_s64_f64(_v)) {};
     operator int64x2_t() { return v; }
-    IVec operator+=(IVec _v) { v = vaddq_s64(v, _v); return v; }
+    IVec operator+=(IVec _v) {
+        v = vaddq_s64(v, _v);
+        return v;
+    }
     int64x2_t v;
 };
 
@@ -38,7 +44,9 @@ inline FVec vgather(
     FVec ret;
     IVec strided_indices = indices * IVec(index_stride);
     ret = vsetq_lane_f64(base_ptr[vgetq_lane_s64(strided_indices, 0)], ret, 0);
-    ret = vsetq_lane_f64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1);
+    ret = vsetq_lane_f64(
+        base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1
+    );
     return ret;
 }
 
@@ -48,7 +56,9 @@ inline IVec vgather(
     IVec ret;
     IVec strided_indices = indices * IVec(index_stride);
     ret = vsetq_lane_s64(base_ptr[vgetq_lane_s64(strided_indices, 0)], ret, 0);
-    ret = vsetq_lane_s64(base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1);
+    ret = vsetq_lane_s64(
+        base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride], ret, 1
+    );
     return ret;
 }
 
@@ -67,19 +77,29 @@ inline IVec vload(int* base_ptr, std::size_t stride) {
 }
 
 inline void vscatter(
-    double* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, FVec values
+    double* base_ptr,
+    std::size_t batch_stride,
+    std::size_t index_stride,
+    IVec indices,
+    FVec values
 ) {
     IVec strided_indices = indices * IVec(index_stride);
     base_ptr[vgetq_lane_s64(strided_indices, 0)] = vgetq_lane_f64(values, 0);
-    base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride] = vgetq_lane_f64(values, 1);
+    base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride] =
+        vgetq_lane_f64(values, 1);
 }
 
 inline void vscatter(
-    int* base_ptr, std::size_t batch_stride, std::size_t index_stride, IVec indices, IVec values
+    int* base_ptr,
+    std::size_t batch_stride,
+    std::size_t index_stride,
+    IVec indices,
+    IVec values
 ) {
     IVec strided_indices = indices * IVec(index_stride);
     base_ptr[vgetq_lane_s64(strided_indices, 0)] = vgetq_lane_s64(values, 0);
-    base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride] = vgetq_lane_s64(values, 1);
+    base_ptr[vgetq_lane_s64(strided_indices, 1) + batch_stride] =
+        vgetq_lane_s64(values, 1);
 }
 
 inline void vstore(double* base_ptr, std::size_t stride, FVec values) {
@@ -98,21 +118,23 @@ inline FVec where(BVec arg1, FVec arg2, FVec arg3) {
 inline IVec where(BVec arg1, IVec arg2, IVec arg3) {
     return vbslq_s64(arg1, arg2, arg3);
 }
-inline std::size_t single_index(IVec arg) {
-    return vgetq_lane_s64(arg, 0);
-}
+inline std::size_t single_index(IVec arg) { return vgetq_lane_s64(arg, 0); }
 inline FVec min(FVec arg1, FVec arg2) { return where(arg1 < arg2, arg1, arg2); }
 inline FVec max(FVec arg1, FVec arg2) { return where(arg1 > arg2, arg1, arg2); }
 
 inline BVec operator==(FVec arg1, FVec arg2) { return vceqq_f64(arg1, arg2); }
-inline BVec operator!=(FVec arg1, FVec arg2) { return vceqzq_u64(vceqq_f64(arg1, arg2)); }
+inline BVec operator!=(FVec arg1, FVec arg2) {
+    return vceqzq_u64(vceqq_f64(arg1, arg2));
+}
 inline BVec operator>(FVec arg1, FVec arg2) { return vcgtq_f64(arg1, arg2); }
 inline BVec operator<(FVec arg1, FVec arg2) { return vcltq_f64(arg1, arg2); }
 inline BVec operator>=(FVec arg1, FVec arg2) { return vcgeq_f64(arg1, arg2); }
 inline BVec operator<=(FVec arg1, FVec arg2) { return vcleq_f64(arg1, arg2); }
 
 inline BVec operator==(IVec arg1, IVec arg2) { return vceqq_s64(arg1, arg2); }
-inline BVec operator!=(IVec arg1, IVec arg2) { return vceqzq_u64(vceqq_s64(arg1, arg2)); }
+inline BVec operator!=(IVec arg1, IVec arg2) {
+    return vceqzq_u64(vceqq_s64(arg1, arg2));
+}
 inline BVec operator>(IVec arg1, IVec arg2) { return vcgtq_s64(arg1, arg2); }
 inline BVec operator<(IVec arg1, IVec arg2) { return vcltq_s64(arg1, arg2); }
 inline BVec operator>=(IVec arg1, IVec arg2) { return vcgeq_s64(arg1, arg2); }

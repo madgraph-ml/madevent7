@@ -1,8 +1,8 @@
 #pragma once
 
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 namespace madevent {
 
@@ -26,7 +26,9 @@ public:
     std::size_t line_count() const { return _rows + 3; }
 
     void set_row(std::size_t row, const std::vector<std::string>& values) {
-        if (row >= _rows) throw std::out_of_range("row index out of range");
+        if (row >= _rows) {
+            throw std::out_of_range("row index out of range");
+        }
         for (std::size_t column = 0; auto& value : values) {
             _content.at(row * _columns + column) = value;
             ++column;
@@ -34,7 +36,9 @@ public:
     }
 
     void set_column(std::size_t column, const std::vector<std::string>& values) {
-        if (column >= _columns) throw std::out_of_range("column index out of range");
+        if (column >= _columns) {
+            throw std::out_of_range("column index out of range");
+        }
         for (std::size_t row = 0; auto& value : values) {
             _content.at(row * _columns + column) = value;
             ++row;
@@ -42,8 +46,12 @@ public:
     }
 
     void set_cell(std::size_t row, std::size_t column, std::string value) {
-        if (row >= _rows) throw std::out_of_range("row index out of range");
-        if (column >= _columns) throw std::out_of_range("column index out of range");
+        if (row >= _rows) {
+            throw std::out_of_range("row index out of range");
+        }
+        if (column >= _columns) {
+            throw std::out_of_range("column index out of range");
+        }
         _content.at(row * _columns + column) = value;
     }
 
@@ -57,4 +65,4 @@ private:
     std::vector<std::string> _content;
 };
 
-}
+} // namespace madevent

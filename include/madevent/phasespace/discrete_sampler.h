@@ -10,7 +10,8 @@ public:
     DiscreteHistogram(const std::vector<std::size_t>& option_counts);
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<std::size_t> _option_counts;
 };
@@ -49,4 +50,4 @@ void initialize_uniform_probs(
     ContextPtr context, const std::string& name, std::size_t option_count
 );
 
-}
+} // namespace madevent

@@ -5,9 +5,9 @@
 namespace madevent {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_vegas_forward(
-    FIn<T,0> input, FIn<T,1> grid, FOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> input, FIn<T, 1> grid, FOut<T, 0> output, FOut<T, 0> det
 ) {
     FVal<T> bin_count_f(grid.size() - 1);
     FVal<T> bin_index_f(input * bin_count_f);
@@ -20,9 +20,9 @@ KERNELSPEC void kernel_vegas_forward(
     det = bin_count_f * bin_size;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_vegas_inverse(
-    FIn<T,0> input, FIn<T,1> grid, FOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> input, FIn<T, 1> grid, FOut<T, 0> output, FOut<T, 0> det
 ) {
     std::size_t bin_count = grid.size() - 1;
     FVal<T> bin_count_f(bin_count);
@@ -37,5 +37,5 @@ KERNELSPEC void kernel_vegas_inverse(
     det = 1 / (bin_count_f * bin_size);
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

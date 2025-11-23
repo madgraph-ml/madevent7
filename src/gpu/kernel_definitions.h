@@ -1,7 +1,7 @@
 #pragma once
 
-#include "tensor.h"
 #include "gpu_abstraction.h"
+#include "tensor.h"
 
 #define KERNELSPEC __device__ //__forceinline__
 
@@ -9,10 +9,14 @@ namespace madevent {
 namespace kernels {
 
 struct GpuTypes {
-    template<int dim> using FIn = const gpu::GpuTensorView<double, dim>;
-    template<int dim> using IIn = const gpu::GpuTensorView<me_int_t, dim>;
-    template<int dim> using FOut = gpu::GpuTensorView<double, dim>;
-    template<int dim> using IOut = gpu::GpuTensorView<me_int_t, dim>;
+    template <int dim>
+    using FIn = const gpu::GpuTensorView<double, dim>;
+    template <int dim>
+    using IIn = const gpu::GpuTensorView<me_int_t, dim>;
+    template <int dim>
+    using FOut = gpu::GpuTensorView<double, dim>;
+    template <int dim>
+    using IOut = gpu::GpuTensorView<me_int_t, dim>;
     using FVal = double;
     using IVal = me_int_t;
     using BVal = bool;
@@ -21,7 +25,9 @@ struct GpuTypes {
 inline __device__ double where(bool condition, double val_true, double val_false) {
     return condition ? val_true : val_false;
 }
-inline __device__ me_int_t where(bool condition, me_int_t val_true, me_int_t val_false) { return condition ? val_true : val_false;
+inline __device__ me_int_t
+where(bool condition, me_int_t val_true, me_int_t val_false) {
+    return condition ? val_true : val_false;
 }
 inline __device__ double min(double arg1, double arg2) {
     return arg1 < arg2 ? arg1 : arg2;
@@ -29,29 +35,27 @@ inline __device__ double min(double arg1, double arg2) {
 inline __device__ double max(double arg1, double arg2) {
     return arg1 > arg2 ? arg1 : arg2;
 }
-inline __device__ std::size_t single_index(me_int_t arg) {
-    return arg;
-}
+inline __device__ std::size_t single_index(me_int_t arg) { return arg; }
 
-using ::sqrt;
-using ::sin;
-using ::cos;
-using ::sinh;
-using ::cosh;
+using ::acos;
+using ::atan;
 using ::atan2;
 using ::atanh;
-using ::pow;
+using ::cos;
+using ::cosh;
+using ::erf;
+using ::exp;
+using ::expm1;
 using ::fabs;
 using ::log;
 using ::log1p;
+using ::pow;
+using ::sin;
+using ::sinh;
+using ::sqrt;
 using ::tan;
-using ::atan;
-using ::acos;
-using ::exp;
-using ::expm1;
-using ::erf;
 
 using ::isnan;
 
-}
-}
+} // namespace kernels
+} // namespace madevent

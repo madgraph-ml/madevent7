@@ -15,7 +15,8 @@ public:
     );
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     nested_vector2<double> _momentum_factors;
     nested_vector2<me_int_t> _invariant_indices;
@@ -34,7 +35,8 @@ public:
     std::size_t channel_count() const { return _channel_indices.size(); }
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     nested_vector2<double> _momentum_factors;
     nested_vector2<double> _masses;
@@ -46,4 +48,4 @@ private:
     std::vector<me_int_t> _subchannel_indices;
 };
 
-}
+} // namespace madevent

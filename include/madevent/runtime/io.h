@@ -1,10 +1,10 @@
 #pragma once
 
-#include <fstream>
 #include <cstring>
+#include <fstream>
 
-#include "madevent/runtime/tensor.h"
 #include "madevent/runtime/lhe_output.h"
+#include "madevent/runtime/tensor.h"
 
 namespace madevent {
 
@@ -13,7 +13,7 @@ void save_tensor(const std::string& file, Tensor tensor);
 
 using FieldLayout = std::pair<std::string_view, std::string_view>;
 
-template<typename T>
+template <typename T>
 class UnalignedRef {
 public:
     UnalignedRef(void* ptr) : _ptr(ptr) {}
@@ -22,9 +22,7 @@ public:
         std::memcpy(&value, _ptr, sizeof(T));
         return value;
     }
-    operator T() const {
-        return value();
-    }
+    operator T() const { return value(); }
     UnalignedRef<T> operator=(const T& value) {
         std::memcpy(_ptr, &value, sizeof(T));
         return *this;
@@ -33,15 +31,16 @@ public:
         std::memcpy(_ptr, value._ptr, sizeof(T));
         return *this;
     }
+
 private:
     void* _ptr;
 };
 
 struct ParticleRecord {
     static constexpr std::size_t size = 32;
-    static constexpr std::array<FieldLayout, 4> layout = {{
-        {"energy", "<f8"}, {"px", "<f8"}, {"py", "<f8"}, {"pz", "<f8"}
-    }};
+    static constexpr std::array<FieldLayout, 4> layout = {
+        {{"energy", "<f8"}, {"px", "<f8"}, {"py", "<f8"}, {"pz", "<f8"}}
+    };
 
     UnalignedRef<double> energy() { return &data[0]; }
     UnalignedRef<double> px() { return &data[8]; }
@@ -55,21 +54,17 @@ constexpr int record_weight = 1;
 constexpr int record_subproc_index = 2;
 constexpr int record_indices = 4;
 
-template<int fields>
+template <int fields>
 struct EventRecord {
-    static constexpr std::size_t size =
-        (fields & record_weight ? 8 : 0) +
-        (fields & record_subproc_index ? 4 : 0) +
-        (fields & record_indices ? 16 : 0);
+    static constexpr std::size_t size = (fields & record_weight ? 8 : 0) +
+        (fields & record_subproc_index ? 4 : 0) + (fields & record_indices ? 16 : 0);
     static constexpr std::size_t subproc_index_offset = fields & record_weight ? 8 : 0;
     static constexpr std::size_t indices_offset =
         subproc_index_offset + (fields & record_subproc_index ? 4 : 0);
 
-    static constexpr std::size_t field_count =
-        (fields & record_weight ? 1 : 0) +
-        (fields & record_subproc_index ? 1 : 0) +
-        (fields & record_indices ? 4 : 0);
-    static constexpr std::array<FieldLayout, field_count> layout = []{
+    static constexpr std::size_t field_count = (fields & record_weight ? 1 : 0) +
+        (fields & record_subproc_index ? 1 : 0) + (fields & record_indices ? 4 : 0);
+    static constexpr std::array<FieldLayout, field_count> layout = [] {
         std::array<FieldLayout, field_count> layout;
         std::size_t offset = 0;
         if (fields & record_weight) {
@@ -102,9 +97,8 @@ struct EventRecord {
 
 using EventWeightRecord = EventRecord<record_weight>;
 using EventIndicesRecord = EventRecord<record_indices>;
-using EventFullRecord = EventRecord<
-    record_weight | record_subproc_index | record_indices
->;
+using EventFullRecord =
+    EventRecord<record_weight | record_subproc_index | record_indices>;
 
 struct EmptyParticleRecord {
     static constexpr std::size_t size = 0;
@@ -195,7 +189,7 @@ struct DataLayout {
     std::size_t event_size;
     std::size_t particle_size;
 
-    template<typename E, typename P>
+    template <typename E, typename P>
     static DataLayout of() {
         return {
             .event_fields = {E::layout.begin(), E::layout.end()},
@@ -209,15 +203,14 @@ struct DataLayout {
 class EventBuffer {
 public:
     EventBuffer(
-        std::size_t event_count,
-        std::size_t particle_count,
-        DataLayout layout
+        std::size_t event_count, std::size_t particle_count, DataLayout layout
     ) :
         _event_count(event_count),
         _particle_count(particle_count),
         _layout(layout),
-        _data(event_count * (layout.event_size + particle_count * layout.particle_size))
-    {}
+        _data(
+            event_count * (layout.event_size + particle_count * layout.particle_size)
+        ) {}
     char* data() { return _data.data(); }
     const char* data() const { return _data.data(); }
     std::size_t size() const { return _data.size(); }
@@ -233,17 +226,18 @@ public:
         return event_index * event_size();
     }
 
-    std::size_t particle_offset(std::size_t event_index, std::size_t particle_index) const {
-        return event_offset(event_index)
-            + _layout.event_size + particle_index * _layout.particle_size;
+    std::size_t
+    particle_offset(std::size_t event_index, std::size_t particle_index) const {
+        return event_offset(event_index) + _layout.event_size +
+            particle_index * _layout.particle_size;
     }
 
-    template<typename T>
+    template <typename T>
     T particle(std::size_t event_index, std::size_t particle_index) {
         return {&_data.data()[particle_offset(event_index, particle_index)]};
     }
 
-    template<typename T>
+    template <typename T>
     T event(std::size_t event_index) {
         return {&_data.data()[event_offset(event_index)]};
     }
@@ -271,6 +265,7 @@ public:
             );
         }
     }
+
 private:
     std::size_t _event_count;
     std::size_t _particle_count;
@@ -313,7 +308,9 @@ public:
     }
 
     bool read(EventBuffer& buffer, std::size_t count) {
-        if (_current_event == _event_count) return false;
+        if (_current_event == _event_count) {
+            return false;
+        }
         count = std::min(count, _event_count - _current_event);
         buffer.resize(count);
         if (buffer.particle_count() == _particle_count) {
@@ -325,8 +322,8 @@ public:
         } else {
             throw std::invalid_argument("Wrong number of particles");
         }
-        //if (_file_stream.fail()) println("FAIL!");
-        //if (_file_stream.eof()) println("EOF!");
+        // if (_file_stream.fail()) println("FAIL!");
+        // if (_file_stream.eof()) println("EOF!");
         _current_event += count;
         return true;
     }
@@ -345,4 +342,4 @@ private:
     bool _delete_on_close;
 };
 
-}
+} // namespace madevent
