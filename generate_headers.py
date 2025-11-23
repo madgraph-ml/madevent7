@@ -34,7 +34,12 @@ def write_autogen(f):
 def function_builder_mixin(commands):
     with open("include/madevent/madcode/function_builder_mixin.h", "w") as f:
         write_autogen(f)
+        first = True
         for name, cmd in commands.items():
+            if first:
+                first = False
+            else:
+                f.write("\n")
             if cmd["inputs"] == "any":
                 parameters = "ValueVec args"
                 instruction_call = f'instruction("{name}", args)'
@@ -64,7 +69,7 @@ def function_builder_mixin(commands):
                         f"    return {{{return_array}}};"
                     )
 
-            f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n\n")
+            f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n")
 
 
 def instruction_set_python(commands):
