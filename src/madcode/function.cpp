@@ -407,7 +407,7 @@ void FunctionBuilder::output(int index, Value value) {
     }
     auto& out_type = output_types.at(index);
     if (out_type.dtype != value.type.dtype || out_type.shape != value.type.shape) {
-        throw std::invalid_argument(std::format("Wrong output type for output {}", index));
+        throw std::invalid_argument(std::format("Wrong output type for output {}", index + 1));
     }
     register_local(value);
     outputs.at(index) = value;

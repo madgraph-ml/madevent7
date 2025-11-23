@@ -6,52 +6,85 @@
 #include "madevent/madcode.h"
 #include "madevent/runtime/tensor.h"
 #include "madevent/runtime/thread_pool.h"
+#include "madevent/umami.h"
 
 namespace madevent {
 
-struct SubProcessInfo {
-    bool on_gpu;
-    std::size_t particle_count;
-    std::size_t diagram_count;
-    std::size_t helicity_count;
-};
-
 class MatrixElementApi {
 public:
-    MatrixElementApi(const std::string& file, const std::string& param_card);
+    MatrixElementApi(
+        const std::string& file, const std::string& param_card, std::size_t index=0
+    );
     MatrixElementApi(MatrixElementApi&&) noexcept = default;
     MatrixElementApi& operator=(MatrixElementApi&&) noexcept = default;
     MatrixElementApi(const MatrixElementApi&) = delete;
     MatrixElementApi& operator=(const MatrixElementApi&) = delete;
-    bool on_gpu() const { return _subprocess_info.on_gpu; }
-    std::size_t particle_count() const { return _subprocess_info.particle_count; }
-    std::size_t diagram_count() const { return _subprocess_info.diagram_count; }
-    std::size_t helicity_count() const { return _subprocess_info.helicity_count; }
-
-    template<typename... T>
-    void call(T... args) const { _compute_matrix_element(std::forward<T>(args)...); }
-    template<typename... T>
-    void call_multichannel(T... args) const {
-        _compute_matrix_element_multichannel(std::forward<T>(args)...);
+    DevicePtr device() const {
+        UmamiDevice dev;
+        check_umami_status(_get_meta(UMAMI_META_DEVICE, &dev));
+        switch (dev) {
+        case UMAMI_DEVICE_CPU:
+            return cpu_device();
+        case UMAMI_DEVICE_CUDA:
+            return cuda_device();
+        //case UMAMI_DEVICE_HIP:
+            //return hip_device();
+        default:
+            throw_error("matrix element device not known");
+        }
     }
+    std::size_t particle_count() const {
+        int count;
+        check_umami_status(_get_meta(UMAMI_META_PARTICLE_COUNT, &count));
+        return count;
+    }
+    std::size_t diagram_count() const {
+        int count;
+        check_umami_status(_get_meta(UMAMI_META_DIAGRAM_COUNT, &count));
+        return count;
+    }
+    std::size_t helicity_count() const {
+        int count;
+        check_umami_status(_get_meta(UMAMI_META_HELICITY_COUNT, &count));
+        return count;
+    }
+    std::size_t index() const { return _index; }
+
+    void call(
+        UmamiHandle handle,
+        size_t count,
+        size_t stride,
+        size_t offset,
+        size_t input_count,
+        UmamiInputKey const* input_keys,
+        void const* const* inputs,
+        size_t output_count,
+        UmamiOutputKey const* output_keys,
+        void* const* outputs
+    ) const {
+        check_umami_status(_matrix_element(
+            handle, count, stride, offset,
+            input_count, input_keys, inputs,
+            output_count, output_keys, outputs
+        ));
+    }
+
     void* process_instance(std::size_t index) const {
         return _instances.get(index).get();
     }
 
 private:
+    void check_umami_status(UmamiStatus status) const;
+    [[noreturn]] void throw_error(const std::string& message) const;
     std::unique_ptr<void, std::function<void(void*)>> _shared_lib;
-    SubProcessInfo _subprocess_info;
-    void* (*_init_subprocess)(const char*);
-    void (*_compute_matrix_element)(
-        void*, std::size_t, std::size_t, const double*, const int*, double*, void*
-    );
-    void (*_compute_matrix_element_multichannel)(
-        void*, std::size_t, std::size_t, const double*, const double*, const double*,
-        const int*, double*, double*, int*, int*, int*, void*
-    );
-    void (*_free_subprocess)(void*);
+    decltype(&umami_get_meta) _get_meta;
+    decltype(&umami_initialize) _initialize;
+    decltype(&umami_matrix_element) _matrix_element;
+    decltype(&umami_free) _free;
     using InstanceType = std::unique_ptr<void, std::function<void(void*)>>;
     ThreadResource<InstanceType> _instances;
+    std::string _file_name;
+    std::size_t _index;
 };
 
 class Context {
@@ -65,7 +98,7 @@ public:
     Context& operator=(Context&&) = default;
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
-    std::size_t load_matrix_element(
+    const MatrixElementApi& load_matrix_element(
         const std::string& file, const std::string& param_card
     );
     Tensor define_global(

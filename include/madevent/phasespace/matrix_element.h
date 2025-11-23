@@ -1,27 +1,65 @@
 #pragma once
 
 #include "madevent/phasespace/base.h"
+#include "madevent/runtime/context.h"
 
 namespace madevent {
 
 class MatrixElement : public FunctionGenerator {
 public:
+    enum MatrixElementInput {
+        momenta_in,
+        alpha_s_in,
+        flavor_in,
+        random_color_in,
+        random_helicity_in,
+        random_diagram_in,
+        helicity_in,
+        diagram_in
+    };
+
+    enum MatrixElementOutput {
+        matrix_element_out,
+        diagram_amp2_out,
+        color_index_out,
+        helicity_index_out,
+        diagram_index_out
+    };
+
     MatrixElement(
         std::size_t matrix_element_index,
         std::size_t particle_count,
-        bool simple_matrix_element = true,
-        std::size_t channel_count = 1
+        const std::vector<MatrixElementInput>& inputs = {momenta_in},
+        const std::vector<MatrixElementOutput>& outputs = {matrix_element_out},
+        std::size_t diagram_count = 1,
+        bool sample_random_inputs = false
     );
-    std::size_t channel_count() const { return _channel_count; }
+    MatrixElement(
+        const MatrixElementApi& matrix_element_api,
+        const std::vector<MatrixElementInput>& inputs = {momenta_in},
+        const std::vector<MatrixElementOutput>& outputs = {matrix_element_out},
+        bool sample_random_inputs = false
+    ) : MatrixElement(
+        matrix_element_api.index(),
+        matrix_element_api.particle_count(),
+        inputs,
+        outputs,
+        matrix_element_api.diagram_count(),
+        sample_random_inputs
+    ) {};
+    std::size_t matrix_element_index() const { return _matrix_element_index; }
+    std::size_t diagram_count() const { return _diagram_count; }
     std::size_t particle_count() const { return _particle_count; }
 
 private:
     ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
-    me_int_t _matrix_element_index;
+    std::size_t _matrix_element_index;
     std::size_t _particle_count;
-    bool _simple_matrix_element;
-    me_int_t _channel_count;
+    std::size_t _diagram_count;
+    std::vector<MatrixElementInput> _inputs;
+    std::vector<MatrixElementOutput> _outputs;
+    bool _sample_random_inputs;
 };
 
 }

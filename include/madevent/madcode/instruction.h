@@ -31,6 +31,9 @@ public:
 
 protected:
     void check_arg_count(const ValueVec& args, std::size_t count) const;
+    me_int_t int_literal_arg(
+        const ValueVec& args, std::size_t index, bool check_non_negative = true
+    ) const;
 
 private:
     std::string _name;
@@ -186,6 +189,13 @@ class UnweightInstruction : public Instruction {
 public:
     UnweightInstruction(int opcode, bool differentiable) :
         Instruction("unweight", opcode, differentiable) {}
+    TypeVec signature(const ValueVec& args) const override;
+};
+
+class MatrixElementInstruction : public Instruction {
+public:
+    MatrixElementInstruction(int opcode, bool differentiable) :
+        Instruction("matrix_element", opcode, differentiable) {}
     TypeVec signature(const ValueVec& args) const override;
 };
 

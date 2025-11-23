@@ -62,14 +62,45 @@ public:
     }
 };
 
+template<typename EnumType, typename ParentType>
+void add_enum(
+    ParentType& parent,
+    const char* enum_name,
+    std::initializer_list<std::pair<const std::string, EnumType>> values
+) {
+    std::unordered_map<std::string, EnumType> str_to_enum_map(values);
+    py::enum_<EnumType> enumeration(parent, enum_name);
+    for (auto& [key, value] : values) {
+        enumeration.value(key.c_str(), value);
+    }
+    enumeration.def(
+        "__init__",
+        [str_to_enum_map, enum_name] (EnumType& self, const std::string& name) {
+            if (
+                auto search = str_to_enum_map.find(name);
+                search != str_to_enum_map.end()
+            ) {
+                self = search->second;
+            } else {
+                throw std::invalid_argument(std::format(
+                    "Value {} does not exist in enum {}", name, enum_name
+                ));
+            }
+        },
+        py::arg("name")
+    );
+    enumeration.export_values();
+    py::implicitly_convertible<std::string, EnumType>();
+}
+
 }
 
 PYBIND11_MODULE(_madevent_py, m) {
-    py::enum_<DataType>(m, "DataType")
-        .value("int", DataType::dt_int)
-        .value("float", DataType::dt_float)
-        .value("batch_sizes", DataType::batch_sizes)
-        .export_values();
+    add_enum<DataType>(m, "DataType", {
+        {"int", DataType::dt_int},
+        {"float", DataType::dt_float},
+        {"batch_sizes", DataType::batch_sizes},
+    });
 
     py::classh<BatchSize>(m, "BatchSize")
         .def(py::init<>())
@@ -138,12 +169,13 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("cuda_device", &cuda_device, py::return_value_policy::reference);
 
     py::classh<MatrixElementApi>(m, "MatrixElementApi")
-        .def(py::init<const std::string&, const std::string&>(),
-             py::arg("file"), py::arg("param_card"))
-        .def("on_gpu", &MatrixElementApi::on_gpu)
+        .def(py::init<const std::string&, const std::string&, std::size_t>(),
+             py::arg("file"), py::arg("param_card"), py::arg("index")=0)
+        .def("device", &MatrixElementApi::device)
         .def("particle_count", &MatrixElementApi::particle_count)
         .def("diagram_count", &MatrixElementApi::diagram_count)
-        .def("helicity_count", &MatrixElementApi::helicity_count);
+        .def("helicity_count", &MatrixElementApi::helicity_count)
+        .def("index", &MatrixElementApi::index);
 
     py::classh<Tensor>(m, "Tensor", py::dynamic_attr())
         .def("__dlpack__", &tensor_to_dlpack,
@@ -157,7 +189,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
         .def("load_matrix_element", &Context::load_matrix_element,
-             py::arg("file"), py::arg("param_card"))
+             py::arg("file"), py::arg("param_card"),
+             py::return_value_policy::reference_internal)
         .def("define_global", &Context::define_global,
              py::arg("name"), py::arg("dtype"), py::arg("shape"),
              py::arg("requires_grad")=false)
@@ -279,17 +312,17 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<std::vector<std::shared_ptr<Mapping>>&>(), py::arg("mappings"));
 
     auto cuts = py::classh<Cuts, FunctionGenerator>(m, "Cuts");
-    py::enum_<Cuts::CutObservable>(cuts, "CutObservable")
-        .value("obs_pt", Cuts::obs_pt)
-        .value("obs_eta", Cuts::obs_eta)
-        .value("obs_dr", Cuts::obs_dr)
-        .value("obs_mass", Cuts::obs_mass)
-        .value("obs_sqrt_s", Cuts::obs_sqrt_s)
-        .export_values();
-    py::enum_<Cuts::LimitType>(cuts, "LimitType")
-        .value("min", Cuts::min)
-        .value("max", Cuts::max)
-        .export_values();
+    add_enum<Cuts::CutObservable>(cuts, "CutObservable", {
+        {"obs_pt", Cuts::obs_pt},
+        {"obs_eta", Cuts::obs_eta},
+        {"obs_dr", Cuts::obs_dr},
+        {"obs_mass", Cuts::obs_mass},
+        {"obs_sqrt_s", Cuts::obs_sqrt_s},
+    });
+    add_enum<Cuts::LimitType>(cuts, "LimitType", {
+        {"min", Cuts::min},
+        {"max", Cuts::max},
+    });
     py::classh<Cuts::CutItem>(m, "CutItem")
         .def(py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
              py::arg("observable"), py::arg("limit_type"),
@@ -353,11 +386,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_property_readonly("outgoing_masses", &Topology::outgoing_masses)
         .def("propagator_momentum_terms", &Topology::propagator_momentum_terms);
     py::classh<PhaseSpaceMapping, Mapping> psmap(m, "PhaseSpaceMapping");
-    py::enum_<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode")
-        .value("propagator", PhaseSpaceMapping::propagator)
-        .value("rambo", PhaseSpaceMapping::rambo)
-        .value("chili", PhaseSpaceMapping::chili)
-        .export_values();
+    add_enum<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode", {
+        {"propagator", PhaseSpaceMapping::propagator},
+        {"rambo", PhaseSpaceMapping::rambo},
+        {"chili", PhaseSpaceMapping::chili},
+    });
     psmap
         .def(py::init<const Topology&, double, bool, double,
                       PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
@@ -382,23 +415,59 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<std::vector<std::shared_ptr<FunctionGenerator>>&>(),
              py::arg("functions"));
 
-    py::classh<MatrixElement, FunctionGenerator>(m, "MatrixElement")
-        .def(py::init<std::size_t, std::size_t, bool, std::size_t>(),
-             py::arg("matrix_element_index"), py::arg("particle_count"),
-             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1)
-        .def("channel_count", &MatrixElement::channel_count)
+    py::classh<MatrixElement, FunctionGenerator> matrix_element(m, "MatrixElement");
+    add_enum<MatrixElement::MatrixElementInput>(matrix_element, "MatrixElementInput", {
+        {"momenta_in", MatrixElement::momenta_in},
+        {"alpha_s_in", MatrixElement::alpha_s_in},
+        {"flavor_in", MatrixElement::flavor_in},
+        {"random_color_in", MatrixElement::random_color_in},
+        {"random_helicity_in", MatrixElement::random_helicity_in},
+        {"random_diagram_in", MatrixElement::random_diagram_in},
+        {"helicity_in", MatrixElement::helicity_in},
+        {"diagram_in", MatrixElement::diagram_in},
+    });
+    add_enum<MatrixElement::MatrixElementOutput>(matrix_element, "MatrixElementOutput", {
+        {"matrix_element_out", MatrixElement::matrix_element_out},
+        {"diagram_amp2_out", MatrixElement::diagram_amp2_out},
+        {"color_index_out", MatrixElement::color_index_out},
+        {"helicity_index_out", MatrixElement::helicity_index_out},
+        {"diagram_index_out", MatrixElement::diagram_index_out},
+    });
+    matrix_element
+        .def(py::init<std::size_t,
+                      std::size_t,
+                      const std::vector<MatrixElement::MatrixElementInput>&,
+                      const std::vector<MatrixElement::MatrixElementOutput>&,
+                      std::size_t,
+                      bool>(),
+             py::arg("matrix_element_index"),
+             py::arg("particle_count"),
+             py::arg("inputs"),
+             py::arg("outputs"),
+             py::arg("diagram_count")=1,
+             py::arg("sample_random_inputs")=false)
+        .def(py::init<const MatrixElementApi&,
+                      const std::vector<MatrixElement::MatrixElementInput>&,
+                      const std::vector<MatrixElement::MatrixElementOutput>&,
+                      bool>(),
+             py::arg("matrix_element_api"),
+             py::arg("inputs"),
+             py::arg("outputs"),
+             py::arg("sample_random_inputs")=false)
+        .def("matrix_element_index", &MatrixElement::diagram_count)
+        .def("diagram_count", &MatrixElement::diagram_count)
         .def("particle_count", &MatrixElement::particle_count);
 
     py::classh<MLP, FunctionGenerator> mlp(m, "MLP");
-    py::enum_<MLP::Activation>(mlp, "Activation")
-        .value("relu", MLP::relu)
-        .value("leaky_relu", MLP::leaky_relu)
-        .value("elu", MLP::elu)
-        .value("gelu", MLP::gelu)
-        .value("sigmoid", MLP::sigmoid)
-        .value("softplus", MLP::softplus)
-        .value("linear", MLP::linear)
-        .export_values();
+    add_enum<MLP::Activation>(mlp, "Activation", {
+        {"relu", MLP::relu},
+        {"leaky_relu", MLP::leaky_relu},
+        {"elu", MLP::elu},
+        {"gelu", MLP::gelu},
+        {"sigmoid", MLP::sigmoid},
+        {"softplus", MLP::softplus},
+        {"linear", MLP::linear},
+    });
     mlp.def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
                       MLP::Activation, const std::string&>(),
             py::arg("input_dim"),
@@ -556,12 +625,12 @@ PYBIND11_MODULE(_madevent_py, m) {
              py::arg("grid"), py::arg("prefix")="");
 
     py::classh<EnergyScale, FunctionGenerator> scale(m, "EnergyScale");
-    py::enum_<EnergyScale::DynamicalScaleType>(scale, "DynamicalScaleType")
-        .value("transverse_energy", EnergyScale::transverse_energy)
-        .value("transverse_mass", EnergyScale::transverse_mass)
-        .value("half_transverse_mass", EnergyScale::half_transverse_mass)
-        .value("partonic_energy", EnergyScale::partonic_energy)
-        .export_values();
+    add_enum<EnergyScale::DynamicalScaleType>(scale, "DynamicalScaleType", {
+        {"transverse_energy", EnergyScale::transverse_energy},
+        {"transverse_mass", EnergyScale::transverse_mass},
+        {"half_transverse_mass", EnergyScale::half_transverse_mass},
+        {"partonic_energy", EnergyScale::partonic_energy},
+    });
     scale
         .def(py::init<std::size_t>(), py::arg("particle_count"))
         .def(py::init<std::size_t, EnergyScale::DynamicalScaleType>(),

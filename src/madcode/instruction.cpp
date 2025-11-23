@@ -1,4 +1,5 @@
 #include "madevent/madcode/instruction.h"
+#include "madevent/umami.h"
 
 #include <algorithm>
 #include <format>
@@ -131,6 +132,30 @@ void Instruction::check_arg_count(const ValueVec& args, std::size_t count) const
     }
 }
 
+me_int_t Instruction::int_literal_arg(
+    const ValueVec& args, std::size_t index, bool check_non_negative
+) const {
+    auto& arg_val = args.at(index);
+    auto& arg_type = arg_val.type;
+    if (
+        arg_type.dtype != DataType::dt_int ||
+        arg_type.batch_size != BatchSize::one ||
+        arg_type.shape.size() != 0 ||
+        !std::holds_alternative<me_int_t>(arg_val.literal_value)
+    ) {
+        throw std::invalid_argument(std::format(
+            "{}, argument {}: expected integer constant", name(), index + 1
+        ));
+    }
+    me_int_t value = std::get<me_int_t>(arg_val.literal_value);
+    if (check_non_negative && value < 0) {
+        throw std::invalid_argument(std::format(
+            "{}, argument {}: must be positive", name(), index + 1
+        ));
+    }
+    return value;
+}
+
 TypeVec SimpleInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, inputs.size());
     std::map<char, int> variables;
@@ -144,23 +169,14 @@ TypeVec SimpleInstruction::signature(const ValueVec& args) const {
         auto& [input_dtype, is_single, input_shape, is_size] = inputs.at(i);
 
         if (is_size) {
-            if (
-                arg_dtype != DataType::dt_int ||
-                arg_batch_size != BatchSize::one ||
-                arg_shape.size() != 0 ||
-                !std::holds_alternative<me_int_t>(arg.literal_value)
-            ) {
-                throw std::invalid_argument(std::format(
-                    "{}, argument {}: expected integer constant", name(), i + 1
-                ));
-            }
+            me_int_t int_val = int_literal_arg(args, i);
             char var_name = std::get<ShapeExpr>(input_shape.at(0)).first_var_name();
             if (variables.find(var_name) != variables.end()) {
                 throw std::invalid_argument(std::format(
                     "{}, argument {}: size already defined", name(), i + 1
                 ));
             }
-            variables[var_name] = std::get<me_int_t>(arg.literal_value);
+            variables[var_name] = int_val;
             continue;
         }
 
@@ -545,22 +561,9 @@ TypeVec FullInstruction::signature(const ValueVec& args) const {
     auto batch_size = batch_size_arg.type.batch_size_list.at(0);
 
     std::vector<int> shape;
-    std::size_t arg_index = 3;
-    for (auto& arg : args | std::views::drop(2)) {
-        if (
-            arg.type.dtype != DataType::dt_int ||
-            arg.type.batch_size != BatchSize::one ||
-            arg.type.shape.size() != 0 ||
-            !std::holds_alternative<me_int_t>(arg.literal_value)
-        ) {
-            throw std::invalid_argument(std::format(
-                "full, argument {}: expected integer constant", arg_index
-            ));
-        }
-        shape.push_back(std::get<me_int_t>(arg.literal_value));
-        ++arg_index;
+    for (std::size_t i = 2; i < args.size(); ++i) {
+        shape.push_back(int_literal_arg(args, i));
     }
-
     return {{dtype, batch_size, shape}};
 }
 
@@ -590,19 +593,7 @@ TypeVec UnsqueezeInstruction::signature(const ValueVec& args) const {
 
 TypeVec RqsReshapeInstruction::signature(const ValueVec& args) const {
     check_arg_count(args, 2);
-    auto& bin_count_arg = args.at(1);
-    auto& bin_count_type = bin_count_arg.type;
-    if (
-        bin_count_type.dtype != DataType::dt_int ||
-        bin_count_type.batch_size != BatchSize::one ||
-        bin_count_type.shape.size() != 0 ||
-        !std::holds_alternative<me_int_t>(bin_count_arg.literal_value)
-    ) {
-        throw std::invalid_argument(std::format(
-            "{}, argument 2: expected integer constant", name()
-        ));
-    }
-    int bin_count = std::get<me_int_t>(bin_count_arg.literal_value);
+    int bin_count = int_literal_arg(args, 1);
 
     auto& input_type = args.at(0).type;
     if (
@@ -691,17 +682,7 @@ TypeVec RandomInstruction::signature(const ValueVec& args) const {
             "{}, argument 1: expected single batch size", name()
         ));
     }
-    if (
-        count_type.dtype != DataType::dt_int ||
-        count_type.batch_size != BatchSize::one ||
-        count_type.shape.size() != 0 ||
-        !std::holds_alternative<me_int_t>(count_arg.literal_value)
-    ) {
-        throw std::invalid_argument(std::format(
-            "{}, argument 2: expected integer constant", name()
-        ));
-    }
-    int count = std::get<me_int_t>(count_arg.literal_value);
+    int count = int_literal_arg(args, 1);
     return {{DataType::dt_float, batch_size_type.batch_size_list.at(0), {count}}};
 }
 
@@ -729,6 +710,114 @@ TypeVec UnweightInstruction::signature(const ValueVec& args) const {
         {DataType::dt_int, out_batch_size, {}},
         {DataType::dt_float, out_batch_size, {}}
     };
+}
+
+TypeVec MatrixElementInstruction::signature(const ValueVec& args) const {
+    std::size_t arg_count = args.size();
+    if (arg_count < 3) {
+        throw std::invalid_argument(
+            "matrix_element: must have at least three arguments, specifying the "
+            "matrix element index and the numbers of inputs and outputs"
+        );
+    }
+    int_literal_arg(args, 0);
+    std::size_t input_count = int_literal_arg(args, 1);
+    std::size_t output_count = int_literal_arg(args, 2);
+    std::size_t expected_arg_count = 3 + 2 * input_count + 2 * output_count;
+    if (arg_count != expected_arg_count) {
+        throw std::invalid_argument(std::format(
+            "matrix_element: expected {} arguments, got {}",
+            expected_arg_count, arg_count
+        ));
+    }
+    BatchSize batch_size = BatchSize::one;
+    for (std::size_t i = 0; i < input_count; ++i) {
+        std::size_t input_key_index = 3 + 2 * i;
+        std::size_t input_value_index = 3 + 2 * i + 1;
+        int input_key = int_literal_arg(args, input_key_index);
+        const Type& input_type = args.at(input_value_index).type;
+        if (batch_size == BatchSize::one) {
+            batch_size = input_type.batch_size;
+        } else if (input_type.batch_size != BatchSize::one && batch_size != input_type.batch_size) {
+            throw std::invalid_argument(std::format(
+                "matrix_element, argument {}: incompatible batch size", i + 1
+            ));
+        }
+        switch (input_key) {
+        case UMAMI_IN_MOMENTA:
+            if (
+                input_type.dtype != DataType::dt_float ||
+                input_type.shape.size() != 2 ||
+                input_type.shape.at(1) != 4
+            ) {
+                throw std::invalid_argument(std::format(
+                    "matrix_element, argument {}: expected array of four-momenta", i + 1
+                ));
+            }
+            break;
+        case UMAMI_IN_ALPHA_S:
+        case UMAMI_IN_RANDOM_COLOR:
+        case UMAMI_IN_RANDOM_HELICITY:
+        case UMAMI_IN_RANDOM_DIAGRAM:
+            if (
+                input_type.dtype != DataType::dt_float ||
+                input_type.shape.size() != 0
+            ) {
+                throw std::invalid_argument(std::format(
+                    "matrix_element, argument {}: expected batch of floats", i + 1
+                ));
+            }
+            break;
+        case UMAMI_IN_FLAVOR_INDEX:
+        case UMAMI_IN_HELICITY_INDEX:
+        case UMAMI_IN_DIAGRAM_INDEX:
+            if (
+                input_type.dtype != DataType::dt_int ||
+                input_type.shape.size() != 0
+            ) {
+                throw std::invalid_argument(std::format(
+                    "matrix_element, argument {}: expected batch of integers", i + 1
+                ));
+            }
+            break;
+        default:
+            throw std::invalid_argument(std::format(
+                "matrix_element, argument {}: invalid input key", input_key_index
+            ));
+        }
+    }
+    TypeVec output_types;
+    std::size_t output_offset = 3 + 2 * input_count;
+    for (std::size_t i = 0; i < output_count; ++i) {
+        std::size_t output_key_index = output_offset + 2 * i;
+        std::size_t output_size_index = output_offset + 2 * i + 1;
+        int output_key = int_literal_arg(args, output_key_index);
+        int output_size = int_literal_arg(args, output_size_index);
+        DataType dtype;
+        std::vector<int> shape;
+        switch (output_key) {
+        case UMAMI_OUT_MATRIX_ELEMENT:
+            dtype = DataType::dt_float;
+            shape = {};
+            break;
+        case UMAMI_OUT_DIAGRAM_AMP2:
+            dtype = DataType::dt_float;
+            shape = {output_size};
+            break;
+        case UMAMI_OUT_COLOR_INDEX:
+        case UMAMI_OUT_HELICITY_INDEX:
+        case UMAMI_OUT_DIAGRAM_INDEX:
+            dtype = DataType::dt_int;
+            shape = {};
+            break;
+        default:
+            throw std::invalid_argument(std::format(
+                "matrix_element, argument {}: invalid output key", i + 1
+            ));
+        }
+        output_types.push_back({dtype, batch_size, shape});
+    }
+    return output_types;
 }
 
 const std::unordered_map<std::string, InstructionOwner> madevent::build_instruction_set() {

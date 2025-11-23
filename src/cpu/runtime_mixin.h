@@ -200,107 +200,104 @@ case 65:
     op_matrix_element(instr, locals, device);
     break;
 case 66:
-    op_matrix_element_multichannel(instr, locals, device);
-    break;
-case 67:
     batch_foreach<tensor_foreach<kernel_collect_channel_weights<CpuTypes>, kernel_collect_channel_weights<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
     break;
-case 68:
+case 67:
     batch_foreach<tensor_foreach<kernel_interpolate_pdf<CpuTypes>, kernel_interpolate_pdf<CpuTypes>, 6, 1, 1, DeviceType>, 6, 1>(instr, locals, device);
     break;
-case 69:
+case 68:
     batch_foreach<tensor_foreach<kernel_interpolate_alpha_s<CpuTypes>, kernel_interpolate_alpha_s<CpuTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
     break;
-case 70:
+case 69:
     op_matmul(instr, locals, device);
     break;
-case 71:
+case 70:
     batch_foreach<tensor_foreach_dynamic<kernel_relu<CpuTypes>, kernel_relu<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 72:
+case 71:
     batch_foreach<tensor_foreach_dynamic<kernel_leaky_relu<CpuTypes>, kernel_leaky_relu<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 73:
+case 72:
     batch_foreach<tensor_foreach_dynamic<kernel_elu<CpuTypes>, kernel_elu<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 74:
+case 73:
     batch_foreach<tensor_foreach_dynamic<kernel_gelu<CpuTypes>, kernel_gelu<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 75:
+case 74:
     batch_foreach<tensor_foreach_dynamic<kernel_sigmoid<CpuTypes>, kernel_sigmoid<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 76:
+case 75:
     batch_foreach<tensor_foreach_dynamic<kernel_softplus<CpuTypes>, kernel_softplus<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 77:
+case 76:
     op_rqs_reshape(instr, locals, device);
     break;
-case 78:
+case 77:
     batch_foreach<tensor_foreach<kernel_rqs_find_bin<CpuTypes>, kernel_rqs_find_bin<SimdTypes>, 4, 1, 2, DeviceType>, 4, 1>(instr, locals, device);
     break;
-case 79:
+case 78:
     batch_foreach<tensor_foreach<kernel_rqs_forward<CpuTypes>, kernel_rqs_forward<SimdTypes>, 2, 2, 2, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 80:
+case 79:
     batch_foreach<tensor_foreach<kernel_rqs_inverse<CpuTypes>, kernel_rqs_inverse<SimdTypes>, 2, 2, 2, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 81:
+case 80:
     batch_foreach<tensor_foreach_dynamic<kernel_softmax<CpuTypes>, kernel_softmax<SimdTypes>, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
-case 82:
+case 81:
     batch_foreach<tensor_foreach<kernel_softmax_prior<CpuTypes>, kernel_softmax_prior<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
-case 83:
+case 82:
     batch_foreach<tensor_foreach<kernel_sample_discrete<CpuTypes>, kernel_sample_discrete<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 84:
+case 83:
     batch_foreach<tensor_foreach<kernel_sample_discrete_inverse<CpuTypes>, kernel_sample_discrete_inverse<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 85:
+case 84:
     batch_foreach<tensor_foreach<kernel_sample_discrete_probs<CpuTypes>, kernel_sample_discrete_probs<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 86:
+case 85:
     batch_foreach<tensor_foreach<kernel_sample_discrete_probs_inverse<CpuTypes>, kernel_sample_discrete_probs_inverse<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 87:
+case 86:
     op_discrete_histogram(instr, locals, device);
     break;
-case 88:
+case 87:
     batch_foreach<tensor_foreach<kernel_permute_momenta<CpuTypes>, kernel_permute_momenta<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
     break;
-case 89:
+case 88:
     batch_foreach<tensor_foreach<kernel_gather<CpuTypes>, kernel_gather<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
-case 90:
+case 89:
     batch_foreach<tensor_foreach<kernel_gather_int<CpuTypes>, kernel_gather_int<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
-case 91:
+case 90:
     batch_foreach<tensor_foreach<kernel_select<CpuTypes>, kernel_select<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
-case 92:
+case 91:
     batch_foreach<tensor_foreach<kernel_one_hot<CpuTypes>, kernel_one_hot<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
-case 93:
+case 92:
     op_nonzero(instr, locals, device);
     break;
-case 94:
+case 93:
     op_batch_gather(instr, locals, device);
     break;
-case 95:
+case 94:
     op_batch_scatter(instr, locals, device);
     break;
-case 96:
+case 95:
     op_random(instr, locals, device);
     break;
-case 97:
+case 96:
     op_unweight(instr, locals, device);
     break;
-case 98:
+case 97:
     batch_foreach<tensor_foreach<kernel_vegas_forward<CpuTypes>, kernel_vegas_forward<SimdTypes>, 2, 2, 2, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 99:
+case 98:
     batch_foreach<tensor_foreach<kernel_vegas_inverse<CpuTypes>, kernel_vegas_inverse<SimdTypes>, 2, 2, 2, DeviceType>, 2, 2>(instr, locals, device);
     break;
-case 100:
+case 99:
     op_vegas_histogram(instr, locals, device);
     break;
