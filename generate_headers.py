@@ -2,7 +2,7 @@ import yaml
 
 
 def main():
-    with open("src/madcode/instruction_set.yaml") as f:
+    with open("instruction_set.yaml") as f:
         data = list(yaml.safe_load_all(f))
 
     commands = {}
