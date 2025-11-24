@@ -288,13 +288,8 @@ std::array<Value, 4> chili_forward(Value r, Value e_cm, Value m_out, Value pt_mi
     return {output_vector[0], output_vector[1], output_vector[2], output_vector[3]};
 }
 
-Value matrix_element(Value momenta, Value flavor, Value index) {
-    return instruction("matrix_element", {momenta, flavor, index})[0];
-}
-
-std::array<Value, 5> matrix_element_multichannel(Value momenta, Value alpha_s, Value random, Value flavor, Value index, Value diagram_count) {
-    auto output_vector = instruction("matrix_element_multichannel", {momenta, alpha_s, random, flavor, index, diagram_count});
-    return {output_vector[0], output_vector[1], output_vector[2], output_vector[3], output_vector[4]};
+ValueVec matrix_element(ValueVec args) {
+    return instruction("matrix_element", args);
 }
 
 Value collect_channel_weights(Value amp2, Value channel_indices, Value channel_count) {

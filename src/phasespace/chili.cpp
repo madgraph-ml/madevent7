@@ -5,7 +5,9 @@
 using namespace madevent;
 
 ChiliMapping::ChiliMapping(
-    std::size_t _n_particles, const std::vector<double>& _y_max, const std::vector<double>& _pt_min
+    std::size_t _n_particles,
+    const std::vector<double>& _y_max,
+    const std::vector<double>& _pt_min
 ) :
     Mapping(
         "ChiliMapping",
@@ -20,8 +22,7 @@ ChiliMapping::ChiliMapping(
     ),
     n_particles(_n_particles),
     y_max(_y_max),
-    pt_min(_pt_min)
-{}
+    pt_min(_pt_min) {}
 
 Mapping::Result ChiliMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
@@ -34,9 +35,8 @@ Mapping::Result ChiliMapping::build_forward_impl(
     for (auto it = inputs.begin() + 3 * n_particles - 1; it != inputs.end(); ++it) {
         m_out.push_back(*it);
     }
-    auto [p_ext, x1, x2, det] = fb.chili_forward(
-        fb.stack(r), e_cm, fb.stack(m_out), pt_min, y_max
-    );
+    auto [p_ext, x1, x2, det] =
+        fb.chili_forward(fb.stack(r), e_cm, fb.stack(m_out), pt_min, y_max);
     auto outputs = fb.unstack(p_ext);
     outputs.push_back(x1);
     outputs.push_back(x2);

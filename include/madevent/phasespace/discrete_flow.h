@@ -41,4 +41,4 @@ private:
     std::vector<bool> _dim_has_prior;
 };
 
-}
+} // namespace madevent

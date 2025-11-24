@@ -56,14 +56,14 @@ void initialize_layer(
 ) {
     double bound = 1 / std::sqrt(input_dim);
     std::uniform_real_distribution<double> rand_dist(-bound, bound);
-    auto weight_name = prefixed_name(prefix, std::format("layer{}.weight", layer_index));
+    auto weight_name =
+        prefixed_name(prefix, std::format("layer{}.weight", layer_index));
     auto bias_name = prefixed_name(prefix, std::format("layer{}.bias", layer_index));
     auto weight_tensor_global = context->define_global(
         weight_name, DataType::dt_float, {output_dim, input_dim}, true
     );
-    auto bias_tensor_global = context->define_global(
-        bias_name, DataType::dt_float, {output_dim}, true
-    );
+    auto bias_tensor_global =
+        context->define_global(bias_name, DataType::dt_float, {output_dim}, true);
     Tensor weight_tensor, bias_tensor;
     bool is_cpu = context->device() == cpu_device();
     if (is_cpu) {
@@ -91,7 +91,7 @@ void initialize_layer(
     }
 }
 
-}
+} // namespace
 
 MLP::MLP(
     std::size_t input_dim,
@@ -102,19 +102,20 @@ MLP::MLP(
     const std::string& prefix
 ) :
     FunctionGenerator(
-        "MLP",
-        {batch_float_array(input_dim)},
-        {batch_float_array(output_dim)}
+        "MLP", {batch_float_array(input_dim)}, {batch_float_array(output_dim)}
     ),
     _input_dim(input_dim),
     _output_dim(output_dim),
     _hidden_dim(hidden_dim),
     _layers(layers),
     _activation(activation),
-    _prefix(prefix)
-{
-    if (input_dim == 0) throw std::invalid_argument("MLP input dimension cannot be 0");
-    if (output_dim == 0) throw std::invalid_argument("MLP output dimension cannot be 0");
+    _prefix(prefix) {
+    if (input_dim == 0) {
+        throw std::invalid_argument("MLP input dimension cannot be 0");
+    }
+    if (output_dim == 0) {
+        throw std::invalid_argument("MLP output dimension cannot be 0");
+    }
 };
 
 ValueVec MLP::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const {

@@ -1,7 +1,7 @@
 #include "madevent/phasespace/discrete_flow.h"
 
-#include "madevent/util.h"
 #include "madevent/phasespace/discrete_sampler.h"
+#include "madevent/util.h"
 
 using namespace madevent;
 
@@ -31,8 +31,7 @@ DiscreteFlow::DiscreteFlow(
     ),
     _option_counts(option_counts),
     _dim_has_prior(option_counts.size()),
-    _condition_dim(condition_dim)
-{
+    _condition_dim(condition_dim) {
     std::size_t option_sum = 0, dim_index = 0;
     for (std::size_t option_count : option_counts) {
         std::size_t subnet_input_dim = option_sum + condition_dim;
@@ -84,13 +83,11 @@ Mapping::Result DiscreteFlow::build_transform(
 
     Value prev_index;
     ValueVec outputs, dets;
-    for (auto [option_count, input, has_prior] : zip(
-        _option_counts, inputs, _dim_has_prior
-    )) {
+    for (auto [option_count, input, has_prior] :
+         zip(_option_counts, inputs, _dim_has_prior)) {
         if (dim_index > 0) {
-            subnet_input = fb.cat({
-                subnet_input, fb.one_hot(prev_index, prev_option_count)
-            });
+            subnet_input =
+                fb.cat({subnet_input, fb.one_hot(prev_index, prev_option_count)});
         }
         Value probs;
         if (dim_index == 0 && _first_prob_name) {
@@ -109,9 +106,8 @@ Mapping::Result DiscreteFlow::build_transform(
             probs = fb.mul(probs, conditions.at(condition_index));
             ++condition_index;
         }
-        auto [output, det] = inverse ?
-            fb.sample_discrete_probs_inverse(input, probs) :
-            fb.sample_discrete_probs(input, probs);
+        auto [output, det] = inverse ? fb.sample_discrete_probs_inverse(input, probs)
+                                     : fb.sample_discrete_probs(input, probs);
         outputs.push_back(output);
         dets.push_back(det);
         prev_option_count = option_count;

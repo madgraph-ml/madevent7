@@ -15,8 +15,8 @@ public:
     static const PidVec lepton_pids;
     static const PidVec missing_pids;
     static const PidVec photon_pids;
-    enum CutObservable {obs_pt, obs_eta, obs_dr, obs_mass, obs_sqrt_s};
-    enum LimitType {min, max};
+    enum CutObservable { obs_pt, obs_eta, obs_dr, obs_mass, obs_sqrt_s };
+    enum LimitType { min, max };
     struct CutItem {
         CutObservable observable;
         LimitType limit_type;
@@ -30,13 +30,12 @@ public:
     std::vector<double> pt_min() const;
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-    std::vector<double> limits(
-        CutObservable observable, LimitType limit_type, double default_value
-    ) const;
-    void process_single_cuts(
-        CutItem cut, std::vector<double>& limits, bool& has_cuts
-    ) const;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    std::vector<double>
+    limits(CutObservable observable, LimitType limit_type, double default_value) const;
+    void
+    process_single_cuts(CutItem cut, std::vector<double>& limits, bool& has_cuts) const;
     void process_pair_cuts(
         CutItem cut,
         std::vector<me_int_t>& indices,
@@ -48,4 +47,4 @@ private:
     std::vector<CutItem> _cut_data;
 };
 
-}
+} // namespace madevent

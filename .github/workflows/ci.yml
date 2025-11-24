@@ -27,8 +27,10 @@ jobs:
               --exclude 'libcurand.so.*'
               --exclude 'libcublasLt.so.*'
               --exclude 'libcudart.so.*'
+              --exclude 'libamdhip64.so.*'
               -w {dest_dir} {wheel}
-            CIBW_ENVIRONMENT: PATH=$PATH:/usr/local/cuda/bin
+            CIBW_ENVIRONMENT: >
+                PATH=$PATH:/usr/local/cuda/bin
           - os: macos-14
             build_small: cp312-macosx_arm64
             build_full: cp3*-macosx_arm64

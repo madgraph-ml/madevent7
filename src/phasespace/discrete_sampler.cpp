@@ -19,8 +19,7 @@ DiscreteHistogram::DiscreteHistogram(const std::vector<std::size_t>& option_coun
             return ret_types;
         }()
     ),
-    _option_counts(option_counts)
-{}
+    _option_counts(option_counts) {}
 
 ValueVec DiscreteHistogram::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
@@ -28,9 +27,8 @@ ValueVec DiscreteHistogram::build_function_impl(
     ValueVec results;
     auto weights = args.at(_option_counts.size());
     for (auto [option_count, input] : zip(_option_counts, args)) {
-        auto [values, counts] = fb.discrete_histogram(
-            input, weights, static_cast<me_int_t>(option_count)
-        );
+        auto [values, counts] =
+            fb.discrete_histogram(input, weights, static_cast<me_int_t>(option_count));
         results.push_back(values);
         results.push_back(counts);
     }
@@ -55,8 +53,7 @@ DiscreteSampler::DiscreteSampler(
         }()
     ),
     _option_counts(option_counts),
-    _dim_has_prior(option_counts.size())
-{
+    _dim_has_prior(option_counts.size()) {
     for (std::size_t i = 0; i < option_counts.size(); ++i) {
         _prob_names.push_back(prefixed_name(prefix, std::format("prob{}", i)));
     }
@@ -85,19 +82,16 @@ Mapping::Result DiscreteSampler::build_transform(
 ) const {
     ValueVec dets, outputs;
     std::size_t condition_index = 0;
-    for (auto [input, prob_name, option_count, has_prior] : zip(
-        inputs, _prob_names, _option_counts, _dim_has_prior
-    )) {
-        auto probs = fb.global(
-            prob_name, DataType::dt_float, {static_cast<int>(option_count)}
-        );
+    for (auto [input, prob_name, option_count, has_prior] :
+         zip(inputs, _prob_names, _option_counts, _dim_has_prior)) {
+        auto probs =
+            fb.global(prob_name, DataType::dt_float, {static_cast<int>(option_count)});
         if (has_prior) {
             probs = fb.mul(probs, conditions.at(condition_index));
             ++condition_index;
         }
-        auto [output, det] = inverse ?
-            fb.sample_discrete_probs_inverse(input, probs) :
-            fb.sample_discrete_probs(input, probs);
+        auto [output, det] = inverse ? fb.sample_discrete_probs_inverse(input, probs)
+                                     : fb.sample_discrete_probs(input, probs);
         outputs.push_back(output);
         dets.push_back(det);
     }
@@ -114,9 +108,7 @@ void madevent::initialize_uniform_probs(
     ContextPtr context, const std::string& name, std::size_t option_count
 ) {
     bool is_cpu = context->device() == cpu_device();
-    auto prob_global = context->define_global(
-        name, DataType::dt_float, {option_count}
-    );
+    auto prob_global = context->define_global(name, DataType::dt_float, {option_count});
     auto prob = is_cpu ? prob_global : Tensor(DataType::dt_float, {option_count});
     auto prob_view = prob.view<double, 2>()[0];
     auto prob_value = 1. / option_count;

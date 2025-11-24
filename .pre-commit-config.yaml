@@ -1,6 +1,7 @@
 ci:
   autoupdate_commit_msg: "chore: [pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: "monthly"
+  autoupdate_branch: "dev"
 
 repos:
   # --- Generic hygiene --------------------------------------------------------
@@ -15,7 +16,7 @@ repos:
       - id: trailing-whitespace
   # --- Python formatting & linting -------------------------------------------
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.0
+    rev: v3.21.0
     hooks:
       - id: pyupgrade
         # set your minimum supported Python here
@@ -26,8 +27,21 @@ repos:
       - id: black
         args: ['--config=./pyproject.toml']
   - repo: https://github.com/pycqa/isort
-    rev: '6.1.0'
+    rev: '7.0.0'
     hooks:
       - id: isort
         args: ['--settings-path=./pyproject.toml']
   # --- C++ formatting & analysis ---------------------------------------------
+  - repo: local
+    hooks:
+      - id: generate-headers
+        name: generate headers
+        files: ^instruction_set.yaml$
+        entry: python generate_headers.py
+        language: python
+        additional_dependencies: [pyyaml]
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: 'v21.1.6'
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cuda]

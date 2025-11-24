@@ -5,8 +5,7 @@
 using namespace madevent;
 
 TPropagatorMapping::TPropagatorMapping(
-    const std::vector<std::size_t>& integration_order,
-    double invariant_power
+    const std::vector<std::size_t>& integration_order, double invariant_power
 ) :
     Mapping(
         "TPropagatorMapping",
@@ -16,8 +15,7 @@ TPropagatorMapping::TPropagatorMapping(
     ),
     _integration_order(integration_order),
     _com_scattering(true, invariant_power),
-    _lab_scattering(false, invariant_power)
-{
+    _lab_scattering(false, invariant_power) {
     std::size_t next_index_low = 0;
     std::size_t next_index_high = integration_order.size() - 1;
     for (std::size_t index : integration_order) {
@@ -60,14 +58,13 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
 
         // sample intermediate invariant masses
         auto max_mass = e_cm;
-        for (auto [min_mass, max_mass_subtract] : zip(
-            std::views::reverse(min_masses), std::views::reverse(max_masses_subtract)
-        )) {
+        for (auto [min_mass, max_mass_subtract] :
+             zip(std::views::reverse(min_masses),
+                 std::views::reverse(max_masses_subtract))) {
             auto s_min = fb.square(min_mass);
             auto s_max = fb.square(fb.sub(max_mass, max_mass_subtract));
-            auto [s_vec, det] = _uniform_invariant.build_forward(
-                fb, {next_random()}, {s_min, s_max}
-            );
+            auto [s_vec, det] =
+                _uniform_invariant.build_forward(fb, {next_random()}, {s_min, s_max});
             auto mass = fb.sqrt(s_vec.at(0));
             mass_sum_invariants.push_back(mass);
             dets.push_back(det);
@@ -86,9 +83,8 @@ Mapping::Result TPropagatorMapping::build_forward_impl(
     // sample t-invariants and build momenta of t-channel part of the diagram
     Value k_rest;
     bool first = true;
-    for (auto [index, side, mass_sum] : zip(
-        _integration_order, _sample_sides, mass_sum_invariants
-    )) {
+    for (auto [index, side, mass_sum] :
+         zip(_integration_order, _sample_sides, mass_sum_invariants)) {
         auto& scattering = first ? _com_scattering : _lab_scattering;
         first = false;
         std::size_t sampled_index = index + side;

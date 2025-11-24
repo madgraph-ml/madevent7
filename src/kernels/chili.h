@@ -5,10 +5,17 @@
 namespace madevent {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_chili_forward(
-    FIn<T,1> r, FIn<T,0> e_cm, FIn<T,1> m_out, FIn<T,1> pt_min, FIn<T,1> y_max,
-    FOut<T,2> p_ext, FOut<T,0> x1, FOut<T,0> x2, FOut<T,0> det
+    FIn<T, 1> r,
+    FIn<T, 0> e_cm,
+    FIn<T, 1> m_out,
+    FIn<T, 1> pt_min,
+    FIn<T, 1> y_max,
+    FOut<T, 2> p_ext,
+    FOut<T, 0> x1,
+    FOut<T, 0> x2,
+    FOut<T, 0> det
 ) {
     // Handle the first n-1 outgoing t-channel particles
     FVal<T> e_sum(0.), px_sum(0.), py_sum(0.), pz_sum(0.);
@@ -28,9 +35,11 @@ KERNELSPEC void kernel_chili_forward(
 
         auto pt2_withcut = 1. / (r_pt / pt2_max + (1. - r_pt) / pt2_min_i);
         auto pt_withcut = sqrt(pt2_withcut);
-        auto det_pt_withcut = pt2_withcut * pt2_withcut * (1. / pt2_min_i - 1. / pt2_max);
+        auto det_pt_withcut =
+            pt2_withcut * pt2_withcut * (1. / pt2_min_i - 1. / pt2_max);
 
-        auto pt_nocut = 2. * m_out_i * pt_max * r_pt / (2. * m_out_i + pt_max * (1. - r_pt));
+        auto pt_nocut =
+            2. * m_out_i * pt_max * r_pt / (2. * m_out_i + pt_max * (1. - r_pt));
         auto pt2_nocut = pt_nocut * pt_nocut;
         auto factor_pt = (2 * m_out_i + pt_nocut);
         auto denom_pt = m_out_i * (2 * m_out_i + pt_max);
@@ -47,10 +56,7 @@ KERNELSPEC void kernel_chili_forward(
         auto y = y_max_calc * (2. * r_y - 1.0);
         auto phi = 2. * PI * r_phi + atan2(py_sum, px_sum);
 
-        det_tmp = det_tmp / 4.
-            * det_pt
-            * 2. * y_max_calc
-            * 2. * PI;
+        det_tmp = det_tmp / 4. * det_pt * 2. * y_max_calc * 2. * PI;
 
         // calculate the momenta
         auto sinhy = sinh(y);
@@ -109,15 +115,16 @@ KERNELSPEC void kernel_chili_forward(
     p_b[0] = pm / 2.;
     p_b[1] = 0.;
     p_b[2] = 0.;
-    p_b[3] = - pm / 2.;
+    p_b[3] = -pm / 2.;
 
     // Get the bjorken variables
     x1 = pp / e_cm;
     x2 = pm / e_cm;
 
-    // keep invalid point but set det/weight to zero (important to obtain correct integral)
+    // keep invalid point but set det/weight to zero (important to obtain correct
+    // integral)
     det = where((x1 < 1.) & (x2 < 1.), det_tmp, 0.);
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

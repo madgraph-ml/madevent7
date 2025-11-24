@@ -6,7 +6,7 @@
 namespace madevent {
 namespace kernels {
 
-template<auto foreach_func, int n_in, int n_out, typename I, typename D>
+template <auto foreach_func, int n_in, int n_out, typename I, typename D>
 void batch_foreach(const I& instruction, TensorVec& locals, D& device) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
     std::array<const Tensor*, n_in> inputs;
@@ -28,10 +28,14 @@ void batch_foreach(const I& instruction, TensorVec& locals, D& device) {
     foreach_func(inputs, outputs, batch_size, device);
 }
 
-template<
-    auto foreach_func, int n_in, int n_out, int n_in_stored, int n_out_stored,
-    typename I, typename D
->
+template <
+    auto foreach_func,
+    int n_in,
+    int n_out,
+    int n_in_stored,
+    int n_out_stored,
+    typename I,
+    typename D>
 void backward_batch_foreach(
     const I& instruction,
     TensorVec& locals,
@@ -48,10 +52,12 @@ void backward_batch_foreach(
         args[i] = &locals[instruction.input_indices[in_stored_indices[i]]];
     }
     for (int i = 0; i < n_out_stored; ++i) {
-        args[n_in_stored + i] = &locals[instruction.output_indices[out_stored_indices[i]]];
+        args[n_in_stored + i] =
+            &locals[instruction.output_indices[out_stored_indices[i]]];
     }
     for (int i = 0; i < n_out; ++i) {
-        args[n_in_stored + n_out_stored + i] = &local_grads[instruction.output_indices[i]];
+        args[n_in_stored + n_out_stored + i] =
+            &local_grads[instruction.output_indices[i]];
     }
     for (int i = 0; i < n_in; ++i) {
         auto input_index = instruction.input_indices[i];
@@ -68,7 +74,7 @@ void backward_batch_foreach(
     foreach_func(args, input_grads, batch_size, device);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_stack(const I& instruction, TensorVec& locals, const D& device) {
     auto& first_shape = locals[instruction.input_indices[0]].shape();
     Sizes shape(first_shape.size() + 1);
@@ -84,7 +90,7 @@ void op_stack(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[0]] = output;
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_stack(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -93,7 +99,8 @@ void backward_op_stack(
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
-            input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
+            input_grad =
+                Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
     }
@@ -106,7 +113,7 @@ void backward_op_stack(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_unstack(const I& instruction, TensorVec& locals, const D& device) {
     auto tensors = locals[instruction.input_indices[0]].unstack(1);
     for (auto [tensor, output_index] : zip(tensors, instruction.output_indices)) {
@@ -114,7 +121,7 @@ void op_unstack(const I& instruction, TensorVec& locals, const D& device) {
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_unstack_sizes(const I& instruction, TensorVec& locals, const D& device) {
     auto sizes = locals[instruction.input_indices[0]].batch_sizes();
     for (auto [size, output_index] : zip(sizes, instruction.output_indices)) {
@@ -122,7 +129,7 @@ void op_unstack_sizes(const I& instruction, TensorVec& locals, const D& device) 
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_unstack(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -139,7 +146,7 @@ void backward_op_unstack(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_pop(const I& instruction, TensorVec& locals, const D& device) {
     auto input = locals[instruction.input_indices[0]];
     std::size_t last_index = input.size(1) - 1;
@@ -147,7 +154,7 @@ void op_pop(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[1]] = input.select(1, last_index);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_pop(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -159,15 +166,13 @@ void backward_op_pop(
     }
     device.sync_barrier();
     std::size_t last_index = input_grad.size(1) - 1;
-    input_grad.slice(1, 0, last_index).add(
-        local_grads[instruction.output_indices[0]], device
-    );
-    input_grad.select(1, last_index).add(
-        local_grads[instruction.output_indices[1]], device
-    );
+    input_grad.slice(1, 0, last_index)
+        .add(local_grads[instruction.output_indices[0]], device);
+    input_grad.select(1, last_index)
+        .add(local_grads[instruction.output_indices[1]], device);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_batch_cat(const I& instruction, TensorVec& locals, const D& device) {
     std::size_t batch_size = 0;
     SizeVec sizes;
@@ -191,7 +196,7 @@ void op_batch_cat(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[1]] = Tensor(sizes);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_batch_cat(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -199,7 +204,8 @@ void backward_op_batch_cat(
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
-            input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
+            input_grad =
+                Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
     }
@@ -212,7 +218,7 @@ void backward_op_batch_cat(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_batch_split(const I& instruction, TensorVec& locals, const D& device) {
     auto& sizes = locals[instruction.input_indices[1]].batch_sizes();
     auto tensors = locals[instruction.input_indices[0]].split(0, sizes);
@@ -221,7 +227,7 @@ void op_batch_split(const I& instruction, TensorVec& locals, const D& device) {
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_batch_split(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -237,10 +243,9 @@ void backward_op_batch_split(
     for (auto [tensor, output_index] : zip(split_grads, instruction.output_indices)) {
         tensor.add(locals[output_index], device);
     }
-
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_cat(const I& instruction, TensorVec& locals, const D& device) {
     std::size_t cat_size = 0;
     for (auto input_index : instruction.input_indices) {
@@ -264,7 +269,7 @@ void op_cat(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[0]] = output;
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_cat(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -272,7 +277,8 @@ void backward_op_cat(
     for (auto input_index : instruction.input_indices) {
         auto& input_grad = local_grads[input_index];
         if (!input_grad) {
-            input_grad = Tensor(DataType::dt_float, locals[input_index].shape(), device);
+            input_grad =
+                Tensor(DataType::dt_float, locals[input_index].shape(), device);
             input_grad.zero(device);
         }
     }
@@ -286,13 +292,13 @@ void backward_op_cat(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_batch_size(const I& instruction, TensorVec& locals, const D& device) {
     SizeVec batch_size{locals[instruction.batch_size_index].size(0)};
     locals[instruction.output_indices[0]] = Tensor(batch_size);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_full(const I& instruction, TensorVec& locals, const D& device) {
     auto& input = locals[instruction.input_indices[0]];
     std::size_t batch_size = locals[instruction.input_indices[1]].batch_sizes().at(0);
@@ -303,13 +309,13 @@ void op_full(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[0]] = input.expand(shape);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_squeeze(const I& instruction, TensorVec& locals, const D& device) {
     auto tensor = locals[instruction.input_indices[0]].select(1, 0);
     locals[instruction.output_indices[0]] = tensor;
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_squeeze(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -323,13 +329,13 @@ void backward_op_squeeze(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_unsqueeze(const I& instruction, TensorVec& locals, const D& device) {
     auto tensor = locals[instruction.input_indices[0]].unsqueeze(1);
     locals[instruction.output_indices[0]] = tensor;
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_unsqueeze(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -343,7 +349,7 @@ void backward_op_unsqueeze(
     }
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void op_rqs_reshape(const I& instruction, TensorVec& locals, const D& device) {
     auto n_dims = instruction.output_shapes[0][0];
     auto n_bins = instruction.output_shapes[0][1];
@@ -353,7 +359,7 @@ void op_rqs_reshape(const I& instruction, TensorVec& locals, const D& device) {
     locals[instruction.output_indices[2]] = input.slice(2, 2 * n_bins, 3 * n_bins + 1);
 }
 
-template<typename I, typename D>
+template <typename I, typename D>
 void backward_op_rqs_reshape(
     const I& instruction, TensorVec& locals, TensorVec& local_grads, const D& device
 ) {
@@ -367,16 +373,13 @@ void backward_op_rqs_reshape(
     }
     device.sync_barrier();
     auto input_grad_reshaped = input_grad.factor_dim(1, n_dims);
-    input_grad_reshaped.slice(2, 0, n_bins).add(
-        local_grads[instruction.output_indices[0]], device
-    );
-    input_grad_reshaped.slice(2, n_bins, 2 * n_bins).add(
-        local_grads[instruction.output_indices[1]], device
-    );
-    input_grad_reshaped.slice(2, 2 * n_bins, 3 * n_bins + 1).add(
-        local_grads[instruction.output_indices[2]], device
-    );
+    input_grad_reshaped.slice(2, 0, n_bins)
+        .add(local_grads[instruction.output_indices[0]], device);
+    input_grad_reshaped.slice(2, n_bins, 2 * n_bins)
+        .add(local_grads[instruction.output_indices[1]], device);
+    input_grad_reshaped.slice(2, 2 * n_bins, 3 * n_bins + 1)
+        .add(local_grads[instruction.output_indices[2]], device);
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "madevent/phasespace/matrix_element.h"
-#include "madevent/phasespace/scale.h"
 #include "madevent/phasespace/pdf.h"
+#include "madevent/phasespace/scale.h"
 
 namespace madevent {
 
@@ -19,12 +19,16 @@ public:
         std::size_t channel_count = 1,
         bool has_mirror = false
     );
-    const std::vector<std::vector<me_int_t>>& pid_options() const { return _pid_options; }
+    const std::vector<std::vector<me_int_t>>& pid_options() const {
+        return _pid_options;
+    }
     std::size_t channel_count() const { return _channel_count; }
     bool has_mirror() const { return _has_mirror; }
     const MatrixElement& matrix_element() const { return _matrix_element; }
+
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<std::vector<me_int_t>> _pid_options;
     MatrixElement _matrix_element;
@@ -41,4 +45,4 @@ private:
     std::vector<me_int_t> _amp2_remap;
 };
 
-}
+} // namespace madevent

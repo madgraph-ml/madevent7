@@ -1,14 +1,14 @@
 #pragma once
 
 #include "madevent/phasespace/base.h"
-#include "madevent/phasespace/topology.h"
+#include "madevent/phasespace/chili.h"
+#include "madevent/phasespace/cuts.h"
 #include "madevent/phasespace/invariants.h"
 #include "madevent/phasespace/luminosity.h"
-#include "madevent/phasespace/t_propagator_mapping.h"
 #include "madevent/phasespace/rambo.h"
-#include "madevent/phasespace/cuts.h"
-#include "madevent/phasespace/chili.h"
+#include "madevent/phasespace/t_propagator_mapping.h"
 #include "madevent/phasespace/three_particle.h"
+#include "madevent/phasespace/topology.h"
 
 namespace madevent {
 
@@ -41,9 +41,8 @@ public:
     std::size_t particle_count() const {
         return _topology.outgoing_masses().size() + 2;
     }
-    std::size_t channel_count() const {
-        return _permutations.size();
-    }
+    std::size_t channel_count() const { return _permutations.size(); }
+
 private:
     Result build_forward_impl(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
@@ -59,11 +58,10 @@ private:
     bool _leptonic;
     bool _map_luminosity;
     std::vector<Invariant> _s_invariants;
-    std::variant<
-        TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate
-    > _t_mapping;
+    std::variant<TPropagatorMapping, FastRamboMapping, ChiliMapping, std::monostate>
+        _t_mapping;
     std::vector<std::variant<TwoBodyDecay, ThreeBodyDecay, FastRamboMapping>> _s_decays;
     std::vector<std::vector<me_int_t>> _permutations;
 };
 
-}
+} // namespace madevent

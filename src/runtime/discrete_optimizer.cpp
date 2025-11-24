@@ -29,26 +29,30 @@ void DiscreteOptimizer::add_data(const std::vector<Tensor>& values_and_counts) {
 }
 
 void DiscreteOptimizer::optimize() {
-    //TODO: check shapes
-    //std::size_t next_sample_count = _sample_count + weights_view.size();
-    double prob_ratio = 1.;//static_cast<double>(_sample_count) / next_sample_count;
+    // TODO: check shapes
+    // std::size_t next_sample_count = _sample_count + weights_view.size();
+    double prob_ratio = 1.; // static_cast<double>(_sample_count) / next_sample_count;
     //_sample_count = next_sample_count;
     for (auto [prob_name, data_item] : zip(_prob_names, _data)) {
         auto& [weight_sums, counts] = data_item;
         auto prob_global = _context->global(prob_name);
         bool is_cpu = _context->device() == cpu_device();
-        auto prob = is_cpu ? prob_global : Tensor(DataType::dt_float, prob_global.shape());
+        auto prob =
+            is_cpu ? prob_global : Tensor(DataType::dt_float, prob_global.shape());
         auto prob_view = prob.view<double, 2>()[0];
 
         double norm = 0.;
         for (std::size_t i = 0; auto [wsum, count] : zip(weight_sums, counts)) {
-            if (count > 0) wsum *= prob_view[i] / count;
+            if (count > 0) {
+                wsum *= prob_view[i] / count;
+            }
             norm += wsum;
             ++i;
         }
 
         for (std::size_t i = 0; double wsum : weight_sums) {
-            //prob_view[i] = prob_view[i] * prob_ratio + wsum / norm * (1. - prob_ratio);
+            // prob_view[i] = prob_view[i] * prob_ratio + wsum / norm * (1. -
+            // prob_ratio);
             ++i;
         }
 

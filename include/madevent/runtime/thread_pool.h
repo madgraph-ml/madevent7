@@ -1,12 +1,12 @@
 #pragma once
 
-#include <mutex>
-#include <vector>
-#include <thread>
 #include <condition_variable>
-#include <functional>
-#include <optional>
 #include <deque>
+#include <functional>
+#include <mutex>
+#include <optional>
+#include <thread>
+#include <vector>
 
 namespace madevent {
 
@@ -55,30 +55,29 @@ private:
     bool _buffer_submit;
 };
 
-template<typename T>
+template <typename T>
 class ThreadResource {
 public:
     ThreadResource() = default;
     ThreadResource(ThreadPool& pool, std::function<T()> constructor) :
-        _pool(&pool),
-        _listener_id(pool.add_listener([&](std::size_t thread_count) {
+        _pool(&pool), _listener_id(pool.add_listener([&](std::size_t thread_count) {
             while (_resources.size() < thread_count) {
                 _resources.push_back(constructor());
             }
-        }))
-    {
+        })) {
         for (std::size_t i = 0; i == 0 || i < pool.thread_count(); ++i) {
             _resources.push_back(constructor());
         }
     }
     ~ThreadResource() {
-        if (_pool) _pool->remove_listener(_listener_id);
+        if (_pool) {
+            _pool->remove_listener(_listener_id);
+        }
     }
     ThreadResource(ThreadResource&& other) noexcept :
         _pool(std::move(other._pool)),
         _resources(std::move(other._resources)),
-        _listener_id(std::move(other._listener_id))
-    {
+        _listener_id(std::move(other._listener_id)) {
         other._pool = nullptr;
     }
 
@@ -105,4 +104,4 @@ inline ThreadPool& default_thread_pool() {
     return instance;
 }
 
-}
+} // namespace madevent

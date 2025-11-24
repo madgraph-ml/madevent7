@@ -1,10 +1,10 @@
 #pragma once
 
-#include <map>
-#include <vector>
 #include <iostream>
-#include <string>
+#include <map>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -41,8 +41,11 @@ private:
         const std::unordered_map<std::string, Value>& globals,
         const std::vector<InstructionCall>& instructions
     ) :
-        _inputs(inputs), _outputs(outputs), _locals(locals),
-        _globals(globals), _instructions(instructions) {}
+        _inputs(inputs),
+        _outputs(outputs),
+        _locals(locals),
+        _globals(globals),
+        _instructions(instructions) {}
 
     ValueVec _inputs;
     ValueVec _outputs;
@@ -70,7 +73,8 @@ public:
     ValueVec input_range(int start_index, int end_index) const;
     void output(int index, Value value);
     void output_range(int start_index, const ValueVec& values);
-    Value global(const std::string& name, DataType dtype, const std::vector<int>& shape);
+    Value
+    global(const std::string& name, DataType dtype, const std::vector<int>& shape);
     ValueVec instruction(const std::string& name, const ValueVec& args);
     ValueVec instruction(InstructionPtr instruction, const ValueVec& args);
     Function function();
@@ -95,4 +99,4 @@ private:
     void register_local(Value& val);
 };
 
-}
+} // namespace madevent

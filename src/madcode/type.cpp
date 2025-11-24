@@ -10,18 +10,23 @@ const BatchSize BatchSize::one = BatchSize(BatchSize::One{});
 
 BatchSize BatchSize::add(const BatchSize& other, int factor) const {
     BatchSize::Compound compound;
-    std::visit(Overloaded{
-        [&](Compound val) { compound = val; },
-        [&](auto val) { compound[val] = 1; }
-    }, value);
-    std::visit(Overloaded{
-        [&](Compound val) {
-            for (auto& [sub_key, sub_val] : val) {
-                compound[sub_key] += factor * sub_val;
-            }
+    std::visit(
+        Overloaded{
+            [&](Compound val) { compound = val; }, [&](auto val) { compound[val] = 1; }
         },
-        [&](auto val) { compound[val] += factor; }
-    }, other.value);
+        value
+    );
+    std::visit(
+        Overloaded{
+            [&](Compound val) {
+                for (auto& [sub_key, sub_val] : val) {
+                    compound[sub_key] += factor * sub_val;
+                }
+            },
+            [&](auto val) { compound[val] += factor; }
+        },
+        other.value
+    );
     for (auto key_val = compound.begin(); key_val != compound.end();) {
         if (key_val->second == 0) {
             compound.erase(key_val++);
@@ -54,30 +59,37 @@ std::ostream& madevent::operator<<(std::ostream& out, const DataType& dtype) {
 }
 
 std::ostream& madevent::operator<<(std::ostream& out, const BatchSize& batch_size) {
-    std::visit(Overloaded {
-        [&](BatchSize::Named value) { out << value; },
-        [&](BatchSize::Unnamed value) { out << "$" << value->id; },
-        [&](BatchSize::One value) { out << "1"; },
-        [&](BatchSize::Compound value) {
-            if (value.size() == 0) {
-                out << "0";
-                return;
-            }
-            bool first = true;
-            for (auto& [key, count] : value) {
-                if (count == 1) {
-                    if (!first) out << "+";
-                } else if (count == -1) {
-                    out << "-";
-                } else {
-                    if (count > 1 && !first) out << "+";
-                    out << count << "*";
+    std::visit(
+        Overloaded{
+            [&](BatchSize::Named value) { out << value; },
+            [&](BatchSize::Unnamed value) { out << "$" << value->id; },
+            [&](BatchSize::One value) { out << "1"; },
+            [&](BatchSize::Compound value) {
+                if (value.size() == 0) {
+                    out << "0";
+                    return;
                 }
-                std::visit([&](auto& k) { out << BatchSize(k); }, key);
-                first = false;
+                bool first = true;
+                for (auto& [key, count] : value) {
+                    if (count == 1) {
+                        if (!first) {
+                            out << "+";
+                        }
+                    } else if (count == -1) {
+                        out << "-";
+                    } else {
+                        if (count > 1 && !first) {
+                            out << "+";
+                        }
+                        out << count << "*";
+                    }
+                    std::visit([&](auto& k) { out << BatchSize(k); }, key);
+                    first = false;
+                }
             }
-        }
-    }, batch_size.value);
+        },
+        batch_size.value
+    );
     return out;
 }
 
@@ -117,54 +129,65 @@ Type madevent::multichannel_batch_size(int count) {
 }
 
 void madevent::to_json(json& j, const BatchSize& batch_size) {
-    std::visit(Overloaded {
-        [&](BatchSize::Named value) { j = value; },
-        [&](BatchSize::Unnamed value) { j = nullptr; },
-        [&](BatchSize::One value) { j = 1; },
-        [&](BatchSize::Compound value) {
-            j = json(json::value_t::array);
-            for (auto& [key, factor] : value) {
-                j.push_back(json{
-                    {
-                        "batch_size",
-                        std::visit([&](auto& k) { return json{BatchSize(k)}; }, key)
-                    },
-                    {"factor", factor}
-                });
+    std::visit(
+        Overloaded{
+            [&](BatchSize::Named value) { j = value; },
+            [&](BatchSize::Unnamed value) { j = nullptr; },
+            [&](BatchSize::One value) { j = 1; },
+            [&](BatchSize::Compound value) {
+                j = json(json::value_t::array);
+                for (auto& [key, factor] : value) {
+                    j.push_back(
+                        json{
+                            {"batch_size",
+                             std::visit(
+                                 [&](auto& k) { return json{BatchSize(k)}; }, key
+                             )},
+                            {"factor", factor}
+                        }
+                    );
+                }
             }
-        }
-    }, batch_size.value);
+        },
+        batch_size.value
+    );
 }
 
 void madevent::to_json(json& j, const Value& value) {
-    std::visit(Overloaded{
-        [&](auto val) {
-            j = json{
-                {"dtype", value.type.dtype},
-                {"shape", json(json::value_t::array)},
-                {"data", val}
-            };
+    std::visit(
+        Overloaded{
+            [&](auto val) {
+                j = json{
+                    {"dtype", value.type.dtype},
+                    {"shape", json(json::value_t::array)},
+                    {"data", val}
+                };
+            },
+            [&](TensorValue val) {
+                j = json{
+                    {"dtype", value.type.dtype},
+                    {"shape", std::get<0>(val)},
+                    {"data",
+                     std::visit([](auto data) { return json{data}; }, std::get<1>(val))}
+                };
+            },
+            [&](std::monostate val) { j = value.local_index; }
         },
-        [&](TensorValue val) {
-            j = json{
-                {"dtype", value.type.dtype},
-                {"shape", std::get<0>(val)},
-                {"data", std::visit(
-                    [](auto data) { return json{data}; }, std::get<1>(val)
-                )}
-            };
-        },
-        [&](std::monostate val) {
-            j = value.local_index;
-        }
-    }, value.literal_value);
+        value.literal_value
+    );
 }
 
 void madevent::to_json(json& j, const DataType& dtype) {
     switch (dtype) {
-        case DataType::dt_int: j = "int"; break;
-        case DataType::dt_float: j = "float"; break;
-        case DataType::batch_sizes: j = "batch_sizes"; break;
+    case DataType::dt_int:
+        j = "int";
+        break;
+    case DataType::dt_float:
+        j = "float";
+        break;
+    case DataType::batch_sizes:
+        j = "batch_sizes";
+        break;
     }
 }
 
@@ -176,14 +199,17 @@ void madevent::from_json(const json& j, BatchSize& batch_size) {
     } else if (j.is_array()) {
         BatchSize::Compound compound;
         for (auto& j_item : j) {
-            std::visit(Overloaded {
-                [&](auto value) {
-                    compound[value] = j_item.at("factor").get<int>();
+            std::visit(
+                Overloaded{
+                    [&](auto value) {
+                        compound[value] = j_item.at("factor").get<int>();
+                    },
+                    [&](BatchSize::Compound value) {
+                        throw std::invalid_argument("invalid batch size");
+                    }
                 },
-                [&](BatchSize::Compound value) {
-                    throw std::invalid_argument("invalid batch size");
-                }
-            }, j_item.at("batch_size").get<BatchSize>().value);
+                j_item.at("batch_size").get<BatchSize>().value
+            );
         }
         batch_size = compound;
     } else {
@@ -195,7 +221,7 @@ void madevent::from_json(const json& j, Value& value) {
     auto dtype = j.at("dtype").get<DataType>();
     auto shape = j.at("shape").get<std::vector<int>>();
     auto j_data = j.at("data");
-    switch(dtype) {
+    switch (dtype) {
     case DataType::dt_int:
         if (shape.size() == 0) {
             value = j_data.get<me_int_t>();

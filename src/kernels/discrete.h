@@ -5,9 +5,9 @@
 namespace madevent {
 namespace kernels {
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_sample_discrete(
-    FIn<T,0> r, IIn<T,0> option_count, IOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> r, IIn<T, 0> option_count, IOut<T, 0> output, FOut<T, 0> det
 ) {
     IVal<T> opt_count_i(option_count);
     FVal<T> opt_count_f(opt_count_i);
@@ -16,9 +16,9 @@ KERNELSPEC void kernel_sample_discrete(
     det = opt_count_f;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_sample_discrete_inverse(
-    IIn<T,0> index, IIn<T,0> option_count, FOut<T,0> r, FOut<T,0> det
+    IIn<T, 0> index, IIn<T, 0> option_count, FOut<T, 0> r, FOut<T, 0> det
 ) {
     IVal<T> opt_count_i(option_count), index_i(index);
     FVal<T> opt_count_f(opt_count_i), index_f(index_i);
@@ -26,9 +26,9 @@ KERNELSPEC void kernel_sample_discrete_inverse(
     det = 1. / opt_count_f;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_sample_discrete_probs(
-    FIn<T,0> r, FIn<T,1> probs, IOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> r, FIn<T, 1> probs, IOut<T, 0> output, FOut<T, 0> det
 ) {
     FVal<T> prob_norm(0.);
     for (std::size_t i = 0; i < probs.size(); ++i) {
@@ -47,9 +47,9 @@ KERNELSPEC void kernel_sample_discrete_probs(
     det = 1. / prob_out;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_sample_discrete_probs_inverse(
-    IIn<T,0> index, FIn<T,1> probs, FOut<T,0> r, FOut<T,0> det
+    IIn<T, 0> index, FIn<T, 1> probs, FOut<T, 0> r, FOut<T, 0> det
 ) {
     FVal<T> prob_norm(0.);
     for (std::size_t i = 0; i < probs.size(); ++i) {
@@ -67,11 +67,14 @@ KERNELSPEC void kernel_sample_discrete_probs_inverse(
     det = prob_out;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_sample_discrete_probs_inverse(
-    IIn<T,0> index, FIn<T,1> probs,
-    FIn<T,0> r_grad, FIn<T,0> det_grad,
-    IOut<T,0> index_grad, FOut<T,1> probs_grad
+    IIn<T, 0> index,
+    FIn<T, 1> probs,
+    FIn<T, 0> r_grad,
+    FIn<T, 0> det_grad,
+    IOut<T, 0> index_grad,
+    FOut<T, 1> probs_grad
 ) {
     FVal<T> prob_norm(0.);
     for (std::size_t i = 0; i < probs.size(); ++i) {
@@ -80,13 +83,14 @@ KERNELSPEC void backward_kernel_sample_discrete_probs_inverse(
     FVal<T> det_grad_out(0.);
     auto prob = probs.gather(index) / prob_norm;
     for (std::size_t i = 0; i < probs.size(); ++i) {
-        probs_grad[i] = (where(index == i, FVal<T>(1.), 0.) - prob) / prob_norm * det_grad;
+        probs_grad[i] =
+            (where(index == i, FVal<T>(1.), 0.) - prob) / prob_norm * det_grad;
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_permute_momenta(
-    FIn<T,2> momenta, IIn<T,2> permutations, IIn<T,0> index, FOut<T,2> output
+    FIn<T, 2> momenta, IIn<T, 2> permutations, IIn<T, 0> index, FOut<T, 2> output
 ) {
     auto perm = permutations[single_index(index)];
     for (std::size_t i = 0; i < perm.size(); ++i) {
@@ -98,33 +102,31 @@ KERNELSPEC void kernel_permute_momenta(
     }
 }
 
-template<typename T>
-KERNELSPEC void kernel_gather(
-    IIn<T,0> index, FIn<T,1> choices, FOut<T,0> output
-) {
+template <typename T>
+KERNELSPEC void kernel_gather(IIn<T, 0> index, FIn<T, 1> choices, FOut<T, 0> output) {
     output = choices.gather(index);
 }
 
-template<typename T>
-KERNELSPEC void kernel_gather_int(
-    IIn<T,0> index, IIn<T,1> choices, IOut<T,0> output
-) {
+template <typename T>
+KERNELSPEC void
+kernel_gather_int(IIn<T, 0> index, IIn<T, 1> choices, IOut<T, 0> output) {
     output = choices.gather(index);
 }
 
-template<typename T>
-KERNELSPEC void kernel_one_hot(
-    IIn<T,0> index, IIn<T,0> option_count, FOut<T,1> output
-) {
+template <typename T>
+KERNELSPEC void
+kernel_one_hot(IIn<T, 0> index, IIn<T, 0> option_count, FOut<T, 1> output) {
     for (std::size_t i = 0; i < output.size(); ++i) {
         output[i] = where(i == index, FVal<T>(1.), 0.);
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_collect_channel_weights(
-    FIn<T,1> amp2, IIn<T,1> channel_indices, IIn<T,0> channel_count,
-    FOut<T,1> channel_weights
+    FIn<T, 1> amp2,
+    IIn<T, 1> channel_indices,
+    IIn<T, 0> channel_count,
+    FOut<T, 1> channel_weights
 ) {
     FVal<T> norm(0.);
     for (std::size_t i = 0; i < channel_weights.size(); ++i) {
@@ -132,7 +134,9 @@ KERNELSPEC void kernel_collect_channel_weights(
     }
     for (std::size_t i = 0; i < amp2.size(); ++i) {
         std::size_t chan_index = single_index(channel_indices[i]);
-        if (chan_index >= channel_weights.size()) continue;
+        if (chan_index >= channel_weights.size()) {
+            continue;
+        }
         auto amp2_val = amp2[i];
         norm = norm + amp2_val;
         channel_weights[chan_index] += amp2_val;
@@ -142,5 +146,5 @@ KERNELSPEC void kernel_collect_channel_weights(
     }
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent

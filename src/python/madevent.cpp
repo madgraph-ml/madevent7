@@ -2,12 +2,12 @@
 #include <pybind11/stl.h>
 #include <sstream>
 
-#include "madevent/util.h"
+#include "function_runtime.h"
+#include "instruction_set.h"
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
 #include "madevent/runtime.h"
-#include "instruction_set.h"
-#include "function_runtime.h"
+#include "madevent/util.h"
 
 namespace py = pybind11;
 using namespace madevent;
@@ -15,7 +15,7 @@ using namespace madevent_py;
 
 namespace {
 
-template<typename T>
+template <typename T>
 auto to_string(const T& object) {
     std::ostringstream str;
     str << object;
@@ -53,23 +53,55 @@ class PyFunctionGenerator : public FunctionGenerator, py::trampoline_self_life_s
 public:
     using FunctionGenerator::FunctionGenerator;
 
-    ValueVec build_function_impl(
-        FunctionBuilder& fb, const ValueVec& args
-    ) const override {
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override {
         PYBIND11_OVERRIDE_PURE(
             ValueVec, FunctionGenerator, build_function_impl, &fb, &args
         );
     }
 };
 
+template <typename EnumType, typename ParentType>
+void add_enum(
+    ParentType& parent,
+    const char* enum_name,
+    std::initializer_list<std::pair<const std::string, EnumType>> values
+) {
+    std::unordered_map<std::string, EnumType> str_to_enum_map(values);
+    py::enum_<EnumType> enumeration(parent, enum_name);
+    for (auto& [key, value] : values) {
+        enumeration.value(key.c_str(), value);
+    }
+    enumeration.def(
+        "__init__",
+        [str_to_enum_map, enum_name](EnumType& self, const std::string& name) {
+            if (auto search = str_to_enum_map.find(name);
+                search != str_to_enum_map.end()) {
+                self = search->second;
+            } else {
+                throw std::invalid_argument(
+                    std::format("Value {} does not exist in enum {}", name, enum_name)
+                );
+            }
+        },
+        py::arg("name")
+    );
+    enumeration.export_values();
+    py::implicitly_convertible<std::string, EnumType>();
 }
 
+} // namespace
+
 PYBIND11_MODULE(_madevent_py, m) {
-    py::enum_<DataType>(m, "DataType")
-        .value("int", DataType::dt_int)
-        .value("float", DataType::dt_float)
-        .value("batch_sizes", DataType::batch_sizes)
-        .export_values();
+    add_enum<DataType>(
+        m,
+        "DataType",
+        {
+            {"int", DataType::dt_int},
+            {"float", DataType::dt_float},
+            {"batch_sizes", DataType::batch_sizes},
+        }
+    );
 
     py::classh<BatchSize>(m, "BatchSize")
         .def(py::init<>())
@@ -80,8 +112,12 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.attr("batch_size") = py::cast(batch_size);
 
     py::classh<Type>(m, "Type")
-        .def(py::init<DataType, BatchSize, std::vector<int>>(),
-             py::arg("dtype"), py::arg("batch_size"), py::arg("shape"))
+        .def(
+            py::init<DataType, BatchSize, std::vector<int>>(),
+            py::arg("dtype"),
+            py::arg("batch_size"),
+            py::arg("shape")
+        )
         .def(py::init<std::vector<BatchSize>>(), py::arg("batch_size_list"))
         .def_readonly("dtype", &Type::dtype)
         .def_readonly("batch_size", &Type::batch_size)
@@ -98,7 +134,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     m.def("batch_four_vec_array", &batch_four_vec_array, py::arg("count"));
 
     py::classh<InstrCopy>(m, "Instruction")
-        .def("__str__", [](const InstrCopy& instr) { return instr.name; } )
+        .def("__str__", [](const InstrCopy& instr) { return instr.name; })
         .def_readonly("name", &InstrCopy::name)
         .def_readonly("opcode", &InstrCopy::opcode);
 
@@ -116,9 +152,10 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<InstructionCall>(m, "InstructionCall")
         .def("__str__", &to_string<InstructionCall>)
         .def("__repr__", &to_string<InstructionCall>)
-        .def_property_readonly("instruction", [](const InstructionCall& call) -> InstrCopy {
-            return call.instruction;
-        })
+        .def_property_readonly(
+            "instruction",
+            [](const InstructionCall& call) -> InstrCopy { return call.instruction; }
+        )
         .def_readonly("inputs", &InstructionCall::inputs)
         .def_readonly("outputs", &InstructionCall::outputs);
 
@@ -136,41 +173,65 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<Device> device(m, "Device");
     m.def("cpu_device", &cpu_device, py::return_value_policy::reference);
     m.def("cuda_device", &cuda_device, py::return_value_policy::reference);
+    m.def("hip_device", &hip_device, py::return_value_policy::reference);
 
     py::classh<MatrixElementApi>(m, "MatrixElementApi")
-        .def(py::init<const std::string&, const std::string&>(),
-             py::arg("file"), py::arg("param_card"))
-        .def("on_gpu", &MatrixElementApi::on_gpu)
+        .def(
+            py::init<const std::string&, const std::string&, std::size_t>(),
+            py::arg("file"),
+            py::arg("param_card"),
+            py::arg("index") = 0
+        )
+        .def("device", &MatrixElementApi::device)
         .def("particle_count", &MatrixElementApi::particle_count)
         .def("diagram_count", &MatrixElementApi::diagram_count)
-        .def("helicity_count", &MatrixElementApi::helicity_count);
+        .def("helicity_count", &MatrixElementApi::helicity_count)
+        .def("index", &MatrixElementApi::index);
 
     py::classh<Tensor>(m, "Tensor", py::dynamic_attr())
-        .def("__dlpack__", &tensor_to_dlpack,
-             py::arg("stream")=std::nullopt,
-             py::arg("max_version")=std::nullopt,
-             py::arg("dl_device")=std::nullopt,
-             py::arg("copy")=std::nullopt)
+        .def(
+            "__dlpack__",
+            &tensor_to_dlpack,
+            py::arg("stream") = std::nullopt,
+            py::arg("max_version") = std::nullopt,
+            py::arg("dl_device") = std::nullopt,
+            py::arg("copy") = std::nullopt
+        )
         .def("__dlpack_device__", &dlpack_device);
 
     py::classh<Context>(m, "Context")
         .def(py::init<>())
         .def(py::init<DevicePtr>(), py::arg("device"))
-        .def("load_matrix_element", &Context::load_matrix_element,
-             py::arg("file"), py::arg("param_card"))
-        .def("define_global", &Context::define_global,
-             py::arg("name"), py::arg("dtype"), py::arg("shape"),
-             py::arg("requires_grad")=false)
+        .def(
+            "load_matrix_element",
+            &Context::load_matrix_element,
+            py::arg("file"),
+            py::arg("param_card"),
+            py::return_value_policy::reference_internal
+        )
+        .def(
+            "define_global",
+            &Context::define_global,
+            py::arg("name"),
+            py::arg("dtype"),
+            py::arg("shape"),
+            py::arg("requires_grad") = false
+        )
         .def("get_global", &Context::global, py::arg("name"))
         .def("global_requires_grad", &Context::global_requires_grad, py::arg("name"))
         .def("global_exists", &Context::global_exists, py::arg("name"))
-        .def("matrix_element", &Context::matrix_element,
-             py::arg("index"), py::return_value_policy::reference_internal)
+        .def(
+            "matrix_element",
+            &Context::matrix_element,
+            py::arg("index"),
+            py::return_value_policy::reference_internal
+        )
         .def("save", &Context::save, py::arg("file"))
         .def("load", &Context::load, py::arg("file"))
         .def("device", &Context::device, py::return_value_policy::reference);
     m.def("default_context", &default_context);
     m.def("default_cuda_context", &default_cuda_context);
+    m.def("default_hip_context", &default_hip_context);
 
     py::classh<FunctionRuntime>(m, "FunctionRuntime", py::dynamic_attr())
         .def(py::init<Function>(), py::arg("function"))
@@ -179,125 +240,219 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("call_with_grad", &FunctionRuntime::call_with_grad)
         .def("call_backward", &FunctionRuntime::call_backward);
 
-    auto& fb = py::classh<FunctionBuilder>(m, "FunctionBuilder")
-        .def(py::init<const std::vector<Type>, const std::vector<Type>>(),
-             py::arg("input_types"), py::arg("output_types"))
-        .def("input", &FunctionBuilder::input, py::arg("index"))
-        .def("input_range", &FunctionBuilder::input_range,
-             py::arg("start_index"), py::arg("end_index"))
-        .def("output", &FunctionBuilder::output, py::arg("index"), py::arg("value"))
-        .def("output_range", &FunctionBuilder::output_range,
-             py::arg("start_index"), py::arg("values"))
-        .def("get_global", &FunctionBuilder::global,
-             py::arg("name"), py::arg("dtype"), py::arg("shape"))
-        //.def("instruction", &FunctionBuilder::instruction, py::arg("name"), py::arg("args"))
-        .def("product", &FunctionBuilder::product, py::arg("values"))
-        .def("function", &FunctionBuilder::function);
+    auto& fb =
+        py::classh<FunctionBuilder>(m, "FunctionBuilder")
+            .def(
+                py::init<const std::vector<Type>, const std::vector<Type>>(),
+                py::arg("input_types"),
+                py::arg("output_types")
+            )
+            .def("input", &FunctionBuilder::input, py::arg("index"))
+            .def(
+                "input_range",
+                &FunctionBuilder::input_range,
+                py::arg("start_index"),
+                py::arg("end_index")
+            )
+            .def("output", &FunctionBuilder::output, py::arg("index"), py::arg("value"))
+            .def(
+                "output_range",
+                &FunctionBuilder::output_range,
+                py::arg("start_index"),
+                py::arg("values")
+            )
+            .def(
+                "get_global",
+                &FunctionBuilder::global,
+                py::arg("name"),
+                py::arg("dtype"),
+                py::arg("shape")
+            )
+            //.def("instruction", &FunctionBuilder::instruction, py::arg("name"),
+            // py::arg("args"))
+            .def("product", &FunctionBuilder::product, py::arg("values"))
+            .def("function", &FunctionBuilder::function);
     add_instructions(fb);
 
     py::classh<Mapping, PyMapping>(m, "Mapping", py::dynamic_attr())
-        .def(py::init<const std::string&, const TypeVec&, const TypeVec&, const TypeVec&>(),
-             py::arg("name"), py::arg("input_types"),
-             py::arg("output_types"), py::arg("condition_types"))
+        .def(
+            py::init<
+                const std::string&,
+                const TypeVec&,
+                const TypeVec&,
+                const TypeVec&>(),
+            py::arg("name"),
+            py::arg("input_types"),
+            py::arg("output_types"),
+            py::arg("condition_types")
+        )
         .def("forward_function", &Mapping::forward_function)
         .def("inverse_function", &Mapping::inverse_function)
-        .def("build_forward", &Mapping::build_forward,
-             py::arg("builder"), py::arg("inputs"), py::arg("conditions"))
-        .def("build_inverse", &Mapping::build_inverse,
-             py::arg("builder"), py::arg("inputs"), py::arg("conditions"));
+        .def(
+            "build_forward",
+            &Mapping::build_forward,
+            py::arg("builder"),
+            py::arg("inputs"),
+            py::arg("conditions")
+        )
+        .def(
+            "build_inverse",
+            &Mapping::build_inverse,
+            py::arg("builder"),
+            py::arg("inputs"),
+            py::arg("conditions")
+        );
 
     py::classh<FunctionGenerator, PyFunctionGenerator>(
-             m, "FunctionGenerator", py::dynamic_attr())
-        .def(py::init<const std::string&, const TypeVec&, const TypeVec&>(),
-             py::arg("name"), py::arg("arg_types"), py::arg("return_types"))
+        m, "FunctionGenerator", py::dynamic_attr()
+    )
+        .def(
+            py::init<const std::string&, const TypeVec&, const TypeVec&>(),
+            py::arg("name"),
+            py::arg("arg_types"),
+            py::arg("return_types")
+        )
         .def("function", &FunctionGenerator::function)
-        .def("build_function", &FunctionGenerator::build_function,
-             py::arg("builder"), py::arg("args"));
+        .def(
+            "build_function",
+            &FunctionGenerator::build_function,
+            py::arg("builder"),
+            py::arg("args")
+        );
 
     py::classh<Invariant, Mapping>(m, "Invariant")
-        .def(py::init<double, double, double>(),
-             py::arg("power")=0., py::arg("mass")=0., py::arg("width")=0.);
+        .def(
+            py::init<double, double, double>(),
+            py::arg("power") = 0.,
+            py::arg("mass") = 0.,
+            py::arg("width") = 0.
+        );
 
     py::classh<Luminosity, Mapping>(m, "Luminosity")
-        .def(py::init<double, double, double, double, double, double>(),
-             py::arg("s_lab"), py::arg("s_hat_min"), py::arg("s_hat_max")=0.,
-             py::arg("invariant_power")=0., py::arg("mass")=0., py::arg("width")=0.);
+        .def(
+            py::init<double, double, double, double, double, double>(),
+            py::arg("s_lab"),
+            py::arg("s_hat_min"),
+            py::arg("s_hat_max") = 0.,
+            py::arg("invariant_power") = 0.,
+            py::arg("mass") = 0.,
+            py::arg("width") = 0.
+        );
 
     py::classh<TwoBodyDecay, Mapping>(m, "TwoBodyDecay")
         .def(py::init<bool>(), py::arg("com"));
 
     py::classh<TwoToTwoParticleScattering, Mapping>(m, "TwoToTwoParticleScattering")
-        .def(py::init<bool, double, double, double>(),
-             py::arg("com"), py::arg("invariant_power")=0.,
-             py::arg("mass")=0., py::arg("width")=0.);
+        .def(
+            py::init<bool, double, double, double>(),
+            py::arg("com"),
+            py::arg("invariant_power") = 0.,
+            py::arg("mass") = 0.,
+            py::arg("width") = 0.
+        );
 
     py::classh<ThreeBodyDecay, Mapping>(m, "ThreeBodyDecay")
         .def(py::init<bool>(), py::arg("com"));
 
     py::classh<TwoToThreeParticleScattering, Mapping>(m, "TwoToThreeParticleScattering")
-        .def(py::init<double, double, double, double, double, double>(),
-             py::arg("t_invariant_power")=0.,
-             py::arg("t_mass")=0.,
-             py::arg("t_width")=0.,
-             py::arg("s_invariant_power")=0.,
-             py::arg("s_mass")=0.,
-             py::arg("s_width")=0.);
+        .def(
+            py::init<double, double, double, double, double, double>(),
+            py::arg("t_invariant_power") = 0.,
+            py::arg("t_mass") = 0.,
+            py::arg("t_width") = 0.,
+            py::arg("s_invariant_power") = 0.,
+            py::arg("s_mass") = 0.,
+            py::arg("s_width") = 0.
+        );
 
     py::classh<Propagator>(m, "Propagator")
-        .def(py::init<double, double, int, double, double>(),
-             py::arg("mass")=0.,
-             py::arg("width")=0.,
-             py::arg("integration_order")=0,
-             py::arg("e_min")=0.,
-             py::arg("e_max")=0.)
+        .def(
+            py::init<double, double, int, double, double, int>(),
+            py::arg("mass") = 0.,
+            py::arg("width") = 0.,
+            py::arg("integration_order") = 0,
+            py::arg("e_min") = 0.,
+            py::arg("e_max") = 0.,
+            py::arg("pdg_id") = 0
+        )
         .def_readonly("mass", &Propagator::mass)
         .def_readonly("width", &Propagator::width)
         .def_readonly("integration_order", &Propagator::integration_order)
         .def_readonly("e_min", &Propagator::e_min)
-        .def_readonly("e_max", &Propagator::e_max);
+        .def_readonly("e_max", &Propagator::e_max)
+        .def_readonly("pdg_id", &Propagator::pdg_id);
 
     py::classh<TPropagatorMapping, Mapping>(m, "TPropagatorMapping")
-        .def(py::init<std::vector<std::size_t>, double>(),
-             py::arg("integration_order"), py::arg("invariant_power")=0.);
+        .def(
+            py::init<std::vector<std::size_t>, double>(),
+            py::arg("integration_order"),
+            py::arg("invariant_power") = 0.
+        );
 
     py::classh<VegasHistogram, FunctionGenerator>(m, "VegasHistogram")
-        .def(py::init<std::size_t, std::size_t>(),
-             py::arg("dimension"), py::arg("bin_count"));
+        .def(
+            py::init<std::size_t, std::size_t>(),
+            py::arg("dimension"),
+            py::arg("bin_count")
+        );
 
     py::classh<VegasMapping, Mapping>(m, "VegasMapping")
-        .def(py::init<std::size_t, std::size_t, const std::string&>(),
-             py::arg("dimension"), py::arg("bin_count"), py::arg("prefix")="")
+        .def(
+            py::init<std::size_t, std::size_t, const std::string&>(),
+            py::arg("dimension"),
+            py::arg("bin_count"),
+            py::arg("prefix") = ""
+        )
         .def("grid_name", &VegasMapping::grid_name)
-        .def("initialize_globals", &VegasMapping::initialize_globals, py::arg("context"));
+        .def(
+            "initialize_globals", &VegasMapping::initialize_globals, py::arg("context")
+        );
 
     py::classh<FastRamboMapping, Mapping>(m, "FastRamboMapping")
-        .def(py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless"));
+        .def(
+            py::init<std::size_t, bool>(), py::arg("n_particles"), py::arg("massless")
+        );
 
     py::classh<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<std::shared_ptr<Mapping>>&>(), py::arg("mappings"));
 
     auto cuts = py::classh<Cuts, FunctionGenerator>(m, "Cuts");
-    py::enum_<Cuts::CutObservable>(cuts, "CutObservable")
-        .value("obs_pt", Cuts::obs_pt)
-        .value("obs_eta", Cuts::obs_eta)
-        .value("obs_dr", Cuts::obs_dr)
-        .value("obs_mass", Cuts::obs_mass)
-        .value("obs_sqrt_s", Cuts::obs_sqrt_s)
-        .export_values();
-    py::enum_<Cuts::LimitType>(cuts, "LimitType")
-        .value("min", Cuts::min)
-        .value("max", Cuts::max)
-        .export_values();
+    add_enum<Cuts::CutObservable>(
+        cuts,
+        "CutObservable",
+        {
+            {"obs_pt", Cuts::obs_pt},
+            {"obs_eta", Cuts::obs_eta},
+            {"obs_dr", Cuts::obs_dr},
+            {"obs_mass", Cuts::obs_mass},
+            {"obs_sqrt_s", Cuts::obs_sqrt_s},
+        }
+    );
+    add_enum<Cuts::LimitType>(
+        cuts,
+        "LimitType",
+        {
+            {"min", Cuts::min},
+            {"max", Cuts::max},
+        }
+    );
     py::classh<Cuts::CutItem>(m, "CutItem")
-        .def(py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
-             py::arg("observable"), py::arg("limit_type"),
-             py::arg("value"), py::arg("pids"))
+        .def(
+            py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
+            py::arg("observable"),
+            py::arg("limit_type"),
+            py::arg("value"),
+            py::arg("pids")
+        )
         .def_readonly("observable", &Cuts::CutItem::observable)
         .def_readonly("limit_type", &Cuts::CutItem::limit_type)
         .def_readonly("value", &Cuts::CutItem::value)
         .def_readonly("pids", &Cuts::CutItem::pids);
-    cuts.def(py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
-             py::arg("pids"), py::arg("cut_data"))
+    cuts.def(
+            py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
+            py::arg("pids"),
+            py::arg("cut_data")
+    )
         .def("sqrt_s_min", &Cuts::sqrt_s_min)
         .def("eta_max", &Cuts::eta_max)
         .def("pt_min", &Cuts::pt_min)
@@ -312,14 +467,17 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("__repr__", &to_string<Diagram::LineRef>);
     py::implicitly_convertible<std::string, Diagram::LineRef>();
     py::classh<Diagram>(m, "Diagram")
-        .def(py::init<std::vector<double>&,
-                      std::vector<double>&,
-                      std::vector<Propagator>&,
-                      std::vector<Diagram::Vertex>&>(),
-             py::arg("incoming_masses"),
-             py::arg("outgoing_masses"),
-             py::arg("propagators"),
-             py::arg("vertices"))
+        .def(
+            py::init<
+                std::vector<double>&,
+                std::vector<double>&,
+                std::vector<Propagator>&,
+                std::vector<Diagram::Vertex>&>(),
+            py::arg("incoming_masses"),
+            py::arg("outgoing_masses"),
+            py::arg("propagators"),
+            py::arg("vertices")
+        )
         .def_property_readonly("incoming_masses", &Diagram::incoming_masses)
         .def_property_readonly("outgoing_masses", &Diagram::outgoing_masses)
         .def_property_readonly("propagators", &Diagram::propagators)
@@ -335,107 +493,226 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("width", &Topology::Decay::width)
         .def_readonly("e_min", &Topology::Decay::e_min)
         .def_readonly("e_max", &Topology::Decay::e_max)
+        .def_readonly("pdg_id", &Topology::Decay::pdg_id)
         .def_readonly("on_shell", &Topology::Decay::on_shell);
-    auto& topology = py::classh<Topology>(m, "Topology")
-        .def(py::init<const Diagram&>(), py::arg("diagram"))
-        .def_static("topologies", &Topology::topologies, py::arg("diagram"))
-        .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
-        .def_property_readonly("t_integration_order", &Topology::t_integration_order)
-        .def_property_readonly("t_propagator_masses", &Topology::t_propagator_masses)
-        .def_property_readonly("t_propagator_widths", &Topology::t_propagator_widths)
-        .def_property_readonly("decays", &Topology::decays)
-        .def_property_readonly("decay_integration_order", &Topology::decay_integration_order)
-        .def_property_readonly("outgoing_indices", &Topology::outgoing_indices)
-        .def_property_readonly("incoming_masses", &Topology::incoming_masses)
-        .def_property_readonly("outgoing_masses", &Topology::outgoing_masses)
-        .def("propagator_momentum_terms", &Topology::propagator_momentum_terms);
+    auto& topology =
+        py::classh<Topology>(m, "Topology")
+            .def(py::init<const Diagram&>(), py::arg("diagram"))
+            .def_static("topologies", &Topology::topologies, py::arg("diagram"))
+            .def_property_readonly("t_propagator_count", &Topology::t_propagator_count)
+            .def_property_readonly(
+                "t_integration_order", &Topology::t_integration_order
+            )
+            .def_property_readonly(
+                "t_propagator_masses", &Topology::t_propagator_masses
+            )
+            .def_property_readonly(
+                "t_propagator_widths", &Topology::t_propagator_widths
+            )
+            .def_property_readonly("decays", &Topology::decays)
+            .def_property_readonly(
+                "decay_integration_order", &Topology::decay_integration_order
+            )
+            .def_property_readonly("outgoing_indices", &Topology::outgoing_indices)
+            .def_property_readonly("incoming_masses", &Topology::incoming_masses)
+            .def_property_readonly("outgoing_masses", &Topology::outgoing_masses)
+            .def("propagator_momentum_terms", &Topology::propagator_momentum_terms);
     py::classh<PhaseSpaceMapping, Mapping> psmap(m, "PhaseSpaceMapping");
-    py::enum_<PhaseSpaceMapping::TChannelMode>(psmap, "TChannelMode")
-        .value("propagator", PhaseSpaceMapping::propagator)
-        .value("rambo", PhaseSpaceMapping::rambo)
-        .value("chili", PhaseSpaceMapping::chili)
-        .export_values();
+    add_enum<PhaseSpaceMapping::TChannelMode>(
+        psmap,
+        "TChannelMode",
+        {
+            {"propagator", PhaseSpaceMapping::propagator},
+            {"rambo", PhaseSpaceMapping::rambo},
+            {"chili", PhaseSpaceMapping::chili},
+        }
+    );
     psmap
-        .def(py::init<const Topology&, double, bool, double,
-                      PhaseSpaceMapping::TChannelMode, const std::optional<Cuts>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
-             py::arg("topology"), py::arg("cm_energy"),
-             py::arg("leptonic")=false, py::arg("invariant_power")=0.8,
-             py::arg("t_channel_mode")=PhaseSpaceMapping::propagator,
-             py::arg("cuts")=std::nullopt,
-             py::arg("permutations")=std::vector<Topology>{})
-        .def(py::init<const std::vector<double>&, double, bool, double,
-                      PhaseSpaceMapping::TChannelMode, std::optional<Cuts>>(),
-             py::arg("masses"), py::arg("cm_energy"),
-             py::arg("leptonic")=false, py::arg("invariant_power")=0.8,
-             py::arg("mode")=PhaseSpaceMapping::rambo,
-             py::arg("cuts")=std::nullopt)
+        .def(
+            py::init<
+                const Topology&,
+                double,
+                bool,
+                double,
+                PhaseSpaceMapping::TChannelMode,
+                const std::optional<Cuts>&,
+                const nested_vector2<std::size_t>&>(),
+            py::arg("topology"),
+            py::arg("cm_energy"),
+            py::arg("leptonic") = false,
+            py::arg("invariant_power") = 0.8,
+            py::arg("t_channel_mode") = PhaseSpaceMapping::propagator,
+            py::arg("cuts") = std::nullopt,
+            py::arg("permutations") = std::vector<Topology>{}
+        )
+        .def(
+            py::init<
+                const std::vector<double>&,
+                double,
+                bool,
+                double,
+                PhaseSpaceMapping::TChannelMode,
+                std::optional<Cuts>>(),
+            py::arg("masses"),
+            py::arg("cm_energy"),
+            py::arg("leptonic") = false,
+            py::arg("invariant_power") = 0.8,
+            py::arg("mode") = PhaseSpaceMapping::rambo,
+            py::arg("cuts") = std::nullopt
+        )
         .def("random_dim", &PhaseSpaceMapping::random_dim)
         .def("particle_count", &PhaseSpaceMapping::particle_count)
         .def("channel_count", &PhaseSpaceMapping::channel_count);
 
-
     py::classh<MultiChannelFunction, FunctionGenerator>(m, "MultiChannelFunction")
-        .def(py::init<std::vector<std::shared_ptr<FunctionGenerator>>&>(),
-             py::arg("functions"));
+        .def(
+            py::init<std::vector<std::shared_ptr<FunctionGenerator>>&>(),
+            py::arg("functions")
+        );
 
-    py::classh<MatrixElement, FunctionGenerator>(m, "MatrixElement")
-        .def(py::init<std::size_t, std::size_t, bool, std::size_t>(),
-             py::arg("matrix_element_index"), py::arg("particle_count"),
-             py::arg("simple_matrix_element")=true, py::arg("channel_count")=1)
-        .def("channel_count", &MatrixElement::channel_count)
+    py::classh<MatrixElement, FunctionGenerator> matrix_element(m, "MatrixElement");
+    add_enum<MatrixElement::MatrixElementInput>(
+        matrix_element,
+        "MatrixElementInput",
+        {
+            {"momenta_in", MatrixElement::momenta_in},
+            {"alpha_s_in", MatrixElement::alpha_s_in},
+            {"flavor_in", MatrixElement::flavor_in},
+            {"random_color_in", MatrixElement::random_color_in},
+            {"random_helicity_in", MatrixElement::random_helicity_in},
+            {"random_diagram_in", MatrixElement::random_diagram_in},
+            {"helicity_in", MatrixElement::helicity_in},
+            {"diagram_in", MatrixElement::diagram_in},
+        }
+    );
+    add_enum<MatrixElement::MatrixElementOutput>(
+        matrix_element,
+        "MatrixElementOutput",
+        {
+            {"matrix_element_out", MatrixElement::matrix_element_out},
+            {"diagram_amp2_out", MatrixElement::diagram_amp2_out},
+            {"color_index_out", MatrixElement::color_index_out},
+            {"helicity_index_out", MatrixElement::helicity_index_out},
+            {"diagram_index_out", MatrixElement::diagram_index_out},
+        }
+    );
+    matrix_element
+        .def(
+            py::init<
+                std::size_t,
+                std::size_t,
+                const std::vector<MatrixElement::MatrixElementInput>&,
+                const std::vector<MatrixElement::MatrixElementOutput>&,
+                std::size_t,
+                bool>(),
+            py::arg("matrix_element_index"),
+            py::arg("particle_count"),
+            py::arg("inputs"),
+            py::arg("outputs"),
+            py::arg("diagram_count") = 1,
+            py::arg("sample_random_inputs") = false
+        )
+        .def(
+            py::init<
+                const MatrixElementApi&,
+                const std::vector<MatrixElement::MatrixElementInput>&,
+                const std::vector<MatrixElement::MatrixElementOutput>&,
+                bool>(),
+            py::arg("matrix_element_api"),
+            py::arg("inputs"),
+            py::arg("outputs"),
+            py::arg("sample_random_inputs") = false
+        )
+        .def("matrix_element_index", &MatrixElement::diagram_count)
+        .def("diagram_count", &MatrixElement::diagram_count)
         .def("particle_count", &MatrixElement::particle_count);
 
     py::classh<MLP, FunctionGenerator> mlp(m, "MLP");
-    py::enum_<MLP::Activation>(mlp, "Activation")
-        .value("relu", MLP::relu)
-        .value("leaky_relu", MLP::leaky_relu)
-        .value("elu", MLP::elu)
-        .value("gelu", MLP::gelu)
-        .value("sigmoid", MLP::sigmoid)
-        .value("softplus", MLP::softplus)
-        .value("linear", MLP::linear)
-        .export_values();
-    mlp.def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
-                      MLP::Activation, const std::string&>(),
-            py::arg("input_dim"),
-            py::arg("output_dim"),
-            py::arg("hidden_dim") = 32,
-            py::arg("layers") = 3,
-            py::arg("activation") = MLP::leaky_relu,
-            py::arg("prefix") = "")
+    add_enum<MLP::Activation>(
+        mlp,
+        "Activation",
+        {
+            {"relu", MLP::relu},
+            {"leaky_relu", MLP::leaky_relu},
+            {"elu", MLP::elu},
+            {"gelu", MLP::gelu},
+            {"sigmoid", MLP::sigmoid},
+            {"softplus", MLP::softplus},
+            {"linear", MLP::linear},
+        }
+    );
+    mlp.def(
+           py::init<
+               std::size_t,
+               std::size_t,
+               std::size_t,
+               std::size_t,
+               MLP::Activation,
+               const std::string&>(),
+           py::arg("input_dim"),
+           py::arg("output_dim"),
+           py::arg("hidden_dim") = 32,
+           py::arg("layers") = 3,
+           py::arg("activation") = MLP::leaky_relu,
+           py::arg("prefix") = ""
+    )
         .def("input_dim", &MLP::input_dim)
         .def("output_dim", &MLP::output_dim)
         .def("initialize_globals", &MLP::initialize_globals, py::arg("context"));
 
     py::classh<Flow, Mapping>(m, "Flow")
-        .def(py::init<std::size_t, std::size_t, const std::string&, std::size_t, std::size_t,
-                      std::size_t, MLP::Activation, bool>(),
-             py::arg("input_dim"),
-             py::arg("condition_dim") = 0,
-             py::arg("prefix") = "",
-             py::arg("bin_count") = 10,
-             py::arg("subnet_hidden_dim") = 32,
-             py::arg("subnet_layers") = 3,
-             py::arg("subnet_activation") = MLP::leaky_relu,
-             py::arg("invert_spline") = true)
+        .def(
+            py::init<
+                std::size_t,
+                std::size_t,
+                const std::string&,
+                std::size_t,
+                std::size_t,
+                std::size_t,
+                MLP::Activation,
+                bool>(),
+            py::arg("input_dim"),
+            py::arg("condition_dim") = 0,
+            py::arg("prefix") = "",
+            py::arg("bin_count") = 10,
+            py::arg("subnet_hidden_dim") = 32,
+            py::arg("subnet_layers") = 3,
+            py::arg("subnet_activation") = MLP::leaky_relu,
+            py::arg("invert_spline") = true
+        )
         .def("input_dim", &Flow::input_dim)
         .def("condition_dim", &Flow::condition_dim)
         .def("initialize_globals", &Flow::initialize_globals, py::arg("context"))
-        .def("initialize_from_vegas", &Flow::initialize_from_vegas,
-             py::arg("context"), py::arg("grid_name"));
+        .def(
+            "initialize_from_vegas",
+            &Flow::initialize_from_vegas,
+            py::arg("context"),
+            py::arg("grid_name")
+        );
 
-    py::classh<PropagatorChannelWeights, FunctionGenerator>(m, "PropagatorChannelWeights")
-        .def(py::init<const std::vector<Topology>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>&>(),
-             py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"));
+    py::classh<PropagatorChannelWeights, FunctionGenerator>(
+        m, "PropagatorChannelWeights"
+    )
+        .def(
+            py::init<
+                const std::vector<Topology>&,
+                const nested_vector3<std::size_t>&,
+                const nested_vector2<std::size_t>&>(),
+            py::arg("topologies"),
+            py::arg("permutations"),
+            py::arg("channel_indices")
+        );
 
     py::classh<SubchannelWeights, FunctionGenerator>(m, "SubchannelWeights")
-        .def(py::init<const std::vector<std::vector<Topology>>&,
-                      const std::vector<std::vector<std::vector<std::size_t>>>&,
-                      const std::vector<std::vector<std::size_t>>>(),
-             py::arg("topologies"), py::arg("permutations"), py::arg("channel_indices"))
+        .def(
+            py::init<
+                const nested_vector2<Topology>&,
+                const nested_vector3<std::size_t>&,
+                const nested_vector2<std::size_t>>(),
+            py::arg("topologies"),
+            py::arg("permutations"),
+            py::arg("channel_indices")
+        )
         .def("channel_count", &SubchannelWeights::channel_count);
 
     py::classh<MomentumPreprocessing, FunctionGenerator>(m, "MomentumPreprocessing")
@@ -443,75 +720,116 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("output_dim", &MomentumPreprocessing::output_dim);
 
     py::classh<ChannelWeightNetwork, FunctionGenerator>(m, "ChannelWeightNetwork")
-        .def(py::init<std::size_t, std::size_t, std::size_t, std::size_t,
-                      MLP::Activation, const std::string&>(),
-             py::arg("channel_count"),
-             py::arg("particle_count"),
-             py::arg("hidden_dim") = 32,
-             py::arg("layers") = 3,
-             py::arg("activation") = MLP::leaky_relu,
-             py::arg("prefix") = "")
+        .def(
+            py::init<
+                std::size_t,
+                std::size_t,
+                std::size_t,
+                std::size_t,
+                MLP::Activation,
+                const std::string&>(),
+            py::arg("channel_count"),
+            py::arg("particle_count"),
+            py::arg("hidden_dim") = 32,
+            py::arg("layers") = 3,
+            py::arg("activation") = MLP::leaky_relu,
+            py::arg("prefix") = ""
+        )
         .def("mlp", &ChannelWeightNetwork::mlp)
         .def("preprocessing", &ChannelWeightNetwork::preprocessing)
         .def("mask_name", &ChannelWeightNetwork::mask_name)
-        .def("initialize_globals", &ChannelWeightNetwork::initialize_globals,
-             py::arg("context"));
+        .def(
+            "initialize_globals",
+            &ChannelWeightNetwork::initialize_globals,
+            py::arg("context")
+        );
 
     py::classh<DiscreteHistogram, FunctionGenerator>(m, "DiscreteHistogram")
         .def(py::init<std::vector<std::size_t>>(), py::arg("option_counts"));
 
     py::classh<DiscreteSampler, Mapping>(m, "DiscreteSampler")
-        .def(py::init<const std::vector<std::size_t>&, const std::string&,
-                      const std::vector<std::size_t>&>(),
-             py::arg("option_counts"), py::arg("prefix") = "",
-             py::arg("dims_with_prior") = std::vector<std::size_t>{})
+        .def(
+            py::init<
+                const std::vector<std::size_t>&,
+                const std::string&,
+                const std::vector<std::size_t>&>(),
+            py::arg("option_counts"),
+            py::arg("prefix") = "",
+            py::arg("dims_with_prior") = std::vector<std::size_t>{}
+        )
         .def("option_counts", &DiscreteSampler::option_counts)
         .def("prob_names", &DiscreteSampler::prob_names)
-        .def("initialize_globals", &DiscreteSampler::initialize_globals,
-             py::arg("context"));
+        .def(
+            "initialize_globals",
+            &DiscreteSampler::initialize_globals,
+            py::arg("context")
+        );
 
     py::classh<DiscreteFlow, Mapping>(m, "DiscreteFlow")
-        .def(py::init<const std::vector<std::size_t>&, const std::string&,
-                      const std::vector<std::size_t>&, std::size_t, std::size_t,
-                      std::size_t, MLP::Activation>(),
-             py::arg("option_counts"),
-             py::arg("prefix") = "",
-             py::arg("dims_with_prior") = std::vector<std::size_t>{},
-             py::arg("condition_dim") = 0,
-             py::arg("subnet_hidden_dim") = 32,
-             py::arg("subnet_layers") = 3,
-             py::arg("subnet_activation") = MLP::leaky_relu)
+        .def(
+            py::init<
+                const std::vector<std::size_t>&,
+                const std::string&,
+                const std::vector<std::size_t>&,
+                std::size_t,
+                std::size_t,
+                std::size_t,
+                MLP::Activation>(),
+            py::arg("option_counts"),
+            py::arg("prefix") = "",
+            py::arg("dims_with_prior") = std::vector<std::size_t>{},
+            py::arg("condition_dim") = 0,
+            py::arg("subnet_hidden_dim") = 32,
+            py::arg("subnet_layers") = 3,
+            py::arg("subnet_activation") = MLP::leaky_relu
+        )
         .def("option_counts", &DiscreteFlow::option_counts)
         .def("condition_dim", &DiscreteFlow::condition_dim)
-        .def("initialize_globals", &DiscreteFlow::initialize_globals,
-             py::arg("context"));
+        .def(
+            "initialize_globals", &DiscreteFlow::initialize_globals, py::arg("context")
+        );
 
     py::classh<VegasGridOptimizer>(m, "VegasGridOptimizer")
-        .def("add_data", [](VegasGridOptimizer& opt, py::object values, py::object counts) {
+        .def(
+            "add_data",
+            [](VegasGridOptimizer& opt, py::object values, py::object counts) {
                 opt.add_data(
                     dlpack_to_tensor(values, batch_float, 0),
                     dlpack_to_tensor(counts, batch_float_array(opt.input_dim()), 1)
                 );
-             }, py::arg("values"), py::arg("counts"))
+            },
+            py::arg("values"),
+            py::arg("counts")
+        )
         .def("optimize", &VegasGridOptimizer::optimize)
-        .def(py::init<ContextPtr, const std::string&, double>(),
-             py::arg("context"), py::arg("grid_name"), py::arg("damping"));
+        .def(
+            py::init<ContextPtr, const std::string&, double>(),
+            py::arg("context"),
+            py::arg("grid_name"),
+            py::arg("damping")
+        );
 
     py::classh<DiscreteOptimizer>(m, "DiscreteOptimizer")
-        .def("add_data",
-             [](DiscreteOptimizer& opt, std::vector<py::object> values_and_counts) {
+        .def(
+            "add_data",
+            [](DiscreteOptimizer& opt, std::vector<py::object> values_and_counts) {
                 TensorVec input_tensors;
                 for (std::size_t i = 1; auto& input : values_and_counts) {
-                    input_tensors.push_back(dlpack_to_tensor(
-                        input, i % 2 == 0 ? batch_int : batch_float, i
-                    ));
+                    input_tensors.push_back(
+                        dlpack_to_tensor(input, i % 2 == 0 ? batch_int : batch_float, i)
+                    );
                     ++i;
                 }
                 opt.add_data(input_tensors);
-             }, py::arg("values_and_counts"))
+            },
+            py::arg("values_and_counts")
+        )
         .def("optimize", &DiscreteOptimizer::optimize)
-        .def(py::init<ContextPtr, const std::vector<std::string>&>(),
-             py::arg("context"), py::arg("prob_names"));
+        .def(
+            py::init<ContextPtr, const std::vector<std::string>&>(),
+            py::arg("context"),
+            py::arg("prob_names")
+        );
 
     py::classh<PdfGrid>(m, "PdfGrid")
         .def(py::init<const std::string&>(), py::arg("file"))
@@ -524,16 +842,32 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("region_sizes", &PdfGrid::region_sizes)
         .def_property_readonly("grid_point_count", &PdfGrid::grid_point_count)
         .def_property_readonly("q_count", &PdfGrid::q_count)
-        .def("coefficients_shape", &PdfGrid::coefficients_shape, py::arg("batch_dim")=false)
-        .def("logx_shape", &PdfGrid::logx_shape, py::arg("batch_dim")=false)
-        .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim")=false)
-        .def("initialize_globals", &PdfGrid::initialize_globals,
-             py::arg("context"), py::arg("prefix")="");
+        .def(
+            "coefficients_shape",
+            &PdfGrid::coefficients_shape,
+            py::arg("batch_dim") = false
+        )
+        .def("logx_shape", &PdfGrid::logx_shape, py::arg("batch_dim") = false)
+        .def("logq2_shape", &PdfGrid::logq2_shape, py::arg("batch_dim") = false)
+        .def(
+            "initialize_globals",
+            &PdfGrid::initialize_globals,
+            py::arg("context"),
+            py::arg("prefix") = ""
+        );
 
     py::classh<PartonDensity, FunctionGenerator>(m, "PartonDensity")
-        .def(py::init<const PdfGrid&, const std::vector<int>&, bool, const std::string&>(),
-             py::arg("grid"), py::arg("pids"), py::arg("dynamic_pid")=false,
-             py::arg("prefix")="");
+        .def(
+            py::init<
+                const PdfGrid&,
+                const std::vector<int>&,
+                bool,
+                const std::string&>(),
+            py::arg("grid"),
+            py::arg("pids"),
+            py::arg("dynamic_pid") = false,
+            py::arg("prefix") = ""
+        );
 
     py::classh<AlphaSGrid>(m, "AlphaSGrid")
         .def(py::init<const std::string&>(), py::arg("file"))
@@ -542,83 +876,128 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly("values", &AlphaSGrid::values)
         .def_readonly("region_sizes", &AlphaSGrid::region_sizes)
         .def_property_readonly("q_count", &AlphaSGrid::q_count)
-        .def("coefficients_shape", &AlphaSGrid::coefficients_shape,
-             py::arg("batch_dim")=false)
-        .def("logq2_shape", &AlphaSGrid::logq2_shape, py::arg("batch_dim")=false)
-        .def("initialize_globals", &AlphaSGrid::initialize_globals,
-             py::arg("context"), py::arg("prefix")="");
+        .def(
+            "coefficients_shape",
+            &AlphaSGrid::coefficients_shape,
+            py::arg("batch_dim") = false
+        )
+        .def("logq2_shape", &AlphaSGrid::logq2_shape, py::arg("batch_dim") = false)
+        .def(
+            "initialize_globals",
+            &AlphaSGrid::initialize_globals,
+            py::arg("context"),
+            py::arg("prefix") = ""
+        );
 
     py::classh<RunningCoupling, FunctionGenerator>(m, "RunningCoupling")
-        .def(py::init<const AlphaSGrid&, const std::string&>(),
-             py::arg("grid"), py::arg("prefix")="");
+        .def(
+            py::init<const AlphaSGrid&, const std::string&>(),
+            py::arg("grid"),
+            py::arg("prefix") = ""
+        );
 
     py::classh<EnergyScale, FunctionGenerator> scale(m, "EnergyScale");
-    py::enum_<EnergyScale::DynamicalScaleType>(scale, "DynamicalScaleType")
-        .value("transverse_energy", EnergyScale::transverse_energy)
-        .value("transverse_mass", EnergyScale::transverse_mass)
-        .value("half_transverse_mass", EnergyScale::half_transverse_mass)
-        .value("partonic_energy", EnergyScale::partonic_energy)
-        .export_values();
-    scale
-        .def(py::init<std::size_t>(), py::arg("particle_count"))
-        .def(py::init<std::size_t, EnergyScale::DynamicalScaleType>(),
-             py::arg("particle_count"), py::arg("type"))
-        .def(py::init<std::size_t, double>(),
-             py::arg("particle_count"), py::arg("fixed_scale"))
-        .def(py::init<std::size_t, EnergyScale::DynamicalScaleType, bool, bool,
-                      double, double, double>(),
-             py::arg("particle_count"), py::arg("dynamical_scale_type"), py::arg("ren_scale_fixed"),
-             py::arg("fact_scale_fixed"), py::arg("ren_scale"), py::arg("fact_scale1"),
-             py::arg("fact_scale2"));
+    add_enum<EnergyScale::DynamicalScaleType>(
+        scale,
+        "DynamicalScaleType",
+        {
+            {"transverse_energy", EnergyScale::transverse_energy},
+            {"transverse_mass", EnergyScale::transverse_mass},
+            {"half_transverse_mass", EnergyScale::half_transverse_mass},
+            {"partonic_energy", EnergyScale::partonic_energy},
+        }
+    );
+    scale.def(py::init<std::size_t>(), py::arg("particle_count"))
+        .def(
+            py::init<std::size_t, EnergyScale::DynamicalScaleType>(),
+            py::arg("particle_count"),
+            py::arg("type")
+        )
+        .def(
+            py::init<std::size_t, double>(),
+            py::arg("particle_count"),
+            py::arg("fixed_scale")
+        )
+        .def(
+            py::init<
+                std::size_t,
+                EnergyScale::DynamicalScaleType,
+                bool,
+                bool,
+                double,
+                double,
+                double>(),
+            py::arg("particle_count"),
+            py::arg("dynamical_scale_type"),
+            py::arg("ren_scale_fixed"),
+            py::arg("fact_scale_fixed"),
+            py::arg("ren_scale"),
+            py::arg("fact_scale1"),
+            py::arg("fact_scale2")
+        );
 
-    py::classh<DifferentialCrossSection, FunctionGenerator>(m, "DifferentialCrossSection")
-        .def(py::init<const std::vector<std::vector<me_int_t>>&, std::size_t,
-                      const RunningCoupling&, const std::optional<PdfGrid>&, double,
-                      const EnergyScale&, bool, std::size_t, bool>(),
-             py::arg("pid_options"),
-             py::arg("matrix_element_index"),
-             py::arg("running_coupling"),
-             py::arg("pdf_grid"),
-             py::arg("cm_energy"),
-             py::arg("energy_scale"),
-             py::arg("simple_matrix_element")=true,
-             py::arg("channel_count")=1,
-             py::arg("has_mirror")=false)
+    py::classh<DifferentialCrossSection, FunctionGenerator>(
+        m, "DifferentialCrossSection"
+    )
+        .def(
+            py::init<
+                const nested_vector2<me_int_t>&,
+                std::size_t,
+                const RunningCoupling&,
+                const std::optional<PdfGrid>&,
+                double,
+                const EnergyScale&,
+                bool,
+                std::size_t,
+                bool>(),
+            py::arg("pid_options"),
+            py::arg("matrix_element_index"),
+            py::arg("running_coupling"),
+            py::arg("pdf_grid"),
+            py::arg("cm_energy"),
+            py::arg("energy_scale"),
+            py::arg("simple_matrix_element") = true,
+            py::arg("channel_count") = 1,
+            py::arg("has_mirror") = false
+        )
         .def("pid_options", &DifferentialCrossSection::pid_options);
 
     py::classh<Unweighter, FunctionGenerator>(m, "Unweighter")
         .def(py::init<const TypeVec&>(), py::arg("types"));
     py::classh<Integrand, FunctionGenerator>(m, "Integrand")
-        .def(py::init<const PhaseSpaceMapping&,
-                      const DifferentialCrossSection&,
-                      const Integrand::AdaptiveMapping&,
-                      const Integrand::AdaptiveDiscrete&,
-                      const Integrand::AdaptiveDiscrete&,
-                      const std::optional<PdfGrid>&,
-                      const std::optional<EnergyScale>&,
-                      const std::optional<PropagatorChannelWeights>&,
-                      const std::optional<SubchannelWeights>&,
-                      const std::optional<ChannelWeightNetwork>&,
-                      const std::vector<me_int_t>&,
-                      std::size_t,
-                      int,
-                      const std::vector<std::size_t>&,
-                      const std::vector<std::size_t>&>(),
-             py::arg("mapping"),
-             py::arg("diff_xs"),
-             py::arg("adaptive_map")=std::monostate{},
-             py::arg("discrete_before")=std::monostate{},
-             py::arg("discrete_after")=std::monostate{},
-             py::arg("pdf_grid")=std::nullopt,
-             py::arg("energy_scale")=std::nullopt,
-             py::arg("prop_chan_weights")=std::nullopt,
-             py::arg("subchan_weights")=std::nullopt,
-             py::arg("chan_weight_net")=std::nullopt,
-             py::arg("chan_weight_remap")=std::vector<me_int_t>{},
-             py::arg("remapped_chan_count")=0,
-             py::arg("flags")=0,
-             py::arg("channel_indices")=std::vector<std::size_t>{},
-             py::arg("active_flavors")=std::vector<std::size_t>{})
+        .def(
+            py::init<
+                const PhaseSpaceMapping&,
+                const DifferentialCrossSection&,
+                const Integrand::AdaptiveMapping&,
+                const Integrand::AdaptiveDiscrete&,
+                const Integrand::AdaptiveDiscrete&,
+                const std::optional<PdfGrid>&,
+                const std::optional<EnergyScale>&,
+                const std::optional<PropagatorChannelWeights>&,
+                const std::optional<SubchannelWeights>&,
+                const std::optional<ChannelWeightNetwork>&,
+                const std::vector<me_int_t>&,
+                std::size_t,
+                int,
+                const std::vector<std::size_t>&,
+                const std::vector<std::size_t>&>(),
+            py::arg("mapping"),
+            py::arg("diff_xs"),
+            py::arg("adaptive_map") = std::monostate{},
+            py::arg("discrete_before") = std::monostate{},
+            py::arg("discrete_after") = std::monostate{},
+            py::arg("pdf_grid") = std::nullopt,
+            py::arg("energy_scale") = std::nullopt,
+            py::arg("prop_chan_weights") = std::nullopt,
+            py::arg("subchan_weights") = std::nullopt,
+            py::arg("chan_weight_net") = std::nullopt,
+            py::arg("chan_weight_remap") = std::vector<me_int_t>{},
+            py::arg("remapped_chan_count") = 0,
+            py::arg("flags") = 0,
+            py::arg("channel_indices") = std::vector<std::size_t>{},
+            py::arg("active_flavors") = std::vector<std::size_t>{}
+        )
         .def("particle_count", &Integrand::particle_count)
         .def("flags", &Integrand::flags)
         .def("vegas_grid_name", &Integrand::vegas_grid_name)
@@ -642,10 +1021,13 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_chan_weights", &Integrand::return_chan_weights)
         .def_readonly_static("return_cwnet_input", &Integrand::return_cwnet_input)
         .def_readonly_static("return_discrete", &Integrand::return_discrete)
-        .def_readonly_static("return_discrete_latent", &Integrand::return_discrete_latent);
+        .def_readonly_static(
+            "return_discrete_latent", &Integrand::return_discrete_latent
+        );
     py::classh<MultiChannelIntegrand, FunctionGenerator>(m, "MultiChannelIntegrand")
-        .def(py::init<std::vector<std::shared_ptr<Integrand>>&>(),
-             py::arg("integrands"));
+        .def(
+            py::init<std::vector<std::shared_ptr<Integrand>>&>(), py::arg("integrands")
+        );
     py::classh<IntegrandProbability, FunctionGenerator>(m, "IntegrandProbability")
         .def(py::init<const Integrand&>(), py::arg("integrand"));
 
@@ -653,20 +1035,26 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def(py::init<>())
         .def_readwrite("target_count", &EventGenerator::Config::target_count)
         .def_readwrite("vegas_damping", &EventGenerator::Config::vegas_damping)
-        .def_readwrite("max_overweight_truncation",
-                       &EventGenerator::Config::max_overweight_truncation)
-        .def_readwrite("freeze_max_weight_after",
-                       &EventGenerator::Config::freeze_max_weight_after)
+        .def_readwrite(
+            "max_overweight_truncation",
+            &EventGenerator::Config::max_overweight_truncation
+        )
+        .def_readwrite(
+            "freeze_max_weight_after", &EventGenerator::Config::freeze_max_weight_after
+        )
         .def_readwrite("start_batch_size", &EventGenerator::Config::start_batch_size)
         .def_readwrite("max_batch_size", &EventGenerator::Config::max_batch_size)
         .def_readwrite("survey_min_iters", &EventGenerator::Config::survey_min_iters)
         .def_readwrite("survey_max_iters", &EventGenerator::Config::survey_max_iters)
-        .def_readwrite("survey_target_precision",
-                       &EventGenerator::Config::survey_target_precision)
-        .def_readwrite("optimization_patience",
-                       &EventGenerator::Config::optimization_patience)
-        .def_readwrite("optimization_threshold",
-                       &EventGenerator::Config::optimization_threshold)
+        .def_readwrite(
+            "survey_target_precision", &EventGenerator::Config::survey_target_precision
+        )
+        .def_readwrite(
+            "optimization_patience", &EventGenerator::Config::optimization_patience
+        )
+        .def_readwrite(
+            "optimization_threshold", &EventGenerator::Config::optimization_threshold
+        )
         .def_readwrite("batch_size", &EventGenerator::Config::batch_size);
     py::classh<EventGenerator::Status>(m, "EventGeneratorStatus")
         .def(py::init<>())
@@ -681,31 +1069,281 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("done", &EventGenerator::Status::done);
     py::classh<EventGenerator>(m, "EventGenerator")
         .def_readonly_static("default_config", &EventGenerator::default_config)
-        .def(py::init<ContextPtr, const std::vector<Integrand>&,
-                      const std::string&, const EventGenerator::Config&,
-                      const std::optional<std::string>&>(),
-             py::arg("context"), py::arg("channels"), py::arg("file_name"),
-             py::arg_v("default_config", EventGenerator::default_config,
-                       "EventGenerator.default_config"),
-             py::arg("temp_file_dir")=std::nullopt)
+        .def(
+            py::init<
+                ContextPtr,
+                const std::vector<Integrand>&,
+                const std::string&,
+                const EventGenerator::Config&,
+                std::vector<std::size_t>,
+                std::vector<std::string>>(),
+            py::arg("context"),
+            py::arg("channels"),
+            py::arg("temp_file_prefix"),
+            py::arg_v(
+                "default_config",
+                EventGenerator::default_config,
+                "EventGenerator.default_config"
+            ),
+            py::arg("channel_subprocesses") = std::vector<std::size_t>{},
+            py::arg("channel_names") = std::vector<std::string>{}
+        )
         .def("survey", &EventGenerator::survey)
         .def("generate", &EventGenerator::generate)
+        .def(
+            "combine_to_compact_npy",
+            &EventGenerator::combine_to_compact_npy,
+            py::arg("file_name")
+        )
+        .def(
+            "combine_to_lhe_npy",
+            &EventGenerator::combine_to_lhe_npy,
+            py::arg("file_name"),
+            py::arg("lhe_completer")
+        )
+        .def(
+            "combine_to_lhe",
+            &EventGenerator::combine_to_lhe,
+            py::arg("file_name"),
+            py::arg("lhe_completer")
+        )
         .def("status", &EventGenerator::status)
         .def("channel_status", &EventGenerator::channel_status)
         .def_readonly_static("integrand_flags", &EventGenerator::integrand_flags);
 
-    m.def("set_thread_count", [](int new_count) {
-        default_thread_pool().set_thread_count(new_count);
-    }, py::arg("new_count"));
+    py::classh<LHEHeader>(m, "LHEHeader")
+        .def(
+            py::init<std::string, std::string, bool>(),
+            py::arg("name") = "",
+            py::arg("content") = "",
+            py::arg("escape_content") = false
+        )
+        .def_readwrite("name", &LHEHeader::name)
+        .def_readwrite("content", &LHEHeader::content)
+        .def_readwrite("escape_content", &LHEHeader::escape_content);
+    py::classh<LHEProcess>(m, "LHEProcess")
+        .def(
+            py::init<double, double, double, int>(),
+            py::arg("cross_section") = 0.,
+            py::arg("cross_section_error") = 0.,
+            py::arg("max-weight") = 0.,
+            py::arg("process_id") = 0
+        )
+        .def_readwrite("cross_section", &LHEProcess::cross_section)
+        .def_readwrite("cross_section_error", &LHEProcess::cross_section_error)
+        .def_readwrite("max_weight", &LHEProcess::max_weight)
+        .def_readwrite("process_id", &LHEProcess::process_id);
+    py::classh<LHEMeta>(m, "LHEMeta")
+        .def(
+            py::init<
+                int,
+                int,
+                double,
+                double,
+                int,
+                int,
+                int,
+                int,
+                int,
+                std::vector<LHEProcess>,
+                std::vector<LHEHeader>>(),
+            py::arg("beam1_pdg_id") = 0,
+            py::arg("beam2_pdg_id") = 0,
+            py::arg("beam1_energy") = 0.,
+            py::arg("beam2_energy") = 0.,
+            py::arg("beam1_pdf_authors") = 0,
+            py::arg("beam2_pdf_authors") = 0,
+            py::arg("beam1_pdf_id") = 0,
+            py::arg("beam2_pdf_id") = 0,
+            py::arg("weight_mode") = 0,
+            py::arg("processes") = std::vector<LHEProcess>{},
+            py::arg("headers") = std::vector<LHEHeader>{}
+        )
+        .def_readwrite("beam1_pdg_id", &LHEMeta::beam1_pdg_id)
+        .def_readwrite("beam2_pdg_id", &LHEMeta::beam2_pdg_id)
+        .def_readwrite("beam1_energy", &LHEMeta::beam1_energy)
+        .def_readwrite("beam2_energy", &LHEMeta::beam2_energy)
+        .def_readwrite("beam1_pdf_authors", &LHEMeta::beam1_pdf_authors)
+        .def_readwrite("beam2_pdf_authors", &LHEMeta::beam2_pdf_authors)
+        .def_readwrite("beam1_pdf_id", &LHEMeta::beam1_pdf_id)
+        .def_readwrite("beam2_pdf_id", &LHEMeta::beam2_pdf_id)
+        .def_readwrite("weight_mode", &LHEMeta::weight_mode)
+        .def_readwrite("processes", &LHEMeta::processes)
+        .def_readwrite("headers", &LHEMeta::headers);
+    py::classh<LHEParticle>(m, "LHEParticle")
+        .def(
+            py::init<
+                int,
+                int,
+                int,
+                int,
+                int,
+                int,
+                double,
+                double,
+                double,
+                double,
+                double,
+                double,
+                double>(),
+            py::arg("pdg_id") = 0,
+            py::arg("status_code") = 0,
+            py::arg("mother1") = 0,
+            py::arg("mother2") = 0,
+            py::arg("color") = 0,
+            py::arg("anti_color") = 0,
+            py::arg("p_x") = 0.,
+            py::arg("p_y") = 0.,
+            py::arg("p_z") = 0.,
+            py::arg("energy") = 0.,
+            py::arg("mass") = 0.,
+            py::arg("lifetime") = 0.,
+            py::arg("spin") = 0.
+        )
+        .def_readonly_static("status_incoming", &LHEParticle::status_incoming)
+        .def_readonly_static("status_outgoing", &LHEParticle::status_outgoing)
+        .def_readonly_static(
+            "status_intermediate_resonance", &LHEParticle::status_intermediate_resonance
+        )
+        .def_readwrite("pdg_id", &LHEParticle::pdg_id)
+        .def_readwrite("status_code", &LHEParticle::status_code)
+        .def_readwrite("mother1", &LHEParticle::mother1)
+        .def_readwrite("mother2", &LHEParticle::mother2)
+        .def_readwrite("color", &LHEParticle::color)
+        .def_readwrite("anti_color", &LHEParticle::anti_color)
+        .def_readwrite("px", &LHEParticle::px)
+        .def_readwrite("py", &LHEParticle::py)
+        .def_readwrite("pz", &LHEParticle::pz)
+        .def_readwrite("energy", &LHEParticle::energy)
+        .def_readwrite("mass", &LHEParticle::mass)
+        .def_readwrite("lifetime", &LHEParticle::lifetime)
+        .def_readwrite("spin", &LHEParticle::spin);
+    py::classh<LHEEvent>(m, "LHEEvent")
+        .def(
+            py::init<int, double, double, double, double, std::vector<LHEParticle>>(),
+            py::arg("process_id") = 0,
+            py::arg("weight") = 0.,
+            py::arg("scale") = 0.,
+            py::arg("alpha_qed") = 0.,
+            py::arg("alpha_qcd") = 0.,
+            py::arg("particles") = std::vector<LHEParticle>{}
+        )
+        .def_readwrite("process_id", &LHEEvent::process_id)
+        .def_readwrite("weight", &LHEEvent::weight)
+        .def_readwrite("scale", &LHEEvent::scale)
+        .def_readwrite("alpha_qed", &LHEEvent::alpha_qed)
+        .def_readwrite("alpha_qcd", &LHEEvent::process_id)
+        .def_readwrite("particles", &LHEEvent::particles);
+    py::classh<LHECompleter::SubprocArgs>(m, "SubprocArgs")
+        .def(
+            py::init<
+                int,
+                std::vector<Topology>,
+                nested_vector3<std::size_t>,
+                nested_vector2<std::size_t>,
+                nested_vector3<std::size_t>,
+                nested_vector3<std::tuple<int, int>>,
+                std::unordered_map<int, int>,
+                nested_vector2<double>,
+                nested_vector3<int>,
+                std::vector<std::size_t>>(),
+            py::arg("process_id") = 0,
+            py::arg("topologies") = std::vector<Topology>{},
+            py::arg("permutations") = nested_vector3<std::size_t>{},
+            py::arg("diagram_indices") = nested_vector2<std::size_t>{},
+            py::arg("diagram_color_indices") = nested_vector3<std::size_t>{},
+            py::arg("color_flows") = nested_vector3<std::tuple<int, int>>{},
+            py::arg("pdg_color_types") = std::unordered_map<int, int>{},
+            py::arg("helicities") = nested_vector2<double>{},
+            py::arg("pdg_ids") = nested_vector3<int>{},
+            py::arg("matrix_flavor_indices") = std::vector<std::size_t>{}
+        )
+        .def_readwrite("process_id", &LHECompleter::SubprocArgs::process_id)
+        .def_readwrite("topologies", &LHECompleter::SubprocArgs::topologies)
+        .def_readwrite("permutations", &LHECompleter::SubprocArgs::permutations)
+        .def_readwrite("diagram_indices", &LHECompleter::SubprocArgs::diagram_indices)
+        .def_readwrite(
+            "diagram_color_indices", &LHECompleter::SubprocArgs::diagram_color_indices
+        )
+        .def_readwrite("color_flows", &LHECompleter::SubprocArgs::color_flows)
+        .def_readwrite("pdg_color_types", &LHECompleter::SubprocArgs::pdg_color_types)
+        .def_readwrite("helicities", &LHECompleter::SubprocArgs::helicities)
+        .def_readwrite("pdg_ids", &LHECompleter::SubprocArgs::pdg_ids)
+        .def_readwrite(
+            "matrix_flavor_indices", &LHECompleter::SubprocArgs::matrix_flavor_indices
+        );
+    py::classh<LHECompleter>(m, "LHECompleter")
+        .def(
+            py::init<const std::vector<LHECompleter::SubprocArgs>&, double>(),
+            py::arg("subproc_args"),
+            py::arg("bw_cutoff")
+        )
+        .def(
+            "complete_event_data",
+            &LHECompleter::complete_event_data,
+            py::arg("event"),
+            py::arg("subprocess_index"),
+            py::arg("diagram_index"),
+            py::arg("color_index"),
+            py::arg("flavor_index"),
+            py::arg("helicity_index")
+        )
+        .def_property_readonly("max_particle_count", &LHECompleter::max_particle_count);
+    py::classh<LHEFileWriter>(m, "LHEFileWriter")
+        .def(
+            py::init<const std::string&, const LHEMeta&>(),
+            py::arg("file_name"),
+            py::arg("meta")
+        )
+        .def("write", &LHEFileWriter::write, py::arg("event"));
+
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
     m.def("format_progress", &format_progress, py::arg("progress"), py::arg("width"));
-    m.def("initialize_vegas_grid", &initialize_vegas_grid,
-          py::arg("context"), py::arg("grid_name"));
+    py::classh<PrettyBox>(m, "PrettyBox")
+        .def(
+            py::init<
+                const std::string&,
+                std::size_t,
+                const std::vector<std::size_t>&,
+                std::size_t,
+                std::size_t>(),
+            py::arg("title"),
+            py::arg("rows"),
+            py::arg("columns"),
+            py::arg("offset") = 0,
+            py::arg("box_width") = 91
+        )
+        .def("set_row", &PrettyBox::set_row, py::arg("row"), py::arg("values"))
+        .def("set_column", &PrettyBox::set_column, py::arg("column"), py::arg("values"))
+        .def(
+            "set_cell",
+            &PrettyBox::set_cell,
+            py::arg("row"),
+            py::arg("column"),
+            py::arg("value")
+        )
+        .def("print_first", &PrettyBox::print_first)
+        .def("print_update", &PrettyBox::print_update)
+        .def_property_readonly("line_count", &PrettyBox::line_count);
+
+    m.def(
+        "set_thread_count",
+        [](int new_count) { default_thread_pool().set_thread_count(new_count); },
+        py::arg("new_count")
+    );
+    m.def(
+        "initialize_vegas_grid",
+        &initialize_vegas_grid,
+        py::arg("context"),
+        py::arg("grid_name")
+    );
     m.def("set_lib_path", &set_lib_path, py::arg("lib_path"));
     m.def("set_simd_vector_size", &set_simd_vector_size, py::arg("vector_size"));
 
-    EventGenerator::set_abort_check_function([]{
-        if (PyErr_CheckSignals() != 0) throw py::error_already_set();
+    EventGenerator::set_abort_check_function([] {
+        if (PyErr_CheckSignals() != 0) {
+            throw py::error_already_set();
+        }
     });
 }

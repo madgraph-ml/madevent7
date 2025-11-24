@@ -8,93 +8,90 @@ namespace kernels {
 
 // Kernels
 
-template<typename T>
-KERNELSPEC void kernel_relu(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_relu(FIn<T, 0> input, FOut<T, 0> output) {
     FVal<T> x(input);
     output = where(x < 0., 0., x);
 }
 
-template<typename T>
-KERNELSPEC void backward_kernel_relu(
-    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
-) {
+template <typename T>
+KERNELSPEC void
+backward_kernel_relu(FIn<T, 0> input, FIn<T, 0> output_grad, FOut<T, 0> input_grad) {
     FVal<T> x(input), g(output_grad);
     input_grad = where(x < 0., 0., g);
 }
 
-template<typename T>
-KERNELSPEC void kernel_leaky_relu(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_leaky_relu(FIn<T, 0> input, FOut<T, 0> output) {
     FVal<T> x(input);
     output = where(x < 0., x * 0.01, x);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_leaky_relu(
-    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+    FIn<T, 0> input, FIn<T, 0> output_grad, FOut<T, 0> input_grad
 ) {
     FVal<T> x(input), g(output_grad);
     input_grad = where(x < 0., g * 0.01, g);
 }
 
-template<typename T>
-KERNELSPEC void kernel_elu(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_elu(FIn<T, 0> input, FOut<T, 0> output) {
     FVal<T> x(input);
     output = where(x < 0., expm1(x), x);
 }
 
-template<typename T>
-KERNELSPEC void backward_kernel_elu(
-    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
-) {
+template <typename T>
+KERNELSPEC void
+backward_kernel_elu(FIn<T, 0> input, FIn<T, 0> output_grad, FOut<T, 0> input_grad) {
     FVal<T> x(input), g(output_grad);
     input_grad = where(x < 0., g * exp(x), g);
 }
 
-template<typename T>
-KERNELSPEC void kernel_gelu(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_gelu(FIn<T, 0> input, FOut<T, 0> output) {
     output = 0.5 * input * (1. + erf(SQRT_HALF * input));
 }
 
-template<typename T>
-KERNELSPEC void backward_kernel_gelu(
-    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
-) {
+template <typename T>
+KERNELSPEC void
+backward_kernel_gelu(FIn<T, 0> input, FIn<T, 0> output_grad, FOut<T, 0> input_grad) {
     FVal<T> x(input), g(output_grad);
     auto cdf = 0.5 * (1. + erf(SQRT_HALF * x));
     auto pdf = 0.5 * SQRT_HALF * TWO_DIV_SQRT_PI * exp(-0.5 * x * x);
     input_grad = g * (cdf + x * pdf);
 }
 
-template<typename T>
-KERNELSPEC void kernel_sigmoid(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_sigmoid(FIn<T, 0> input, FOut<T, 0> output) {
     FVal<T> x = input;
     output = 1. / (1. + exp(-x));
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_sigmoid(
-    FIn<T,0> output, FIn<T,0> output_grad, FOut<T,0> input_grad
+    FIn<T, 0> output, FIn<T, 0> output_grad, FOut<T, 0> input_grad
 ) {
     FVal<T> y(output), g(output_grad);
     input_grad = g * y * (1. - y);
 }
 
-template<typename T>
-KERNELSPEC void kernel_softplus(FIn<T,0> input, FOut<T,0> output) {
+template <typename T>
+KERNELSPEC void kernel_softplus(FIn<T, 0> input, FOut<T, 0> output) {
     FVal<T> x(input);
     output = where(x < 20., log1p(exp(x)), x);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_softplus(
-    FIn<T,0> input, FIn<T,0> output_grad, FOut<T,0> input_grad
+    FIn<T, 0> input, FIn<T, 0> output_grad, FOut<T, 0> input_grad
 ) {
     FVal<T> x(input), g(output_grad);
     auto z = exp(x);
     input_grad = where(x < 20., g * z / (1. + z), g);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC FVal<T> fastexp(FVal<T> x) {
     auto xx = x / 16;
     auto y = 0.5 * (xx + sqrt(xx * xx + 4));
@@ -106,10 +103,13 @@ KERNELSPEC FVal<T> fastexp(FVal<T> x) {
     return y;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_rqs_find_bin(
-    FIn<T,0> input, FIn<T,1> in_sizes, FIn<T,1> out_sizes, FIn<T,1> derivatives,
-    FOut<T,1> condition
+    FIn<T, 0> input,
+    FIn<T, 1> in_sizes,
+    FIn<T, 1> out_sizes,
+    FIn<T, 1> derivatives,
+    FOut<T, 1> condition
 ) {
     auto n_bins = in_sizes.size();
     auto low_mask = input < 0.;
@@ -145,11 +145,17 @@ KERNELSPEC void kernel_rqs_find_bin(
     condition[5] = derivative_plus_one_unorm;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_rqs_find_bin(
-    FIn<T,0> input, FIn<T,1> in_sizes, FIn<T,1> out_sizes, FIn<T,1> derivatives,
-    FIn<T,1> condition_grad, FOut<T,0> input_grad, FOut<T,1> in_sizes_grad,
-    FOut<T,1> out_sizes_grad, FOut<T,1> derivatives_grad
+    FIn<T, 0> input,
+    FIn<T, 1> in_sizes,
+    FIn<T, 1> out_sizes,
+    FIn<T, 1> derivatives,
+    FIn<T, 1> condition_grad,
+    FOut<T, 0> input_grad,
+    FOut<T, 1> in_sizes_grad,
+    FOut<T, 1> out_sizes_grad,
+    FOut<T, 1> derivatives_grad
 ) {
     FVal<T> width_grad = condition_grad[0];
     FVal<T> height_grad = condition_grad[1];
@@ -181,23 +187,25 @@ KERNELSPEC void backward_kernel_rqs_find_bin(
     derivatives_grad.scatter_add(selected_bin + 1, derivative_plus_one_unorm_grad);
 }
 
-
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_rqs_forward(
-    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> input, FIn<T, 1> condition, FOut<T, 0> output, FOut<T, 0> det
 ) {
     FVal<T> width(condition[0]), height(condition[1]);
     FVal<T> cumwidth(condition[2]), cumheight(condition[3]);
     FVal<T> derivative_unorm(condition[4]), derivative_plus_one_unorm(condition[5]);
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
-    auto derivative = (where(
-        derivative_unorm > 20., derivative_unorm, log1p(exp(derivative_unorm))
-    ) + MIN_DERIVATIVE) / softplus_scale;
+    auto derivative =
+        (where(derivative_unorm > 20., derivative_unorm, log1p(exp(derivative_unorm))) +
+         MIN_DERIVATIVE) /
+        softplus_scale;
     auto derivative_plus_one = (where(
-        derivative_plus_one_unorm > 20.,
-        derivative_plus_one_unorm,
-        log1p(exp(derivative_plus_one_unorm))
-    ) + MIN_DERIVATIVE) / softplus_scale;
+                                    derivative_plus_one_unorm > 20.,
+                                    derivative_plus_one_unorm,
+                                    log1p(exp(derivative_plus_one_unorm))
+                                ) +
+                                MIN_DERIVATIVE) /
+        softplus_scale;
 
     auto low_mask = input < 0.;
     auto high_mask = input > 1.;
@@ -210,26 +218,28 @@ KERNELSPEC void kernel_rqs_forward(
     auto one_minus_theta = 1. - theta;
     auto theta_theta = theta * theta;
     auto theta_one_minus_theta = theta * one_minus_theta;
-    auto numerator = height * (delta * theta_theta + derivative * theta_one_minus_theta);
+    auto numerator =
+        height * (delta * theta_theta + derivative * theta_one_minus_theta);
     auto two_delta = 2. * delta;
-    auto denominator = delta +
-        (derivative + derivative_plus_one - two_delta) * theta_one_minus_theta;
+    auto denominator =
+        delta + (derivative + derivative_plus_one - two_delta) * theta_one_minus_theta;
     auto out = cumheight + numerator / denominator;
     output = where(clamp, input, out);
 
-    auto derivative_numerator = delta * delta * (
-        derivative_plus_one * theta_theta +
-        two_delta * theta_one_minus_theta +
-        derivative * one_minus_theta * one_minus_theta
-    );
+    auto derivative_numerator = delta * delta *
+        (derivative_plus_one * theta_theta + two_delta * theta_one_minus_theta +
+         derivative * one_minus_theta * one_minus_theta);
     det = where(clamp, 1., derivative_numerator / (denominator * denominator));
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_rqs_forward(
-    FIn<T,0> input, FIn<T,1> condition,
-    FIn<T,0> output_grad, FIn<T,0> det_grad,
-    FOut<T,0> input_grad, FOut<T,1> condition_grad
+    FIn<T, 0> input,
+    FIn<T, 1> condition,
+    FIn<T, 0> output_grad,
+    FIn<T, 0> det_grad,
+    FOut<T, 0> input_grad,
+    FOut<T, 1> condition_grad
 ) {
     FVal<T> width(condition[0]), height(condition[1]);
     FVal<T> cumwidth(condition[2]), cumheight(condition[3]);
@@ -245,9 +255,8 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto log1pd = log1p(expd);
     auto log1pdpo = log1p(expdpo);
     auto spd = where(derivative_unorm > 20., derivative_unorm, log1pd);
-    auto spdpo = where(
-        derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo
-    );
+    auto spdpo =
+        where(derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo);
     auto spd_md = spd + MIN_DERIVATIVE;
     auto spdpo_md = spdpo + MIN_DERIVATIVE;
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
@@ -284,7 +293,7 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto tmp16 = derivative_numerator / tmp15;
 
     auto grad_tmp16 = det_grad;
-    auto grad_tmp15 = - grad_tmp16 * derivative_numerator / (tmp15 * tmp15);
+    auto grad_tmp15 = -grad_tmp16 * derivative_numerator / (tmp15 * tmp15);
     auto grad_derivative_numerator = grad_tmp16 / tmp15;
     auto grad_denominator = 2. * grad_tmp15 * denominator;
     auto grad_tmp8 = tmp14 * grad_derivative_numerator;
@@ -306,7 +315,7 @@ KERNELSPEC void backward_kernel_rqs_forward(
     auto grad_cumheight = output_grad;
     auto grad_tmp7 = output_grad;
     auto grad_numerator = grad_tmp7 / denominator;
-    grad_denominator += - numerator * grad_tmp7 / (denominator * denominator);
+    grad_denominator += -numerator * grad_tmp7 / (denominator * denominator);
     grad_delta += grad_denominator;
     auto grad_tmp6 = grad_denominator;
     auto grad_tmp5 = theta_one_minus_theta * grad_tmp6;
@@ -329,12 +338,12 @@ KERNELSPEC void backward_kernel_rqs_forward(
     grad_theta += 2. * theta * grad_theta_theta;
     grad_theta += -grad_one_minus_theta;
     auto grad_input_diff = grad_theta / width;
-    auto grad_width = - input_diff * grad_theta / (width * width);
+    auto grad_width = -input_diff * grad_theta / (width * width);
     auto grad_input = grad_input_diff;
     auto grad_cumwidth = -grad_input_diff;
 
     grad_height += grad_delta / width;
-    grad_width += - height * grad_delta / (width * width);
+    grad_width += -height * grad_delta / (width * width);
 
     auto grad_spdpo_md = grad_derivative_plus_one / softplus_scale;
     auto grad_spd_md = grad_derivative / softplus_scale;
@@ -343,13 +352,13 @@ KERNELSPEC void backward_kernel_rqs_forward(
 
     auto grad_log1pdpo = grad_spdpo;
     auto grad_expdpo = grad_log1pdpo / (1. + expdpo);
-    auto grad_derivative_plus_one_unorm = where(
-        derivative_plus_one_unorm > 20., grad_spdpo, expdpo * grad_expdpo
-    );
+    auto grad_derivative_plus_one_unorm =
+        where(derivative_plus_one_unorm > 20., grad_spdpo, expdpo * grad_expdpo);
 
     auto grad_log1pd = grad_spd;
     auto grad_expd = grad_log1pd / (1. + expd);
-    auto grad_derivative_unorm = where(derivative_unorm > 20., grad_spd, expd * grad_expd);
+    auto grad_derivative_unorm =
+        where(derivative_unorm > 20., grad_spd, expd * grad_expd);
 
     input_grad = where(clamp, output_grad, grad_input);
     condition_grad[0] = where(clamp, 0., grad_width);
@@ -360,22 +369,25 @@ KERNELSPEC void backward_kernel_rqs_forward(
     condition_grad[5] = where(clamp, 0., grad_derivative_plus_one_unorm);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_rqs_inverse(
-    FIn<T,0> input, FIn<T,1> condition, FOut<T,0> output, FOut<T,0> det
+    FIn<T, 0> input, FIn<T, 1> condition, FOut<T, 0> output, FOut<T, 0> det
 ) {
     FVal<T> height(condition[0]), width(condition[1]);
     FVal<T> cumheight(condition[2]), cumwidth(condition[3]);
     FVal<T> derivative_unorm(condition[4]), derivative_plus_one_unorm(condition[5]);
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
-    auto derivative = (where(
-        derivative_unorm > 20., derivative_unorm, log1p(exp(derivative_unorm))
-    ) + MIN_DERIVATIVE) / softplus_scale;
+    auto derivative =
+        (where(derivative_unorm > 20., derivative_unorm, log1p(exp(derivative_unorm))) +
+         MIN_DERIVATIVE) /
+        softplus_scale;
     auto derivative_plus_one = (where(
-        derivative_plus_one_unorm > 20.,
-        derivative_plus_one_unorm,
-        log1p(exp(derivative_plus_one_unorm))
-    ) + MIN_DERIVATIVE) / softplus_scale;
+                                    derivative_plus_one_unorm > 20.,
+                                    derivative_plus_one_unorm,
+                                    log1p(exp(derivative_plus_one_unorm))
+                                ) +
+                                MIN_DERIVATIVE) /
+        softplus_scale;
 
     auto low_mask = input < 0.;
     auto high_mask = input > 1.;
@@ -398,19 +410,20 @@ KERNELSPEC void kernel_rqs_inverse(
     auto one_minus_theta = 1. - theta;
     auto theta_one_minus_theta = theta * one_minus_theta;
     auto denominator = delta + d_sum * theta_one_minus_theta;
-    auto derivative_numerator = delta * delta * (
-        derivative_plus_one * theta * theta +
-        two_delta * theta_one_minus_theta +
-        derivative * one_minus_theta * one_minus_theta
-    );
+    auto derivative_numerator = delta * delta *
+        (derivative_plus_one * theta * theta + two_delta * theta_one_minus_theta +
+         derivative * one_minus_theta * one_minus_theta);
     det = where(clamp, 1., denominator * denominator / derivative_numerator);
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_rqs_inverse(
-    FIn<T,0> input, FIn<T,1> condition,
-    FIn<T,0> output_grad, FIn<T,0> det_grad,
-    FOut<T,0> input_grad, FOut<T,1> condition_grad
+    FIn<T, 0> input,
+    FIn<T, 1> condition,
+    FIn<T, 0> output_grad,
+    FIn<T, 0> det_grad,
+    FOut<T, 0> input_grad,
+    FOut<T, 1> condition_grad
 ) {
     FVal<T> height(condition[0]), width(condition[1]);
     FVal<T> cumheight(condition[2]), cumwidth(condition[3]);
@@ -426,9 +439,8 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     auto log1pd = log1p(expd);
     auto log1pdpo = log1p(expdpo);
     auto spd = where(derivative_unorm > 20., derivative_unorm, log1pd);
-    auto spdpo = where(
-        derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo
-    );
+    auto spdpo =
+        where(derivative_plus_one_unorm > 20., derivative_plus_one_unorm, log1pdpo);
     auto spd_md = spd + MIN_DERIVATIVE;
     auto spdpo_md = spdpo + MIN_DERIVATIVE;
     auto softplus_scale = LOG_TWO + MIN_DERIVATIVE;
@@ -477,9 +489,8 @@ KERNELSPEC void backward_kernel_rqs_inverse(
 
     auto grad_tmp24 = det_grad;
     auto grad_tmp23 = grad_tmp24 / derivative_numerator;
-    auto grad_derivative_numerator = - grad_tmp24 * tmp23 / (
-        derivative_numerator * derivative_numerator
-    );
+    auto grad_derivative_numerator =
+        -grad_tmp24 * tmp23 / (derivative_numerator * derivative_numerator);
     auto grad_denominator = 2. * grad_tmp23 * denominator;
 
     auto grad_tmp15 = tmp22 * grad_derivative_numerator;
@@ -505,14 +516,14 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     grad_theta_one_minus_theta += tmp2 * grad_tmp14;
     grad_theta += one_minus_theta * grad_theta_one_minus_theta;
     grad_one_minus_theta += theta * grad_theta_one_minus_theta;
-    grad_theta += - grad_one_minus_theta;
+    grad_theta += -grad_one_minus_theta;
 
     auto grad_tmp13 = output_grad;
     auto grad_cumwidth = output_grad;
     auto grad_width = theta * grad_tmp13;
     grad_theta += width * grad_tmp13;
     auto grad_tmp10 = grad_theta / tmp12;
-    auto grad_tmp12 = - tmp10 * grad_theta / (tmp12 * tmp12);
+    auto grad_tmp12 = -tmp10 * grad_theta / (tmp12 * tmp12);
     auto grad_b = grad_tmp12;
     auto grad_tmp11 = grad_tmp12;
     auto grad_discriminant = 0.5 * grad_tmp11 / tmp11;
@@ -540,13 +551,13 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     auto grad_input = grad_input_diff;
     auto grad_cumheight = -grad_input_diff;
     auto grad_tmp1 = grad_tmp2;
-    grad_two_delta += - grad_tmp2;
+    grad_two_delta += -grad_tmp2;
     grad_delta += 2. * grad_two_delta;
     grad_derivative += grad_tmp1;
     grad_derivative_plus_one += grad_tmp1;
 
     grad_height += grad_delta / width;
-    grad_width += - height * grad_delta / (width * width);
+    grad_width += -height * grad_delta / (width * width);
 
     auto grad_spdpo_md = grad_derivative_plus_one / softplus_scale;
     auto grad_spd_md = grad_derivative / softplus_scale;
@@ -555,13 +566,13 @@ KERNELSPEC void backward_kernel_rqs_inverse(
 
     auto grad_log1pdpo = grad_spdpo;
     auto grad_expdpo = grad_log1pdpo / (1. + expdpo);
-    auto grad_derivative_plus_one_unorm = where(
-        derivative_plus_one_unorm > 20., grad_spdpo, expdpo * grad_expdpo
-    );
+    auto grad_derivative_plus_one_unorm =
+        where(derivative_plus_one_unorm > 20., grad_spdpo, expdpo * grad_expdpo);
 
     auto grad_log1pd = grad_spd;
     auto grad_expd = grad_log1pd / (1. + expd);
-    auto grad_derivative_unorm = where(derivative_unorm > 20., grad_spd, expd * grad_expd);
+    auto grad_derivative_unorm =
+        where(derivative_unorm > 20., grad_spd, expd * grad_expd);
 
     input_grad = where(clamp, output_grad, grad_input);
     condition_grad[0] = where(clamp, 0., grad_height);
@@ -572,8 +583,8 @@ KERNELSPEC void backward_kernel_rqs_inverse(
     condition_grad[5] = where(clamp, 0., grad_derivative_plus_one_unorm);
 }
 
-template<typename T>
-KERNELSPEC void kernel_softmax(FIn<T,1> input, FOut<T,1> output) {
+template <typename T>
+KERNELSPEC void kernel_softmax(FIn<T, 1> input, FOut<T, 1> output) {
     FVal<T> norm(0.), in_max(0.);
     for (std::size_t i = 0; i < input.size(); ++i) {
         auto in = input[i];
@@ -589,9 +600,9 @@ KERNELSPEC void kernel_softmax(FIn<T,1> input, FOut<T,1> output) {
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_softmax(
-    FIn<T,1> output, FIn<T,1> output_grad, FOut<T,1> input_grad
+    FIn<T, 1> output, FIn<T, 1> output_grad, FOut<T, 1> input_grad
 ) {
     std::size_t dim = output.size();
     FVal<T> grad_sum(0.);
@@ -603,10 +614,11 @@ KERNELSPEC void backward_kernel_softmax(
     }
 }
 
-template<typename T>
-KERNELSPEC void kernel_softmax_prior(FIn<T,1> input, FIn<T,1> prior, FOut<T,1> output) {
+template <typename T>
+KERNELSPEC void
+kernel_softmax_prior(FIn<T, 1> input, FIn<T, 1> prior, FOut<T, 1> output) {
     FVal<T> norm(0.);
-    //TODO: solve exp->inf issue
+    // TODO: solve exp->inf issue
     for (std::size_t i = 0; i < input.size(); ++i) {
         auto unnorm_prob = exp(input[i]) * prior[i];
         norm = norm + unnorm_prob;
@@ -617,11 +629,14 @@ KERNELSPEC void kernel_softmax_prior(FIn<T,1> input, FIn<T,1> prior, FOut<T,1> o
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_softmax_prior(
-    FIn<T,1> output, FIn<T,1> output_grad, FOut<T,1> input_grad, FOut<T,1> prior_grad
+    FIn<T, 1> output,
+    FIn<T, 1> output_grad,
+    FOut<T, 1> input_grad,
+    FOut<T, 1> prior_grad
 ) {
-    //TODO: also gradient for prior?
+    // TODO: also gradient for prior?
     std::size_t dim = output.size();
     for (std::size_t i = 0; i < dim; ++i) {
         FVal<T> grad = output_grad[i];
@@ -632,21 +647,24 @@ KERNELSPEC void backward_kernel_softmax_prior(
     }
 }
 
-template<typename T>
-KERNELSPEC void kernel_select(FIn<T,1> input, IIn<T,1> indices, FOut<T,1> output) {
+template <typename T>
+KERNELSPEC void kernel_select(FIn<T, 1> input, IIn<T, 1> indices, FOut<T, 1> output) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
         output[i] = input[single_index(indices[i])];
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void backward_kernel_select(
-    IIn<T,1> indices, FIn<T,1> output_grad, FOut<T,1> input_grad, FOut<T,1> indices_grad
+    IIn<T, 1> indices,
+    FIn<T, 1> output_grad,
+    FOut<T, 1> input_grad,
+    FOut<T, 1> indices_grad
 ) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
         input_grad[single_index(indices[i])] = output_grad[i];
     }
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent
