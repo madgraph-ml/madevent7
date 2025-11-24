@@ -33,104 +33,59 @@ void op_matrix_element(
     const AsyncGpuDevice& device
 ) {
     std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    auto& me_out = locals[instruction.output_indices[0]];
-    me_out = Tensor(DataType::dt_float, {batch_size}, device);
-    std::size_t me_index = locals[instruction.input_indices[2]].index_value();
-    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
-    // TODO: maybe copy can be avoided sometimes
-    auto momenta_in =
-        locals[instruction.input_indices[0]].contiguous(batch_size, device);
-    auto flavor_in =
-        locals[instruction.input_indices[1]].contiguous(batch_size, device);
-
-    auto input_particle_count = momenta_in.size(1);
-    if (input_particle_count != matrix_element.particle_count()) {
-        throw std::runtime_error("Incompatible particle count");
+    std::size_t me_index = locals[instruction.input_indices[0]].index_value();
+    std::size_t input_count = locals[instruction.input_indices[1]].index_value();
+    std::size_t output_count = locals[instruction.input_indices[2]].index_value();
+    TensorVec contiguous_inputs(input_count);
+    std::vector<UmamiInputKey> input_keys(input_count + 1);
+    std::vector<UmamiOutputKey> output_keys(output_count);
+    std::vector<void*> input_ptrs(input_count + 1), output_ptrs(output_count);
+    for (std::size_t i = 0; i < input_count; ++i) {
+        input_keys[i] = static_cast<UmamiInputKey>(
+            locals[instruction.input_indices[3 + 2 * i]].index_value()
+        );
+        contiguous_inputs[i] =
+            locals[instruction.input_indices[3 + 2 * i + 1]].contiguous(
+                batch_size, device
+            );
+        input_ptrs[i] = contiguous_inputs[i].data();
     }
-    if (!matrix_element.on_gpu()) {
+    input_keys[input_count] = UMAMI_IN_GPU_STREAM;
+    input_ptrs[input_count] = device.stream();
+    std::size_t output_offset = 3 + 2 * input_count;
+    for (std::size_t i = 0; i < output_count; ++i) {
+        output_keys[i] = static_cast<UmamiOutputKey>(
+            locals[instruction.input_indices[output_offset + 2 * i]].index_value()
+        );
+        auto& output = locals[instruction.output_indices[i]];
+        auto& output_shape = instruction.output_shapes[i];
+        Sizes shape(output_shape.size() + 1);
+        shape[0] = batch_size;
+        std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
+        output = Tensor(instruction.output_dtypes[i], shape, device);
+        output_ptrs[i] = output.data();
+    }
+    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
+    if (matrix_element.device() != get_device()) {
         throw std::runtime_error("Incompatible device");
     }
-    auto mom_ptr = static_cast<double*>(momenta_in.data());
-    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
-    auto me_ptr = static_cast<double*>(me_out.data());
+    device.sync_barrier();
+
     matrix_element.call(
         matrix_element.process_instance(ThreadPool::thread_index()),
         batch_size,
         batch_size,
-        mom_ptr,
-        flavor_ptr,
-        me_ptr,
-        device.stream()
+        0,
+        input_count,
+        input_keys.data(),
+        input_ptrs.data(),
+        output_count,
+        output_keys.data(),
+        output_ptrs.data()
     );
-}
-
-void op_matrix_element_multichannel(
-    const GpuRuntime::Instruction& instruction,
-    TensorVec& locals,
-    const AsyncGpuDevice& device
-) {
-    std::size_t batch_size = locals[instruction.batch_size_index].size(0);
-    std::size_t me_index = locals[instruction.input_indices[4]].index_value();
-    std::size_t diagram_count = locals[instruction.input_indices[5]].index_value();
-
-    auto& me_out = locals[instruction.output_indices[0]];
-    me_out = Tensor(DataType::dt_float, {batch_size}, device);
-    auto& amp2_out = locals[instruction.output_indices[1]];
-    amp2_out = Tensor(DataType::dt_float, {batch_size, diagram_count}, device);
-    auto& diagram_out = locals[instruction.output_indices[2]];
-    diagram_out = Tensor(DataType::dt_int, {batch_size}, device);
-    auto& color_out = locals[instruction.output_indices[3]];
-    color_out = Tensor(DataType::dt_int, {batch_size}, device);
-    auto& helicity_out = locals[instruction.output_indices[4]];
-    helicity_out = Tensor(DataType::dt_int, {batch_size}, device);
-
-    auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
-
-    // TODO: maybe copy can be avoided sometimes
-    auto momenta_in =
-        locals[instruction.input_indices[0]].contiguous(batch_size, device);
-    auto alpha_s_in =
-        locals[instruction.input_indices[1]].contiguous(batch_size, device);
-    auto random_in =
-        locals[instruction.input_indices[2]].contiguous(batch_size, device);
-    auto flavor_in =
-        locals[instruction.input_indices[3]].contiguous(batch_size, device);
-    auto input_particle_count = momenta_in.size(1);
-    if (input_particle_count != matrix_element.particle_count()) {
-        throw std::runtime_error("Incompatible particle count");
+    for (auto& input : contiguous_inputs) {
+        input.reset(device);
     }
-    if (diagram_count != matrix_element.diagram_count()) {
-        throw std::runtime_error("Incompatible diagram count");
-    }
-    if (!matrix_element.on_gpu()) {
-        throw std::runtime_error("Incompatible device");
-    }
-
-    auto mom_ptr = static_cast<double*>(momenta_in.data());
-    auto alpha_ptr = static_cast<double*>(alpha_s_in.data());
-    auto random_ptr = static_cast<double*>(random_in.data());
-    auto flavor_ptr = static_cast<me_int_t*>(flavor_in.data());
-    auto me_ptr = static_cast<double*>(me_out.data());
-    auto amp2_ptr = static_cast<double*>(amp2_out.data());
-    auto diag_ptr = static_cast<me_int_t*>(diagram_out.data());
-    auto color_ptr = static_cast<me_int_t*>(color_out.data());
-    auto helicity_ptr = static_cast<me_int_t*>(helicity_out.data());
-
-    matrix_element.call_multichannel(
-        matrix_element.process_instance(ThreadPool::thread_index()),
-        batch_size,
-        batch_size,
-        mom_ptr,
-        alpha_ptr,
-        random_ptr,
-        flavor_ptr,
-        me_ptr,
-        amp2_ptr,
-        color_ptr,
-        diag_ptr,
-        helicity_ptr,
-        device.stream()
-    );
 }
 
 void op_matmul(
@@ -170,6 +125,9 @@ void op_matmul(
         static_cast<double*>(output.data()),
         batch_size
     ));
+    input.reset(device);
+    weight.reset(device);
+    bias.reset(device);
 }
 
 void backward_op_matmul(
@@ -266,6 +224,9 @@ void backward_op_matmul(
         1
     ));
     gpuFreeAsync(ones, stream);
+    input.reset(device);
+    weight.reset(device);
+    output_grad.reset(device);
 }
 
 struct NotMinusOne {
@@ -312,6 +273,8 @@ void op_nonzero(
                  ) -
         output_ptr;
     output = output_tmp.slice(0, 0, count);
+    indices_tmp.reset(device);
+    output_tmp.reset(device);
 }
 
 template <int dim>
@@ -608,6 +571,10 @@ void op_unweight(
         ptr_all_weights,
         ptr_uw_weights
     );
+    rand.reset(device);
+    indices_tmp.reset(device);
+    uw_weights_tmp.reset(device);
+    indices_compacted.reset(device);
 }
 
 struct Decrement {
@@ -655,6 +622,7 @@ void histogram_common(
         reduce_tmp_ptr,
         values_ptr
     );
+    reduce_tmp.reset(device);
 }
 
 __global__ void kernel_prepare_vegas_hist(
@@ -719,6 +687,8 @@ void op_vegas_histogram(
     histogram_common(
         device, padded_size, n_dims, n_bins, indices_tmp, weights_tmp, counts, values
     );
+    indices_tmp.reset(device);
+    weights_tmp.reset(device);
 }
 
 __global__ void kernel_prepare_discrete_hist(
@@ -774,6 +744,8 @@ void op_discrete_histogram(
     histogram_common(
         device, padded_size, 1, n_opts, indices_tmp, weights_tmp, counts, values
     );
+    indices_tmp.reset(device);
+    weights_tmp.reset(device);
 }
 
 } // namespace
