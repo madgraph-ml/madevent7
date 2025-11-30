@@ -880,5 +880,12 @@ kernel_mirror_momenta(FIn<T, 2> p_ext, IIn<T, 0> mirror, FOut<T, 2> p_out) {
     }
 }
 
+template <typename T>
+KERNELSPEC void
+kernel_momenta_to_x1x2(FIn<T, 2> p_ext, FIn<T, 0> e_cm, FOut<T, 0> x1, FOut<T, 0> x2) {
+    x1 = 2. * p_ext[0][0] / e_cm;
+    x2 = 2. * p_ext[1][0] / e_cm;
+}
+
 } // namespace kernels
 } // namespace madevent

@@ -160,3 +160,15 @@ MatrixElement::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
     }
     return fb.matrix_element(matrix_args);
 }
+
+std::vector<MatrixElement::MatrixElementInput> MatrixElement::external_inputs() const {
+    std::vector<MatrixElement::MatrixElementInput> ret;
+    for (auto input : _inputs) {
+        if (!_sample_random_inputs ||
+            (input != random_color_in && input != random_helicity_in &&
+             input != random_diagram_in)) {
+            ret.push_back(input);
+        }
+    }
+    return ret;
+}

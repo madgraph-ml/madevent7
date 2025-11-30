@@ -5,121 +5,167 @@
 using namespace madevent;
 
 DifferentialCrossSection::DifferentialCrossSection(
-    const std::vector<std::vector<me_int_t>>& pid_options,
-    std::size_t matrix_element_index,
-    const RunningCoupling& running_coupling,
-    const std::optional<PdfGrid>& pdf_grid,
+    const MatrixElement& matrix_element,
     double cm_energy,
+    const RunningCoupling& running_coupling,
     const EnergyScale& energy_scale,
-    bool simple_matrix_element,
-    std::size_t channel_count,
-    bool has_mirror
+    const nested_vector2<me_int_t>& pid_options,
+    bool has_pdf1,
+    bool has_pdf2,
+    const std::optional<PdfGrid>& pdf_grid1,
+    const std::optional<PdfGrid>& pdf_grid2,
+    bool has_mirror,
+    bool input_momentum_fraction
 ) :
     FunctionGenerator(
         "DifferentialCrossSection",
         [&] {
-            TypeVec arg_types{
-                batch_four_vec_array(pid_options.at(0).size()),
-                batch_float,
-                batch_float,
-                batch_int
-            };
-            if (has_mirror) {
-                arg_types.push_back(batch_int);
-            }
-            if (!pdf_grid) {
-                std::set<int> pids1, pids2;
-                for (auto& option : pid_options) {
-                    pids1.insert(option.at(0));
-                    pids2.insert(option.at(1));
+            TypeVec arg_types;
+            for (auto [arg_type, input] :
+                 zip(matrix_element.arg_types(), matrix_element.external_inputs())) {
+                if (input != MatrixElement::alpha_s_in) {
+                    arg_types.push_back(arg_type);
                 }
-                arg_types.push_back(batch_float_array(pids1.size()));
-                arg_types.push_back(batch_float_array(pids2.size()));
-                arg_types.push_back(batch_float);
+            }
+            if (input_momentum_fraction) {
+                arg_types.push_back(batch_float); // x1
+                arg_types.push_back(batch_float); // x2
+            }
+            arg_types.push_back(batch_int); // pdf_id
+            if (has_mirror) {
+                arg_types.push_back(batch_int); // mirror
+            }
+            bool eval_pdf = false;
+            auto add_pdf_args = [&](auto& pdf_grid, bool has_pdf, int index) {
+                if (!pdf_grid1 && has_pdf1) {
+                    std::set<int> pids;
+                    for (auto& option : pid_options) {
+                        pids.insert(option.at(index));
+                    }
+                    arg_types.push_back(batch_float_array(pids.size())); // pdf1 cache
+                    eval_pdf = true;
+                }
+            };
+            add_pdf_args(pdf_grid1, has_pdf1, 0);
+            add_pdf_args(pdf_grid2, has_pdf2, 1);
+            if (eval_pdf) {
+                arg_types.push_back(batch_float); // renormalization scale
+                arg_types.push_back(batch_int);   // pdf flavor index
             }
             return arg_types;
         }(),
-        simple_matrix_element
-            ? TypeVec{batch_float}
-            : TypeVec{batch_float, batch_float_array(channel_count), batch_int, batch_int, batch_int}
+        matrix_element.return_types()
     ),
     _pid_options(pid_options),
-    _matrix_element(
-        matrix_element_index,
-        pid_options.at(0).size(),
-        {},
-        {}, // TODO
-        // simple_matrix_element,
-        channel_count
-    ),
+    _matrix_element(matrix_element),
     _running_coupling(running_coupling),
-    _e_cm2(cm_energy * cm_energy),
+    _e_cm(cm_energy),
     _energy_scale(energy_scale),
-    _simple_matrix_element(simple_matrix_element),
     _has_mirror(has_mirror),
-    _channel_count(channel_count) {
-    if (pdf_grid) {
-        std::vector<int> pids1, pids2;
-        for (auto& option : pid_options) {
-            pids1.push_back(option.at(0));
-            pids2.push_back(option.at(1));
+    _input_momentum_fraction(input_momentum_fraction) {
+    auto init_pdf = [&](auto& pdf_grid, bool has_pdf, int index) {
+        if (has_pdf1) {
+            if (pdf_grid1) {
+                std::vector<int> pids;
+                for (auto& option : pid_options) {
+                    pids.push_back(option.at(index));
+                }
+                _pdfs.at(index) = PartonDensity(pdf_grid1.value(), pids, true);
+            } else {
+                std::set<int> pids;
+                for (auto& option : pid_options) {
+                    pids.insert(option.at(index));
+                }
+                for (auto& option : pid_options) {
+                    _pdf_indices.at(index).push_back(
+                        std::distance(pids.begin(), pids.find(option.at(index)))
+                    );
+                }
+            }
         }
-        _pdf1 = PartonDensity(pdf_grid.value(), pids1, true);
-        _pdf2 = PartonDensity(pdf_grid.value(), pids2, true);
-    } else {
-        std::set<int> pids1, pids2;
-        for (auto& option : pid_options) {
-            pids1.insert(option.at(0));
-            pids2.insert(option.at(1));
-        }
-        for (auto& option : pid_options) {
-            _pdf_indices1.push_back(
-                std::distance(pids1.begin(), pids1.find(option.at(0)))
-            );
-            _pdf_indices2.push_back(
-                std::distance(pids2.begin(), pids2.find(option.at(1)))
-            );
-        }
-    }
+    };
+    init_pdf(pdf_grid1, has_pdf1, 0);
+    init_pdf(pdf_grid2, has_pdf2, 1);
 }
 
 ValueVec DifferentialCrossSection::build_function_impl(
     FunctionBuilder& fb, const ValueVec& args
 ) const {
-    auto momenta = args.at(0);
-    auto x1 = args.at(1);
-    auto x2 = args.at(2);
-    auto flavor_id = args.at(3);
-    // auto mirror_id = args.at(4);
-    std::size_t arg_index = 4;
+    std::size_t arg_index = 0;
+    int alpha_s_index = -1;
+    Value momenta;
+    ValueVec matrix_args;
+    for (auto input : _matrix_element.external_inputs()) {
+        if (input == MatrixElement::alpha_s_in) {
+            alpha_s_index = arg_index;
+        } else {
+            Value arg = args.at(arg_index++);
+            if (input == MatrixElement::momenta_in) {
+                momenta = arg;
+            }
+            matrix_args.push_back(arg);
+        }
+    }
+
+    std::array<Value, 2> x1x2;
+    if (_input_momentum_fraction) {
+        x1x2 = {args.at(arg_index), args.at(arg_index + 1)};
+        arg_index += 2;
+    } else {
+        x1x2 = fb.momenta_to_x1x2(momenta, _e_cm);
+    }
+    auto pdf_flavor_id = args.at(arg_index++);
     if (_has_mirror) {
-        ++arg_index;
+        Value mirror_id = args.at(arg_index++);
     }
     // TODO: need to use mirror_id if we have two different PDFs
-
-    Value pdf1, pdf2, ren_scale;
-    if (_pdf1) {
-        auto scales = _energy_scale.build_function(fb, {momenta});
-        pdf1 = _pdf1.value().build_function(fb, {x1, scales.at(1), flavor_id}).at(0);
-        pdf2 = _pdf2.value().build_function(fb, {x2, scales.at(2), flavor_id}).at(0);
+    ValueVec scales;
+    Value ren_scale;
+    if (_pdfs.at(0) || _pdfs.at(1)) {
+        scales = _energy_scale.build_function(fb, {momenta});
         ren_scale = scales.at(0);
     } else {
-        pdf1 = fb.gather(fb.gather_int(flavor_id, _pdf_indices1), args.at(arg_index));
-        pdf2 =
-            fb.gather(fb.gather_int(flavor_id, _pdf_indices2), args.at(arg_index + 1));
-        ren_scale = args.at(arg_index + 2);
+        ren_scale = args.at(arg_index++);
     }
 
-    if (_simple_matrix_element) {
-        auto me_result = _matrix_element.build_function(fb, {momenta, flavor_id});
-        return {fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2)};
-    } else {
-        auto alpha_s = _running_coupling.build_function(fb, {ren_scale}).at(0);
-        Value me2, chan_weights, color_id, diagram_id;
-        auto me_result =
-            _matrix_element.build_function(fb, {momenta, flavor_id, alpha_s});
-        me_result.at(0) =
-            fb.diff_cross_section(x1, x2, pdf1, pdf2, me_result.at(0), _e_cm2);
-        return me_result;
+    std::array<Value, 2> pdf_outputs{1., 1.};
+    for (std::size_t i = 0; auto [pdf_output, pdf, x, pdf_indices] :
+                            zip(pdf_outputs, _pdfs, x1x2, _pdf_indices)) {
+        if (pdf) {
+            pdf_output = pdf.value()
+                             .build_function(fb, {x, scales.at(i + 1), pdf_flavor_id})
+                             .at(0);
+        } else {
+            pdf_output = fb.gather(
+                fb.gather_int(pdf_flavor_id, pdf_indices), args.at(arg_index + i)
+            );
+        }
     }
+
+    if (alpha_s_index != -1) {
+        matrix_args.insert(
+            matrix_args.begin() + alpha_s_index,
+            _running_coupling.build_function(fb, {ren_scale}).at(0)
+        );
+    }
+
+    auto me_result = _matrix_element.build_function(fb, matrix_args);
+    auto search = std::find(
+        _matrix_element.outputs().begin(),
+        _matrix_element.outputs().end(),
+        MatrixElement::matrix_element_out
+    );
+    if (search == _matrix_element.outputs().end()) {
+        throw std::runtime_error("matrix element missing in return values");
+    }
+    std::size_t me_index = search - _matrix_element.outputs().begin();
+    me_result.at(me_index) = fb.diff_cross_section(
+        x1x2.at(0),
+        x1x2.at(1),
+        pdf_outputs.at(0),
+        pdf_outputs.at(1),
+        me_result.at(me_index),
+        _e_cm * _e_cm
+    );
+    return me_result;
 }

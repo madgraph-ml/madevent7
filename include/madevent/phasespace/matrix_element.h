@@ -51,6 +51,9 @@ public:
     std::size_t matrix_element_index() const { return _matrix_element_index; }
     std::size_t diagram_count() const { return _diagram_count; }
     std::size_t particle_count() const { return _particle_count; }
+    const std::vector<MatrixElementInput>& inputs() const { return _inputs; }
+    const std::vector<MatrixElementOutput>& outputs() const { return _outputs; }
+    std::vector<MatrixElementInput> external_inputs() const;
 
 private:
     ValueVec

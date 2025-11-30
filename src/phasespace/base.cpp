@@ -40,8 +40,25 @@ void check_types(
             );
         }
         if (value.type.shape != type.shape) {
+            std::string expected_shape, got_shape;
+            for (auto& size : type.shape) {
+                expected_shape += &size == &type.shape.back()
+                    ? std::format("{}", size)
+                    : std::format("{}, ", size);
+            }
+            for (auto& size : value.type.shape) {
+                got_shape += &size == &value.type.shape.back()
+                    ? std::format("{}", size)
+                    : std::format("{}, ", size);
+            }
             throw std::runtime_error(
-                std::format("{}, value {}: Invalid shape", prefix, val_index)
+                std::format(
+                    "{}, value {}: Invalid shape, expected ({}), got ({})",
+                    prefix,
+                    val_index,
+                    expected_shape,
+                    got_shape
+                )
             );
         }
         ++val_index;

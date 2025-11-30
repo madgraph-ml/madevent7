@@ -92,7 +92,7 @@ Integrand::Integrand(
                 ret_types.push_back(batch_float_array(
                     chan_weight_remap.size() > 0 ? remapped_chan_count
                         : subchan_weights        ? subchan_weights->channel_count()
-                                                 : diff_xs.channel_count()
+                                          : diff_xs.matrix_element().diagram_count()
                 ));
                 ret_types.push_back(batch_float);
             }
@@ -403,7 +403,7 @@ ValueVec Integrand::build_common_part(
     Value chan_weights_acc;
     std::size_t channel_count = _chan_weight_remap.size() > 0 ? _remapped_chan_count
         : _subchan_weights ? _subchan_weights->channel_count()
-                           : _diff_xs.channel_count();
+                           : _diff_xs.matrix_element().diagram_count();
     if (channel_count > 1 && _prop_chan_weights) {
         chan_weights_acc =
             _prop_chan_weights->build_function(fb, {result.momenta_acc()}).at(0);
