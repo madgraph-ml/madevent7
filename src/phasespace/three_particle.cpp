@@ -8,9 +8,13 @@ Mapping::Result ThreeBodyDecay::build_forward_impl(
     auto r_e1 = inputs.at(0), r_e2 = inputs.at(1);
     auto r_phi = inputs.at(2), r_cos_theta = inputs.at(3), r_beta = inputs.at(4);
     auto m0 = inputs.at(5), m1 = inputs.at(6), m2 = inputs.at(7), m3 = inputs.at(8);
-    auto [p1, p2, p3, det] = _com ?
-        fb.three_body_decay_com(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3) :
-        fb.three_body_decay(r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, inputs.at(9));
+    auto [p1, p2, p3, det] = _com
+        ? fb.three_body_decay_com(
+              r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3
+          )
+        : fb.three_body_decay(
+              r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, inputs.at(9)
+          );
     return {{p1, p2, p3}, det};
 }
 
@@ -23,9 +27,10 @@ Mapping::Result ThreeBodyDecay::build_inverse_impl(
 Mapping::Result TwoToThreeParticleScattering::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    auto r_choice = inputs.at(0), r_s23 = inputs.at(1), r_t1= inputs.at(2), m1 = inputs.at(3), m2 = inputs.at(4);
+    auto r_choice = inputs.at(0), r_s23 = inputs.at(1), r_t1 = inputs.at(2),
+         m1 = inputs.at(3), m2 = inputs.at(4);
     auto p_a = conditions.at(0), p_b = conditions.at(1), p_3 = conditions.at(2);
-    auto [t1_min, t1_max] = fb.t_inv_min_max(p_a, fb.sub(p_b,p_3), m1, m2);
+    auto [t1_min, t1_max] = fb.t_inv_min_max(p_a, fb.sub(p_b, p_3), m1, m2);
     auto [t1_vec, det_t1] = _t_invariant.build_forward(fb, {r_t1}, {t1_min, t1_max});
     auto [s_min, s_max] = fb.s_inv_min_max(p_a, p_b, p_3, t1_vec.at(0), m1, m2);
     auto [s23_vec, det_s23] = _s_invariant.build_forward(fb, {r_s23}, {s_min, s_max});

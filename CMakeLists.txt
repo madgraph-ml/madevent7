@@ -11,6 +11,11 @@ if(CMAKE_CUDA_COMPILER)
     enable_language(CUDA)
     set(COMPILE_CUDA 1)
 endif()
+check_language(HIP)
+if(CMAKE_HIP_COMPILER)
+    enable_language(HIP)
+    set(COMPILE_HIP 1)
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
@@ -22,9 +27,9 @@ else()
     message(STATUS "LTO not supported: ${ipo_error}")
 endif()
 
-############################################################################################
-# Load dependencies                                                                        #
-############################################################################################
+########################################################################################
+# Load dependencies                                                                    #
+########################################################################################
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 include(FetchContent)
@@ -33,7 +38,7 @@ include(ExternalProject)
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG        v3.0.0
+    GIT_TAG        v3.0.1
 )
 FetchContent_MakeAvailable(pybind11)
 
@@ -45,6 +50,11 @@ FetchContent_MakeAvailable(json)
 
 if(COMPILE_CUDA)
     find_package(CUDAToolkit REQUIRED)
+endif()
+if(COMPILE_HIP)
+    find_package(rocblas REQUIRED)
+    find_package(rocrand REQUIRED)
+    find_package(rocthrust REQUIRED)
 endif()
 
 if(USE_SIMD)
@@ -82,9 +92,9 @@ set(BLA_STATIC ON)
 set(BLA_SIZEOF_INTEGER 4)
 find_package(BLAS REQUIRED)
 
-############################################################################################
-# Main madevent module                                                                     #
-############################################################################################
+########################################################################################
+# Main madevent module                                                                 #
+########################################################################################
 
 add_library(
     madevent
@@ -98,6 +108,7 @@ add_library(
     src/runtime/vegas_optimizer.cpp
     src/runtime/discrete_optimizer.cpp
     src/runtime/runtime_base.cpp
+    src/runtime/lhe_output.cpp
     src/madcode/type.cpp
     src/madcode/function.cpp
     src/madcode/instruction.cpp
@@ -138,6 +149,7 @@ add_library(
     include/madevent/runtime/vegas_optimizer.h
     include/madevent/runtime/discrete_optimizer.h
     include/madevent/runtime/runtime_base.h
+    include/madevent/runtime/lhe_output.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h
@@ -187,9 +199,9 @@ install(
 )
 
 
-############################################################################################
-# Compute kernel source files                                                              #
-############################################################################################
+########################################################################################
+# Compute kernel source files                                                          #
+########################################################################################
 
 set(
     KERNEL_SRC
@@ -208,20 +220,20 @@ set(
 )
 
 
-############################################################################################
-# CUDA runtime                                                                             #
-############################################################################################
+########################################################################################
+# GPU runtimes                                                                         #
+########################################################################################
 
 if(COMPILE_CUDA)
     add_library(
         madevent_cuda
         SHARED
-        src/cuda/runtime.cu
-        src/cuda/device.cu
-        src/cuda/kernel_definitions.h
-        src/cuda/runtime.h
-        src/cuda/tensor.h
-        src/cuda/device.h
+        src/gpu/runtime.cu
+        src/gpu/device.cu
+        src/gpu/kernel_definitions.h
+        src/gpu/runtime.h
+        src/gpu/tensor.h
+        src/gpu/device.h
         ${KERNEL_SRC}
     )
     set_target_properties(
@@ -235,10 +247,36 @@ if(COMPILE_CUDA)
     install(TARGETS madevent_cuda DESTINATION madevent7/lib)
 endif()
 
+if(COMPILE_HIP)
+    add_library(
+        madevent_hip
+        SHARED
+        src/gpu/runtime.hip
+        src/gpu/device.hip
+        src/gpu/kernel_definitions.h
+        src/gpu/runtime.h
+        src/gpu/tensor.h
+        src/gpu/device.h
+        ${KERNEL_SRC}
+    )
+    set_target_properties(
+        madevent_hip PROPERTIES HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx950;gfx1150;gfx1151"
+    )
+    target_include_directories(madevent_hip PUBLIC include)
+    set_property(TARGET madevent_hip PROPERTY HIP_STANDARD 20)
+    set_property(TARGET madevent_hip PROPERTY HIP_EXTENSIONS OFF)
+    target_link_libraries(madevent_hip PRIVATE madevent)
+    target_link_libraries(madevent_hip PRIVATE hip::device)
+    target_link_libraries(madevent_hip PRIVATE roc::rocblas)
+    target_link_libraries(madevent_hip PRIVATE roc::rocrand)
+    target_link_libraries(madevent_hip PRIVATE roc::rocthrust)
+    install(TARGETS madevent_hip DESTINATION madevent7/lib)
+endif()
 
-############################################################################################
-# CPU runtime                                                                              #
-############################################################################################
+
+########################################################################################
+# CPU runtime                                                                          #
+########################################################################################
 
 if(NOT USE_SIMD)
     set(CPU_TARGETS madevent_cpu)
@@ -254,7 +292,10 @@ else()
     set(SIMD_DEFINES "" "USE_SIMD_AVX2=1" "USE_SIMD_AVX512=1")
 endif()
 
-foreach(cpu_target simd_flag simd_define IN ZIP_LISTS CPU_TARGETS SIMD_FLAGS SIMD_DEFINES)
+foreach(
+    cpu_target simd_flag simd_define
+    IN ZIP_LISTS CPU_TARGETS SIMD_FLAGS SIMD_DEFINES
+)
     add_library(
         ${cpu_target}
         SHARED
@@ -284,9 +325,9 @@ foreach(cpu_target simd_flag simd_define IN ZIP_LISTS CPU_TARGETS SIMD_FLAGS SIM
 endforeach()
 
 
-############################################################################################
-# Python bindings                                                                          #
-############################################################################################
+########################################################################################
+# Python bindings                                                                      #
+########################################################################################
 
 python_add_library(
     _madevent_py

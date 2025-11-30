@@ -32,3 +32,16 @@ repos:
       - id: isort
         args: ['--settings-path=./pyproject.toml']
   # --- C++ formatting & analysis ---------------------------------------------
+  - repo: local
+    hooks:
+      - id: generate-headers
+        name: generate headers
+        files: ^instruction_set.yaml$
+        entry: python generate_headers.py
+        language: python
+        additional_dependencies: [pyyaml]
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: 'v21.1.6'
+    hooks:
+      - id: clang-format
+        types_or: [c++, c, cuda]

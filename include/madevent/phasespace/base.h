@@ -17,8 +17,7 @@ public:
         _name(name),
         _input_types(input_types),
         _output_types(output_types),
-        _condition_types(condition_types)
-    {}
+        _condition_types(condition_types) {}
     virtual ~Mapping() = default;
     Result build_forward(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions = {}
@@ -34,7 +33,7 @@ public:
     const std::string& name() const { return _name; }
 
 protected:
-    //TODO: make parameters const ref
+    // TODO: make parameters const ref
     virtual Result build_forward_impl(
         FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
     ) const = 0;
@@ -54,8 +53,7 @@ public:
     FunctionGenerator(
         const std::string& name, const TypeVec& arg_types, const TypeVec& return_types
     ) :
-        _name(name), _arg_types(arg_types), _return_types(return_types)
-    {}
+        _name(name), _arg_types(arg_types), _return_types(return_types) {}
     virtual ~FunctionGenerator() = default;
     ValueVec build_function(FunctionBuilder& fb, const ValueVec& args) const;
     Function function() const;
@@ -64,9 +62,8 @@ public:
     const std::string& name() const { return _name; }
 
 protected:
-    virtual ValueVec build_function_impl(
-        FunctionBuilder& fb, const ValueVec& args
-    ) const = 0;
+    virtual ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const = 0;
 
 private:
     std::string _name;
@@ -74,4 +71,4 @@ private:
     TypeVec _return_types;
 };
 
-}
+} // namespace madevent

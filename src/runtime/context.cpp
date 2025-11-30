@@ -4,87 +4,107 @@
 
 using namespace madevent;
 
-MatrixElementApi::MatrixElementApi(const std::string& file, const std::string& param_card) {
+MatrixElementApi::MatrixElementApi(
+    const std::string& file, const std::string& param_card, std::size_t index
+) :
+    _file_name(file), _index(index) {
     _shared_lib = std::unique_ptr<void, std::function<void(void*)>>(
         dlopen(file.c_str(), RTLD_NOW), [](void* lib) { dlclose(lib); }
     );
     if (!_shared_lib) {
-        throw std::runtime_error(std::format(
-            "Could not load shared object {}\n{}", file, dlerror()
-        ));
-    }
-
-    SubProcessInfo* (*subprocess_info)() = reinterpret_cast<decltype(subprocess_info)>(
-        dlsym(_shared_lib.get(), "subprocess_info")
-    );
-    if (subprocess_info == nullptr) {
-        throw std::runtime_error(std::format(
-            "Did not find symbol subprocess_info in shared object {}", file
-        ));
-    }
-    _subprocess_info = *subprocess_info();
-
-    _init_subprocess = reinterpret_cast<decltype(_init_subprocess)>(
-        dlsym(_shared_lib.get(), "init_subprocess")
-    );
-    if (_init_subprocess == nullptr) {
-        throw std::runtime_error(std::format(
-            "Did not find symbol init_subprocess in shared object {}", file
-        ));
-    }
-
-    _compute_matrix_element = reinterpret_cast<decltype(_compute_matrix_element)>(
-        dlsym(_shared_lib.get(), "compute_matrix_element")
-    );
-    if (_compute_matrix_element == nullptr) {
-        throw std::runtime_error(std::format(
-            "Did not find symbol compute_matrix_element in shared object {}", file
-        ));
-    }
-
-    _compute_matrix_element_multichannel = reinterpret_cast<
-        decltype(_compute_matrix_element_multichannel)
-    >(dlsym(_shared_lib.get(), "compute_matrix_element_multichannel"));
-    if (_compute_matrix_element_multichannel == nullptr) {
-        throw std::runtime_error(std::format(
-            "Did not find symbol compute_matrix_element_multichannel in shared object {}",
-            file
-        ));
-    }
-
-    _free_subprocess = reinterpret_cast<decltype(_free_subprocess)>(
-        dlsym(_shared_lib.get(), "free_subprocess")
-    );
-    if (_free_subprocess == nullptr) {
-        throw std::runtime_error(std::format(
-            "Did not find symbol free_subprocess in shared object {}", file
-        ));
-    }
-
-    _instances = ThreadResource<InstanceType>(default_thread_pool(), [&]{
-        return InstanceType(
-            _init_subprocess(param_card.c_str()),
-            [this](void* proc) { _free_subprocess(proc); }
+        throw std::runtime_error(
+            std::format("Could not load shared object {}\n{}", file, dlerror())
         );
+    }
+
+    _get_meta = reinterpret_cast<decltype(&umami_get_meta)>(
+        dlsym(_shared_lib.get(), "umami_get_meta")
+    );
+    if (_get_meta == nullptr) {
+        throw std::runtime_error(
+            std::format("Did not find symbol umami_get_meta in shared object {}", file)
+        );
+    }
+
+    _initialize = reinterpret_cast<decltype(&umami_initialize)>(
+        dlsym(_shared_lib.get(), "umami_initialize")
+    );
+    if (_initialize == nullptr) {
+        throw std::runtime_error(
+            std::format(
+                "Did not find symbol umami_initialize in shared object {}", file
+            )
+        );
+    }
+
+    _matrix_element = reinterpret_cast<decltype(&umami_matrix_element)>(
+        dlsym(_shared_lib.get(), "umami_matrix_element")
+    );
+    if (_matrix_element == nullptr) {
+        throw std::runtime_error(
+            std::format(
+                "Did not find symbol umami_matrix_element in shared object {}", file
+            )
+        );
+    }
+
+    _free =
+        reinterpret_cast<decltype(&umami_free)>(dlsym(_shared_lib.get(), "umami_free"));
+    if (_free == nullptr) {
+        throw std::runtime_error(
+            std::format("Did not find symbol umami_free in shared object {}", file)
+        );
+    }
+
+    _instances = ThreadResource<InstanceType>(default_thread_pool(), [&] {
+        void* instance;
+        check_umami_status(_initialize(&instance, param_card.c_str()));
+        return InstanceType(instance, [this](void* proc) { _free(proc); });
     });
 }
 
-std::size_t Context::load_matrix_element(
-    const std::string& file, const std::string& param_card
-) {
-    matrix_elements.emplace_back(file, param_card);
-    return matrix_elements.size() - 1;
+void MatrixElementApi::check_umami_status(UmamiStatus status) const {
+    std::string error;
+    switch (status) {
+    case UMAMI_SUCCESS:
+        return;
+    case UMAMI_ERROR:
+        throw_error("unspecified error");
+    case UMAMI_ERROR_NOT_IMPLEMENTED:
+        throw_error("functionality not implemented");
+    case UMAMI_ERROR_UNSUPPORTED_INPUT:
+        throw_error("unsupported input key");
+    case UMAMI_ERROR_UNSUPPORTED_OUTPUT:
+        throw_error("unsupported output key");
+    case UMAMI_ERROR_UNSUPPORTED_META:
+        throw_error("unsupported metadata key");
+    case UMAMI_ERROR_MISSING_INPUT:
+        throw_error("missing input");
+    default:
+        throw_error("unknown error");
+    }
+}
+
+void MatrixElementApi::throw_error(const std::string& message) const {
+    throw std::runtime_error(
+        std::format("Error in call to matrix element API {}: {}", _file_name, message)
+    );
+}
+
+const MatrixElementApi&
+Context::load_matrix_element(const std::string& file, const std::string& param_card) {
+    return matrix_elements.emplace_back(file, param_card, matrix_elements.size());
 }
 
 Tensor Context::define_global(
     const std::string& name, DataType dtype, const SizeVec& shape, bool requires_grad
 ) {
-    SizeVec full_shape {1};
+    SizeVec full_shape{1};
     full_shape.insert(full_shape.end(), shape.begin(), shape.end());
     if (globals.contains(name)) {
-        throw std::invalid_argument(std::format(
-            "Context already contains a global named {}", name
-        ));
+        throw std::invalid_argument(
+            std::format("Context already contains a global named {}", name)
+        );
     }
     Tensor tensor(dtype, full_shape, _device);
     tensor.zero();
@@ -96,9 +116,9 @@ Tensor Context::global(const std::string& name) {
     if (auto search = globals.find(name); search != globals.end()) {
         return std::get<0>(search->second);
     } else {
-        throw std::invalid_argument(std::format(
-            "Context does not contain a global named {}", name
-        ));
+        throw std::invalid_argument(
+            std::format("Context does not contain a global named {}", name)
+        );
     }
 }
 
@@ -110,9 +130,9 @@ bool Context::global_requires_grad(const std::string& name) {
     if (auto search = globals.find(name); search != globals.end()) {
         return std::get<1>(search->second);
     } else {
-        throw std::invalid_argument(std::format(
-            "Context does not contain a global named {}", name
-        ));
+        throw std::invalid_argument(
+            std::format("Context does not contain a global named {}", name)
+        );
     }
 }
 
@@ -123,13 +143,9 @@ const MatrixElementApi& Context::matrix_element(std::size_t index) const {
     return matrix_elements[index];
 }
 
-void Context::save(const std::string& file) const {
+void Context::save(const std::string& file) const {}
 
-}
-
-void Context::load(const std::string& file) {
-
-}
+void Context::load(const std::string& file) {}
 
 ContextPtr madevent::default_context() {
     static ContextPtr context = std::make_shared<Context>(cpu_device());
@@ -138,5 +154,10 @@ ContextPtr madevent::default_context() {
 
 ContextPtr madevent::default_cuda_context() {
     static ContextPtr context = std::make_shared<Context>(cuda_device());
+    return context;
+}
+
+ContextPtr madevent::default_hip_context() {
+    static ContextPtr context = std::make_shared<Context>(hip_device());
     return context;
 }

@@ -2,7 +2,7 @@ import yaml
 
 
 def main():
-    with open("src/madcode/instruction_set.yaml") as f:
+    with open("instruction_set.yaml") as f:
         data = list(yaml.safe_load_all(f))
 
     commands = {}
@@ -20,8 +20,8 @@ def main():
     instruction_set_mixin(commands)
     runtime_mixin(commands, "cpu")
     runtime_backward_mixin(commands, "cpu")
-    runtime_mixin(commands, "cuda")
-    runtime_backward_mixin(commands, "cuda")
+    runtime_mixin(commands, "gpu")
+    runtime_backward_mixin(commands, "gpu")
 
 
 def write_autogen(f):
@@ -34,7 +34,12 @@ def write_autogen(f):
 def function_builder_mixin(commands):
     with open("include/madevent/madcode/function_builder_mixin.h", "w") as f:
         write_autogen(f)
+        first = True
         for name, cmd in commands.items():
+            if first:
+                first = False
+            else:
+                f.write("\n")
             if cmd["inputs"] == "any":
                 parameters = "ValueVec args"
                 instruction_call = f'instruction("{name}", args)'
@@ -64,7 +69,7 @@ def function_builder_mixin(commands):
                         f"    return {{{return_array}}};"
                     )
 
-            f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n\n")
+            f.write(f"{return_type} {name}({parameters}) {{\n{func_body}\n}}\n")
 
 
 def instruction_set_python(commands):
@@ -181,8 +186,8 @@ def runtime_mixin(commands, device):
                     else:
                         kernel = f"kernel_{name}<CpuTypes>, kernel_{name}<CpuTypes>"
                     device_arg = ", DeviceType"
-                elif device == "cuda":
-                    kernel = f"kernel_{name}<CudaTypes>"
+                elif device == "gpu":
+                    kernel = f"kernel_{name}<GpuTypes>"
                     device_arg = ""
                 foreach_func = (
                     f"tensor_foreach_dynamic<{kernel}, {n_inputs}, {n_outputs}{device_arg}>"
@@ -242,8 +247,8 @@ def runtime_backward_mixin(commands, device):
                             f"backward_kernel_{name}<CpuTypes>"
                         )
                     device_arg = ", DeviceType"
-                elif device == "cuda":
-                    kernel = f"backward_kernel_{name}<CudaTypes>"
+                elif device == "gpu":
+                    kernel = f"backward_kernel_{name}<GpuTypes>"
                     device_arg = ""
 
                 dims = cmd.get("dims", 1)

@@ -7,21 +7,25 @@ namespace madevent {
 class EnergyScale : public FunctionGenerator {
 public:
     enum DynamicalScaleType {
-        transverse_energy, transverse_mass, half_transverse_mass, partonic_energy
+        transverse_energy,
+        transverse_mass,
+        half_transverse_mass,
+        partonic_energy
     };
 
     EnergyScale(std::size_t particle_count) :
-        EnergyScale(
-            particle_count, half_transverse_mass, false, false, 0., 0., 0.
-        ) {}
+        EnergyScale(particle_count, half_transverse_mass, false, false, 0., 0., 0.) {}
     EnergyScale(std::size_t particle_count, DynamicalScaleType type) :
-        EnergyScale(
-            particle_count, type, false, false, 0., 0., 0.
-        ) {}
+        EnergyScale(particle_count, type, false, false, 0., 0., 0.) {}
     EnergyScale(std::size_t particle_count, double fixed_scale) :
         EnergyScale(
-            particle_count, half_transverse_mass, true, true,
-            fixed_scale, fixed_scale, fixed_scale
+            particle_count,
+            half_transverse_mass,
+            true,
+            true,
+            fixed_scale,
+            fixed_scale,
+            fixed_scale
         ) {}
     EnergyScale(
         std::size_t particle_count,
@@ -34,7 +38,8 @@ public:
     );
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     DynamicalScaleType _dynamical_scale_type;
     bool _ren_scale_fixed;
@@ -44,4 +49,4 @@ private:
     double _fact_scale2;
 };
 
-}
+} // namespace madevent

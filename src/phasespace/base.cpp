@@ -2,14 +2,17 @@
 
 #include "madevent/util.h"
 
-#define CATCH_ONE_ERROR(etype, name) catch (const etype& e) { handle_errors(e, name); }
-#define CATCH_ERRORS(name) \
-    CATCH_ONE_ERROR(std::invalid_argument, name) \
-    CATCH_ONE_ERROR(std::domain_error, name) \
-    CATCH_ONE_ERROR(std::length_error, name) \
-    CATCH_ONE_ERROR(std::out_of_range, name) \
-    CATCH_ONE_ERROR(std::logic_error, name) \
-    CATCH_ONE_ERROR(std::range_error, name) \
+#define CATCH_ONE_ERROR(etype, name)                                                   \
+    catch (const etype& e) {                                                           \
+        handle_errors(e, name);                                                        \
+    }
+#define CATCH_ERRORS(name)                                                             \
+    CATCH_ONE_ERROR(std::invalid_argument, name)                                       \
+    CATCH_ONE_ERROR(std::domain_error, name)                                           \
+    CATCH_ONE_ERROR(std::length_error, name)                                           \
+    CATCH_ONE_ERROR(std::out_of_range, name)                                           \
+    CATCH_ONE_ERROR(std::logic_error, name)                                            \
+    CATCH_ONE_ERROR(std::range_error, name)                                            \
     CATCH_ONE_ERROR(std::runtime_error, name)
 
 using namespace madevent;
@@ -20,28 +23,49 @@ void check_types(
     const ValueVec& values, const TypeVec& types, const std::string& prefix
 ) {
     if (values.size() != types.size()) {
-        throw std::runtime_error(std::format(
-            "{}: Invalid number of values. Expected {}, got {}",
-            prefix, types.size(), values.size()
-        ));
+        throw std::runtime_error(
+            std::format(
+                "{}: Invalid number of values. Expected {}, got {}",
+                prefix,
+                types.size(),
+                values.size()
+            )
+        );
     }
     std::size_t val_index = 1;
     for (auto [value, type] : zip(values, types)) {
         if (value.type.dtype != type.dtype) {
-            throw std::runtime_error(std::format(
-                "{}, value {}: Invalid dtype", prefix, val_index
-            ));
+            throw std::runtime_error(
+                std::format("{}, value {}: Invalid dtype", prefix, val_index)
+            );
         }
         if (value.type.shape != type.shape) {
-            throw std::runtime_error(std::format(
-                "{}, value {}: Invalid shape", prefix, val_index
-            ));
+            std::string expected_shape, got_shape;
+            for (auto& size : type.shape) {
+                expected_shape += &size == &type.shape.back()
+                    ? std::format("{}", size)
+                    : std::format("{}, ", size);
+            }
+            for (auto& size : value.type.shape) {
+                got_shape += &size == &value.type.shape.back()
+                    ? std::format("{}", size)
+                    : std::format("{}, ", size);
+            }
+            throw std::runtime_error(
+                std::format(
+                    "{}, value {}: Invalid shape, expected ({}), got ({})",
+                    prefix,
+                    val_index,
+                    expected_shape,
+                    got_shape
+                )
+            );
         }
         ++val_index;
     }
 }
 
-template<typename T>
+template <typename T>
 [[noreturn]] void handle_errors(const T& e, const std::string& name) {
     std::string message(e.what());
     if (auto in_pos = message.find("[in "); in_pos != std::string::npos) {
@@ -52,7 +76,7 @@ template<typename T>
     throw T(message);
 }
 
-}
+} // namespace
 
 Mapping::Result Mapping::build_forward(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
@@ -64,7 +88,8 @@ Mapping::Result Mapping::build_forward(
         check_types(outputs, _output_types, "Output");
         check_types({det}, {batch_float}, "Determinant");
         return {outputs, det};
-    } CATCH_ERRORS(name());
+    }
+    CATCH_ERRORS(name());
 }
 
 Mapping::Result Mapping::build_inverse(
@@ -77,7 +102,8 @@ Mapping::Result Mapping::build_inverse(
         check_types(outputs, _input_types, "Output");
         check_types({det}, {batch_float}, "Determinant");
         return {outputs, det};
-    } CATCH_ERRORS(name());
+    }
+    CATCH_ERRORS(name());
 }
 
 Function Mapping::forward_function() const {
@@ -112,15 +138,15 @@ Function Mapping::inverse_function() const {
     return fb.function();
 }
 
-ValueVec FunctionGenerator::build_function(
-    FunctionBuilder& fb, const ValueVec& args
-) const {
+ValueVec
+FunctionGenerator::build_function(FunctionBuilder& fb, const ValueVec& args) const {
     try {
         check_types(args, _arg_types, "Argument");
         auto outputs = build_function_impl(fb, args);
         check_types(outputs, _return_types, "Output");
         return outputs;
-    } CATCH_ERRORS(name());
+    }
+    CATCH_ERRORS(name());
 }
 
 Function FunctionGenerator::function() const {

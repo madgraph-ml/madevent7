@@ -128,79 +128,79 @@ case 41:
     batch_foreach<tensor_foreach<kernel_mirror_momenta<CpuTypes>, kernel_mirror_momenta<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
 case 42:
-    batch_foreach<tensor_foreach<kernel_uniform_invariant<CpuTypes>, kernel_uniform_invariant<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_momenta_to_x1x2<CpuTypes>, kernel_momenta_to_x1x2<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
 case 43:
-    batch_foreach<tensor_foreach<kernel_uniform_invariant_inverse<CpuTypes>, kernel_uniform_invariant_inverse<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_uniform_invariant<CpuTypes>, kernel_uniform_invariant<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
     break;
 case 44:
-    batch_foreach<tensor_foreach<kernel_breit_wigner_invariant<CpuTypes>, kernel_breit_wigner_invariant<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_uniform_invariant_inverse<CpuTypes>, kernel_uniform_invariant_inverse<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
     break;
 case 45:
-    batch_foreach<tensor_foreach<kernel_breit_wigner_invariant_inverse<CpuTypes>, kernel_breit_wigner_invariant_inverse<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_breit_wigner_invariant<CpuTypes>, kernel_breit_wigner_invariant<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
     break;
 case 46:
-    batch_foreach<tensor_foreach<kernel_stable_invariant<CpuTypes>, kernel_stable_invariant<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_breit_wigner_invariant_inverse<CpuTypes>, kernel_breit_wigner_invariant_inverse<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
     break;
 case 47:
-    batch_foreach<tensor_foreach<kernel_stable_invariant_inverse<CpuTypes>, kernel_stable_invariant_inverse<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_stable_invariant<CpuTypes>, kernel_stable_invariant<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
     break;
 case 48:
-    batch_foreach<tensor_foreach<kernel_stable_invariant_nu<CpuTypes>, kernel_stable_invariant_nu<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_stable_invariant_inverse<CpuTypes>, kernel_stable_invariant_inverse<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
     break;
 case 49:
-    batch_foreach<tensor_foreach<kernel_stable_invariant_nu_inverse<CpuTypes>, kernel_stable_invariant_nu_inverse<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_stable_invariant_nu<CpuTypes>, kernel_stable_invariant_nu<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
     break;
 case 50:
-    batch_foreach<tensor_foreach<kernel_fast_rambo_massless<CpuTypes>, kernel_fast_rambo_massless<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_stable_invariant_nu_inverse<CpuTypes>, kernel_stable_invariant_nu_inverse<SimdTypes>, 5, 2, 1, DeviceType>, 5, 2>(instr, locals, device);
     break;
 case 51:
-    batch_foreach<tensor_foreach<kernel_fast_rambo_massless_com<CpuTypes>, kernel_fast_rambo_massless_com<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_fast_rambo_massless<CpuTypes>, kernel_fast_rambo_massless<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
     break;
 case 52:
-    batch_foreach<tensor_foreach<kernel_fast_rambo_massive<CpuTypes>, kernel_fast_rambo_massive<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_fast_rambo_massless_com<CpuTypes>, kernel_fast_rambo_massless_com<SimdTypes>, 2, 2, 1, DeviceType>, 2, 2>(instr, locals, device);
     break;
 case 53:
-    batch_foreach<tensor_foreach<kernel_fast_rambo_massive_com<CpuTypes>, kernel_fast_rambo_massive_com<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_fast_rambo_massive<CpuTypes>, kernel_fast_rambo_massive<SimdTypes>, 4, 2, 1, DeviceType>, 4, 2>(instr, locals, device);
     break;
 case 54:
-    batch_foreach<tensor_foreach<kernel_cut_unphysical<CpuTypes>, kernel_cut_unphysical<SimdTypes>, 4, 1, 1, DeviceType>, 4, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_fast_rambo_massive_com<CpuTypes>, kernel_fast_rambo_massive_com<SimdTypes>, 3, 2, 1, DeviceType>, 3, 2>(instr, locals, device);
     break;
 case 55:
-    batch_foreach<tensor_foreach<kernel_cut_pt<CpuTypes>, kernel_cut_pt<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_unphysical<CpuTypes>, kernel_cut_unphysical<SimdTypes>, 4, 1, 1, DeviceType>, 4, 1>(instr, locals, device);
     break;
 case 56:
-    batch_foreach<tensor_foreach<kernel_cut_eta<CpuTypes>, kernel_cut_eta<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_pt<CpuTypes>, kernel_cut_pt<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
 case 57:
-    batch_foreach<tensor_foreach<kernel_cut_dr<CpuTypes>, kernel_cut_dr<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_eta<CpuTypes>, kernel_cut_eta<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
 case 58:
-    batch_foreach<tensor_foreach<kernel_cut_m_inv<CpuTypes>, kernel_cut_m_inv<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_dr<CpuTypes>, kernel_cut_dr<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
     break;
 case 59:
-    batch_foreach<tensor_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_m_inv<CpuTypes>, kernel_cut_m_inv<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);
     break;
 case 60:
-    batch_foreach<tensor_foreach<kernel_scale_transverse_energy<CpuTypes>, kernel_scale_transverse_energy<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_cut_sqrt_s<CpuTypes>, kernel_cut_sqrt_s<SimdTypes>, 2, 1, 1, DeviceType>, 2, 1>(instr, locals, device);
     break;
 case 61:
-    batch_foreach<tensor_foreach<kernel_scale_transverse_mass<CpuTypes>, kernel_scale_transverse_mass<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_transverse_energy<CpuTypes>, kernel_scale_transverse_energy<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 62:
-    batch_foreach<tensor_foreach<kernel_scale_half_transverse_mass<CpuTypes>, kernel_scale_half_transverse_mass<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_transverse_mass<CpuTypes>, kernel_scale_transverse_mass<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 63:
-    batch_foreach<tensor_foreach<kernel_scale_partonic_energy<CpuTypes>, kernel_scale_partonic_energy<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_half_transverse_mass<CpuTypes>, kernel_scale_half_transverse_mass<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 64:
-    batch_foreach<tensor_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1, DeviceType>, 5, 4>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_scale_partonic_energy<CpuTypes>, kernel_scale_partonic_energy<SimdTypes>, 1, 1, 1, DeviceType>, 1, 1>(instr, locals, device);
     break;
 case 65:
-    op_matrix_element(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_chili_forward<CpuTypes>, kernel_chili_forward<SimdTypes>, 5, 4, 1, DeviceType>, 5, 4>(instr, locals, device);
     break;
 case 66:
-    op_matrix_element_multichannel(instr, locals, device);
+    op_matrix_element(instr, locals, device);
     break;
 case 67:
     batch_foreach<tensor_foreach<kernel_collect_channel_weights<CpuTypes>, kernel_collect_channel_weights<SimdTypes>, 3, 1, 1, DeviceType>, 3, 1>(instr, locals, device);

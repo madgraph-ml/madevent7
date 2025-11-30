@@ -55,6 +55,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("apply_subchannel_weights", &FunctionBuilder::apply_subchannel_weights, py::arg("channel_weights_in"), py::arg("subchannel_weights"), py::arg("channel_indices"), py::arg("subchannel_indices"));
     fb.def("pt_eta_phi_x", &FunctionBuilder::pt_eta_phi_x, py::arg("p_ext"), py::arg("x1"), py::arg("x2"));
     fb.def("mirror_momenta", &FunctionBuilder::mirror_momenta, py::arg("p_ext"), py::arg("mirror"));
+    fb.def("momenta_to_x1x2", &FunctionBuilder::momenta_to_x1x2, py::arg("p_ext"), py::arg("e_cm"));
     fb.def("uniform_invariant", &FunctionBuilder::uniform_invariant, py::arg("r"), py::arg("s_min"), py::arg("s_max"));
     fb.def("uniform_invariant_inverse", &FunctionBuilder::uniform_invariant_inverse, py::arg("s"), py::arg("s_min"), py::arg("s_max"));
     fb.def("breit_wigner_invariant", &FunctionBuilder::breit_wigner_invariant, py::arg("r"), py::arg("mass"), py::arg("width"), py::arg("s_min"), py::arg("s_max"));
@@ -78,8 +79,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("scale_half_transverse_mass", &FunctionBuilder::scale_half_transverse_mass, py::arg("momenta"));
     fb.def("scale_partonic_energy", &FunctionBuilder::scale_partonic_energy, py::arg("momenta"));
     fb.def("chili_forward", &FunctionBuilder::chili_forward, py::arg("r"), py::arg("e_cm"), py::arg("m_out"), py::arg("pt_min"), py::arg("y_max"));
-    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("momenta"), py::arg("flavor"), py::arg("index"));
-    fb.def("matrix_element_multichannel", &FunctionBuilder::matrix_element_multichannel, py::arg("momenta"), py::arg("alpha_s"), py::arg("random"), py::arg("flavor"), py::arg("index"), py::arg("diagram_count"));
+    fb.def("matrix_element", &FunctionBuilder::matrix_element, py::arg("args"));
     fb.def("collect_channel_weights", &FunctionBuilder::collect_channel_weights, py::arg("amp2"), py::arg("channel_indices"), py::arg("channel_count"));
     fb.def("interpolate_pdf", &FunctionBuilder::interpolate_pdf, py::arg("x"), py::arg("q2"), py::arg("pid_indices"), py::arg("grid_logx"), py::arg("grid_logq2"), py::arg("grid_coeffs"));
     fb.def("interpolate_alpha_s", &FunctionBuilder::interpolate_alpha_s, py::arg("q2"), py::arg("grid_logq2"), py::arg("grid_coeffs"));

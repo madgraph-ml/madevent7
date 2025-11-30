@@ -1,24 +1,20 @@
 #pragma once
 
+#include <iostream>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
-#include <unordered_map>
-#include <iostream>
 
 #include <nlohmann/json.hpp>
 
 namespace madevent {
 
-enum class DataType {
-    dt_int,
-    dt_float,
-    batch_sizes
-};
+enum class DataType { dt_int, dt_float, batch_sizes };
 
 using me_int_t = int;
 
-template<typename T>
+template <typename T>
 concept ScalarType = std::same_as<T, me_int_t> || std::same_as<T, double>;
 
 class BatchSize {
@@ -31,6 +27,7 @@ public:
         friend void to_json(nlohmann::json& j, const BatchSize& batch_size);
         bool operator==(const UnnamedBody& other) const { return id == other.id; }
         bool operator!=(const UnnamedBody& other) const { return id != other.id; }
+
     private:
         static std::size_t counter;
         std::size_t id;
@@ -77,8 +74,7 @@ struct Type {
     Type(const std::vector<BatchSize>& batch_size_list) :
         dtype(DataType::batch_sizes),
         batch_size(BatchSize::one),
-        batch_size_list(batch_size_list)
-    {}
+        batch_size_list(batch_size_list) {}
 };
 
 std::ostream& operator<<(std::ostream& out, const BatchSize& batch_size);
@@ -86,11 +82,13 @@ std::ostream& operator<<(std::ostream& out, const DataType& dtype);
 std::ostream& operator<<(std::ostream& out, const Type& type);
 
 inline bool operator==(const Type& lhs, const Type& rhs) {
-    return lhs.dtype == rhs.dtype && lhs.batch_size == rhs.batch_size && lhs.shape == rhs.shape;
+    return lhs.dtype == rhs.dtype && lhs.batch_size == rhs.batch_size &&
+        lhs.shape == rhs.shape;
 }
 
 inline bool operator!=(const Type& lhs, const Type& rhs) {
-    return lhs.dtype != rhs.dtype || lhs.batch_size != rhs.batch_size || lhs.shape != rhs.shape;
+    return lhs.dtype != rhs.dtype || lhs.batch_size != rhs.batch_size ||
+        lhs.shape != rhs.shape;
 }
 
 using TypeVec = std::vector<Type>;
@@ -122,11 +120,10 @@ inline Type batch_four_vec_array(int count) {
     return {DataType::dt_float, batch_size, {count, 4}};
 }
 
-
 using TensorValue = std::tuple<
     std::vector<int>,
-    std::variant<std::vector<me_int_t>, std::vector<double>>
->; //TODO: make this a class
+    std::variant<std::vector<me_int_t>, std::vector<double>>>; // TODO: make this a
+                                                               // class
 
 using LiteralValue = std::variant<me_int_t, double, TensorValue, std::monostate>;
 
@@ -140,7 +137,7 @@ struct Value {
     Value(me_int_t value) : type(single_int), literal_value(value) {}
     Value(double value) : type(single_float), literal_value(value) {}
 
-    template<ScalarType T>
+    template <ScalarType T>
     Value(const std::vector<std::vector<T>>& values) :
         Value(
             [&] {
@@ -164,15 +161,15 @@ struct Value {
             {static_cast<int>(values.size()), static_cast<int>(values.at(0).size())}
         ) {}
 
-    template<ScalarType T>
+    template <ScalarType T>
     Value(const std::vector<T>& values, const std::vector<int>& shape = {}) :
         type{
             std::is_same_v<T, me_int_t> ? DataType::dt_int : DataType::dt_float,
             BatchSize::one,
-            shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())} : shape
+            shape.size() == 0 ? std::vector<int>{static_cast<int>(values.size())}
+                              : shape
         },
-        literal_value(TensorValue(type.shape, values))
-    {
+        literal_value(TensorValue(type.shape, values)) {
         std::size_t prod = 1;
         for (auto size : type.shape) {
             prod *= size;
@@ -184,13 +181,15 @@ struct Value {
         }
     }
 
-    Value(Type _type, int _local_index)
-        : type(_type), literal_value(std::monostate{}), local_index(_local_index) {}
-    Value(Type _type, LiteralValue _literal_value, int _local_index = -1)
-        : type(_type), literal_value(_literal_value), local_index(_local_index) {}
+    Value(Type _type, int _local_index) :
+        type(_type), literal_value(std::monostate{}), local_index(_local_index) {}
+    Value(Type _type, LiteralValue _literal_value, int _local_index = -1) :
+        type(_type), literal_value(_literal_value), local_index(_local_index) {}
 
     operator bool() {
-        return !(local_index == -1 && std::holds_alternative<std::monostate>(literal_value));
+        return !(
+            local_index == -1 && std::holds_alternative<std::monostate>(literal_value)
+        );
     }
 };
 
@@ -201,4 +200,4 @@ void to_json(nlohmann::json& j, const Value& value);
 void from_json(const nlohmann::json& j, DataType& dtype);
 void from_json(const nlohmann::json& j, Value& dtype);
 
-}
+} // namespace madevent

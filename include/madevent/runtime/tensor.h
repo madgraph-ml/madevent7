@@ -3,13 +3,13 @@
 #include "madevent/madcode/type.h"
 #include "madevent/util.h"
 
+#include <algorithm>
+#include <atomic>
+#include <concepts>
 #include <cstdint>
-#include <vector>
 #include <functional>
 #include <initializer_list>
-#include <algorithm>
-#include <concepts>
-#include <atomic>
+#include <vector>
 
 namespace madevent {
 
@@ -20,9 +20,7 @@ public:
     static constexpr std::size_t max_size = 4;
 
     Sizes() : _size(0) {};
-    Sizes(std::size_t size) : _size(size) {
-        std::fill(begin(), end(), 0);
-    };
+    Sizes(std::size_t size) : _size(size) { std::fill(begin(), end(), 0); };
     Sizes(std::size_t size, std::size_t value) : _size(size) {
         std::fill(begin(), end(), value);
     };
@@ -45,7 +43,10 @@ public:
     std::size_t* end() { return &_values[_size]; }
     const std::size_t* begin() const { return &_values[0]; }
     const std::size_t* end() const { return &_values[_size]; }
-    void push_back(std::size_t item) { _values[_size] = item; ++_size; }
+    void push_back(std::size_t item) {
+        _values[_size] = item;
+        ++_size;
+    }
     std::size_t* data() { return &_values[0]; }
     const std::size_t* data() const { return &_values[0]; }
     std::size_t& back() { return _values[_size - 1]; }
@@ -61,7 +62,7 @@ inline bool operator==(const Sizes& a, const Sizes& b) {
 }
 inline bool operator!=(const Sizes& a, const Sizes& b) { return !(a == b); }
 
-template<ScalarType T, int _dim>
+template <ScalarType T, int _dim>
 struct PackedTensorView {
     using DType = T;
     static const int dim = _dim;
@@ -70,7 +71,7 @@ struct PackedTensorView {
     Sizes shape;
 };
 
-template<ScalarType T, int _dim>
+template <ScalarType T, int _dim>
 class TensorView {
 public:
     using DType = T;
@@ -82,22 +83,25 @@ public:
     TensorView(PackedTensorView<T, _dim>& packed_view) :
         _data(packed_view.data),
         _stride(packed_view.stride.data()),
-        _shape(packed_view.shape.data())
-    {}
+        _shape(packed_view.shape.data()) {}
 
     TensorView(T& value) : _data(&value), _stride(nullptr), _shape(nullptr) {}
 
-    const TensorView<T, _dim-1> operator[](std::size_t index) const requires (_dim != 0) {
+    const TensorView<T, _dim - 1> operator[](std::size_t index) const
+        requires(_dim != 0)
+    {
         return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
-    TensorView<T, _dim-1> operator[](std::size_t index) requires (_dim != 0) {
+    TensorView<T, _dim - 1> operator[](std::size_t index)
+        requires(_dim != 0)
+    {
         return {&_data[index * _stride[0]], &_stride[1], &_shape[1]};
     }
 
-    template<typename... I>
+    template <typename... I>
     const TensorView<T, _dim - sizeof...(I)> get(I... index) const
-    requires (_dim >= sizeof...(I))
+        requires(_dim >= sizeof...(I))
     {
         T* ptr = _data;
         int i = 0;
@@ -105,9 +109,9 @@ public:
         return {ptr, &_stride[sizeof...(I)], &_shape[sizeof...(I)]};
     }
 
-    template<typename... I>
+    template <typename... I>
     TensorView<T, _dim - sizeof...(I)> get(I... index)
-    requires (_dim >= sizeof...(I))
+        requires(_dim >= sizeof...(I))
     {
         T* ptr = _data;
         int i = 0;
@@ -115,16 +119,22 @@ public:
         return {ptr, &_stride[sizeof...(I)], &_shape[sizeof...(I)]};
     }
 
-    operator T() const requires (_dim == 0) {
+    operator T() const
+        requires(_dim == 0)
+    {
         return *_data;
     }
 
-    T operator=(T value) requires (_dim == 0) {
+    T operator=(T value)
+        requires(_dim == 0)
+    {
         *_data = value;
         return value;
     }
 
-    T operator+=(T value) requires (_dim == 0) {
+    T operator+=(T value)
+        requires(_dim == 0)
+    {
         *_data += value;
         return value;
     }
@@ -134,8 +144,14 @@ public:
     T* data() const { return _data; }
     std::size_t* stride() const { return _stride; }
     std::size_t* shape() const { return _shape; }
-    T gather(me_int_t index) const requires (_dim == 1) { return (*this)[index]; }
-    void scatter_add(me_int_t index, T value) requires (_dim == 1) {
+    T gather(me_int_t index) const
+        requires(_dim == 1)
+    {
+        return (*this)[index];
+    }
+    void scatter_add(me_int_t index, T value)
+        requires(_dim == 1)
+    {
         (*this)[index] += value;
     }
 
@@ -165,33 +181,31 @@ using DevicePtr = const Device*;
 // defined in runtime_base.cpp, but need to declare them here
 DevicePtr cpu_device();
 DevicePtr cuda_device();
+DevicePtr hip_device();
 
 class Tensor {
 public:
     Tensor() : impl(nullptr) {}
 
     Tensor(const Tensor& other) : impl(other.impl) {
-        if (impl != nullptr) impl->incref();
+        if (impl != nullptr) {
+            impl->incref();
+        }
     }
 
-    Tensor(Tensor&& other) noexcept : impl(other.impl) {
-        other.impl = nullptr;
-    }
+    Tensor(Tensor&& other) noexcept : impl(other.impl) { other.impl = nullptr; }
 
-    Tensor(DataType dtype, const Sizes& shape) :
-        Tensor(dtype, shape, cpu_device()) {}
+    Tensor(DataType dtype, const Sizes& shape) : Tensor(dtype, shape, cpu_device()) {}
 
     Tensor(DataType dtype, const Sizes& shape, DevicePtr device) :
-        impl(new TensorImpl{dtype, shape, device})
-    {
+        impl(new TensorImpl{dtype, shape, device}) {
         auto size = init_stride();
         impl->data = device->allocate(size);
     }
 
-    template<typename D>
+    template <typename D>
     Tensor(DataType dtype, const Sizes& shape, const D& device) :
-        impl(new TensorImpl{dtype, shape, device.device_ptr()})
-    {
+        impl(new TensorImpl{dtype, shape, device.device_ptr()}) {
         auto size = init_stride();
         impl->data = device.allocate(size);
     }
@@ -211,8 +225,7 @@ public:
         void* data,
         std::function<void()> external_reset
     ) :
-        impl(new TensorImpl{dtype, shape, device, data, false, external_reset})
-    {
+        impl(new TensorImpl{dtype, shape, device, data, false, external_reset}) {
         init_stride();
     }
 
@@ -226,8 +239,7 @@ public:
     ) :
         impl(new TensorImpl{
             dtype, shape, device, data, false, external_reset, nullptr, 1, stride
-        })
-    {
+        }) {
         std::size_t stride_prod = 1;
         bool first = true;
         impl->contiguous_dims = 0;
@@ -243,32 +255,47 @@ public:
         }
     }
 
-    Tensor(const SizeVec& batch_sizes) : impl(new TensorImpl{
-        DataType::batch_sizes, {}, cpu_device(), nullptr, true, std::nullopt, nullptr,
-        1, {}, 0, 0, batch_sizes
-    }) {}
+    Tensor(const SizeVec& batch_sizes) :
+        impl(new TensorImpl{
+            DataType::batch_sizes,
+            {},
+            cpu_device(),
+            nullptr,
+            true,
+            std::nullopt,
+            nullptr,
+            1,
+            {},
+            0,
+            0,
+            batch_sizes
+        }) {}
 
-    template<ScalarType T>
+    template <ScalarType T>
     Tensor(T value, DevicePtr device) :
         impl(new TensorImpl{
             std::is_same_v<T, me_int_t> ? DataType::dt_int : DataType::dt_float,
             {1},
             device
-        })
-    {
+        }) {
         auto size = init_stride();
         impl->data = device->allocate(size);
         device->memcpy(impl->data, &value, sizeof(value));
-        if (std::is_same_v<T, me_int_t> && value >= 0) impl->batch_sizes.push_back(value);
+        if (std::is_same_v<T, me_int_t> && value >= 0) {
+            impl->batch_sizes.push_back(value);
+        }
     }
 
     Tensor(TensorValue value, DevicePtr device) :
         impl(new TensorImpl{
-            std::visit(Overloaded{
-                [](std::vector<me_int_t>) { return DataType::dt_int; },
-                [](std::vector<double>) { return DataType::dt_float; },
-            }, std::get<1>(value)),
-            [&]{
+            std::visit(
+                Overloaded{
+                    [](std::vector<me_int_t>) { return DataType::dt_int; },
+                    [](std::vector<double>) { return DataType::dt_float; },
+                },
+                std::get<1>(value)
+            ),
+            [&] {
                 auto& val_shape = std::get<0>(value);
                 Sizes full_shape(val_shape.size() + 1);
                 full_shape[0] = 1;
@@ -276,23 +303,23 @@ public:
                 return full_shape;
             }(),
             device
-        })
-    {
+        }) {
         auto size = init_stride();
         impl->data = device->allocate(size);
-        std::visit([&](auto& vec) {
-            device->memcpy(impl->data, vec.data(), size);
-        }, std::get<1>(value));
+        std::visit(
+            [&](auto& vec) { device->memcpy(impl->data, vec.data(), size); },
+            std::get<1>(value)
+        );
     }
 
-    ~Tensor() {
-        reset();
-    }
+    ~Tensor() { reset(); }
 
     Tensor& operator=(const Tensor& other) {
         reset();
         impl = other.impl;
-        if (impl != nullptr) impl->incref();
+        if (impl != nullptr) {
+            impl->incref();
+        }
         return *this;
     }
 
@@ -303,11 +330,9 @@ public:
         return *this;
     }
 
-    operator bool() const {
-        return impl != nullptr;
-    }
+    operator bool() const { return impl != nullptr; }
 
-    template<class T, int dim>
+    template <class T, int dim>
     TensorView<T, dim> view() {
         check_impl();
         T* data = static_cast<T*>(impl->data);
@@ -316,7 +341,7 @@ public:
         );
     }
 
-    template<class T, int dim>
+    template <class T, int dim>
     const TensorView<T, dim> view() const {
         check_impl();
         T* data = static_cast<T*>(impl->data);
@@ -325,7 +350,7 @@ public:
         );
     }
 
-    template<class T, int dim>
+    template <class T, int dim>
     PackedTensorView<T, dim> flat_view(std::size_t flatten_count) const {
         check_impl();
         T* data = static_cast<T*>(impl->data);
@@ -347,18 +372,44 @@ public:
         return {&data[impl->offset], stride, shape};
     }
 
-    void* data() { check_impl(); return impl->data; }
-    void* data() const { check_impl(); return impl->data; }
-    const Sizes& shape() const { check_impl(); return impl->shape; }
-    const Sizes& stride() const { check_impl(); return impl->stride; }
-    std::size_t size(std::size_t i) const { check_impl(); return impl->shape[i]; }
+    void* data() {
+        check_impl();
+        return impl->data;
+    }
+    void* data() const {
+        check_impl();
+        return impl->data;
+    }
+    const Sizes& shape() const {
+        check_impl();
+        return impl->shape;
+    }
+    const Sizes& stride() const {
+        check_impl();
+        return impl->stride;
+    }
+    std::size_t size(std::size_t i) const {
+        check_impl();
+        return impl->shape[i];
+    }
     std::size_t offset() const { return impl->offset; }
-    DataType dtype() const { check_impl(); return impl->dtype; }
-    const SizeVec& batch_sizes() const { check_impl(); return impl->batch_sizes; }
-    DevicePtr device() const { check_impl(); return impl->device; }
+    DataType dtype() const {
+        check_impl();
+        return impl->dtype;
+    }
+    const SizeVec& batch_sizes() const {
+        check_impl();
+        return impl->batch_sizes;
+    }
+    DevicePtr device() const {
+        check_impl();
+        return impl->device;
+    }
     std::size_t index_value() const {
         check_impl();
-        if (impl->batch_sizes.size() > 0) return impl->batch_sizes[0];
+        if (impl->batch_sizes.size() > 0) {
+            return impl->batch_sizes[0];
+        }
         auto cpu_tensor = cpu();
         return cpu_tensor.view<me_int_t, 1>()[0];
     }
@@ -366,10 +417,14 @@ public:
     std::size_t dtype_size() const {
         check_impl();
         switch (impl->dtype) {
-            case DataType::dt_int: return sizeof(me_int_t);
-            case DataType::dt_float: return sizeof(double);
-            case DataType::batch_sizes: return 0;
-            default: throw std::logic_error("invalid data type");
+        case DataType::dt_int:
+            return sizeof(me_int_t);
+        case DataType::dt_float:
+            return sizeof(double);
+        case DataType::batch_sizes:
+            return 0;
+        default:
+            throw std::logic_error("invalid data type");
         }
     }
 
@@ -383,14 +438,18 @@ public:
     }
 
     void reset() {
-        if (impl == nullptr) return;
+        if (impl == nullptr) {
+            return;
+        }
         impl->reset(*impl->device);
         impl = nullptr;
     }
 
-    template<typename D>
+    template <typename D>
     void reset(const D& device) {
-        if (impl == nullptr) return;
+        if (impl == nullptr) {
+            return;
+        }
         impl->reset(device);
         impl = nullptr;
     }
@@ -403,7 +462,7 @@ public:
     Tensor expand(const Sizes& shape) const;
     Tensor factor_dim(std::size_t axis, std::size_t factor);
 
-    template<typename D>
+    template <typename D>
     Tensor cpu(const D& device) const {
         check_impl();
         if (impl->device == cpu_device()) {
@@ -416,14 +475,14 @@ public:
     }
     Tensor cpu() const { return cpu(*impl->device); }
 
-    template<typename D>
+    template <typename D>
     void zero(const D& device) {
         check_impl();
         device.tensor_zero(*this);
     }
     void zero() { zero(*impl->device); }
 
-    template<typename D>
+    template <typename D>
     void copy_from(const Tensor& source, const D& device) {
         check_impl();
         if (source.device() == this->device()) {
@@ -432,19 +491,21 @@ public:
             auto contig_source = source.contiguous();
             device.memcpy(data(), contig_source.data(), byte_size());
         } else {
-            throw std::runtime_error("tensor must be contiguous for copy across devices");
+            throw std::runtime_error(
+                "tensor must be contiguous for copy across devices"
+            );
         }
     }
     void copy_from(const Tensor& source) { copy_from(source, *impl->device); }
 
-    template<typename D>
+    template <typename D>
     void add(const Tensor& source, const D& device) {
         check_impl();
         device.tensor_add(source, *this);
     }
     void add(const Tensor& source) { add(source, *impl->device); }
 
-    template<typename D>
+    template <typename D>
     Tensor copy(const D& device) const {
         check_impl();
         Tensor tensor(impl->dtype, impl->shape, impl->device);
@@ -453,15 +514,11 @@ public:
     }
     Tensor copy() const { return copy(*impl->device); }
 
-    bool is_contiguous() const {
-        return impl->contiguous_dims == impl->shape.size();
-    }
+    bool is_contiguous() const { return impl->contiguous_dims == impl->shape.size(); }
 
-    std::size_t contiguous_dims() const {
-        return impl->contiguous_dims;
-    }
+    std::size_t contiguous_dims() const { return impl->contiguous_dims; }
 
-    template<typename D>
+    template <typename D>
     Tensor contiguous(const D& device) const {
         check_impl();
         return is_contiguous() ? *this : copy(device);
@@ -469,7 +526,7 @@ public:
 
     Tensor contiguous() const { return contiguous(*impl->device); }
 
-    template<typename D>
+    template <typename D>
     Tensor contiguous(std::size_t batch_size, const D& device) const {
         check_impl();
         if (size(0) == batch_size) {
@@ -504,7 +561,7 @@ private:
         std::size_t contiguous_dims;
         SizeVec batch_sizes;
 
-        template<typename D>
+        template <typename D>
         void reset(const D& device) {
             if (ref_count.fetch_sub(1, std::memory_order_acq_rel) != 1) {
                 return;
@@ -519,9 +576,7 @@ private:
             delete this;
         }
 
-        void incref() {
-            ref_count.fetch_add(1, std::memory_order_relaxed);
-        }
+        void incref() { ref_count.fetch_add(1, std::memory_order_relaxed); }
     };
 
     Tensor(TensorImpl* _impl) : impl(_impl) {
@@ -532,7 +587,9 @@ private:
     std::size_t init_stride();
 
     void check_impl() const {
-        if (impl == nullptr) throw std::runtime_error("empty tensor");
+        if (impl == nullptr) {
+            throw std::runtime_error("empty tensor");
+        }
     }
 
     TensorImpl* impl;
@@ -540,4 +597,4 @@ private:
 
 using TensorVec = std::vector<Tensor>;
 
-}
+} // namespace madevent

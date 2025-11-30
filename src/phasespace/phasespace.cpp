@@ -1,6 +1,6 @@
 #include "madevent/phasespace/phasespace.h"
-#include "madevent/util.h"
 #include "madevent/constants.h"
+#include "madevent/util.h"
 
 using namespace madevent;
 
@@ -31,7 +31,9 @@ void update_mass_min_max(
             for (std::size_t child_index : data.decay.child_indices) {
                 auto& child_min_masses = decay_data.at(child_index).min_masses;
                 data.min_masses.insert(
-                    data.min_masses.end(), child_min_masses.begin(), child_min_masses.end()
+                    data.min_masses.end(),
+                    child_min_masses.begin(),
+                    child_min_masses.end()
                 );
             }
             if (data.decay.e_min > 0.) {
@@ -40,16 +42,18 @@ void update_mass_min_max(
         }
     }
 
-    // Go up the decay tree until propagator with known mass m_i is found. Keep track of all
-    // the other nodes branching off. The maximum mass is given by
-    // m_max = M_i - sum_{other nodes j} m_{min,j}
+    // Go up the decay tree until propagator with known mass m_i is found. Keep track of
+    // all the other nodes branching off. The maximum mass is given by m_max = M_i -
+    // sum_{other nodes j} m_{min,j}
     auto& start_decay = decay_data.at(decay_index);
     auto current_decay = &start_decay;
     while (!current_decay->mass && current_decay->decay.index != 0) {
         std::size_t prev_index = current_decay->decay.index;
         current_decay = &decay_data.at(current_decay->decay.parent_index);
         for (std::size_t child_index : current_decay->decay.child_indices) {
-            if (child_index == prev_index) continue;
+            if (child_index == prev_index) {
+                continue;
+            }
             auto& child_min_masses = decay_data.at(child_index).min_masses;
             start_decay.max_mass_subtract.insert(
                 start_decay.max_mass_subtract.end(),
@@ -58,10 +62,11 @@ void update_mass_min_max(
             );
         }
     }
-    start_decay.max_mass = current_decay->mass ? current_decay->mass : current_decay->max_mass;
+    start_decay.max_mass =
+        current_decay->mass ? current_decay->mass : current_decay->max_mass;
 }
 
-}
+} // namespace
 
 PhaseSpaceMapping::PhaseSpaceMapping(
     const Topology& topology,
@@ -75,11 +80,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     Mapping(
         "PhaseSpaceMapping",
         {batch_float_array(3 * topology.outgoing_masses().size() - (leptonic ? 4 : 2))},
-        {
-            batch_four_vec_array(topology.outgoing_masses().size() + 2),
-            batch_float,
-            batch_float
-        },
+        {batch_four_vec_array(topology.outgoing_masses().size() + 2),
+         batch_float,
+         batch_float},
         permutations.size() > 1 ? TypeVec{batch_int} : TypeVec{}
     ),
     _topology(topology),
@@ -93,28 +96,29 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     _leptonic(leptonic),
     _map_luminosity(
         !leptonic &&
-        (_topology.t_propagator_count() == 0 || t_channel_mode != PhaseSpaceMapping::chili)
+        (_topology.t_propagator_count() == 0 ||
+         t_channel_mode != PhaseSpaceMapping::chili)
     ),
-    _t_mapping(std::monostate{})
-{
+    _t_mapping(std::monostate{}) {
     bool has_t_channel = _topology.t_propagator_count() > 0;
     struct DecayInfo {
         double m_min, pt_min, eta_max;
         std::optional<Invariant> invariant;
     };
     std::vector<DecayInfo> decay_info(_topology.decays().size());
-    for (auto [index, m_min, pt_min, eta_max] : zip(
-        _topology.outgoing_indices(),
-        _topology.outgoing_masses(),
-        _cuts.pt_min(),
-        _cuts.eta_max()
-    )) {
+    for (auto [index, m_min, pt_min, eta_max] :
+         zip(_topology.outgoing_indices(),
+             _topology.outgoing_masses(),
+             _cuts.pt_min(),
+             _cuts.eta_max())) {
         decay_info.at(index) = {m_min, pt_min, eta_max, std::nullopt};
     }
-    for (auto [decay, info] : zip(
-        std::views::reverse(_topology.decays()), std::views::reverse(decay_info)
-    )) {
-        if (decay.child_indices.size() == 0) continue;
+    for (auto [decay, info] :
+         zip(std::views::reverse(_topology.decays()),
+             std::views::reverse(decay_info))) {
+        if (decay.child_indices.size() == 0) {
+            continue;
+        }
 
         bool is_com_decay = decay.index == 0;
         if (decay.index != 0 || !has_t_channel) {
@@ -123,7 +127,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
             } else if (decay.child_indices.size() == 3) {
                 _s_decays.push_back(ThreeBodyDecay(is_com_decay));
             } else {
-                _s_decays.push_back(FastRamboMapping(decay.child_indices.size(), false, is_com_decay));
+                _s_decays.push_back(
+                    FastRamboMapping(decay.child_indices.size(), false, is_com_decay)
+                );
             }
         }
 
@@ -153,7 +159,8 @@ PhaseSpaceMapping::PhaseSpaceMapping(
         total_mass += decay_info.at(index).m_min;
     }
     double sqrt_s_hat_min = _cuts.sqrt_s_min();
-    double s_hat_min = std::max(total_mass * total_mass, sqrt_s_hat_min * sqrt_s_hat_min);
+    double s_hat_min =
+        std::max(total_mass * total_mass, sqrt_s_hat_min * sqrt_s_hat_min);
     if (has_t_channel) {
         if (t_channel_mode == PhaseSpaceMapping::chili) {
             // |y| <= |eta|, so we can pass y_max = eta_max
@@ -163,16 +170,14 @@ PhaseSpaceMapping::PhaseSpaceMapping(
                 eta_max.push_back(info.eta_max);
                 pt_min.push_back(info.pt_min);
             }
-            _t_mapping = ChiliMapping(_topology.t_propagator_count() + 1, eta_max, pt_min);
-        } else if (
-            t_channel_mode == PhaseSpaceMapping::propagator ||
-            topology.t_propagator_count() < 2
-        ) {
-            _t_mapping = TPropagatorMapping(
-                _topology.t_integration_order(), invariant_power
-            );
+            _t_mapping =
+                ChiliMapping(_topology.t_propagator_count() + 1, eta_max, pt_min);
+        } else if (t_channel_mode == PhaseSpaceMapping::propagator ||
+                   topology.t_propagator_count() < 2) {
+            _t_mapping =
+                TPropagatorMapping(_topology.t_integration_order(), invariant_power);
         } else if (t_channel_mode == PhaseSpaceMapping::rambo) {
-            //TODO: add massless special case
+            // TODO: add massless special case
             _t_mapping = FastRamboMapping(_topology.t_propagator_count() + 1, false);
         }
     }
@@ -189,9 +194,9 @@ PhaseSpaceMapping::PhaseSpaceMapping(
     double invariant_power,
     TChannelMode mode,
     const std::optional<Cuts>& cuts
-) : PhaseSpaceMapping(
-    Topology(
-        [&] {
+) :
+    PhaseSpaceMapping(
+        Topology([&] {
             if (external_masses.size() < 4) {
                 throw std::invalid_argument("The number of masses must be at least 4");
             }
@@ -220,9 +225,13 @@ PhaseSpaceMapping::PhaseSpaceMapping(
                 std::vector<Propagator>(n_out - 1),
                 vertices
             );
-        }()
-    ), cm_energy, leptonic, invariant_power, mode, cuts
-) {}
+        }()),
+        cm_energy,
+        leptonic,
+        invariant_power,
+        mode,
+        cuts
+    ) {}
 
 Mapping::Result PhaseSpaceMapping::build_forward_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
@@ -235,10 +244,11 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
     Value x1 = 1.0, x2 = 1.0, s_hat = _s_lab;
 
     // initialize masses and square masses
-    std::vector<DecayData> decay_data(_topology.decays().begin(), _topology.decays().end());
-    for (auto [decay_index, mass] : zip(
-        _topology.outgoing_indices(), _topology.outgoing_masses()
-    )) {
+    std::vector<DecayData> decay_data(
+        _topology.decays().begin(), _topology.decays().end()
+    );
+    for (auto [decay_index, mass] :
+         zip(_topology.outgoing_indices(), _topology.outgoing_masses())) {
         auto& data = decay_data.at(decay_index);
         data.mass = mass;
         data.mass2 = mass * mass;
@@ -259,9 +269,8 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
         }
         if (decay_index != 0 || _map_luminosity) {
             auto s_max = fb.square(sqrt_s_max);
-            auto [s_vec, det] = _s_invariants.at(invariant_index++).build_forward(
-                fb, {next_random()}, {s_min, s_max}
-            );
+            auto [s_vec, det] = _s_invariants.at(invariant_index++)
+                                    .build_forward(fb, {next_random()}, {s_min, s_max});
             data.mass2 = s_vec.at(0);
             data.mass = fb.sqrt(data.mass2.value());
             dets.push_back(det);
@@ -282,65 +291,77 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // if required, build t-channel part of phase space mapping
     ValueVec p_ext;
-    std::visit(Overloaded {
-        [&](auto& t_mapping) {
-            ValueVec args;
-            auto momentum_count = _topology.t_propagator_count() + 1;
-            for (std::size_t i = 0; i < t_mapping.random_dim(); ++i) {
-                args.push_back(next_random());
-            }
-            args.push_back(sqrt_s_hat);
-            for (std::size_t index : decay_data.at(0).decay.child_indices) {
-                args.push_back(decay_data.at(index).mass.value());
-            }
-            auto [t_result, det] = t_mapping.build_forward(fb, args, {});
-            std::size_t result_index;
-            using TMapping = std::decay_t<decltype(t_mapping)>;
-            if constexpr (std::is_same_v<TMapping, FastRamboMapping>) {
+    std::visit(
+        Overloaded{
+            [&](auto& t_mapping) {
+                ValueVec args;
+                auto momentum_count = _topology.t_propagator_count() + 1;
+                for (std::size_t i = 0; i < t_mapping.random_dim(); ++i) {
+                    args.push_back(next_random());
+                }
+                args.push_back(sqrt_s_hat);
+                for (std::size_t index : decay_data.at(0).decay.child_indices) {
+                    args.push_back(decay_data.at(index).mass.value());
+                }
+                auto [t_result, det] = t_mapping.build_forward(fb, args, {});
+                std::size_t result_index;
+                using TMapping = std::decay_t<decltype(t_mapping)>;
+                if constexpr (std::is_same_v<TMapping, FastRamboMapping>) {
+                    auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
+                    p_ext = {p1, p2};
+                    result_index = 0;
+                } else {
+                    p_ext = {t_result.at(0), t_result.at(1)};
+                    result_index = 2;
+                }
+                for (std::size_t index : decay_data.at(0).decay.child_indices) {
+                    decay_data.at(index).momentum = t_result.at(result_index);
+                    ++result_index;
+                }
+                dets.push_back(det);
+
+                if constexpr (std::is_same_v<TMapping, ChiliMapping>) {
+                    auto out_size = t_result.size();
+                    x1 = t_result.at(out_size - 2);
+                    x2 = t_result.at(out_size - 1);
+                }
+            },
+            [&](std::monostate) {
                 auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
                 p_ext = {p1, p2};
-                result_index = 0;
-            } else {
-                p_ext = {t_result.at(0), t_result.at(1)};
-                result_index = 2;
-            }
-            for (std::size_t index : decay_data.at(0).decay.child_indices) {
-                decay_data.at(index).momentum = t_result.at(result_index);
-                ++result_index;
-            }
-            dets.push_back(det);
-
-            if constexpr (std::is_same_v<TMapping, ChiliMapping>) {
-                auto out_size = t_result.size();
-                x1 = t_result.at(out_size - 2);
-                x2 = t_result.at(out_size - 1);
             }
         },
-        [&](std::monostate) {
-            auto [p1, p2] = fb.com_p_in(sqrt_s_hat);
-            p_ext = {p1, p2};
-        }
-    }, _t_mapping);
+        _t_mapping
+    );
 
     // go through decays and generate momenta
     std::size_t decay_map_index = _s_decays.size();
     for (auto& data : decay_data) {
-        if (data.decay.child_indices.size() == 0) continue;
+        if (data.decay.child_indices.size() == 0) {
+            continue;
+        }
         if (data.decay.index == 0 &&
-            !std::holds_alternative<std::monostate>(_t_mapping)) continue;
-        std::visit([&](auto& decay_map) {
-            ValueVec decay_args{r, r += decay_map.random_dim()};
-            decay_args.push_back(data.mass.value());
-            for (std::size_t child_index : data.decay.child_indices) {
-                decay_args.push_back(decay_data.at(child_index).mass.value());
-            }
-            if (data.decay.index != 0) decay_args.push_back(data.momentum.value());
-            auto [k_out, det] = decay_map.build_forward(fb, decay_args, {});
-            for (auto [child_index, k] : zip(data.decay.child_indices, k_out)) {
-                decay_data.at(child_index).momentum = k;
-            }
-            dets.push_back(det);
-        }, _s_decays.at(--decay_map_index));
+            !std::holds_alternative<std::monostate>(_t_mapping)) {
+            continue;
+        }
+        std::visit(
+            [&](auto& decay_map) {
+                ValueVec decay_args{r, r += decay_map.random_dim()};
+                decay_args.push_back(data.mass.value());
+                for (std::size_t child_index : data.decay.child_indices) {
+                    decay_args.push_back(decay_data.at(child_index).mass.value());
+                }
+                if (data.decay.index != 0) {
+                    decay_args.push_back(data.momentum.value());
+                }
+                auto [k_out, det] = decay_map.build_forward(fb, decay_args, {});
+                for (auto [child_index, k] : zip(data.decay.child_indices, k_out)) {
+                    decay_data.at(child_index).momentum = k;
+                }
+                dets.push_back(det);
+            },
+            _s_decays.at(--decay_map_index)
+        );
     }
 
     // collect outgoing momenta
@@ -351,16 +372,13 @@ Mapping::Result PhaseSpaceMapping::build_forward_impl(
 
     // permute momenta if permutations are given
     if (_permutations.size() > 1) {
-        p_ext_stack = fb.permute_momenta(
-            p_ext_stack, _permutations, conditions.at(0)
-        );
-    } else if (
-        _permutations.size() == 1 &&
-        !std::is_sorted(_permutations.at(0).begin(), _permutations.at(0).end())
-    ) {
-        p_ext_stack = fb.permute_momenta(
-            p_ext_stack, _permutations, static_cast<me_int_t>(0)
-        );
+        p_ext_stack = fb.permute_momenta(p_ext_stack, _permutations, conditions.at(0));
+    } else if (_permutations.size() == 1 &&
+               !std::is_sorted(
+                   _permutations.at(0).begin(), _permutations.at(0).end()
+               )) {
+        p_ext_stack =
+            fb.permute_momenta(p_ext_stack, _permutations, static_cast<me_int_t>(0));
     }
 
     // boost into correct frame and apply cuts

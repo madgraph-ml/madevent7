@@ -7,9 +7,13 @@ Tensor Tensor::select(std::size_t axis, std::size_t index) const {
     auto new_dim = impl->shape.size() - 1;
     Sizes new_shape(new_dim), new_stride(new_dim);
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
-    std::copy(impl->shape.begin() + axis + 1, impl->shape.end(), new_shape.begin() + axis);
+    std::copy(
+        impl->shape.begin() + axis + 1, impl->shape.end(), new_shape.begin() + axis
+    );
     std::copy(impl->stride.begin(), impl->stride.begin() + axis, new_stride.begin());
-    std::copy(impl->stride.begin() + axis + 1, impl->stride.end(), new_stride.begin() + axis);
+    std::copy(
+        impl->stride.begin() + axis + 1, impl->stride.end(), new_stride.begin() + axis
+    );
     return Tensor(new Tensor::TensorImpl{
         impl->dtype,
         new_shape,
@@ -71,15 +75,19 @@ std::vector<Tensor> Tensor::unstack(std::size_t axis) const {
 
 Tensor Tensor::unsqueeze(std::size_t axis) const {
     check_impl();
-    //TODO: check if correct for non-contiguous tensor
+    // TODO: check if correct for non-contiguous tensor
     auto new_dim = impl->shape.size() + 1;
     Sizes new_shape(new_dim), new_stride(new_dim);
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
     new_shape[axis] = 1;
-    std::copy(impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1);
+    std::copy(
+        impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1
+    );
     std::copy(impl->stride.begin(), impl->stride.begin() + axis, new_stride.begin());
     new_stride[axis] = axis == 0 ? 1 : impl->stride[axis - 1];
-    std::copy(impl->stride.begin() + axis, impl->stride.end(), new_stride.begin() + axis + 1);
+    std::copy(
+        impl->stride.begin() + axis, impl->stride.end(), new_stride.begin() + axis + 1
+    );
     return Tensor(new Tensor::TensorImpl{
         impl->dtype,
         new_shape,
@@ -119,12 +127,20 @@ Tensor Tensor::factor_dim(std::size_t axis, std::size_t factor) {
 
     std::copy(impl->shape.begin(), impl->shape.begin() + axis, new_shape.begin());
     new_shape[axis] = factor;
-    std::copy(impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1);
+    std::copy(
+        impl->shape.begin() + axis, impl->shape.end(), new_shape.begin() + axis + 1
+    );
     new_shape[axis + 1] /= factor;
 
-    std::copy(impl->stride.begin(), impl->stride.begin() + axis + 1, new_stride.begin());
+    std::copy(
+        impl->stride.begin(), impl->stride.begin() + axis + 1, new_stride.begin()
+    );
     new_stride[axis + 1] = new_stride[axis] * factor;
-    std::copy(impl->stride.begin() + axis + 1, impl->stride.end(), new_stride.begin() + axis + 2);
+    std::copy(
+        impl->stride.begin() + axis + 1,
+        impl->stride.end(),
+        new_stride.begin() + axis + 2
+    );
 
     return Tensor(new Tensor::TensorImpl{
         impl->dtype,

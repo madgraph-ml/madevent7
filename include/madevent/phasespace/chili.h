@@ -14,9 +14,7 @@ public:
         const std::vector<double>& _pt_min
     );
 
-    std::size_t random_dim() const {
-        return 3 * n_particles - 2;
-    }
+    std::size_t random_dim() const { return 3 * n_particles - 2; }
 
 private:
     Result build_forward_impl(
@@ -31,4 +29,4 @@ private:
     std::vector<double> pt_min;
 };
 
-}
+} // namespace madevent

@@ -772,6 +772,22 @@ mirror_momenta:
       type: [float, n, 4]
       desc:
 
+momenta_to_x1x2:
+  inputs:
+    - name: p_ext
+      type: [float, n, 4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+  outputs:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+
 
 ---
 title: Invariants
@@ -1212,58 +1228,9 @@ chili_forward:
 title: Interface to ME and PDF
 
 matrix_element:
-  inputs:
-    - name: momenta
-      type: [float, n, 4]
-      desc:
-    - name: flavor
-      type: [int]
-      desc:
-    - name: index
-      type: [int, single]
-      desc:
-  outputs:
-    - name: matrix_element
-      type: [float]
-      desc:
-  custom_op: True
-
-matrix_element_multichannel:
-  inputs:
-    - name: momenta
-      type: [float, n, 4]
-      desc:
-    - name: alpha_s
-      type: [float]
-      desc:
-    - name: random
-      type: [float, 3]
-      desc:
-    - name: flavor
-      type: [int]
-      desc:
-    - name: index
-      type: [int, single]
-      desc:
-    - name: diagram_count
-      type: [size, c]
-      desc:
-  outputs:
-    - name: matrix_element
-      type: [float]
-      desc:
-    - name: amp2
-      type: [float, c]
-      desc:
-    - name: diagram_id
-      type: [int]
-      desc:
-    - name: color_id
-      type: [int]
-      desc:
-    - name: helicity_id
-      type: [int]
-      desc:
+  inputs: any
+  outputs: any
+  class: MatrixElementInstruction
   custom_op: True
 
 collect_channel_weights:

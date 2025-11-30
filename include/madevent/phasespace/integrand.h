@@ -1,15 +1,15 @@
 #pragma once
 
-#include "madevent/phasespace/phasespace.h"
-#include "madevent/phasespace/matrix_element.h"
-#include "madevent/phasespace/cross_section.h"
-#include "madevent/phasespace/vegas.h"
-#include "madevent/phasespace/pdf.h"
-#include "madevent/phasespace/flow.h"
-#include "madevent/phasespace/discrete_sampler.h"
-#include "madevent/phasespace/discrete_flow.h"
-#include "madevent/phasespace/channel_weights.h"
 #include "madevent/phasespace/channel_weight_network.h"
+#include "madevent/phasespace/channel_weights.h"
+#include "madevent/phasespace/cross_section.h"
+#include "madevent/phasespace/discrete_flow.h"
+#include "madevent/phasespace/discrete_sampler.h"
+#include "madevent/phasespace/flow.h"
+#include "madevent/phasespace/matrix_element.h"
+#include "madevent/phasespace/pdf.h"
+#include "madevent/phasespace/phasespace.h"
+#include "madevent/phasespace/vegas.h"
 #include "madevent/util.h"
 
 namespace madevent {
@@ -17,25 +17,47 @@ namespace madevent {
 class Unweighter : public FunctionGenerator {
 public:
     Unweighter(const TypeVec& types);
+
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 };
 
 class Integrand : public FunctionGenerator {
 public:
     using AdaptiveMapping = std::variant<std::monostate, VegasMapping, Flow>;
-    using AdaptiveDiscrete = std::variant<std::monostate, DiscreteSampler, DiscreteFlow>;
+    using AdaptiveDiscrete =
+        std::variant<std::monostate, DiscreteSampler, DiscreteFlow>;
     inline static const int sample = 1;
     inline static const int unweight = 2;
     inline static const int return_momenta = 4;
     inline static const int return_x1_x2 = 8;
-    inline static const int return_random = 16;
-    inline static const int return_latent = 32;
-    inline static const int return_channel = 64;
-    inline static const int return_chan_weights = 128;
-    inline static const int return_cwnet_input = 256;
-    inline static const int return_discrete = 512;
-    inline static const int return_discrete_latent = 1024;
+    inline static const int return_indices = 16;
+    inline static const int return_random = 32;
+    inline static const int return_latent = 64;
+    inline static const int return_channel = 128;
+    inline static const int return_chan_weights = 256;
+    inline static const int return_cwnet_input = 512;
+    inline static const int return_discrete = 1024;
+    inline static const int return_discrete_latent = 2048;
+
+    inline static const std::vector<MatrixElement::MatrixElementInput>
+        matrix_element_inputs = {
+            MatrixElement::momenta_in,
+            MatrixElement::alpha_s_in,
+            MatrixElement::flavor_in,
+            MatrixElement::random_color_in,
+            MatrixElement::random_helicity_in,
+            MatrixElement::random_diagram_in,
+        };
+    inline static const std::vector<MatrixElement::MatrixElementOutput>
+        matrix_element_outputs = {
+            MatrixElement::matrix_element_out,
+            MatrixElement::diagram_amp2_out,
+            MatrixElement::color_index_out,
+            MatrixElement::helicity_index_out,
+            MatrixElement::diagram_index_out,
+        };
 
     Integrand(
         const PhaseSpaceMapping& mapping,
@@ -124,8 +146,10 @@ private:
         Value& scale_cache() { return values[20]; }
     };
 
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-    ChannelResult build_channel_part(FunctionBuilder& fb, const ChannelArgs& args) const;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ChannelResult
+    build_channel_part(FunctionBuilder& fb, const ChannelArgs& args) const;
     ValueVec build_common_part(
         FunctionBuilder& fb, const ChannelArgs& args, ChannelResult& result
     ) const;
@@ -160,7 +184,8 @@ public:
     MultiChannelIntegrand(const std::vector<std::shared_ptr<Integrand>>& integrands);
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     std::vector<std::shared_ptr<Integrand>> _integrands;
 };
@@ -170,7 +195,8 @@ public:
     IntegrandProbability(const Integrand& integrand);
 
 private:
-    ValueVec build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
+    ValueVec
+    build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
 
     Integrand::AdaptiveMapping _adaptive_map;
     Integrand::AdaptiveDiscrete _discrete_before;
@@ -180,4 +206,4 @@ private:
     bool _has_pdf_prior;
 };
 
-}
+} // namespace madevent

@@ -5,16 +5,17 @@
 namespace madevent {
 namespace kernels {
 
-template<typename T>
-KERNELSPEC std::size_t binary_search(
-    FVal<T> x, FIn<T,1> knots, FVal<T>& x_low, FVal<T>& x_high
-) {
+template <typename T>
+KERNELSPEC std::size_t
+binary_search(FVal<T> x, FIn<T, 1> knots, FVal<T>& x_low, FVal<T>& x_high) {
     int64_t index_low = 0, index_high = knots.size();
     while (index_low <= index_high) {
         std::size_t index = index_low + (index_high - index_low) / 2;
         x_low = knots[index];
         x_high = knots[index + 1];
-        if (x_low <= x && x <= x_high) return index;
+        if (x_low <= x && x <= x_high) {
+            return index;
+        }
         if (x_low < x) {
             index_low = index + 1;
         } else {
@@ -24,11 +25,15 @@ KERNELSPEC std::size_t binary_search(
     return 0;
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_interpolate_pdf(
-    FIn<T,0> x, FIn<T,0> q2, IIn<T,1> pid_indices,
-    FIn<T,1> grid_logx, FIn<T,1> grid_logq2, FIn<T,3> grid_coeffs,
-    FOut<T,1> pdf
+    FIn<T, 0> x,
+    FIn<T, 0> q2,
+    IIn<T, 1> pid_indices,
+    FIn<T, 1> grid_logx,
+    FIn<T, 1> grid_logq2,
+    FIn<T, 3> grid_coeffs,
+    FOut<T, 1> pdf
 ) {
     auto logx = log(x), logq2 = log(q2);
     FVal<T> logx_low, logx_high, logq2_low, logq2_high;
@@ -43,16 +48,28 @@ KERNELSPEC void kernel_interpolate_pdf(
     auto t_logq2_2 = t_logq2 * t_logq2;
     auto t_logq2_3 = t_logq2_2 * t_logq2;
 
-    auto vl_val = 2*t_logq2_3 - 3*t_logq2_2 + 1;
-    auto vdl_val = t_logq2_3 - 2*t_logq2_2 + t_logq2;
-    auto vh_val = -2*t_logq2_3 + 3*t_logq2_2;
+    auto vl_val = 2 * t_logq2_3 - 3 * t_logq2_2 + 1;
+    auto vdl_val = t_logq2_3 - 2 * t_logq2_2 + t_logq2;
+    auto vh_val = -2 * t_logq2_3 + 3 * t_logq2_2;
     auto vdh_val = t_logq2_3 - t_logq2_2;
 
     FVal<T> values[16] = {
-        vl_val * t_logx_3, vl_val * t_logx_2, vl_val * t_logx, vl_val,
-        vh_val * t_logx_3, vh_val * t_logx_2, vh_val * t_logx, vh_val,
-        vdl_val * t_logx_3, vdl_val * t_logx_2, vdl_val * t_logx, vdl_val,
-        vdh_val * t_logx_3, vdh_val * t_logx_2, vdh_val * t_logx, vdh_val
+        vl_val * t_logx_3,
+        vl_val * t_logx_2,
+        vl_val * t_logx,
+        vl_val,
+        vh_val * t_logx_3,
+        vh_val * t_logx_2,
+        vh_val * t_logx,
+        vh_val,
+        vdl_val * t_logx_3,
+        vdl_val * t_logx_2,
+        vdl_val * t_logx,
+        vdl_val,
+        vdh_val * t_logx_3,
+        vdh_val * t_logx_2,
+        vdh_val * t_logx,
+        vdh_val
     };
 
     for (std::size_t i = 0; i < pid_indices.size(); ++i) {
@@ -66,9 +83,9 @@ KERNELSPEC void kernel_interpolate_pdf(
     }
 }
 
-template<typename T>
+template <typename T>
 KERNELSPEC void kernel_interpolate_alpha_s(
-    FIn<T,0> q2, FIn<T,1> grid_logq2, FIn<T,2> grid_coeffs, FOut<T,0> alpha_s
+    FIn<T, 0> q2, FIn<T, 1> grid_logq2, FIn<T, 2> grid_coeffs, FOut<T, 0> alpha_s
 ) {
     auto logq2 = log(q2);
     FVal<T> logq2_low, logq2_high;
@@ -78,9 +95,9 @@ KERNELSPEC void kernel_interpolate_alpha_s(
     auto t_logq2_2 = t_logq2 * t_logq2;
     auto t_logq2_3 = t_logq2_2 * t_logq2;
 
-    auto vl_val = 2*t_logq2_3 - 3*t_logq2_2 + 1;
-    auto vdl_val = t_logq2_3 - 2*t_logq2_2 + t_logq2;
-    auto vh_val = -2*t_logq2_3 + 3*t_logq2_2;
+    auto vl_val = 2 * t_logq2_3 - 3 * t_logq2_2 + 1;
+    auto vdl_val = t_logq2_3 - 2 * t_logq2_2 + t_logq2;
+    auto vh_val = -2 * t_logq2_3 + 3 * t_logq2_2;
     auto vdh_val = t_logq2_3 - t_logq2_2;
     FVal<T> values[4] = {vl_val, vh_val, vdl_val, vdh_val};
 
@@ -91,5 +108,5 @@ KERNELSPEC void kernel_interpolate_alpha_s(
     alpha_s = result;
 }
 
-}
-}
+} // namespace kernels
+} // namespace madevent
