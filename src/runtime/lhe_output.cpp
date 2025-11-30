@@ -2,6 +2,7 @@
 
 #include "madevent/util.h"
 
+#include <cstdio>
 #include <span>
 
 using namespace madevent;
@@ -484,7 +485,9 @@ void LHEFileWriter::write(const LHEEvent& event) {
 }
 
 void LHEFileWriter::add_to_buffer(const LHEEvent& event) {
-    _buffer += std::format(
+    auto insert_iter = std::back_inserter(_buffer);
+    std::format_to(
+        insert_iter,
         "<event>\n{:4} {:4} {:+.10e} {:.10e} {:.10e} {:.10e}\n",
         event.particles.size(),
         event.process_id,
@@ -494,7 +497,8 @@ void LHEFileWriter::add_to_buffer(const LHEEvent& event) {
         event.alpha_qcd
     );
     for (auto particle : event.particles) {
-        _buffer += std::format(
+        std::format_to(
+            insert_iter,
             "{:4} {:4} {:4} {:4} {:4} {:4} {:+.10e} {:+.10e} {:+.10e} {:.10e} {:.10e} "
             "{:.4e} {:+.4e}\n",
             particle.pdg_id,

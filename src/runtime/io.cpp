@@ -66,12 +66,14 @@ json parse_header(std::fstream& file_stream) {
     return json::parse(header);
 }
 
-std::vector<FieldLayout> full_descr(
+std::vector<std::pair<std::string, std::string>> full_descr(
     std::size_t particle_count,
     std::span<const FieldLayout> event_fields,
     std::span<const FieldLayout> particle_fields
 ) {
-    std::vector<FieldLayout> field_descr{event_fields.begin(), event_fields.end()};
+    std::vector<std::pair<std::string, std::string>> field_descr{
+        event_fields.begin(), event_fields.end()
+    };
     for (std::size_t i = 1; i <= particle_count; ++i) {
         for (auto& [field_name, field_type] : particle_fields) {
             field_descr.push_back(

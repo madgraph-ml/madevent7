@@ -72,6 +72,12 @@ Integrand::Integrand(
                 ret_types.push_back(batch_float);
                 ret_types.push_back(batch_float);
             }
+            if (flags & return_indices) {
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+            }
             if (flags & return_random) {
                 ret_types.push_back(batch_float_array(mapping.random_dim()));
             }
@@ -411,7 +417,11 @@ ValueVec Integrand::build_common_part(
 
     // evaluate differential cross section
     ValueVec xs_args{
-        result.momenta_acc(), result.x1_acc(), result.x2_acc(), result.flavor_id()
+        result.momenta_acc(),
+        result.flavor_id(),
+        result.x1_acc(),
+        result.x2_acc(),
+        result.flavor_id()
     };
     if (args.has_mirror) {
         xs_args.push_back(result.mirror_id());
@@ -480,6 +490,15 @@ ValueVec Integrand::build_common_part(
     if (_flags & return_x1_x2) {
         outputs.push_back(result.x1());
         outputs.push_back(result.x2());
+    }
+    if (_flags & return_indices) {
+        auto zeros = fb.full({static_cast<me_int_t>(0), args.batch_size});
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(2)));
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(3)));
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(4)));
+        outputs.push_back(
+            fb.batch_scatter(result.indices_acc(), zeros, result.flavor_id())
+        );
     }
     if (_flags & return_random) {
         outputs.push_back(result.r());

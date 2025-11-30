@@ -50,8 +50,8 @@ private:
 class EventGenerator {
 public:
     static inline const int integrand_flags = Integrand::sample |
-        Integrand::return_momenta | Integrand::return_random |
-        Integrand::return_discrete;
+        Integrand::return_momenta | Integrand::return_indices |
+        Integrand::return_random | Integrand::return_discrete;
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;

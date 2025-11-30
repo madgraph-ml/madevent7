@@ -32,13 +32,32 @@ public:
     inline static const int unweight = 2;
     inline static const int return_momenta = 4;
     inline static const int return_x1_x2 = 8;
-    inline static const int return_random = 16;
-    inline static const int return_latent = 32;
-    inline static const int return_channel = 64;
-    inline static const int return_chan_weights = 128;
-    inline static const int return_cwnet_input = 256;
-    inline static const int return_discrete = 512;
-    inline static const int return_discrete_latent = 1024;
+    inline static const int return_indices = 16;
+    inline static const int return_random = 32;
+    inline static const int return_latent = 64;
+    inline static const int return_channel = 128;
+    inline static const int return_chan_weights = 256;
+    inline static const int return_cwnet_input = 512;
+    inline static const int return_discrete = 1024;
+    inline static const int return_discrete_latent = 2048;
+
+    inline static const std::vector<MatrixElement::MatrixElementInput>
+        matrix_element_inputs = {
+            MatrixElement::momenta_in,
+            MatrixElement::alpha_s_in,
+            MatrixElement::flavor_in,
+            MatrixElement::random_color_in,
+            MatrixElement::random_helicity_in,
+            MatrixElement::random_diagram_in,
+        };
+    inline static const std::vector<MatrixElement::MatrixElementOutput>
+        matrix_element_outputs = {
+            MatrixElement::matrix_element_out,
+            MatrixElement::diagram_amp2_out,
+            MatrixElement::color_index_out,
+            MatrixElement::helicity_index_out,
+            MatrixElement::diagram_index_out,
+        };
 
     Integrand(
         const PhaseSpaceMapping& mapping,

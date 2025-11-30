@@ -1021,6 +1021,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("unweight", &Integrand::unweight)
         .def_readonly_static("return_momenta", &Integrand::return_momenta)
         .def_readonly_static("return_x1_x2", &Integrand::return_x1_x2)
+        .def_readonly_static("return_indices", &Integrand::return_indices)
         .def_readonly_static("return_random", &Integrand::return_random)
         .def_readonly_static("return_latent", &Integrand::return_latent)
         .def_readonly_static("return_channel", &Integrand::return_channel)
@@ -1029,6 +1030,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_discrete", &Integrand::return_discrete)
         .def_readonly_static(
             "return_discrete_latent", &Integrand::return_discrete_latent
+        )
+        .def_readonly_static("matrix_element_inputs", &Integrand::matrix_element_inputs)
+        .def_readonly_static(
+            "matrix_element_outputs", &Integrand::matrix_element_outputs
         );
     py::classh<MultiChannelIntegrand, FunctionGenerator>(m, "MultiChannelIntegrand")
         .def(
