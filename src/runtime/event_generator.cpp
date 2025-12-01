@@ -47,6 +47,8 @@ EventGenerator::EventGenerator(
          0.,
          0,
          0,
+         0,
+         0,
          0.,
          static_cast<double>(config.target_count),
          false,
@@ -347,13 +349,22 @@ void EventGenerator::reset_start_time() {
 }
 
 std::string EventGenerator::format_run_time() const {
+    using namespace std::chrono_literals;
     std::size_t diff = cpu_time_microsec() - _start_cpu_microsec;
-    std::chrono::duration<double, std::ratio<1, 100>> cpu_duration(diff / 10000);
-    std::chrono::duration<double, std::ratio<1, 100>> wall_duration(
+    std::chrono::duration<double> cpu_duration(diff / 1000000.);
+    // we don't use the ratio feature of duration here because it seems to lead
+    // to errors in old gcc versions
+    double cpu_centisec = std::fmod(diff / 10000., 100.);
+    std::chrono::duration<double> wall_duration(
         std::chrono::steady_clock::now() - _start_time
     );
+    double wall_centisec = std::fmod(wall_duration / 0.01s, 100.);
     return std::format(
-        "{:%H:%M:%S} wall, {:%H:%M:%S} cpu", wall_duration, cpu_duration
+        "{:%H:%M:%S}.{:02.0f} wall, {:%H:%M:%S}.{:02.0f} cpu",
+        wall_duration,
+        wall_centisec,
+        cpu_duration,
+        cpu_centisec
     );
 }
 
@@ -439,7 +450,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
              channel.cross_section.error(),
              channel.cross_section.rel_std_dev(),
              channel.total_sample_count,
-             channel.cross_section.count(),
+             channel.total_sample_count_opt,
+             channel.total_sample_count_after_cuts,
+             channel.total_sample_count_after_cuts_opt,
              channel.eff_count,
              target_count,
              channel.iterations,
@@ -456,14 +469,17 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     auto& weights = events.at(0);
     auto weights_cpu = weights.cpu();
     auto w_view = weights_cpu.view<double, 1>();
-    std::size_t sample_count = 0;
+    std::size_t sample_count_after_cuts = 0;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         if (w_view[i] != 0) {
-            ++sample_count;
+            ++sample_count_after_cuts;
         }
         channel.cross_section.push(w_view[i]);
     }
-    channel.total_sample_count += sample_count; // w_view.size();
+    channel.total_sample_count += w_view.size();
+    channel.total_sample_count_opt += w_view.size();
+    channel.total_sample_count_after_cuts += sample_count_after_cuts;
+    channel.total_sample_count_after_cuts_opt += sample_count_after_cuts;
 
     if (run_optim) {
         if (channel.vegas_optimizer) {
@@ -499,13 +515,18 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     }
 
     double total_mean = 0., total_var = 0.;
-    std::size_t total_count = 0, total_integ_count = 0;
+    std::size_t total_count = 0, total_count_opt = 0;
+    std::size_t total_count_after_cuts = 0, total_count_after_cuts_opt = 0;
+    std::size_t total_integ_count = 0;
     std::size_t iterations = 0;
     bool optimized = true;
     for (auto& channel : _channels) {
         total_mean += channel.cross_section.mean();
         total_var += channel.cross_section.variance() / channel.cross_section.count();
         total_count += channel.total_sample_count;
+        total_count_opt += channel.total_sample_count_opt;
+        total_count_after_cuts += channel.total_sample_count_after_cuts;
+        total_count_after_cuts_opt += channel.total_sample_count_after_cuts_opt;
         total_integ_count += channel.cross_section.count();
         iterations = std::max(channel.iterations, iterations);
         if (channel.needs_optimization) {
@@ -516,7 +537,9 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     _status_all.error = std::sqrt(total_var);
     _status_all.rel_std_dev = std::sqrt(total_var * total_integ_count) / total_mean;
     _status_all.count = total_count;
-    _status_all.count_integral = total_integ_count;
+    _status_all.count_opt = total_count_opt;
+    _status_all.count_after_cuts = total_count_after_cuts;
+    _status_all.count_after_cuts_opt = total_count_after_cuts_opt;
     _status_all.iterations = iterations;
     _status_all.optimized = optimized;
     for (auto& channel : _channels) {
@@ -557,6 +580,8 @@ void EventGenerator::start_vegas_jobs(ChannelState& channel) {
 void EventGenerator::clear_channel(ChannelState& channel) {
     channel.eff_count = 0;
     channel.max_weight = 0;
+    channel.total_sample_count_opt = 0;
+    channel.total_sample_count_after_cuts_opt = 0;
     channel.event_file.clear();
     channel.weight_file.clear();
     channel.cross_section.reset();
@@ -868,14 +893,22 @@ void EventGenerator::print_gen_update_pretty(bool done) {
     }
     _last_print_time = now;
 
-    std::string int_str, rel_str, rsd_str, uweff_str;
+    std::string int_str, rel_str, rsd_str, uweff_str, count_str;
+    count_str = std::format(
+        "{} before cuts, {} after",
+        format_si_prefix(_status_all.count),
+        format_si_prefix(_status_all.count_after_cuts)
+    );
+
     if (!std::isnan(_status_all.error)) {
         double rel_err = _status_all.error / _status_all.mean;
         int_str = format_with_error(_status_all.mean, _status_all.error);
         rel_str = std::format("{:.4f} %", rel_err * 100);
         rsd_str = std::format("{:.3f}", _status_all.rel_std_dev);
         uweff_str = std::format(
-            "{:.5f}", _status_all.count_unweighted / _status_all.count_integral
+            "{:.5f} before cuts, {:.5f} after",
+            _status_all.count_unweighted / _status_all.count_opt,
+            _status_all.count_unweighted / _status_all.count_after_cuts_opt
         );
     }
     std::string unw_str = std::format(
@@ -897,14 +930,7 @@ void EventGenerator::print_gen_update_pretty(bool done) {
         );
     }
     _pretty_box_upper.set_column(
-        1,
-        {int_str,
-         rel_str,
-         rsd_str,
-         uweff_str,
-         format_si_prefix(_status_all.count),
-         unw_str,
-         time_str}
+        1, {int_str, rel_str, rsd_str, count_str, uweff_str, unw_str, time_str}
     );
     _pretty_box_upper.print_update();
 
@@ -921,9 +947,9 @@ void EventGenerator::print_gen_update_pretty(bool done) {
                 int_str = format_with_error(channel.mean, channel.error);
                 rsd_str = std::format("{:.3f}", channel.rel_std_dev);
                 uweff_str = std::format(
-                    "{:.5f}", channel.count_unweighted / channel.count_integral
+                    "{:.5f}", channel.count_unweighted / channel.count_after_cuts_opt
                 );
-                count_str = format_si_prefix(channel.count);
+                count_str = format_si_prefix(channel.count_after_cuts);
                 opt_str = std::format(
                     "{} {}",
                     channel.iterations,
@@ -944,7 +970,7 @@ void EventGenerator::print_gen_update_pretty(bool done) {
             }
             _pretty_box_lower.set_row(
                 row,
-                {index_str, int_str, rsd_str, count_str, uweff_str, opt_str, unw_str}
+                {index_str, int_str, rsd_str, uweff_str, count_str, opt_str, unw_str}
             );
             ++row;
         }
@@ -962,15 +988,18 @@ void EventGenerator::print_gen_update_log(bool done) {
 
     Logger::info(
         std::format(
-            "generating, events: {} / {}, integral: {}, rel. error: {:.4f} %, RSD: "
-            "{:.3f}, "
-            "unw. eff.: {:.5f}, time: {:%H:%M:%S}",
+            "generating, events: {} / {}, integral: {}, rel. error: {:.4f} %, "
+            "RSD: {:.3f}, samps: {}, samps. after cuts: {}, "
+            "unw. eff.: {:.5f}, unw. eff. after cuts: {:.5f}, time: {:%H:%M:%S}",
             format_si_prefix(_status_all.count_unweighted),
             format_si_prefix(_status_all.count_target),
             format_with_error(_status_all.mean, _status_all.error),
             _status_all.error / _status_all.mean * 100,
             _status_all.rel_std_dev,
-            _status_all.count_unweighted / _status_all.count_integral,
+            format_si_prefix(_status_all.count),
+            format_si_prefix(_status_all.count_after_cuts),
+            _status_all.count_unweighted / _status_all.count_opt,
+            _status_all.count_unweighted / _status_all.count_after_cuts_opt,
             std::chrono::round<std::chrono::seconds>(now - _start_time)
         )
     );

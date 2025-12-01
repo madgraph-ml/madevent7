@@ -1085,6 +1085,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("error", &EventGenerator::Status::error)
         .def_readwrite("rel_std_dev", &EventGenerator::Status::rel_std_dev)
         .def_readwrite("count", &EventGenerator::Status::count)
+        .def_readwrite("count_opt", &EventGenerator::Status::count_opt)
+        .def_readwrite("count_after_cuts", &EventGenerator::Status::count_after_cuts)
+        .def_readwrite(
+            "count_after_cuts_opt", &EventGenerator::Status::count_after_cuts_opt
+        )
         .def_readwrite("count_unweighted", &EventGenerator::Status::count_unweighted)
         .def_readwrite("count_target", &EventGenerator::Status::count_target)
         .def_readwrite("iterations", &EventGenerator::Status::iterations)

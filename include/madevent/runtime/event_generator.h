@@ -75,7 +75,9 @@ public:
         double error;
         double rel_std_dev;
         std::size_t count;
-        std::size_t count_integral;
+        std::size_t count_opt;
+        std::size_t count_after_cuts;
+        std::size_t count_after_cuts_opt;
         double count_unweighted;
         double count_target;
         std::size_t iterations;
@@ -121,6 +123,9 @@ private:
         double eff_count = 0.;
         double integral_fraction = 1.;
         std::size_t total_sample_count = 0;
+        std::size_t total_sample_count_opt = 0;
+        std::size_t total_sample_count_after_cuts = 0;
+        std::size_t total_sample_count_after_cuts_opt = 0;
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
