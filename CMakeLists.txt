@@ -150,6 +150,7 @@ add_library(
     include/madevent/runtime/discrete_optimizer.h
     include/madevent/runtime/runtime_base.h
     include/madevent/runtime/lhe_output.h
+    include/madevent/runtime/logger.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h

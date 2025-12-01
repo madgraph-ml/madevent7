@@ -52,6 +52,7 @@ public:
     static inline const int integrand_flags = Integrand::sample |
         Integrand::return_momenta | Integrand::return_indices |
         Integrand::return_random | Integrand::return_discrete;
+    enum Verbosity { silent, log, pretty };
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;
@@ -65,6 +66,7 @@ public:
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
         std::size_t batch_size = 1000;
+        Verbosity verbosity;
     };
     static const Config default_config;
     struct Status {
@@ -180,9 +182,13 @@ private:
         std::size_t event_index
     );
     void print_gen_init();
-    void print_gen_update();
+    void print_gen_update(bool done);
+    void print_gen_update_pretty(bool done);
+    void print_gen_update_log(bool done);
     void print_combine_init();
     void print_combine_update(std::size_t count);
+    void print_combine_update_pretty(std::size_t count);
+    void print_combine_update_log(std::size_t count);
 };
 
 } // namespace madevent

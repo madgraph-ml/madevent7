@@ -1,4 +1,5 @@
 #include "madevent/runtime/event_generator.h"
+#include "madevent/runtime/logger.h"
 
 #include <cmath>
 #include <format>
@@ -207,7 +208,7 @@ void EventGenerator::generate() {
                 integrate_and_optimize(channel, job.events, run_optim);
             update_max_weight(channel, weights);
             unweight_and_write(channel, events);
-            print_gen_update();
+            print_gen_update(false);
             _running_jobs.erase(*job_id);
         } else {
             if (_status_all.done) {
@@ -218,6 +219,7 @@ void EventGenerator::generate() {
             }
         }
     }
+    print_gen_update(true);
 }
 
 void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
@@ -236,6 +238,7 @@ void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
     std::size_t last_update_count = 0;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -274,6 +277,7 @@ void EventGenerator::combine_to_lhe_npy(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -318,6 +322,7 @@ void EventGenerator::combine_to_lhe(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -811,6 +816,9 @@ void EventGenerator::fill_lhe_event(
 
 void EventGenerator::print_gen_init() {
     _last_print_time = std::chrono::steady_clock::now();
+    if (_config.verbosity != EventGenerator::pretty) {
+        return;
+    }
 
     std::size_t offset = 0;
     if (_channels.size() > 1) {
@@ -844,13 +852,21 @@ void EventGenerator::print_gen_init() {
     }
 }
 
-void EventGenerator::print_gen_update() {
+void EventGenerator::print_gen_update(bool done) {
+    if (_config.verbosity == EventGenerator::pretty) {
+        print_gen_update_pretty(done);
+    } else if (_config.verbosity == EventGenerator::log) {
+        print_gen_update_log(done);
+    }
+}
+
+void EventGenerator::print_gen_update_pretty(bool done) {
     auto now = std::chrono::steady_clock::now();
     using namespace std::chrono_literals;
-    if (now - _last_print_time < 0.1s && !_status_all.done) {
+    if (now - _last_print_time < 0.1s && !done) {
         return;
     }
-    _last_print_time = std::chrono::steady_clock::now();
+    _last_print_time = now;
 
     std::string int_str, rel_str, rsd_str, uweff_str;
     if (!std::isnan(_status_all.error)) {
@@ -928,7 +944,7 @@ void EventGenerator::print_gen_update() {
             }
             _pretty_box_lower.set_row(
                 row,
-                {index_str, int_str, rsd_str, uweff_str, count_str, opt_str, unw_str}
+                {index_str, int_str, rsd_str, count_str, uweff_str, opt_str, unw_str}
             );
             ++row;
         }
@@ -936,13 +952,53 @@ void EventGenerator::print_gen_update() {
     }
 }
 
+void EventGenerator::print_gen_update_log(bool done) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_print_time < 10s && !done) {
+        return;
+    }
+    _last_print_time = now;
+
+    Logger::info(
+        std::format(
+            "generating, events: {} / {}, integral: {}, rel. error: {:.4f} %, RSD: "
+            "{:.3f}, "
+            "unw. eff.: {:.5f}, time: {:%H:%M:%S}",
+            format_si_prefix(_status_all.count_unweighted),
+            format_si_prefix(_status_all.count_target),
+            format_with_error(_status_all.mean, _status_all.error),
+            _status_all.error / _status_all.mean * 100,
+            _status_all.rel_std_dev,
+            _status_all.count_unweighted / _status_all.count_integral,
+            std::chrono::round<std::chrono::seconds>(now - _start_time)
+        )
+    );
+
+    if (done) {
+        Logger::info(std::format("generating done, {}", format_run_time()));
+    }
+}
+
 void EventGenerator::print_combine_init() {
+    _last_print_time = std::chrono::steady_clock::now();
+    if (_config.verbosity != EventGenerator::pretty) {
+        return;
+    }
     _pretty_box_upper = PrettyBox("Writing final output", 2, {10, 0});
     _pretty_box_upper.set_column(0, {"Events:", "Run time:"});
     _pretty_box_upper.print_first();
 }
 
 void EventGenerator::print_combine_update(std::size_t count) {
+    if (_config.verbosity == EventGenerator::pretty) {
+        print_combine_update_pretty(count);
+    } else if (_config.verbosity == EventGenerator::log) {
+        print_combine_update_log(count);
+    }
+}
+
+void EventGenerator::print_combine_update_pretty(std::size_t count) {
     if (count == _config.target_count) {
         _pretty_box_upper.set_column(
             1,
@@ -954,6 +1010,13 @@ void EventGenerator::print_combine_update(std::size_t count) {
              format_run_time()}
         );
     } else {
+        auto now = std::chrono::steady_clock::now();
+        using namespace std::chrono_literals;
+        if (now - _last_print_time < 0.1s) {
+            return;
+        }
+        _last_print_time = now;
+
         _pretty_box_upper.set_column(
             1,
             {std::format(
@@ -971,4 +1034,28 @@ void EventGenerator::print_combine_update(std::size_t count) {
         );
     }
     _pretty_box_upper.print_update();
+}
+
+void EventGenerator::print_combine_update_log(std::size_t count) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_print_time < 10s && count != _config.target_count) {
+        return;
+    }
+    _last_print_time = now;
+
+    Logger::info(
+        std::format(
+            "combining, events: {} / {}, time: {:%H:%M:%S}",
+            format_si_prefix(count),
+            format_si_prefix(_config.target_count),
+            std::chrono::round<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - _start_time
+            )
+        )
+    );
+
+    if (count == _config.target_count) {
+        Logger::info(std::format("combining done, {}", format_run_time()));
+    }
 }
