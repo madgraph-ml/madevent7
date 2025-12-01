@@ -941,26 +941,32 @@ PYBIND11_MODULE(_madevent_py, m) {
     )
         .def(
             py::init<
-                const nested_vector2<me_int_t>&,
-                std::size_t,
-                const RunningCoupling&,
-                const std::optional<PdfGrid>&,
+                const MatrixElement&,
                 double,
+                const RunningCoupling&,
                 const EnergyScale&,
+                const nested_vector2<me_int_t>&,
                 bool,
-                std::size_t,
+                bool,
+                const std::optional<PdfGrid>&,
+                const std::optional<PdfGrid>&,
+                bool,
                 bool>(),
-            py::arg("pid_options"),
-            py::arg("matrix_element_index"),
-            py::arg("running_coupling"),
-            py::arg("pdf_grid"),
+            py::arg("matrix_element"),
             py::arg("cm_energy"),
+            py::arg("running_coupling"),
             py::arg("energy_scale"),
-            py::arg("simple_matrix_element") = true,
-            py::arg("channel_count") = 1,
-            py::arg("has_mirror") = false
+            py::arg("pid_options") = nested_vector2<me_int_t>{},
+            py::arg("has_pdf1") = false,
+            py::arg("has_pdf2") = false,
+            py::arg("pdf_grid1") = std::nullopt,
+            py::arg("pdf_grid2") = std::nullopt,
+            py::arg("has_mirror") = false,
+            py::arg("input_momentum_fraction") = true
         )
-        .def("pid_options", &DifferentialCrossSection::pid_options);
+        .def("pid_options", &DifferentialCrossSection::pid_options)
+        .def("has_mirror", &DifferentialCrossSection::has_mirror)
+        .def("matrix_element", &DifferentialCrossSection::matrix_element);
 
     py::classh<Unweighter, FunctionGenerator>(m, "Unweighter")
         .def(py::init<const TypeVec&>(), py::arg("types"));
@@ -1015,6 +1021,7 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("unweight", &Integrand::unweight)
         .def_readonly_static("return_momenta", &Integrand::return_momenta)
         .def_readonly_static("return_x1_x2", &Integrand::return_x1_x2)
+        .def_readonly_static("return_indices", &Integrand::return_indices)
         .def_readonly_static("return_random", &Integrand::return_random)
         .def_readonly_static("return_latent", &Integrand::return_latent)
         .def_readonly_static("return_channel", &Integrand::return_channel)
@@ -1023,6 +1030,10 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readonly_static("return_discrete", &Integrand::return_discrete)
         .def_readonly_static(
             "return_discrete_latent", &Integrand::return_discrete_latent
+        )
+        .def_readonly_static("matrix_element_inputs", &Integrand::matrix_element_inputs)
+        .def_readonly_static(
+            "matrix_element_outputs", &Integrand::matrix_element_outputs
         );
     py::classh<MultiChannelIntegrand, FunctionGenerator>(m, "MultiChannelIntegrand")
         .def(

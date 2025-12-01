@@ -183,6 +183,11 @@ Value mirror_momenta(Value p_ext, Value mirror) {
     return instruction("mirror_momenta", {p_ext, mirror})[0];
 }
 
+std::array<Value, 2> momenta_to_x1x2(Value p_ext, Value e_cm) {
+    auto output_vector = instruction("momenta_to_x1x2", {p_ext, e_cm});
+    return {output_vector[0], output_vector[1]};
+}
+
 std::array<Value, 2> uniform_invariant(Value r, Value s_min, Value s_max) {
     auto output_vector = instruction("uniform_invariant", {r, s_min, s_max});
     return {output_vector[0], output_vector[1]};

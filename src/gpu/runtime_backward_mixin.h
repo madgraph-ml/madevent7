@@ -31,48 +31,48 @@ case 15:
 case 16:
     backward_batch_foreach<tensor_foreach<backward_kernel_reduce_product<GpuTypes>, 2, 1, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 69:
+case 70:
     backward_op_matmul(instr, locals, local_grads, device);
     break;
-case 70:
+case 71:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_relu<GpuTypes>, 2, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 71:
+case 72:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_leaky_relu<GpuTypes>, 2, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 72:
+case 73:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_elu<GpuTypes>, 2, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 73:
+case 74:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_gelu<GpuTypes>, 2, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 74:
+case 75:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_sigmoid<GpuTypes>, 2, 1>, 1, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
     break;
-case 75:
+case 76:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_softplus<GpuTypes>, 2, 1>, 1, 1, 1, 0>(instr, locals, local_grads, {0}, {}, device);
     break;
-case 76:
+case 77:
     backward_op_rqs_reshape(instr, locals, local_grads, device);
     break;
-case 77:
+case 78:
     backward_batch_foreach<tensor_foreach<backward_kernel_rqs_find_bin<GpuTypes>, 5, 4, 2>, 4, 1, 4, 0>(instr, locals, local_grads, {0,1,2,3}, {}, device);
     break;
-case 78:
+case 79:
     backward_batch_foreach<tensor_foreach<backward_kernel_rqs_forward<GpuTypes>, 4, 2, 2>, 2, 2, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
-case 79:
+case 80:
     backward_batch_foreach<tensor_foreach<backward_kernel_rqs_inverse<GpuTypes>, 4, 2, 2>, 2, 2, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
-case 80:
+case 81:
     backward_batch_foreach<tensor_foreach_dynamic<backward_kernel_softmax<GpuTypes>, 2, 1>, 1, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
     break;
-case 81:
+case 82:
     backward_batch_foreach<tensor_foreach<backward_kernel_softmax_prior<GpuTypes>, 2, 2, 1>, 2, 1, 0, 1>(instr, locals, local_grads, {}, {0}, device);
     break;
-case 85:
+case 86:
     backward_batch_foreach<tensor_foreach<backward_kernel_sample_discrete_probs_inverse<GpuTypes>, 4, 2, 1>, 2, 2, 2, 0>(instr, locals, local_grads, {0,1}, {}, device);
     break;
-case 90:
+case 91:
     backward_batch_foreach<tensor_foreach<backward_kernel_select<GpuTypes>, 2, 2, 1>, 2, 1, 1, 0>(instr, locals, local_grads, {1}, {}, device);
     break;

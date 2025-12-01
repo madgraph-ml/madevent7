@@ -33,8 +33,8 @@ EventGenerator::EventGenerator(
     _context(context),
     _config(config),
     _unweighter(build_runtime(
-        Unweighter({channels.at(0).return_types().at(0),
-                    channels.at(0).return_types().at(1)})
+        Unweighter({channels.at(0).return_types().begin(),
+                    channels.at(0).return_types().begin() + 6})
             .function(),
         context,
         false
@@ -95,7 +95,7 @@ EventGenerator::EventGenerator(
                 DataLayout::of<EventIndicesRecord, ParticleRecord>(),
                 channel.particle_count(),
                 EventFile::create,
-                false
+                true
             ),
             .weight_file = EventFile(
                 std::format("{}_channel{}_weights.npy", temp_file_prefix, i),
@@ -462,11 +462,11 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
 
     if (run_optim) {
         if (channel.vegas_optimizer) {
-            auto hist = channel.vegas_histogram->run({events.at(2), weights});
+            auto hist = channel.vegas_histogram->run({events.at(6), weights});
             channel.vegas_optimizer->add_data(hist.at(0), hist.at(1));
         }
         if (channel.discrete_optimizer) {
-            TensorVec args{events.begin() + 3, events.end()};
+            TensorVec args{events.begin() + 7, events.end()};
             args.push_back(weights);
             auto hist = channel.discrete_histogram->run(args);
             channel.discrete_optimizer->add_data(hist);
@@ -609,13 +609,19 @@ void EventGenerator::update_max_weight(ChannelState& channel, Tensor weights) {
 void EventGenerator::unweight_and_write(
     ChannelState& channel, const std::vector<Tensor>& events
 ) {
-    std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 2);
+    std::vector<Tensor> unweighter_args(events.begin(), events.begin() + 6);
     unweighter_args.push_back(Tensor(channel.max_weight, _context->device()));
-    auto unw_events = _unweighter->run(unweighter_args);
-    auto unw_weights = unw_events.at(0).cpu();
-    auto w_view = unw_weights.view<double, 1>();
-    auto unw_momenta = unw_events.at(1).cpu();
-    auto mom_view = unw_momenta.view<double, 3>();
+    TensorVec unw_events = _unweighter->run(unweighter_args);
+    TensorVec unw_events_cpu;
+    for (auto& field : unw_events) {
+        unw_events_cpu.push_back(field.cpu());
+    }
+    auto w_view = unw_events_cpu.at(0).view<double, 1>();
+    auto mom_view = unw_events_cpu.at(1).view<double, 3>();
+    auto colors_view = unw_events_cpu.at(2).view<me_int_t, 1>();
+    auto helicities_view = unw_events_cpu.at(3).view<me_int_t, 1>();
+    auto diagrams_view = unw_events_cpu.at(4).view<me_int_t, 1>();
+    auto flavors_view = unw_events_cpu.at(5).view<me_int_t, 1>();
 
     EventBuffer event_buffer(
         w_view.size(),
@@ -628,10 +634,10 @@ void EventGenerator::unweight_and_write(
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         weight_buffer.event<EventWeightRecord>(i).weight() = w_view[i];
         auto event = event_buffer.event<EventIndicesRecord>(i);
-        event.diagram_index() = 0;
-        event.color_index() = 0;
-        event.flavor_index() = 0;
-        event.helicity_index() = 0;
+        event.diagram_index() = diagrams_view[i];
+        event.color_index() = colors_view[i];
+        event.flavor_index() = flavors_view[i];
+        event.helicity_index() = helicities_view[i];
         auto event_mom = mom_view[i];
         for (std::size_t j = 0; j < event_mom.size(); ++j) {
             auto particle_mom = event_mom[j];
@@ -774,6 +780,10 @@ void EventGenerator::fill_lhe_event(
 ) {
     EventRecord event_in = buffer.event<EventFullRecord>(event_index);
     lhe_event.weight = event_in.weight();
+    lhe_event.process_id = 0;
+    lhe_event.scale = 0; // TODO: populate these
+    lhe_event.alpha_qed = 0;
+    lhe_event.alpha_qcd = 0;
     lhe_event.particles.clear();
     for (std::size_t i = 0; i < buffer.particle_count(); ++i) {
         auto particle_in = buffer.particle<ParticleRecord>(event_index, i);

@@ -772,6 +772,22 @@ mirror_momenta:
       type: [float, n, 4]
       desc:
 
+momenta_to_x1x2:
+  inputs:
+    - name: p_ext
+      type: [float, n, 4]
+      desc:
+    - name: e_cm
+      type: [float]
+      desc:
+  outputs:
+    - name: x1
+      type: [float]
+      desc:
+    - name: x2
+      type: [float]
+      desc:
+
 
 ---
 title: Invariants

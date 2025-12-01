@@ -72,6 +72,12 @@ Integrand::Integrand(
                 ret_types.push_back(batch_float);
                 ret_types.push_back(batch_float);
             }
+            if (flags & return_indices) {
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+                ret_types.push_back(batch_int);
+            }
             if (flags & return_random) {
                 ret_types.push_back(batch_float_array(mapping.random_dim()));
             }
@@ -92,7 +98,7 @@ Integrand::Integrand(
                 ret_types.push_back(batch_float_array(
                     chan_weight_remap.size() > 0 ? remapped_chan_count
                         : subchan_weights        ? subchan_weights->channel_count()
-                                                 : diff_xs.channel_count()
+                                          : diff_xs.matrix_element().diagram_count()
                 ));
                 ret_types.push_back(batch_float);
             }
@@ -403,7 +409,7 @@ ValueVec Integrand::build_common_part(
     Value chan_weights_acc;
     std::size_t channel_count = _chan_weight_remap.size() > 0 ? _remapped_chan_count
         : _subchan_weights ? _subchan_weights->channel_count()
-                           : _diff_xs.channel_count();
+                           : _diff_xs.matrix_element().diagram_count();
     if (channel_count > 1 && _prop_chan_weights) {
         chan_weights_acc =
             _prop_chan_weights->build_function(fb, {result.momenta_acc()}).at(0);
@@ -411,7 +417,11 @@ ValueVec Integrand::build_common_part(
 
     // evaluate differential cross section
     ValueVec xs_args{
-        result.momenta_acc(), result.x1_acc(), result.x2_acc(), result.flavor_id()
+        result.momenta_acc(),
+        result.flavor_id(),
+        result.x1_acc(),
+        result.x2_acc(),
+        result.flavor_id()
     };
     if (args.has_mirror) {
         xs_args.push_back(result.mirror_id());
@@ -480,6 +490,15 @@ ValueVec Integrand::build_common_part(
     if (_flags & return_x1_x2) {
         outputs.push_back(result.x1());
         outputs.push_back(result.x2());
+    }
+    if (_flags & return_indices) {
+        auto zeros = fb.full({static_cast<me_int_t>(0), args.batch_size});
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(2)));
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(3)));
+        outputs.push_back(fb.batch_scatter(result.indices_acc(), zeros, dxs_vec.at(4)));
+        outputs.push_back(
+            fb.batch_scatter(result.indices_acc(), zeros, result.flavor_id())
+        );
     }
     if (_flags & return_random) {
         outputs.push_back(result.r());
