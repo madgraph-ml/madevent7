@@ -19,7 +19,8 @@ jobs:
             CIBW_BEFORE_ALL: >
               yum -y install openblas-devel yum-utils &&
               yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo &&
-              yum -y install cuda-nvcc-12-8 cuda-cudart-devel-12-8 cuda-thrust-12-8 libcublas-devel-12-8 libcurand-devel-12-8
+              yum-config-manager --add-repo /project/.github/workflows/rocm.repo &&
+              yum -y install cuda-nvcc-12-8 cuda-cudart-devel-12-8 cuda-thrust-12-8 libcublas-devel-12-8 libcurand-devel-12-8 rocm-hip-runtime-devel rocblas-devel rocrand-devel rocthrust-devel
             CIBW_REPAIR_WHEEL_COMMAND: >
               auditwheel repair
               --exclude libmadevent.so
@@ -31,6 +32,8 @@ jobs:
               -w {dest_dir} {wheel}
             CIBW_ENVIRONMENT: >
                 PATH=$PATH:/usr/local/cuda/bin
+                CMAKE_PREFIX_PATH=/opt/rocm
+                HIPFLAGS=--gcc-toolchain=$(dirname $(which g++))/../..
           - os: macos-14
             build_small: cp312-macosx_arm64
             build_full: cp3*-macosx_arm64
