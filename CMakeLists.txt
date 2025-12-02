@@ -235,6 +235,7 @@ if(COMPILE_CUDA)
         src/gpu/runtime.h
         src/gpu/tensor.h
         src/gpu/device.h
+        src/gpu/gpu_abstraction.h
         ${KERNEL_SRC}
     )
     set_target_properties(
@@ -258,10 +259,11 @@ if(COMPILE_HIP)
         src/gpu/runtime.h
         src/gpu/tensor.h
         src/gpu/device.h
+        src/gpu/gpu_abstraction.h
         ${KERNEL_SRC}
     )
     set_target_properties(
-        madevent_hip PROPERTIES HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx950;gfx1150;gfx1151"
+        madevent_hip PROPERTIES HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx1150;gfx1151"
     )
     target_include_directories(madevent_hip PUBLIC include)
     set_property(TARGET madevent_hip PROPERTY HIP_STANDARD 20)
