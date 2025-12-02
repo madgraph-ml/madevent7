@@ -2,9 +2,7 @@
 
 #include <pybind11/pybind11.h>
 #include <vector>
-#ifdef TORCH_FOUND
-#include <torch/extension.h>
-#endif
+#include <unordered_map>
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/runtime_base.h"
@@ -54,8 +52,7 @@ struct FunctionRuntime {
 
     Function function;
     ContextPtr context;
-    RuntimePtr cpu_runtime;
-    RuntimePtr cuda_runtime;
+    std::unordered_map<DevicePtr, RuntimePtr> runtimes;
     bool dlpack_version_cache = false;
 };
 

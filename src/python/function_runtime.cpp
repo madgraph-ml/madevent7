@@ -29,40 +29,25 @@ Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
         expected_device =
             func_runtime.context ? func_runtime.context->device() : cpu_device();
     }
-    if (expected_device == cpu_device()) {
-        if (!func_runtime.cpu_runtime) {
-            if (func_runtime.context) {
-                if (func_runtime.context->device() != cpu_device()) {
-                    throw std::invalid_argument(
-                        "Given context does not have device CPU"
-                    );
-                }
-                func_runtime.cpu_runtime =
-                    build_runtime(func_runtime.function, func_runtime.context);
-            } else {
-                func_runtime.cpu_runtime =
-                    build_runtime(func_runtime.function, madevent::default_context());
-            }
-        }
-        runtime = func_runtime.cpu_runtime.get();
+    if (
+        auto search = func_runtime.runtimes.find(expected_device);
+        search != func_runtime.runtimes.end()
+    ) {
+        runtime = search->second.get();
     } else {
-        if (!func_runtime.cuda_runtime) {
-            if (func_runtime.context) {
-                if (func_runtime.context->device() != cuda_device()) {
-                    throw std::invalid_argument(
-                        "Given context does not have device CUDA"
-                    );
-                }
-                func_runtime.cuda_runtime =
-                    build_runtime(func_runtime.function, func_runtime.context);
-            } else {
-                // TODO: default cuda context
-                func_runtime.cuda_runtime = build_runtime(
-                    func_runtime.function, madevent::default_cuda_context()
+        RuntimePtr rt;
+        if (func_runtime.context) {
+            if (func_runtime.context->device() != expected_device) {
+                throw std::invalid_argument(
+                    "Given context does not have compatible device"
                 );
             }
+            rt = build_runtime(func_runtime.function, func_runtime.context);
+        } else {
+            rt = build_runtime(func_runtime.function, madevent::default_context());
         }
-        runtime = func_runtime.cuda_runtime.get();
+        runtime = rt.get();
+        func_runtime.runtimes[expected_device] = std::move(rt);
     }
     return runtime;
 }

@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <dlfcn.h>
 #include <format>
+#include <unordered_map>
 
 using namespace madevent;
 
@@ -11,6 +12,7 @@ namespace {
 struct LoadedRuntime {
     inline static std::string lib_path = "";
     inline static int vector_size = -1;
+    inline static std::unordered_map<DevicePtr, LoadedRuntime*> device_runtimes;
 
     LoadedRuntime(const std::string& file) {
 #ifdef __APPLE__
@@ -45,6 +47,8 @@ struct LoadedRuntime {
                 )
             );
         }
+
+        device_runtimes[get_device()] = this;
     }
 
     std::unique_ptr<void, std::function<void(void*)>> shared_lib;
@@ -121,15 +125,11 @@ const LoadedRuntime& hip_runtime() {
 
 RuntimePtr
 madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
-    if (context->device() == cpu_device()) {
-        return RuntimePtr(cpu_runtime().build_runtime(function, context, concurrent));
-    } else if (context->device() == cuda_device()) {
-        return RuntimePtr(cuda_runtime().build_runtime(function, context, concurrent));
-    } else if (context->device() == hip_device()) {
-        return RuntimePtr(hip_runtime().build_runtime(function, context, concurrent));
-    } else {
-        throw std::runtime_error("Invalid device");
-    }
+    return RuntimePtr(
+        LoadedRuntime::device_runtimes
+        .at(context->device())
+        ->build_runtime(function, context, concurrent)
+    );
 }
 
 DevicePtr madevent::cpu_device() { return cpu_runtime().get_device(); }
