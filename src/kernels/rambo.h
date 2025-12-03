@@ -108,7 +108,7 @@ KERNELSPEC void fast_rambo_massless_body(
         cum_m_prev = cum_m;
     }
     store_mom<T>(p_out[n_particles - 1], q);
-    det = det_tmp * pow(e_cm, 2 * n_particles - 4);
+    det = det_tmp * pow(e_cm, 2. * n_particles - 4.);
 }
 
 template <typename T>

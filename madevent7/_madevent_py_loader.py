@@ -1,4 +1,5 @@
 import ctypes
+import logging
 import os
 import platform
 
@@ -84,6 +85,19 @@ def _init():
 
         return torch.from_dlpack(tensor)
 
+    py_logger = logging.getLogger("madevent7")
+
+    def log_handler(level, message):
+        match level:
+            case Logger.level_debug:
+                py_logger.debug(message)
+            case Logger.level_info:
+                py_logger.info(message)
+            case Logger.level_warning:
+                py_logger.warning(message)
+            case Logger.level_error:
+                py_logger.error(message)
+
     FunctionRuntime.__call__ = runtime_call
     Function.__call__ = function_call
     FunctionGenerator.__call__ = function_generator_call
@@ -91,6 +105,7 @@ def _init():
     Mapping.map_inverse = map_inverse
     Tensor.numpy = tensor_numpy
     Tensor.torch = tensor_torch
+    # Logger.set_log_handler(log_handler)
 
 
 _init()

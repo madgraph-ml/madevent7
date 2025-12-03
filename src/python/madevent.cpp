@@ -1,3 +1,4 @@
+#include <pybind11/functional.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <sstream>
@@ -1042,6 +1043,15 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<IntegrandProbability, FunctionGenerator>(m, "IntegrandProbability")
         .def(py::init<const Integrand&>(), py::arg("integrand"));
 
+    add_enum<EventGenerator::Verbosity>(
+        m,
+        "EventGeneratorVerbosity",
+        {
+            {"silent", EventGenerator::silent},
+            {"log", EventGenerator::log},
+            {"pretty", EventGenerator::pretty},
+        }
+    );
     py::classh<EventGenerator::Config>(m, "EventGeneratorConfig")
         .def(py::init<>())
         .def_readwrite("target_count", &EventGenerator::Config::target_count)
@@ -1066,7 +1076,8 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite(
             "optimization_threshold", &EventGenerator::Config::optimization_threshold
         )
-        .def_readwrite("batch_size", &EventGenerator::Config::batch_size);
+        .def_readwrite("batch_size", &EventGenerator::Config::batch_size)
+        .def_readwrite("verbosity", &EventGenerator::Config::verbosity);
     py::classh<EventGenerator::Status>(m, "EventGeneratorStatus")
         .def(py::init<>())
         .def_readwrite("index", &EventGenerator::Status::index)
@@ -1074,6 +1085,11 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def_readwrite("error", &EventGenerator::Status::error)
         .def_readwrite("rel_std_dev", &EventGenerator::Status::rel_std_dev)
         .def_readwrite("count", &EventGenerator::Status::count)
+        .def_readwrite("count_opt", &EventGenerator::Status::count_opt)
+        .def_readwrite("count_after_cuts", &EventGenerator::Status::count_after_cuts)
+        .def_readwrite(
+            "count_after_cuts_opt", &EventGenerator::Status::count_after_cuts_opt
+        )
         .def_readwrite("count_unweighted", &EventGenerator::Status::count_unweighted)
         .def_readwrite("count_target", &EventGenerator::Status::count_target)
         .def_readwrite("iterations", &EventGenerator::Status::iterations)
@@ -1337,6 +1353,24 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("print_first", &PrettyBox::print_first)
         .def("print_update", &PrettyBox::print_update)
         .def_property_readonly("line_count", &PrettyBox::line_count);
+
+    py::classh<Logger> logger(m, "Logger");
+    add_enum<Logger::LogLevel>(
+        logger,
+        "LogLevel",
+        {
+            {"level_debug", Logger::level_debug},
+            {"level_info", Logger::level_info},
+            {"level_warning", Logger::level_warning},
+            {"level_error", Logger::level_error},
+        }
+    );
+    logger.def_static("log", &Logger::log, py::arg("level"), py::arg("message"))
+        .def_static("debug", &Logger::debug, py::arg("message"))
+        .def_static("info", &Logger::info, py::arg("message"))
+        .def_static("warning", &Logger::warning, py::arg("message"))
+        .def_static("error", &Logger::error, py::arg("message"))
+        .def_static("set_log_handler", &Logger::set_log_handler, py::arg("func"));
 
     m.def(
         "set_thread_count",
