@@ -126,9 +126,8 @@ const LoadedRuntime& hip_runtime() {
 RuntimePtr
 madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
     return RuntimePtr(
-        LoadedRuntime::device_runtimes
-        .at(context->device())
-        ->build_runtime(function, context, concurrent)
+        LoadedRuntime::device_runtimes.at(context->device())
+            ->build_runtime(function, context, concurrent)
     );
 }
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include <pybind11/pybind11.h>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "madevent/madcode.h"
 #include "madevent/runtime/runtime_base.h"

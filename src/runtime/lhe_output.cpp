@@ -2,9 +2,9 @@
 
 #include "madevent/util.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <span>
-#include <algorithm>
 
 using namespace madevent;
 

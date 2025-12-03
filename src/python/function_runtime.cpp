@@ -29,10 +29,8 @@ Runtime* get_runtime(FunctionRuntime& func_runtime, DevicePtr expected_device) {
         expected_device =
             func_runtime.context ? func_runtime.context->device() : cpu_device();
     }
-    if (
-        auto search = func_runtime.runtimes.find(expected_device);
-        search != func_runtime.runtimes.end()
-    ) {
+    if (auto search = func_runtime.runtimes.find(expected_device);
+        search != func_runtime.runtimes.end()) {
         runtime = search->second.get();
     } else {
         RuntimePtr rt;
