@@ -34,6 +34,7 @@ jobs:
                 PATH=$PATH:/usr/local/cuda/bin
                 CMAKE_PREFIX_PATH=/opt/rocm
                 HIPFLAGS=--gcc-toolchain=$(dirname $(which g++))/../..
+                SKBUILD_CMAKE_ARGS="-DUSE_SIMD=1"
           - os: macos-14
             build_small: cp312-macosx_arm64
             build_full: cp3*-macosx_arm64
