@@ -63,7 +63,35 @@ void op_matrix_element(
         shape[0] = batch_size;
         std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
         output = Tensor(instruction.output_dtypes[i], shape, device);
+        if (me_index == 0xBADCAFE) {
+            // flat dummy matrix element for testing purposes
+            // implemented at LUMI hackathon where the coffee was indeed terrible
+            switch (output_keys[i]) {
+            case UMAMI_OUT_MATRIX_ELEMENT:
+                thrust::fill_n(
+                    thrust_par.on(device.stream()),
+                    thrust::device_pointer_cast(static_cast<double*>(output_ptrs[i])),
+                    batch_size,
+                    1.0
+                );
+                break;
+            case UMAMI_OUT_DIAGRAM_AMP2:
+                thrust::fill_n(
+                    thrust_par.on(device.stream()),
+                    thrust::device_pointer_cast(static_cast<double*>(output_ptrs[i])),
+                    batch_size * shape[1],
+                    1. / shape[1]
+                );
+                break;
+            default:
+                output.zero(device);
+                break;
+            }
+        }
         output_ptrs[i] = output.data();
+    }
+    if (me_index == 0xBADCAFE) {
+        return;
     }
     auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
     if (matrix_element.device() != get_device()) {
