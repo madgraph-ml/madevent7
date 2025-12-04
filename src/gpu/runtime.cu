@@ -63,6 +63,7 @@ void op_matrix_element(
         shape[0] = batch_size;
         std::copy(output_shape.begin(), output_shape.end(), shape.begin() + 1);
         output = Tensor(instruction.output_dtypes[i], shape, device);
+        output_ptrs[i] = output.data();
         if (me_index == 0xBADCAFE) {
             // flat dummy matrix element for testing purposes
             // implemented at LUMI hackathon where the coffee was indeed terrible
@@ -88,7 +89,6 @@ void op_matrix_element(
                 break;
             }
         }
-        output_ptrs[i] = output.data();
     }
     if (me_index == 0xBADCAFE) {
         return;
