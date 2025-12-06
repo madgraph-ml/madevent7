@@ -73,9 +73,12 @@ public:
         }
     }
     ~ThreadResource() {
+        println("destroy resource {}", _listener_id);
         if (_pool) {
             println("remove listener {}", _listener_id);
             _pool->remove_listener(_listener_id);
+        } else {
+            println("no pool :( {}", _listener_id);
         }
     }
     ThreadResource(ThreadResource&& other) noexcept :
