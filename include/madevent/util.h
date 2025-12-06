@@ -4,6 +4,7 @@
 #include <format>
 #include <ranges>
 #include <tuple>
+#include <vector>
 
 namespace madevent {
 
