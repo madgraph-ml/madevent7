@@ -62,7 +62,7 @@ jobs:
               numpy
               --extra-index-url https://download.pytorch.org/whl/cpu
               torch
-            CIBW_TEST_COMMAND: gdb --eval-command=run --eval-command="set confirm off" --eval-command=bt --eval-command=quit --args python -m pytest {project}/tests
+            CIBW_TEST_COMMAND: gdb --eval-command="dir {project}" --eval-command=run --eval-command="set confirm off" --eval-command=bt --eval-command=quit --args python -m pytest {project}/tests
 
       - uses: actions/upload-artifact@v4
         with:
