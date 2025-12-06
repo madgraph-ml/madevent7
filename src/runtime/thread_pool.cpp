@@ -52,7 +52,8 @@ void ThreadPool::set_thread_count(int new_count) {
     }
 
     for (auto& [id, listener] : _listeners) {
-        println("calling listener {}", id);
+        uint64_t* arr = reinterpret_cast<uint64_t*>(&listener);
+        println("calling listener {} {} {:x} {:x} {:x} {:x}", id, (void*)&listener, arr[0], arr[1], arr[2], arr[3]);
         listener(_thread_count);
     }
 }

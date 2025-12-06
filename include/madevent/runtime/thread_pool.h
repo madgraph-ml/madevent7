@@ -63,6 +63,7 @@ public:
     ThreadResource(ThreadPool& pool, std::function<T()> constructor) :
         _pool(&pool),
         _listener_id(pool.add_listener([this, constructor](std::size_t thread_count) {
+            println("CALL!!!!1");
             println("listener callback {}: {}", _listener_id, thread_count);
             while (_resources.size() < thread_count) {
                 _resources.push_back(constructor());

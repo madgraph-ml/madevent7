@@ -20,9 +20,9 @@ struct LoadedRuntime {
 #else
         std::string so_ext = "so";
 #endif
-        shared_lib = std::unique_ptr<void, std::function<void(void*)>>(
+        shared_lib = std::shared_ptr<void>(
             dlopen(std::format("{}/{}.{}", lib_path, file, so_ext).c_str(), RTLD_NOW),
-            [](void* lib) { dlclose(lib); }
+            [file](void* lib) { println("closing {}", file); dlclose(lib); }
         );
         if (!shared_lib) {
             throw std::runtime_error(
@@ -50,8 +50,9 @@ struct LoadedRuntime {
 
         device_runtimes[get_device()] = this;
     }
+    ~LoadedRuntime() { println("ref count {}", shared_lib.use_count()); }
 
-    std::unique_ptr<void, std::function<void(void*)>> shared_lib;
+    std::shared_ptr<void> shared_lib;
     DevicePtr (*get_device)();
     Runtime* (*build_runtime)(
         const Function& function, ContextPtr context, bool concurrent
@@ -125,10 +126,11 @@ const LoadedRuntime& hip_runtime() {
 
 RuntimePtr
 madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
-    return RuntimePtr(
-        LoadedRuntime::device_runtimes.at(context->device())
-            ->build_runtime(function, context, concurrent)
-    );
+    auto& loaded_runtime = LoadedRuntime::device_runtimes.at(context->device());
+    Runtime* runtime = loaded_runtime->build_runtime(function, context, concurrent);
+    runtime->shared_lib = loaded_runtime->shared_lib;
+    return RuntimePtr(runtime);
+    
 }
 
 DevicePtr madevent::cpu_device() { return cpu_runtime().get_device(); }

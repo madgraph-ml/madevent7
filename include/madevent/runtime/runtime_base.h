@@ -20,6 +20,9 @@ public:
             const TensorVec& stored_locals,
             const std::vector<bool>& eval_grad
         ) const = 0;
+    friend std::unique_ptr<Runtime> build_runtime(const Function& function, ContextPtr context, bool concurrent);
+private:
+    std::shared_ptr<void> shared_lib;
 };
 
 using RuntimePtr = std::unique_ptr<Runtime>;
