@@ -74,6 +74,7 @@ public:
     }
     ~ThreadResource() {
         if (_pool) {
+            println("remove listener {}", _listener_id);
             _pool->remove_listener(_listener_id);
         }
     }
