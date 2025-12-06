@@ -1,5 +1,6 @@
 #pragma once
 
+#include "madevent/util.h"
 #include <condition_variable>
 #include <deque>
 #include <functional>
@@ -61,10 +62,12 @@ public:
     ThreadResource() = default;
     ThreadResource(ThreadPool& pool, std::function<T()> constructor) :
         _pool(&pool), _listener_id(pool.add_listener([&](std::size_t thread_count) {
+            println("listener callback {}: {}", _listener_id, thread_count);
             while (_resources.size() < thread_count) {
                 _resources.push_back(constructor());
             }
         })) {
+        println("listener constr {}: {}", _listener_id, pool.thread_count());
         for (std::size_t i = 0; i == 0 || i < pool.thread_count(); ++i) {
             _resources.push_back(constructor());
         }

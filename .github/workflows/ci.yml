@@ -15,7 +15,8 @@ jobs:
         include:
           - os: ubuntu-latest
             build_small: cp312-manylinux_x86_64
-            build_full: cp3*-manylinux_x86_64
+            #build_full: cp3*-manylinux_x86_64
+            build_full: cp314-manylinux_x86_64
             CIBW_BEFORE_ALL: >
               yum -y install openblas-devel yum-utils &&
               yum-config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/cuda-rhel8.repo &&
@@ -62,7 +63,7 @@ jobs:
               numpy
               --extra-index-url https://download.pytorch.org/whl/cpu
               torch
-            CIBW_TEST_COMMAND: gdb --eval-command="dir {project}" --eval-command=run --eval-command="set confirm off" --eval-command=bt --eval-command=quit --args python -m pytest {project}/tests
+            CIBW_TEST_COMMAND: gdb --eval-command="dir {project}" --eval-command=run --eval-command="set confirm off" --eval-command=bt --eval-command=quit --args python -m pytest -s {project}/tests
 
       - uses: actions/upload-artifact@v4
         with:

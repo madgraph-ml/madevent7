@@ -596,6 +596,7 @@ CpuRuntime::CpuRuntime(const Function& function, ContextPtr context, bool concur
     _rand_gens(
         default_thread_pool(),
         []() {
+            println("create rand device");
             std::random_device rand_device;
             return std::mt19937(rand_device());
         }
