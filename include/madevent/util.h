@@ -131,6 +131,7 @@ inline void print(std::FILE* stream, std::format_string<Args...> fmt, Args&&... 
 template <typename... Args>
 inline void println(std::format_string<Args...> fmt, Args&&... args) {
     detail::print_impl(stdout, true, fmt.get(), std::make_format_args(args...));
+    std::fflush(stdout);
 }
 
 template <typename... Args>
