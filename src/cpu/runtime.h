@@ -28,7 +28,6 @@ public:
     };
 
     CpuRuntime(const Function& function, ContextPtr context, bool concurrent);
-    ~CpuRuntime() { println("destroy runtime"); }
 
     TensorVec run(const TensorVec& inputs) const override;
     std::tuple<TensorVec, TensorVec, std::vector<bool>> run_with_grad(

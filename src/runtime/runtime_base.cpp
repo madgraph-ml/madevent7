@@ -22,7 +22,7 @@ struct LoadedRuntime {
 #endif
         shared_lib = std::shared_ptr<void>(
             dlopen(std::format("{}/{}.{}", lib_path, file, so_ext).c_str(), RTLD_NOW),
-            [file](void* lib) { println("closing {}", file); dlclose(lib); }
+            [](void* lib) { dlclose(lib); }
         );
         if (!shared_lib) {
             throw std::runtime_error(
@@ -50,7 +50,6 @@ struct LoadedRuntime {
 
         device_runtimes[get_device()] = this;
     }
-    ~LoadedRuntime() { println("ref count {}", shared_lib.use_count()); }
 
     std::shared_ptr<void> shared_lib;
     DevicePtr (*get_device)();
@@ -130,7 +129,6 @@ madevent::build_runtime(const Function& function, ContextPtr context, bool concu
     Runtime* runtime = loaded_runtime->build_runtime(function, context, concurrent);
     runtime->shared_lib = loaded_runtime->shared_lib;
     return RuntimePtr(runtime);
-    
 }
 
 DevicePtr madevent::cpu_device() { return cpu_runtime().get_device(); }

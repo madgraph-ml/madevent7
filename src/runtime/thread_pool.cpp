@@ -42,18 +42,13 @@ void ThreadPool::set_thread_count(int new_count) {
         _cv_run.notify_all();
         std::for_each(
             _threads.begin() + _thread_count, _threads.end(), [](auto& thread) {
-                println("join thread");
                 thread.join();
             }
         );
-        println("erasing threads {}", _thread_count);
         _threads.erase(_threads.begin() + _thread_count, _threads.end());
-        println("erasing threads done");
     }
 
     for (auto& [id, listener] : _listeners) {
-        uint64_t* arr = reinterpret_cast<uint64_t*>(&listener);
-        println("calling listener {} {} {:x} {:x} {:x} {:x}", id, (void*)&listener, arr[0], arr[1], arr[2], arr[3]);
         listener(_thread_count);
     }
 }
