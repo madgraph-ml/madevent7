@@ -11,6 +11,7 @@ jobs:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -29,12 +30,17 @@ jobs:
               --exclude 'libcublasLt.so.*'
               --exclude 'libcudart.so.*'
               --exclude 'libamdhip64.so.*'
+              --exclude 'libhipblaslt.so.*'
+              --exclude 'librocblas.so.*'
+              --exclude 'librocrand.so.*'
+              --exclude 'libroctx64.so.*'
               -w {dest_dir} {wheel}
             CIBW_ENVIRONMENT: >
                 PATH=$PATH:/usr/local/cuda/bin
                 CMAKE_PREFIX_PATH=/opt/rocm
                 HIPFLAGS=--gcc-toolchain=$(dirname $(which g++))/../..
                 SKBUILD_CMAKE_ARGS="-DUSE_SIMD=1"
+
           - os: macos-14
             build_small: cp312-macosx_arm64
             build_full: cp3*-macosx_arm64
