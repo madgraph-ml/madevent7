@@ -31,6 +31,7 @@ jobs:
               --exclude 'libcudart.so.*'
               --exclude 'libamdhip64.so.*'
               --exclude 'libhipblaslt.so.*'
+              --exclude 'librocblas.so.*'
               --exclude 'librocrand.so.*'
               --exclude 'libroctx64.so.*'
               -w {dest_dir} {wheel}
