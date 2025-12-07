@@ -315,29 +315,55 @@ void EventGenerator::combine_to_lhe(
 ) {
     reset_start_time();
     auto [channel_data, particle_count, norm_factor] = init_combine();
-    EventBuffer buffer(
-        0, particle_count, DataLayout::of<EventFullRecord, ParticleRecord>()
-    );
+    auto& thread_pool = default_thread_pool();
+    std::vector<std::pair<EventBuffer, std::string>> buffers;
+    std::vector<std::size_t> idle_buffers;
+    for (std::size_t i = 0; i < 2 * thread_pool.thread_count(); ++i) {
+        buffers.push_back(
+            {{0, particle_count, DataLayout::of<EventFullRecord, ParticleRecord>()}, {}}
+        );
+        idle_buffers.push_back(i);
+    }
     LHEFileWriter event_file(file_name, LHEMeta{});
     std::size_t event_count = 0;
     std::size_t last_update_count = 0;
-    LHEEvent lhe_event;
+    bool done = false;
     print_combine_init();
     while (true) {
         _abort_check_function();
-        read_and_combine(channel_data, buffer, norm_factor);
-        if (buffer.event_count() == 0) {
+        while (idle_buffers.size() > 0 && !done) {
+            std::size_t job_id = idle_buffers.back();
+            auto& [in_buffer, out_buffer] = buffers.at(job_id);
+            read_and_combine(channel_data, in_buffer, norm_factor);
+            if (in_buffer.event_count() == 0) {
+                done = true;
+                break;
+            }
+            idle_buffers.pop_back();
+            thread_pool.submit([job_id, this, &in_buffer, &out_buffer, &lhe_completer] {
+                LHEEvent lhe_event;
+                out_buffer.clear();
+                for (std::size_t i = 0; i < in_buffer.event_count(); ++i) {
+                    fill_lhe_event(lhe_completer, lhe_event, in_buffer, i);
+                    lhe_event.format_to(out_buffer);
+                }
+                return job_id;
+            });
+        }
+
+        auto done_jobs = thread_pool.wait_multiple();
+        for (std::size_t job_id : done_jobs) {
+            auto& [in_buffer, out_buffer] = buffers.at(job_id);
+            idle_buffers.push_back(job_id);
+            event_file.write_string(out_buffer);
+            event_count += in_buffer.event_count();
+            if (event_count - last_update_count > 10000) {
+                print_combine_update(event_count);
+                last_update_count = event_count;
+            }
+        }
+        if (done_jobs.size() == 0 && done) {
             break;
-        }
-        event_count += buffer.event_count();
-        for (std::size_t i = 0; i < buffer.event_count(); ++i) {
-            fill_lhe_event(lhe_completer, lhe_event, buffer, i);
-            event_file.add_to_buffer(lhe_event);
-        }
-        event_file.write_buffer();
-        if (event_count - last_update_count > 10000) {
-            print_combine_update(event_count);
-            last_update_count = event_count;
         }
     }
     print_combine_update(_config.target_count);

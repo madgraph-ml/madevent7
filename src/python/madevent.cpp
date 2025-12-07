@@ -1322,7 +1322,8 @@ PYBIND11_MODULE(_madevent_py, m) {
             py::arg("file_name"),
             py::arg("meta")
         )
-        .def("write", &LHEFileWriter::write, py::arg("event"));
+        .def("write", &LHEFileWriter::write, py::arg("event"))
+        .def("write_string", &LHEFileWriter::write_string, py::arg("str"));
 
     m.def("format_si_prefix", &format_si_prefix, py::arg("value"));
     m.def("format_with_error", &format_with_error, py::arg("value"), py::arg("error"));
