@@ -163,7 +163,7 @@ PYBIND11_MODULE(_madevent_py, m) {
     py::classh<Function>(m, "Function", py::dynamic_attr())
         .def("__str__", &to_string<Function>)
         .def("__repr__", &to_string<Function>)
-        .def("store", &Function::store, py::arg("file"))
+        .def("save", &Function::save, py::arg("file"))
         .def_static("load", &Function::load, py::arg("file"))
         .def_property_readonly("inputs", &Function::inputs)
         .def_property_readonly("outputs", &Function::outputs)
