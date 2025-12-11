@@ -186,10 +186,32 @@ private:
         EventBuffer& buffer,
         std::size_t event_index
     );
+
+    void print_survey_init();
+    void print_survey_update(
+        bool done,
+        std::size_t done_job_count,
+        std::size_t total_job_count,
+        std::size_t iter
+    );
+    void print_survey_update_pretty(
+        bool done,
+        std::size_t done_job_count,
+        std::size_t total_job_count,
+        std::size_t iter
+    );
+    void print_survey_update_log(
+        bool done,
+        std::size_t done_job_count,
+        std::size_t total_job_count,
+        std::size_t iter
+    );
+
     void print_gen_init();
     void print_gen_update(bool done);
     void print_gen_update_pretty(bool done);
     void print_gen_update_log(bool done);
+
     void print_combine_init();
     void print_combine_update(std::size_t count);
     void print_combine_update_pretty(std::size_t count);

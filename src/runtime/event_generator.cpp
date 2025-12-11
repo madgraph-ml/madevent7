@@ -129,21 +129,41 @@ void EventGenerator::survey() {
     std::size_t max_iters = std::max(min_iters, _config.survey_max_iters);
     double target_precision = _config.survey_target_precision;
 
-    for (std::size_t iter = 0; !done && iter < max_iters; ++iter) {
+    std::size_t total_job_count = 0;
+    std::size_t done_job_count = 0;
+    for (auto& channel : _channels) {
+        std::size_t chan_batch_size = channel.batch_size;
+        for (std::size_t iter = 0; iter < min_iters; ++iter) {
+            total_job_count +=
+                (chan_batch_size + _config.batch_size - 1) / _config.batch_size;
+            chan_batch_size = std::min(chan_batch_size * 2, _config.max_batch_size);
+        }
+    }
+    print_survey_init();
+
+    std::size_t iter = 0;
+    for (; !done && iter < max_iters; ++iter) {
+        std::size_t job_count_before = _running_jobs.size();
         for (auto& channel : _channels) {
             if (iter >= min_iters &&
                 channel.cross_section.rel_error() < target_precision) {
                 continue;
             }
-            clear_channel(channel);
             start_vegas_jobs(channel);
+        }
+        if (iter >= min_iters) {
+            total_job_count += _running_jobs.size() - job_count_before;
         }
         done = true;
         while (auto job_id = thread_pool.wait()) {
             _abort_check_function();
             auto& job = _running_jobs.at(*job_id);
             auto& channel = _channels.at(job.channel_index);
+            if (channel.job_count == job.vegas_job_count) {
+                clear_channel(channel);
+            }
             --channel.job_count;
+            ++done_job_count;
 
             bool run_optim = channel.vegas_optimizer || channel.discrete_optimizer;
             auto [weights, events] =
@@ -160,9 +180,10 @@ void EventGenerator::survey() {
                 done = false;
             }
             _running_jobs.erase(*job_id);
+            print_survey_update(false, done_job_count, total_job_count, iter);
         }
     }
-    println("survey: {} +- {}", _status_all.mean, _status_all.error);
+    print_survey_update(true, done_job_count, total_job_count, iter - 1);
 }
 
 void EventGenerator::generate() {
@@ -865,9 +886,101 @@ void EventGenerator::fill_lhe_event(
     );
 }
 
+void EventGenerator::print_survey_init() {
+    _last_print_time = std::chrono::steady_clock::now();
+    if (_config.verbosity != EventGenerator::pretty) {
+        Logger::info("survey started");
+        return;
+    }
+    _pretty_box_upper = PrettyBox("Survey", 4, {18, 0});
+    _pretty_box_upper.set_column(
+        0, {"Iteration:", "Result:", "Number of events:", "Run time:"}
+    );
+    _pretty_box_upper.print_first();
+}
+
+void EventGenerator::print_survey_update(
+    bool done, std::size_t done_job_count, std::size_t total_job_count, std::size_t iter
+) {
+    if (_config.verbosity == EventGenerator::pretty) {
+        print_survey_update_pretty(done, done_job_count, total_job_count, iter);
+    } else if (_config.verbosity == EventGenerator::log) {
+        print_survey_update_log(done, done_job_count, total_job_count, iter);
+    }
+}
+
+void EventGenerator::print_survey_update_pretty(
+    bool done, std::size_t done_job_count, std::size_t total_job_count, std::size_t iter
+) {
+    std::string int_str = format_with_error(_status_all.mean, _status_all.error);
+    std::string count_str = std::format(
+        "{} before cuts, {} after",
+        format_si_prefix(_status_all.count),
+        format_si_prefix(_status_all.count_after_cuts)
+    );
+    if (done) {
+        _pretty_box_upper.set_column(
+            1, {std::format("{}", iter + 1), int_str, count_str, format_run_time()}
+        );
+    } else {
+        auto now = std::chrono::steady_clock::now();
+        using namespace std::chrono_literals;
+        if (now - _last_print_time < 0.1s) {
+            return;
+        }
+        _last_print_time = now;
+
+        _pretty_box_upper.set_column(
+            1,
+            {std::format(
+                 "{:<15} {}",
+                 iter + 1,
+                 format_progress(
+                     static_cast<double>(done_job_count) / total_job_count, 52
+                 )
+             ),
+             int_str,
+             count_str,
+             std::format(
+                 "{:%H:%M:%S}",
+                 std::chrono::round<std::chrono::seconds>(now - _start_time)
+             )}
+        );
+    }
+    _pretty_box_upper.print_update();
+}
+
+void EventGenerator::print_survey_update_log(
+    bool done, std::size_t done_job_count, std::size_t total_job_count, std::size_t iter
+) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_print_time < 10s && !done) {
+        return;
+    }
+    _last_print_time = now;
+
+    Logger::info(
+        std::format(
+            "survey, iter: {}, integral: {}, samps: {}, samps. after cuts: {}, "
+            "time: {:%H:%M:%S}",
+            iter + 1,
+            format_with_error(_status_all.mean, _status_all.error),
+            format_si_prefix(_status_all.count),
+            format_si_prefix(_status_all.count_after_cuts),
+            std::chrono::round<std::chrono::seconds>(now - _start_time)
+        )
+    );
+
+    if (done) {
+        Logger::info(std::format("survey done, {}", format_run_time()));
+    }
+}
+
 void EventGenerator::print_gen_init() {
     _last_print_time = std::chrono::steady_clock::now();
     if (_config.verbosity != EventGenerator::pretty) {
+        Logger::info("generating started");
         return;
     }
 
@@ -1038,6 +1151,7 @@ void EventGenerator::print_gen_update_log(bool done) {
 void EventGenerator::print_combine_init() {
     _last_print_time = std::chrono::steady_clock::now();
     if (_config.verbosity != EventGenerator::pretty) {
+        Logger::info("combining started");
         return;
     }
     _pretty_box_upper = PrettyBox("Writing final output", 2, {10, 0});
@@ -1082,9 +1196,7 @@ void EventGenerator::print_combine_update_pretty(std::size_t count) {
              ),
              std::format(
                  "{:%H:%M:%S}",
-                 std::chrono::round<std::chrono::seconds>(
-                     std::chrono::steady_clock::now() - _start_time
-                 )
+                 std::chrono::round<std::chrono::seconds>(now - _start_time)
              )}
         );
     }
@@ -1104,9 +1216,7 @@ void EventGenerator::print_combine_update_log(std::size_t count) {
             "combining, events: {} / {}, time: {:%H:%M:%S}",
             format_si_prefix(count),
             format_si_prefix(_config.target_count),
-            std::chrono::round<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - _start_time
-            )
+            std::chrono::round<std::chrono::seconds>(now - _start_time)
         )
     );
 
