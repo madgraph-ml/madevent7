@@ -45,8 +45,9 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
     double inf = std::numeric_limits<double>::infinity();
     int n_out = _pids.size();
     std::vector<double> pt_cuts(2 * n_out, 0.), eta_cuts(2 * n_out, 0.);
-    std::vector<double> dr_cuts, mass_cuts, sqrt_s_cuts{0., inf};
-    std::vector<me_int_t> dr_indices, mass_indices;
+    std::vector<double> dr_cuts_min, dr_cuts_max, mass_cuts_min, mass_cuts_max;
+    std::vector<double> sqrt_s_cuts{0., inf};
+    std::vector<me_int_t> dr_indices1, dr_indices2, mass_indices1, mass_indices2;
     for (std::size_t i = n_out; i < 2 * n_out; ++i) {
         pt_cuts.at(i) = inf;
         eta_cuts.at(i) = inf;
@@ -62,10 +63,19 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
             process_single_cuts(cut, eta_cuts, has_eta_cuts);
             break;
         case obs_dr:
-            process_pair_cuts(cut, dr_indices, dr_cuts, has_dr_cuts);
+            process_pair_cuts(
+                cut, dr_indices1, dr_indices2, dr_cuts_min, dr_cuts_max, has_dr_cuts
+            );
             break;
         case obs_mass:
-            process_pair_cuts(cut, mass_indices, mass_cuts, has_mass_cuts);
+            process_pair_cuts(
+                cut,
+                mass_indices1,
+                mass_indices2,
+                mass_cuts_min,
+                mass_cuts_max,
+                has_mass_cuts
+            );
             break;
         case obs_sqrt_s:
             update_cuts(
@@ -84,17 +94,25 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
         weights.push_back(fb.cut_eta(momenta, Value(eta_cuts, {n_out, 2})));
     }
     if (has_dr_cuts) {
+        dr_indices1.insert(dr_indices1.end(), dr_indices2.begin(), dr_indices2.end());
+        dr_cuts_min.insert(dr_cuts_min.end(), dr_cuts_max.begin(), dr_cuts_max.end());
         weights.push_back(fb.cut_dr(
             momenta,
-            Value(dr_indices, {static_cast<int>(dr_indices.size()) / 2, 2}),
-            Value(dr_cuts, {static_cast<int>(dr_cuts.size()) / 2, 2})
+            Value(dr_indices1, {static_cast<int>(dr_indices1.size()) / 2, 2}),
+            Value(dr_cuts_min, {static_cast<int>(dr_cuts_min.size()) / 2, 2})
         ));
     }
     if (has_mass_cuts) {
+        mass_indices1.insert(
+            mass_indices1.end(), mass_indices2.begin(), mass_indices2.end()
+        );
+        mass_cuts_min.insert(
+            mass_cuts_min.end(), mass_cuts_max.begin(), mass_cuts_max.end()
+        );
         weights.push_back(fb.cut_m_inv(
             momenta,
-            Value(mass_indices, {static_cast<int>(mass_indices.size()) / 2, 2}),
-            Value(mass_cuts, {static_cast<int>(mass_cuts.size()) / 2, 2})
+            Value(mass_indices1, {static_cast<int>(mass_indices1.size()) / 2, 2}),
+            Value(mass_cuts_min, {static_cast<int>(mass_cuts_min.size()) / 2, 2})
         ));
     }
     if (has_sqrt_s_cuts && (sqrt_s_cuts.at(0) > 0. || sqrt_s_cuts.at(1) < inf)) {
@@ -141,28 +159,28 @@ std::vector<double> Cuts::limits(
 
 void Cuts::process_pair_cuts(
     CutItem cut,
-    std::vector<me_int_t>& indices,
-    std::vector<double>& limits,
+    std::vector<me_int_t>& indices1,
+    std::vector<me_int_t>& indices2,
+    std::vector<double>& limits_min,
+    std::vector<double>& limits_max,
     bool& has_cuts
 ) const {
     double inf = std::numeric_limits<double>::infinity();
     std::size_t i = 0;
-    std::vector<me_int_t> indices2;
-    std::vector<double> limits2;
     for (auto pid_i : _pids) {
         std::size_t j = i + 1;
         for (auto pid_j : _pids | std::views::drop(i + 1)) {
             if (std::find(cut.pids.begin(), cut.pids.end(), pid_i) != cut.pids.end() &&
                 std::find(cut.pids.begin(), cut.pids.end(), pid_j) != cut.pids.end()) {
-                indices.push_back(i);
+                indices1.push_back(i);
                 indices2.push_back(j);
                 // TODO: update existing cuts
                 if (cut.limit_type == Cuts::min) {
-                    limits.push_back(cut.value);
-                    limits2.push_back(inf);
+                    limits_min.push_back(cut.value);
+                    limits_max.push_back(inf);
                 } else {
-                    limits.push_back(0.);
-                    limits2.push_back(cut.value);
+                    limits_min.push_back(0.);
+                    limits_max.push_back(cut.value);
                 }
                 has_cuts = true;
             }
@@ -170,8 +188,6 @@ void Cuts::process_pair_cuts(
         }
         ++i;
     }
-    indices.insert(indices.end(), indices2.begin(), indices2.end());
-    limits.insert(limits.end(), limits2.begin(), limits2.end());
 }
 
 void Cuts::process_single_cuts(

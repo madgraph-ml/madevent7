@@ -103,7 +103,7 @@ void op_matrix_element(
             }
         }
     }
-    if (me_index == 0xBADCAFE) {
+    if (me_index == 0xBADCAFE || batch_size == 0) {
         return;
     }
     auto& matrix_element = instruction.runtime.context().matrix_element(me_index);
