@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <dlfcn.h>
 #include <format>
+#include <unordered_map>
 
 using namespace madevent;
 
@@ -11,6 +12,7 @@ namespace {
 struct LoadedRuntime {
     inline static std::string lib_path = "";
     inline static int vector_size = -1;
+    inline static std::unordered_map<DevicePtr, LoadedRuntime*> device_runtimes;
 
     LoadedRuntime(const std::string& file) {
 #ifdef __APPLE__
@@ -18,7 +20,7 @@ struct LoadedRuntime {
 #else
         std::string so_ext = "so";
 #endif
-        shared_lib = std::unique_ptr<void, std::function<void(void*)>>(
+        shared_lib = std::shared_ptr<void>(
             dlopen(std::format("{}/{}.{}", lib_path, file, so_ext).c_str(), RTLD_NOW),
             [](void* lib) { dlclose(lib); }
         );
@@ -45,9 +47,11 @@ struct LoadedRuntime {
                 )
             );
         }
+
+        device_runtimes[get_device()] = this;
     }
 
-    std::unique_ptr<void, std::function<void(void*)>> shared_lib;
+    std::shared_ptr<void> shared_lib;
     DevicePtr (*get_device)();
     Runtime* (*build_runtime)(
         const Function& function, ContextPtr context, bool concurrent
@@ -121,15 +125,10 @@ const LoadedRuntime& hip_runtime() {
 
 RuntimePtr
 madevent::build_runtime(const Function& function, ContextPtr context, bool concurrent) {
-    if (context->device() == cpu_device()) {
-        return RuntimePtr(cpu_runtime().build_runtime(function, context, concurrent));
-    } else if (context->device() == cuda_device()) {
-        return RuntimePtr(cuda_runtime().build_runtime(function, context, concurrent));
-    } else if (context->device() == hip_device()) {
-        return RuntimePtr(hip_runtime().build_runtime(function, context, concurrent));
-    } else {
-        throw std::runtime_error("Invalid device");
-    }
+    auto& loaded_runtime = LoadedRuntime::device_runtimes.at(context->device());
+    Runtime* runtime = loaded_runtime->build_runtime(function, context, concurrent);
+    runtime->shared_lib = loaded_runtime->shared_lib;
+    return RuntimePtr(runtime);
 }
 
 DevicePtr madevent::cpu_device() { return cpu_runtime().get_device(); }

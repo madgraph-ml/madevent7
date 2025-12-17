@@ -566,7 +566,7 @@ private:
             if (ref_count.fetch_sub(1, std::memory_order_acq_rel) != 1) {
                 return;
             }
-            if (owns_data) {
+            if (owns_data && data != nullptr) {
                 device.free(data);
             } else if (data_owner != nullptr) {
                 data_owner->reset(device);

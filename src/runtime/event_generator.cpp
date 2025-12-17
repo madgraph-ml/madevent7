@@ -1,4 +1,5 @@
 #include "madevent/runtime/event_generator.h"
+#include "madevent/runtime/logger.h"
 
 #include <cmath>
 #include <format>
@@ -44,6 +45,8 @@ EventGenerator::EventGenerator(
          0.,
          0.,
          0.,
+         0,
+         0,
          0,
          0,
          0.,
@@ -207,7 +210,7 @@ void EventGenerator::generate() {
                 integrate_and_optimize(channel, job.events, run_optim);
             update_max_weight(channel, weights);
             unweight_and_write(channel, events);
-            print_gen_update();
+            print_gen_update(false);
             _running_jobs.erase(*job_id);
         } else {
             if (_status_all.done) {
@@ -218,6 +221,7 @@ void EventGenerator::generate() {
             }
         }
     }
+    print_gen_update(true);
 }
 
 void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
@@ -236,6 +240,7 @@ void EventGenerator::combine_to_compact_npy(const std::string& file_name) {
     std::size_t last_update_count = 0;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -274,6 +279,7 @@ void EventGenerator::combine_to_lhe_npy(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -318,6 +324,7 @@ void EventGenerator::combine_to_lhe(
     LHEEvent lhe_event;
     print_combine_init();
     while (true) {
+        _abort_check_function();
         read_and_combine(channel_data, buffer, norm_factor);
         if (buffer.event_count() == 0) {
             break;
@@ -342,13 +349,22 @@ void EventGenerator::reset_start_time() {
 }
 
 std::string EventGenerator::format_run_time() const {
+    using namespace std::chrono_literals;
     std::size_t diff = cpu_time_microsec() - _start_cpu_microsec;
-    std::chrono::duration<double, std::ratio<1, 100>> cpu_duration(diff / 10000);
-    std::chrono::duration<double, std::ratio<1, 100>> wall_duration(
+    std::chrono::duration<double> cpu_duration(diff / 1000000.);
+    // we don't use the ratio feature of duration here because it seems to lead
+    // to errors in old gcc versions
+    double cpu_centisec = std::fmod(diff / 10000., 100.);
+    std::chrono::duration<double> wall_duration(
         std::chrono::steady_clock::now() - _start_time
     );
+    double wall_centisec = std::fmod(wall_duration / 0.01s, 100.);
     return std::format(
-        "{:%H:%M:%S} wall, {:%H:%M:%S} cpu", wall_duration, cpu_duration
+        "{:%H:%M:%S}.{:02.0f} wall, {:%H:%M:%S}.{:02.0f} cpu",
+        wall_duration,
+        wall_centisec,
+        cpu_duration,
+        cpu_centisec
     );
 }
 
@@ -434,7 +450,9 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
              channel.cross_section.error(),
              channel.cross_section.rel_std_dev(),
              channel.total_sample_count,
-             channel.cross_section.count(),
+             channel.total_sample_count_opt,
+             channel.total_sample_count_after_cuts,
+             channel.total_sample_count_after_cuts_opt,
              channel.eff_count,
              target_count,
              channel.iterations,
@@ -451,14 +469,17 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     auto& weights = events.at(0);
     auto weights_cpu = weights.cpu();
     auto w_view = weights_cpu.view<double, 1>();
-    std::size_t sample_count = 0;
+    std::size_t sample_count_after_cuts = 0;
     for (std::size_t i = 0; i < w_view.size(); ++i) {
         if (w_view[i] != 0) {
-            ++sample_count;
+            ++sample_count_after_cuts;
         }
         channel.cross_section.push(w_view[i]);
     }
-    channel.total_sample_count += sample_count; // w_view.size();
+    channel.total_sample_count += w_view.size();
+    channel.total_sample_count_opt += w_view.size();
+    channel.total_sample_count_after_cuts += sample_count_after_cuts;
+    channel.total_sample_count_after_cuts_opt += sample_count_after_cuts;
 
     if (run_optim) {
         if (channel.vegas_optimizer) {
@@ -494,13 +515,18 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     }
 
     double total_mean = 0., total_var = 0.;
-    std::size_t total_count = 0, total_integ_count = 0;
+    std::size_t total_count = 0, total_count_opt = 0;
+    std::size_t total_count_after_cuts = 0, total_count_after_cuts_opt = 0;
+    std::size_t total_integ_count = 0;
     std::size_t iterations = 0;
     bool optimized = true;
     for (auto& channel : _channels) {
         total_mean += channel.cross_section.mean();
         total_var += channel.cross_section.variance() / channel.cross_section.count();
         total_count += channel.total_sample_count;
+        total_count_opt += channel.total_sample_count_opt;
+        total_count_after_cuts += channel.total_sample_count_after_cuts;
+        total_count_after_cuts_opt += channel.total_sample_count_after_cuts_opt;
         total_integ_count += channel.cross_section.count();
         iterations = std::max(channel.iterations, iterations);
         if (channel.needs_optimization) {
@@ -511,7 +537,9 @@ std::tuple<Tensor, std::vector<Tensor>> EventGenerator::integrate_and_optimize(
     _status_all.error = std::sqrt(total_var);
     _status_all.rel_std_dev = std::sqrt(total_var * total_integ_count) / total_mean;
     _status_all.count = total_count;
-    _status_all.count_integral = total_integ_count;
+    _status_all.count_opt = total_count_opt;
+    _status_all.count_after_cuts = total_count_after_cuts;
+    _status_all.count_after_cuts_opt = total_count_after_cuts_opt;
     _status_all.iterations = iterations;
     _status_all.optimized = optimized;
     for (auto& channel : _channels) {
@@ -552,6 +580,8 @@ void EventGenerator::start_vegas_jobs(ChannelState& channel) {
 void EventGenerator::clear_channel(ChannelState& channel) {
     channel.eff_count = 0;
     channel.max_weight = 0;
+    channel.total_sample_count_opt = 0;
+    channel.total_sample_count_after_cuts_opt = 0;
     channel.event_file.clear();
     channel.weight_file.clear();
     channel.cross_section.reset();
@@ -811,6 +841,9 @@ void EventGenerator::fill_lhe_event(
 
 void EventGenerator::print_gen_init() {
     _last_print_time = std::chrono::steady_clock::now();
+    if (_config.verbosity != EventGenerator::pretty) {
+        return;
+    }
 
     std::size_t offset = 0;
     if (_channels.size() > 1) {
@@ -844,22 +877,38 @@ void EventGenerator::print_gen_init() {
     }
 }
 
-void EventGenerator::print_gen_update() {
+void EventGenerator::print_gen_update(bool done) {
+    if (_config.verbosity == EventGenerator::pretty) {
+        print_gen_update_pretty(done);
+    } else if (_config.verbosity == EventGenerator::log) {
+        print_gen_update_log(done);
+    }
+}
+
+void EventGenerator::print_gen_update_pretty(bool done) {
     auto now = std::chrono::steady_clock::now();
     using namespace std::chrono_literals;
-    if (now - _last_print_time < 0.1s && !_status_all.done) {
+    if (now - _last_print_time < 0.1s && !done) {
         return;
     }
-    _last_print_time = std::chrono::steady_clock::now();
+    _last_print_time = now;
 
-    std::string int_str, rel_str, rsd_str, uweff_str;
+    std::string int_str, rel_str, rsd_str, uweff_str, count_str;
+    count_str = std::format(
+        "{} before cuts, {} after",
+        format_si_prefix(_status_all.count),
+        format_si_prefix(_status_all.count_after_cuts)
+    );
+
     if (!std::isnan(_status_all.error)) {
         double rel_err = _status_all.error / _status_all.mean;
         int_str = format_with_error(_status_all.mean, _status_all.error);
         rel_str = std::format("{:.4f} %", rel_err * 100);
         rsd_str = std::format("{:.3f}", _status_all.rel_std_dev);
         uweff_str = std::format(
-            "{:.5f}", _status_all.count_unweighted / _status_all.count_integral
+            "{:.5f} before cuts, {:.5f} after",
+            _status_all.count_unweighted / _status_all.count_opt,
+            _status_all.count_unweighted / _status_all.count_after_cuts_opt
         );
     }
     std::string unw_str = std::format(
@@ -881,14 +930,7 @@ void EventGenerator::print_gen_update() {
         );
     }
     _pretty_box_upper.set_column(
-        1,
-        {int_str,
-         rel_str,
-         rsd_str,
-         uweff_str,
-         format_si_prefix(_status_all.count),
-         unw_str,
-         time_str}
+        1, {int_str, rel_str, rsd_str, count_str, uweff_str, unw_str, time_str}
     );
     _pretty_box_upper.print_update();
 
@@ -905,9 +947,9 @@ void EventGenerator::print_gen_update() {
                 int_str = format_with_error(channel.mean, channel.error);
                 rsd_str = std::format("{:.3f}", channel.rel_std_dev);
                 uweff_str = std::format(
-                    "{:.5f}", channel.count_unweighted / channel.count_integral
+                    "{:.5f}", channel.count_unweighted / channel.count_after_cuts_opt
                 );
-                count_str = format_si_prefix(channel.count);
+                count_str = format_si_prefix(channel.count_after_cuts);
                 opt_str = std::format(
                     "{} {}",
                     channel.iterations,
@@ -936,13 +978,56 @@ void EventGenerator::print_gen_update() {
     }
 }
 
+void EventGenerator::print_gen_update_log(bool done) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_print_time < 10s && !done) {
+        return;
+    }
+    _last_print_time = now;
+
+    Logger::info(
+        std::format(
+            "generating, events: {} / {}, integral: {}, rel. error: {:.4f} %, "
+            "RSD: {:.3f}, samps: {}, samps. after cuts: {}, "
+            "unw. eff.: {:.5f}, unw. eff. after cuts: {:.5f}, time: {:%H:%M:%S}",
+            format_si_prefix(_status_all.count_unweighted),
+            format_si_prefix(_status_all.count_target),
+            format_with_error(_status_all.mean, _status_all.error),
+            _status_all.error / _status_all.mean * 100,
+            _status_all.rel_std_dev,
+            format_si_prefix(_status_all.count),
+            format_si_prefix(_status_all.count_after_cuts),
+            _status_all.count_unweighted / _status_all.count_opt,
+            _status_all.count_unweighted / _status_all.count_after_cuts_opt,
+            std::chrono::round<std::chrono::seconds>(now - _start_time)
+        )
+    );
+
+    if (done) {
+        Logger::info(std::format("generating done, {}", format_run_time()));
+    }
+}
+
 void EventGenerator::print_combine_init() {
+    _last_print_time = std::chrono::steady_clock::now();
+    if (_config.verbosity != EventGenerator::pretty) {
+        return;
+    }
     _pretty_box_upper = PrettyBox("Writing final output", 2, {10, 0});
     _pretty_box_upper.set_column(0, {"Events:", "Run time:"});
     _pretty_box_upper.print_first();
 }
 
 void EventGenerator::print_combine_update(std::size_t count) {
+    if (_config.verbosity == EventGenerator::pretty) {
+        print_combine_update_pretty(count);
+    } else if (_config.verbosity == EventGenerator::log) {
+        print_combine_update_log(count);
+    }
+}
+
+void EventGenerator::print_combine_update_pretty(std::size_t count) {
     if (count == _config.target_count) {
         _pretty_box_upper.set_column(
             1,
@@ -954,6 +1039,13 @@ void EventGenerator::print_combine_update(std::size_t count) {
              format_run_time()}
         );
     } else {
+        auto now = std::chrono::steady_clock::now();
+        using namespace std::chrono_literals;
+        if (now - _last_print_time < 0.1s) {
+            return;
+        }
+        _last_print_time = now;
+
         _pretty_box_upper.set_column(
             1,
             {std::format(
@@ -971,4 +1063,28 @@ void EventGenerator::print_combine_update(std::size_t count) {
         );
     }
     _pretty_box_upper.print_update();
+}
+
+void EventGenerator::print_combine_update_log(std::size_t count) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_print_time < 10s && count != _config.target_count) {
+        return;
+    }
+    _last_print_time = now;
+
+    Logger::info(
+        std::format(
+            "combining, events: {} / {}, time: {:%H:%M:%S}",
+            format_si_prefix(count),
+            format_si_prefix(_config.target_count),
+            std::chrono::round<std::chrono::seconds>(
+                std::chrono::steady_clock::now() - _start_time
+            )
+        )
+    );
+
+    if (count == _config.target_count) {
+        Logger::info(std::format("combining done, {}", format_run_time()));
+    }
 }

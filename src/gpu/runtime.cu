@@ -223,7 +223,7 @@ void backward_op_matmul(
         static_cast<double*>(bias_grad.data()),
         1
     ));
-    gpuFreeAsync(ones, stream);
+    check_error(gpuFreeAsync(ones, stream));
     input.reset(device);
     weight.reset(device);
     output_grad.reset(device);
@@ -866,10 +866,10 @@ GpuRuntime::~GpuRuntime() {
     check_error(gpurandDestroyGenerator(_gpurand_generator));
     check_error(gpublasDestroy(_gpublas_handle));
     for (auto event : events) {
-        gpuEventDestroy(event);
+        check_error(gpuEventDestroy(event));
     }
     for (auto stream : streams) {
-        gpuStreamDestroy(stream);
+        check_error(gpuStreamDestroy(stream));
     }
 }
 

@@ -1,6 +1,7 @@
 #include "madevent/runtime/context.h"
 
 #include <dlfcn.h>
+#include <unordered_map>
 
 using namespace madevent;
 
@@ -148,16 +149,27 @@ void Context::save(const std::string& file) const {}
 void Context::load(const std::string& file) {}
 
 ContextPtr madevent::default_context() {
-    static ContextPtr context = std::make_shared<Context>(cpu_device());
+    static ContextPtr context = default_device_context(cpu_device());
     return context;
 }
 
 ContextPtr madevent::default_cuda_context() {
-    static ContextPtr context = std::make_shared<Context>(cuda_device());
+    static ContextPtr context = default_device_context(cuda_device());
     return context;
 }
 
 ContextPtr madevent::default_hip_context() {
-    static ContextPtr context = std::make_shared<Context>(hip_device());
+    static ContextPtr context = default_device_context(hip_device());
     return context;
+}
+
+ContextPtr madevent::default_device_context(DevicePtr device) {
+    static std::unordered_map<DevicePtr, ContextPtr> default_contexts;
+    if (auto search = default_contexts.find(device); search != default_contexts.end()) {
+        return search->second;
+    } else {
+        ContextPtr context = std::make_shared<Context>(device);
+        default_contexts[device] = context;
+        return context;
+    }
 }

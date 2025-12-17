@@ -5,6 +5,14 @@ project (
     LANGUAGES CXX
 )
 
+if (NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120")
+endif()
+
+if (NOT DEFINED CMAKE_HIP_ARCHITECTURES)
+    set(CMAKE_HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx1150;gfx1151")
+endif()
+
 include(CheckLanguage)
 check_language(CUDA)
 if(CMAKE_CUDA_COMPILER)
@@ -19,12 +27,13 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE 1)
 
-include(CheckIPOSupported)
-check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
-if(ipo_supported)
-    #set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-else()
-    message(STATUS "LTO not supported: ${ipo_error}")
+if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
+    if(ipo_supported)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "Enabling LTO")
+    endif()
 endif()
 
 ########################################################################################
@@ -150,6 +159,7 @@ add_library(
     include/madevent/runtime/discrete_optimizer.h
     include/madevent/runtime/runtime_base.h
     include/madevent/runtime/lhe_output.h
+    include/madevent/runtime/logger.h
     include/madevent/madcode.h
     include/madevent/madcode/type.h
     include/madevent/madcode/function.h
@@ -235,10 +245,8 @@ if(COMPILE_CUDA)
         src/gpu/runtime.h
         src/gpu/tensor.h
         src/gpu/device.h
+        src/gpu/gpu_abstraction.h
         ${KERNEL_SRC}
-    )
-    set_target_properties(
-        madevent_cuda PROPERTIES CUDA_ARCHITECTURES "75;80;86;87;89;90;100;120"
     )
     target_include_directories(madevent_cuda PUBLIC include)
     set_property(TARGET madevent_cuda PROPERTY CUDA_STANDARD 20)
@@ -258,10 +266,8 @@ if(COMPILE_HIP)
         src/gpu/runtime.h
         src/gpu/tensor.h
         src/gpu/device.h
+        src/gpu/gpu_abstraction.h
         ${KERNEL_SRC}
-    )
-    set_target_properties(
-        madevent_hip PROPERTIES HIP_ARCHITECTURES "gfx900;gfx906;gfx908;gfx90a;gfx942;gfx1030;gfx1100;gfx1101;gfx1102;gfx1200;gfx1201;gfx950;gfx1150;gfx1151"
     )
     target_include_directories(madevent_hip PUBLIC include)
     set_property(TARGET madevent_hip PROPERTY HIP_STANDARD 20)

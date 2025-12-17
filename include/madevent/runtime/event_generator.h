@@ -52,6 +52,7 @@ public:
     static inline const int integrand_flags = Integrand::sample |
         Integrand::return_momenta | Integrand::return_indices |
         Integrand::return_random | Integrand::return_discrete;
+    enum Verbosity { silent, log, pretty };
     struct Config {
         std::size_t target_count = 10000;
         double vegas_damping = 0.2;
@@ -65,6 +66,7 @@ public:
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
         std::size_t batch_size = 1000;
+        Verbosity verbosity;
     };
     static const Config default_config;
     struct Status {
@@ -73,7 +75,9 @@ public:
         double error;
         double rel_std_dev;
         std::size_t count;
-        std::size_t count_integral;
+        std::size_t count_opt;
+        std::size_t count_after_cuts;
+        std::size_t count_after_cuts_opt;
         double count_unweighted;
         double count_target;
         std::size_t iterations;
@@ -119,6 +123,9 @@ private:
         double eff_count = 0.;
         double integral_fraction = 1.;
         std::size_t total_sample_count = 0;
+        std::size_t total_sample_count_opt = 0;
+        std::size_t total_sample_count_after_cuts = 0;
+        std::size_t total_sample_count_after_cuts_opt = 0;
         std::size_t iterations = 0;
         std::size_t iters_without_improvement = 0;
         double best_rsd = std::numeric_limits<double>::max();
@@ -180,9 +187,13 @@ private:
         std::size_t event_index
     );
     void print_gen_init();
-    void print_gen_update();
+    void print_gen_update(bool done);
+    void print_gen_update_pretty(bool done);
+    void print_gen_update_log(bool done);
     void print_combine_init();
     void print_combine_update(std::size_t count);
+    void print_combine_update_pretty(std::size_t count);
+    void print_combine_update_log(std::size_t count);
 };
 
 } // namespace madevent

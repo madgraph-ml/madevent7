@@ -134,6 +134,7 @@ using ContextPtr = std::shared_ptr<Context>;
 ContextPtr default_context();
 ContextPtr default_cuda_context();
 ContextPtr default_hip_context();
+ContextPtr default_device_context(DevicePtr device);
 
 inline std::string prefixed_name(const std::string& prefix, const std::string& name) {
     return prefix == "" ? name : std::format("{}.{}", prefix, name);

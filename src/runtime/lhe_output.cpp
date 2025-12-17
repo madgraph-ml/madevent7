@@ -2,6 +2,7 @@
 
 #include "madevent/util.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <span>
 
