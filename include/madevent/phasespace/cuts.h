@@ -22,6 +22,7 @@ public:
         LimitType limit_type;
         double value;
         PidVec pids;
+        PidVec pids2;
     };
 
     Cuts(std::vector<int> _pids, std::vector<CutItem> _cut_data);

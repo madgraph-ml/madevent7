@@ -439,16 +439,23 @@ PYBIND11_MODULE(_madevent_py, m) {
     );
     py::classh<Cuts::CutItem>(m, "CutItem")
         .def(
-            py::init<Cuts::CutObservable, Cuts::LimitType, double, Cuts::PidVec>(),
+            py::init<
+                Cuts::CutObservable,
+                Cuts::LimitType,
+                double,
+                Cuts::PidVec,
+                Cuts::PidVec>(),
             py::arg("observable"),
             py::arg("limit_type"),
             py::arg("value"),
-            py::arg("pids")
+            py::arg("pids"),
+            py::arg("pids2") = Cuts::PidVec{}
         )
         .def_readonly("observable", &Cuts::CutItem::observable)
         .def_readonly("limit_type", &Cuts::CutItem::limit_type)
         .def_readonly("value", &Cuts::CutItem::value)
-        .def_readonly("pids", &Cuts::CutItem::pids);
+        .def_readonly("pids", &Cuts::CutItem::pids)
+        .def_readonly("pids2", &Cuts::CutItem::pids2);
     cuts.def(
             py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
             py::arg("pids"),

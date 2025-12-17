@@ -145,6 +145,8 @@ void Cuts::process_pair_cuts(
     std::vector<double>& limits,
     bool& has_cuts
 ) const {
+    PidVec cut_pids1 = cut.pids;
+    PidVec cut_pids2 = cut.pids2.size() > 0 ? cut.pids2 : cut.pids;
     double inf = std::numeric_limits<double>::infinity();
     std::size_t i = 0;
     std::vector<me_int_t> indices2;
@@ -152,8 +154,15 @@ void Cuts::process_pair_cuts(
     for (auto pid_i : _pids) {
         std::size_t j = i + 1;
         for (auto pid_j : _pids | std::views::drop(i + 1)) {
-            if (std::find(cut.pids.begin(), cut.pids.end(), pid_i) != cut.pids.end() &&
-                std::find(cut.pids.begin(), cut.pids.end(), pid_j) != cut.pids.end()) {
+            bool i_in_pids1 =
+                std::find(cut_pids1.begin(), cut_pids1.end(), pid_i) != cut_pids1.end();
+            bool j_in_pids1 =
+                std::find(cut_pids1.begin(), cut_pids1.end(), pid_j) != cut_pids1.end();
+            bool i_in_pids2 =
+                std::find(cut_pids2.begin(), cut_pids2.end(), pid_i) != cut_pids2.end();
+            bool j_in_pids2 =
+                std::find(cut_pids2.begin(), cut_pids2.end(), pid_j) != cut_pids2.end();
+            if ((i_in_pids1 && j_in_pids2) || (i_in_pids2 && j_in_pids1)) {
                 indices.push_back(i);
                 indices2.push_back(j);
                 // TODO: update existing cuts
