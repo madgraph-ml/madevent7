@@ -39,8 +39,10 @@ private:
     process_single_cuts(CutItem cut, std::vector<double>& limits, bool& has_cuts) const;
     void process_pair_cuts(
         CutItem cut,
-        std::vector<me_int_t>& indices,
-        std::vector<double>& limits,
+        std::vector<me_int_t>& indices1,
+        std::vector<me_int_t>& indices2,
+        std::vector<double>& limits_min,
+        std::vector<double>& limits_max,
         bool& has_cuts
     ) const;
 
