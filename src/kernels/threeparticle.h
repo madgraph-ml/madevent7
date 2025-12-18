@@ -192,7 +192,7 @@ KERNELSPEC FVal<T> get_phi_from_s23(
     auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
     auto lambda = kaellen<T>(s12, ma_2, t2);
     auto cos_phi = (lambda * (s23 - m0_2 - m1_2) - 8 * V) / (8 * sqrtGG);
-    auto phi = where(phi_choice == 1, (-acos(cos_phi) + 2. * PI), acos(cos_phi));
+    auto phi = where(phi_choice == 1, -acos(cos_phi), acos(cos_phi));
     return phi;
 }
 
@@ -347,11 +347,7 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
     FourMom<T> p_12, p_c, p_tot;
     for (int i = 0; i < 4; ++i) {
         p_tot[i] = pa[i] + pb[i];
-    }
-    for (int i = 0; i < 4; ++i) {
         p_12[i] = pa[i] + pb[i] - p3[i];
-    }
-    for (int i = 0; i < 4; ++i) {
         p_c[i] = pb[i] - p3[i];
     }
     auto pa_com = boost<T>(load_mom<T>(pa), p_12, -1.);
@@ -372,7 +368,7 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
         p1com_from_tabs_phi<T>(pa_com, s12, phi, t1_abs, m1, m2, ma_2, t2);
     auto p1_com = scatter_out.first;
     auto gram4 = bk_gram4<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12, s23);
-    auto det_2to3 = 1 / (8 * sqrt(max(-gram4, EPS)));
+    auto det_2to3 = 1 / (8 * sqrt(max(-gram4, EPS2)));
     auto p1_rot = rotate<T>(p1_com, pa_com);
     auto p1_lab = boost<T>(p1_rot, p_12, 1.);
     store_mom<T>(p1, p1_lab);
@@ -380,6 +376,49 @@ KERNELSPEC void kernel_two_to_three_particle_scattering(
         p2[i] = p_12[i] - p1_lab[i];
     }
     det = det_2to3 / 2; // factor 1/2 as acos allows for two choices of phi
+}
+
+template <typename T>
+KERNELSPEC void kernel_two_to_three_particle_scattering_inverse(
+    FIn<T, 1> p1,
+    FIn<T, 1> p2,
+    FIn<T, 1> p3,
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 0> t1_abs,
+    FIn<T, 0> s23,
+    FOut<T, 0> m1,
+    FOut<T, 0> m2,
+    IOut<T, 0> phi_index,
+    FOut<T, 0> det
+) {
+    FourMom<T> p_12, p_c, p_tot;
+    for (int i = 0; i < 4; ++i) {
+        p_12[i] = pa[i] + pb[i] - p3[i];
+        p_tot[i] = p_12[i] + p3[i];
+        p_c[i] = pb[i] - p3[i];
+    }
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto m0_2 = lsquare<T>(p_tot);
+    auto s12 = lsquare<T>(p_12);
+    auto t2 = lsquare<T>(p_c);
+
+    auto pa_com = boost<T>(load_mom<T>(pa), p_12, -1.);
+    auto p1_com = boost<T>(load_mom<T>(p1), p_12, -1.);
+    auto p1_rot = rotate_inverse<T>(p1_com, pa_com);
+
+    auto m1_2 = lsquare<T>(load_mom<T>(p1));
+    auto m2_2 = lsquare<T>(load_mom<T>(p2));
+    auto phi = atan2(p1_rot[2], p1_rot[1]);
+    phi_index = where(phi < 0, 1, 0); // choose phi index based on the value of phi
+
+    auto gram4 = bk_gram4<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12, s23);
+    auto det_2to3 = 8 * sqrt(max(-gram4, EPS2));
+    m1 = sqrt(max(EPS2, m1_2));
+    m2 = sqrt(max(EPS2, m2_2));
+    det = 2 * det_2to3;
 }
 
 } // namespace kernels

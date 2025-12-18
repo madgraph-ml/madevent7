@@ -643,6 +643,43 @@ two_to_three_particle_scattering:
       type: [float]
       desc:
 
+two_to_three_particle_scattering_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: t1_abs
+      type: [float]
+      desc:
+    - name: s23
+      type: [float]
+      desc:
+  outputs:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: phi_choice
+      type: [int]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 three_body_decay_com:
   inputs:
     - name: r_e1
@@ -843,7 +880,7 @@ t_inv_min_max:
       type: [float]
       desc:
 
-t_inv_abs_min_max:
+t_inv_min_max_inverse:
   inputs:
     - name: pa
       type: [float, 4]
@@ -868,7 +905,7 @@ t_inv_abs_min_max:
       type: [float]
       desc:
 
-s_inv_min_max:
+s23_min_max:
   inputs:
     - name: pa
       type: [float, 4]
@@ -889,6 +926,37 @@ s_inv_min_max:
       type: [float]
       desc:
   outputs:
+    - name: s_min
+      type: [float]
+      desc:
+    - name: s_max
+      type: [float]
+      desc:
+
+s23_min_max_inverse:
+  inputs:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+    - name: t1_abs
+      type: [float]
+      desc:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: s_23
+      type: [float]
+      desc:
     - name: s_min
       type: [float]
       desc:

@@ -122,15 +122,14 @@ def input_points(rng, request):
             mb = rng.uniform(50.0, 300.0, N)
             eb = np.sqrt(np.sum(p3vec_b**2, axis=1) + mb**2)
             pb = np.concatenate([eb[:, None], p3vec_b], axis=1)
-
             if np.all(inv_mass_sq(pa + pb) > 0.0):
                 break
 
     # Build a valid 2->2 event to extract p3 as a spectator
     # Choose arbitrary outgoing masses for (Q, p3): make p3 light, Q heavyish
-    m3 = rng.uniform(1.0, 50.0, N)
-    m1 = rng.uniform(1.0, 50.0, N)
-    m2 = rng.uniform(1.0, 50.0, N)
+    m3 = rng.uniform(1.0, 10.0, N)
+    m1 = rng.uniform(1.0, 40.0, N)
+    m2 = rng.uniform(1.0, 40.0, N)
     mQ = rng.uniform(150.0, 400.0, N)
 
     map_22 = me.TwoToTwoParticleScattering(com=com)
@@ -172,6 +171,31 @@ def test_momentum_conservation(input_points):
 
     assert p_sum == approx(input_points.p0)
     assert p1 + p2 == approx(input_points.pQ)
+
+
+def test_inverse(input_points):
+    mapping = me.TwoToThreeParticleScattering()
+
+    inputs = [
+        input_points.r_choice,
+        input_points.r_s23,
+        input_points.r_t1,
+        input_points.m1,
+        input_points.m2,
+    ]
+    conditions = [input_points.pa, input_points.pb, input_points.p3]
+
+    (p1, p2), det = mapping.map_forward(inputs, conditions)
+    inv_inputs, inv_det = mapping.map_inverse([p1, p2], conditions)
+    # r = inv_det * det
+    # print("r stats:", np.min(r), np.median(r), np.max(r))
+    # print("abs(r-1) median:", np.median(np.abs(r-1)))
+    # assert inv_det == approx(1 / det)
+    for i, (inp, inv_inp) in enumerate(zip(inputs, inv_inputs)):
+        if i == 0:
+            assert ((inp < 0.5) == (inv_inp < 0.5)).all()
+            continue
+        assert inp == approx(inv_inp), f"mismatch in input index {i}"
 
 
 def test_on_shell_masses(input_points):

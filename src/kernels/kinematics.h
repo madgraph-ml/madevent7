@@ -462,7 +462,7 @@ KERNELSPEC void kernel_t_inv_min_max(
 }
 
 template <typename T>
-KERNELSPEC void kernel_t_inv_abs_min_max(
+KERNELSPEC void kernel_t_inv_min_max_inverse(
     FIn<T, 1> pa,
     FIn<T, 1> pb,
     FIn<T, 1> p1,
@@ -500,7 +500,7 @@ KERNELSPEC void kernel_t_inv_abs_min_max(
 }
 
 template <typename T>
-KERNELSPEC void kernel_s_inv_min_max(
+KERNELSPEC void kernel_s23_min_max(
     FIn<T, 1> pa,
     FIn<T, 1> pb,
     FIn<T, 1> p3,
@@ -515,11 +515,7 @@ KERNELSPEC void kernel_s_inv_min_max(
     FourMom<T> p_tot, p_12, pt2;
     for (int i = 0; i < 4; ++i) {
         p_tot[i] = pa[i] + pb[i];
-    }
-    for (int i = 0; i < 4; ++i) {
         p_12[i] = pa[i] + pb[i] - p3[i];
-    }
-    for (int i = 0; i < 4; ++i) {
         pt2[i] = pb[i] - p3[i];
     }
     auto m0_2 = lsquare<T>(p_tot);
@@ -533,10 +529,51 @@ KERNELSPEC void kernel_s_inv_min_max(
     auto sqrtGG =
         bk_sqrt_g3i_g3im1<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
     auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
-    auto lambda = kaellen<T>(s12, ma_2, t2);
+    auto lambda = max(kaellen<T>(s12, ma_2, t2), EPS);
 
     auto sa = m0_2 + m1_2 + 8 * (V + sqrtGG) / (lambda);
     auto sb = m0_2 + m1_2 + 8 * (V - sqrtGG) / (lambda);
+    s_min = min(sa, sb);
+    s_max = max(sa, sb);
+}
+
+template <typename T>
+KERNELSPEC void kernel_s23_min_max_inverse(
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 1> p3,
+    FIn<T, 0> t1_abs,
+    FIn<T, 1> p1,
+    FIn<T, 1> p2,
+    FOut<T, 0> s_23,
+    FOut<T, 0> s_min,
+    FOut<T, 0> s_max
+) {
+    // this function is based on the sminmax subroutine from Rikkert
+    // expects t1_abs (positive t invariant) as input
+    FourMom<T> p_tot, p_12, pt2, p_23;
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+        p_12[i] = p1[i] + p2[i];
+        pt2[i] = pb[i] - p3[i];
+        p_23[i] = p2[i] + p3[i];
+    }
+    auto m0_2 = lsquare<T>(p_tot);
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto s12 = lsquare<T>(p_12);
+    auto m1_2 = lsquare<T>(load_mom<T>(p1));
+    auto m2_2 = lsquare<T>(load_mom<T>(p2));
+    auto t2 = lsquare<T>(pt2);
+    auto sqrtGG =
+        bk_sqrt_g3i_g3im1<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto lambda = max(kaellen<T>(s12, ma_2, t2), EPS);
+
+    auto sa = m0_2 + m1_2 + 8 * (V + sqrtGG) / (lambda);
+    auto sb = m0_2 + m1_2 + 8 * (V - sqrtGG) / (lambda);
+    s_23 = lsquare<T>(p_23);
     s_min = min(sa, sb);
     s_max = max(sa, sb);
 }
