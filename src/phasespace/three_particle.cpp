@@ -21,7 +21,16 @@ Mapping::Result ThreeBodyDecay::build_forward_impl(
 Mapping::Result ThreeBodyDecay::build_inverse_impl(
     FunctionBuilder& fb, const ValueVec& inputs, const ValueVec& conditions
 ) const {
-    throw std::logic_error("inverse mapping not implemented");
+    auto p1 = inputs.at(0), p2 = inputs.at(1), p3 = inputs.at(2);
+    if (_com) {
+        auto [r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, det] =
+            fb.three_body_decay_com_inverse(p1, p2, p3);
+        return {{r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3}, det};
+    } else {
+        auto [r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, p0, det] =
+            fb.three_body_decay_inverse(p1, p2, p3);
+        return {{r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, p0}, det};
+    }
 }
 
 Mapping::Result TwoToThreeParticleScattering::build_forward_impl(

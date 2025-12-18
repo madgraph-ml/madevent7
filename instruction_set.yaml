@@ -398,6 +398,34 @@ two_body_decay_com:
       type: [float]
       desc:
 
+two_body_decay_com_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 two_body_decay:
   inputs:
     - name: r_phi
@@ -423,6 +451,37 @@ two_body_decay:
       type: [float, 4]
       desc:
     - name: p2
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_body_decay_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: p0
       type: [float, 4]
       desc:
     - name: det
@@ -460,6 +519,34 @@ two_to_two_particle_scattering_com:
       type: [float]
       desc:
 
+two_to_two_particle_scattering_com_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 two_to_two_particle_scattering:
   inputs:
     - name: r_phi
@@ -486,6 +573,34 @@ two_to_two_particle_scattering:
       desc:
     - name: p2
       type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
+two_to_two_particle_scattering_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
       desc:
     - name: det
       type: [float]
@@ -571,6 +686,49 @@ three_body_decay_com:
       type: [float]
       desc:
 
+three_body_decay_com_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_e1
+      type: [float]
+      desc:
+    - name: r_e2
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 three_body_decay:
   inputs:
     - name: r_e1
@@ -617,6 +775,52 @@ three_body_decay:
       type: [float]
       desc:
 
+three_body_decay_inverse:
+  inputs:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+    - name: p3
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: r_e1
+      type: [float]
+      desc:
+    - name: r_e2
+      type: [float]
+      desc:
+    - name: r_phi
+      type: [float]
+      desc:
+    - name: r_cos_theta
+      type: [float]
+      desc:
+    - name: r_beta
+      type: [float]
+      desc:
+    - name: m0
+      type: [float]
+      desc:
+    - name: m1
+      type: [float]
+      desc:
+    - name: m2
+      type: [float]
+      desc:
+    - name: m3
+      type: [float]
+      desc:
+    - name: p0
+      type: [float, 4]
+      desc:
+    - name: det
+      type: [float]
+      desc:
+
 t_inv_min_max:
   inputs:
     - name: pa
@@ -632,6 +836,31 @@ t_inv_min_max:
       type: [float]
       desc:
   outputs:
+    - name: t_min
+      type: [float]
+      desc:
+    - name: t_max
+      type: [float]
+      desc:
+
+t_inv_abs_min_max:
+  inputs:
+    - name: pa
+      type: [float, 4]
+      desc:
+    - name: pb
+      type: [float, 4]
+      desc:
+    - name: p1
+      type: [float, 4]
+      desc:
+    - name: p2
+      type: [float, 4]
+      desc:
+  outputs:
+    - name: t_abs
+      type: [float]
+      desc:
     - name: t_min
       type: [float]
       desc:

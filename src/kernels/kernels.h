@@ -10,4 +10,6 @@
 #include "pdf.h"
 #include "rambo.h"
 #include "scale.h"
+#include "threeparticle.h"
+#include "twoparticle.h"
 #include "vegas.h"

@@ -226,6 +226,8 @@ set(
     src/kernels/discrete.h
     src/kernels/vegas.h
     src/kernels/definitions.h
+    src/kernels/twoparticle.h
+    src/kernels/threeparticle.h
     src/kernels/operations.h
 )
 
