@@ -128,13 +128,13 @@ case 41:
     batch_foreach<tensor_foreach<kernel_t_inv_min_max<GpuTypes>, 4, 2, 1>, 4, 2>(instr, locals, device);
     break;
 case 42:
-    batch_foreach<tensor_foreach<kernel_t_inv_min_max_inverse<GpuTypes>, 4, 3, 1>, 4, 3>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_t_inv_value_and_min_max<GpuTypes>, 4, 3, 1>, 4, 3>(instr, locals, device);
     break;
 case 43:
     batch_foreach<tensor_foreach<kernel_s23_min_max<GpuTypes>, 6, 2, 1>, 6, 2>(instr, locals, device);
     break;
 case 44:
-    batch_foreach<tensor_foreach<kernel_s23_min_max_inverse<GpuTypes>, 6, 3, 1>, 6, 3>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_s23_value_and_min_max<GpuTypes>, 6, 3, 1>, 6, 3>(instr, locals, device);
     break;
 case 45:
     batch_foreach<tensor_foreach<kernel_invariants_from_momenta<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);

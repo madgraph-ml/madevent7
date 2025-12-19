@@ -189,8 +189,8 @@ std::array<Value, 2> t_inv_min_max(Value pa, Value pb, Value m1, Value m2) {
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 3> t_inv_min_max_inverse(Value pa, Value pb, Value p1, Value p2) {
-    auto output_vector = instruction("t_inv_min_max_inverse", {pa, pb, p1, p2});
+std::array<Value, 3> t_inv_value_and_min_max(Value pa, Value pb, Value p1, Value p2) {
+    auto output_vector = instruction("t_inv_value_and_min_max", {pa, pb, p1, p2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 
@@ -199,8 +199,8 @@ std::array<Value, 2> s23_min_max(Value pa, Value pb, Value p3, Value t1_abs, Val
     return {output_vector[0], output_vector[1]};
 }
 
-std::array<Value, 3> s23_min_max_inverse(Value pa, Value pb, Value p3, Value t1_abs, Value p1, Value p2) {
-    auto output_vector = instruction("s23_min_max_inverse", {pa, pb, p3, t1_abs, p1, p2});
+std::array<Value, 3> s23_value_and_min_max(Value pa, Value pb, Value p3, Value t1_abs, Value p1, Value p2) {
+    auto output_vector = instruction("s23_value_and_min_max", {pa, pb, p3, t1_abs, p1, p2});
     return {output_vector[0], output_vector[1], output_vector[2]};
 }
 

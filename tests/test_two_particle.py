@@ -75,7 +75,7 @@ def mass(momentum):
 
 InputPoint = namedtuple("InputPoint", ["r1", "r2", "m0", "m1", "m2", "p0", "pa", "pb"])
 
-N = 10000
+N = 10_000
 
 ZEROS = np.zeros(N)
 PA = np.full((N, 4), [np.sqrt(100**2 + 200**2 + 300**2), 100.0, 200.0, 300.0])

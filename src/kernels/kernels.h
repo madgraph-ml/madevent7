@@ -6,6 +6,7 @@
 #include "invariants.h"
 #include "kinematics.h"
 #include "math.h"
+#include "multichannel.h"
 #include "nn.h"
 #include "pdf.h"
 #include "rambo.h"

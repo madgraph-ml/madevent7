@@ -228,6 +228,7 @@ set(
     src/kernels/definitions.h
     src/kernels/twoparticle.h
     src/kernels/threeparticle.h
+    src/kernels/multichannel.h
     src/kernels/operations.h
 )
 

@@ -59,11 +59,11 @@ Mapping::Result TwoToThreeParticleScattering::build_inverse_impl(
     auto p1 = inputs.at(0), p2 = inputs.at(1);
     auto p_a = conditions.at(0), p_b = conditions.at(1), p_3 = conditions.at(2);
     auto [t1_abs, t1_min, t1_max] =
-        fb.t_inv_min_max_inverse(p_a, fb.sub(p_b, p_3), p1, p2);
+        fb.t_inv_value_and_min_max(p_a, fb.sub(p_b, p_3), p1, p2);
     auto [r_t1_vec, det_t1] =
         _t_invariant.build_inverse(fb, {t1_abs}, {t1_min, t1_max});
     auto [s23, s23_min, s23_max] =
-        fb.s23_min_max_inverse(p_a, p_b, p_3, t1_abs, p1, p2);
+        fb.s23_value_and_min_max(p_a, p_b, p_3, t1_abs, p1, p2);
     auto [r_s23_vec, det_s23] =
         _s_invariant.build_inverse(fb, {s23}, {s23_min, s23_max});
     auto det_inv = fb.mul(det_t1, det_s23);

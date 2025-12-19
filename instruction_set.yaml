@@ -880,7 +880,7 @@ t_inv_min_max:
       type: [float]
       desc:
 
-t_inv_min_max_inverse:
+t_inv_value_and_min_max:
   inputs:
     - name: pa
       type: [float, 4]
@@ -926,14 +926,14 @@ s23_min_max:
       type: [float]
       desc:
   outputs:
-    - name: s_min
+    - name: s23_min
       type: [float]
       desc:
-    - name: s_max
+    - name: s23_max
       type: [float]
       desc:
 
-s23_min_max_inverse:
+s23_value_and_min_max:
   inputs:
     - name: pa
       type: [float, 4]
@@ -957,10 +957,10 @@ s23_min_max_inverse:
     - name: s_23
       type: [float]
       desc:
-    - name: s_min
+    - name: s23_min
       type: [float]
       desc:
-    - name: s_max
+    - name: s23_max
       type: [float]
       desc:
 

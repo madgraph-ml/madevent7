@@ -40,7 +40,8 @@ def boost(k: np.ndarray, p_boost: np.ndarray, inverse: bool = False) -> np.ndarr
 # Fixtures
 # ----------------------------
 
-N = 50_000  # keep this moderate for CI speed; bump locally for tighter stats
+# N = 50_000  # keep this moderate for CI speed; bump locally for tighter stats
+N = 10_000  # keep this moderate for CI speed; bump locally for tighter stats
 
 InputPoint = namedtuple(
     "InputPoint",
@@ -89,19 +90,19 @@ def fixed_input_points(rng, request):
     Generate (pa, pb) and a valid 'spectator' p3 by first producing a 2->2 scattering.
     We then use pa, pb, and that p3 as conditions for the 2->3 peel-off.
     """
-    M0, M12, M1, M2, M3, PA, PB, P0 = request.param
+    m0, m12, m1, m2, m3, pA, pB, p0 = request.param
 
-    map_22 = me.TwoToTwoParticleScattering(com=True)
+    map_22 = me.TwoToTwoParticleScattering(com=False)
     r1 = rng.random(N)
     r2 = rng.random(N)
-    (p12, p3), det_22 = map_22.map_forward([r1, r2, M12, M3], [PA, PB])
+    (p12, p3), det_22 = map_22.map_forward([r1, r2, m12, m3], [pA, pB])
 
     # Randoms for the 2->3 mapper
     r_choice = rng.random(N)
     r_s23 = rng.random(N)
     r_t1 = rng.random(N)
 
-    return InputPoint(r_choice, r_s23, r_t1, M0, M12, M1, M2, M3, PA, PB, P0, p3, p12)
+    return InputPoint(r_choice, r_s23, r_t1, m0, m12, m1, m2, m3, pA, pB, p0, p3, p12)
 
 
 @pytest.fixture
@@ -122,10 +123,10 @@ def input_points(rng, request):
     pz = rng.uniform(1000.0, 4000.0, N)
     ma = rng.uniform(50.0, 300.0, N)
     mb = rng.uniform(200.0, 500.0, N)
-    E1 = np.sqrt(pz**2 + ma**2)
-    E2 = np.sqrt(pz**2 + mb**2)
-    pa = np.stack([E1, np.zeros(N), np.zeros(N), +pz], axis=1)
-    pb = np.stack([E2, np.zeros(N), np.zeros(N), -pz], axis=1)
+    e1 = np.sqrt(pz**2 + ma**2)
+    e2 = np.sqrt(pz**2 + mb**2)
+    pa = np.stack([e1, np.zeros(N), np.zeros(N), +pz], axis=1)
+    pb = np.stack([e2, np.zeros(N), np.zeros(N), -pz], axis=1)
 
     if not com:
         # boost to a some random frame

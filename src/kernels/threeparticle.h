@@ -85,7 +85,7 @@ KERNELSPEC Triplet<FourMom<T>, FourMom<T>, FVal<T>> three_body_decay(
         pp2 * (cos_alpha * cos_theta - sin_alpha * cos(beta) * sin_theta)
     };
 
-    auto det = det_omega * det_E1 * det_E2 / 8;
+    auto det = det_omega * det_E2 * det_E1 / 8;
     return {p1, p2, det};
 }
 
@@ -169,6 +169,133 @@ three_body_decay_inverse(FourMom<T> p1, FourMom<T> p2, FourMom<T> p3) {
 
     auto det = det_omega * det_E1 * det_E2 / 8.;
     return {r_e1, r_e2, r_phi, r_cos_theta, r_beta, m0, m1, m2, m3, 1. / det};
+}
+
+template <typename T>
+KERNELSPEC FVal<T> bk_V(
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12
+) {
+    // Determinant of the 3x3 V-matrix,
+    // see Eq.(11) in 10.1103/PhysRev.187.2008.
+    // Note: expects the absolute value of t1
+    auto a11 = 2.0 * s12;
+    auto a12 = ma_2 + s12 - t2;
+    auto a13 = s12 + m1_2 - m2_2;
+    auto a22 = 2.0 * ma_2;
+    auto a23 = ma_2 + m1_2 + t1_abs;
+    auto a31 = m0_2 + s12 - m3_2;
+    auto a32 = m0_2 + ma_2 - mb_2;
+
+    // Computes the determinant of the 3x3 V-matrix (hard-coded because easier)
+    auto det = a12 * a23 * a31 + a12 * a13 * a32 - a11 * a23 * a32 - a13 * a22 * a31;
+    return -det / 8.0;
+}
+
+template <typename T>
+KERNELSPEC FVal<T> bk_gram4(
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12,
+    FVal<T> s23
+) {
+    // omputes the 4x4 Gram determinant,
+    // see Eq.(B6) in 10.1103/PhysRev.187.2008.
+    // Note: expects the absolute value of t1
+
+    // Get upper triangular matrix components which are non-zero
+    // as the Gram matrix is symmetric, i.e. (a_{ij} = a_{ji})
+    auto a11 = 2.0 * ma_2;
+    auto a12 = ma_2 - t1_abs - m1_2;
+    auto a13 = ma_2 + t2 - s12;
+    auto a14 = ma_2 + mb_2 - m0_2;
+    auto a22 = -2.0 * t1_abs;
+    auto a23 = t2 - t1_abs - m2_2;
+    auto a24 = mb_2 - t1_abs - s23;
+    auto a33 = 2.0 * t2;
+    auto a34 = t2 + mb_2 - m3_2;
+    auto a44 = 2.0 * mb_2;
+
+    // Computes the determinant of the 4x4 Gram matrix (hard-coded because easier)
+    auto det = a14 * a23 * a14 * a23 + a13 * a24 * a13 * a24 + a12 * a34 * a12 * a34 -
+        a14 * a14 * a22 * a33 - a13 * a13 * a22 * a44 - a12 * a12 * a33 * a44 -
+        a23 * a23 * a11 * a44 - a24 * a24 * a11 * a33 - a34 * a34 * a11 * a22 +
+        2 * a11 * a23 * a24 * a34 + 2 * a12 * a13 * a23 * a44 +
+        2 * a12 * a14 * a24 * a33 + 2 * a13 * a14 * a22 * a34 -
+        2 * a12 * a13 * a24 * a34 - 2 * a12 * a14 * a23 * a34 -
+        2 * a13 * a14 * a23 * a24 + a11 * a22 * a33 * a44;
+    return det / 16.0;
+}
+
+template <typename T>
+KERNELSPEC FVal<T> bk_sqrt_g3i_g3im1(
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12
+) {
+    // This is the squaet root of the product of the two 3x3 Gram determinants g3i and
+    // g3im1, as in Eq.(11) in 10.1103/PhysRev.187.2008. Note: expects the absolute
+    // value of t1
+    auto a11 = 2 * s12;
+    auto a12 = s12 + ma_2 - t2;
+    auto a13 = s12 + m0_2 - m3_2;
+    auto b13 = s12 + m1_2 - m2_2;
+    auto a22 = 2 * ma_2;
+    auto a23 = ma_2 + m0_2 - mb_2;
+    auto b23 = ma_2 + m1_2 + t1_abs;
+    auto a33 = 2 * m0_2;
+    auto b33 = 2 * m1_2;
+
+    // Calculate the two gramm determinants g3i and g3im1
+    // (ard-coded because easier)
+    auto g3i = a11 * a22 * a33 + 2 * a12 * a23 * a13 - a11 * a23 * a23 -
+        a22 * a13 * a13 - a33 * a12 * a12;
+    auto g3im1 = a11 * a22 * b33 + 2 * a12 * b23 * b13 - a11 * b23 * b23 -
+        a22 * b13 * b13 - b33 * a12 * a12;
+    return sqrt(g3i * g3im1) / 8.0;
+}
+
+template <typename T>
+KERNELSPEC Pair<FVal<T>, FVal<T>> s23_min_max(
+    FVal<T> m0_2,
+    FVal<T> ma_2,
+    FVal<T> mb_2,
+    FVal<T> m1_2,
+    FVal<T> m2_2,
+    FVal<T> m3_2,
+    FVal<T> t1_abs,
+    FVal<T> t2,
+    FVal<T> s12
+) {
+    auto sqrtGG =
+        bk_sqrt_g3i_g3im1<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto V = bk_V<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    auto lambda = max(kaellen<T>(s12, ma_2, t2), EPS);
+
+    auto sa = m0_2 + m1_2 + 8 * (V + sqrtGG) / (lambda);
+    auto sb = m0_2 + m1_2 + 8 * (V - sqrtGG) / (lambda);
+    auto s_min = min(sa, sb);
+    auto s_max = max(sa, sb);
+    return {s_min, s_max};
 }
 
 template <typename T>
@@ -328,6 +455,77 @@ KERNELSPEC void kernel_three_body_decay_inverse(
     m2 = decay_out.eighth;
     m3 = decay_out.ninth;
     det = decay_out.tenth;
+}
+
+// Kernels for 2->3 scattering
+
+template <typename T>
+KERNELSPEC void kernel_s23_min_max(
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 1> p3,
+    FIn<T, 0> t1_abs,
+    FIn<T, 0> m1,
+    FIn<T, 0> m2,
+    FOut<T, 0> s23_min,
+    FOut<T, 0> s23_max
+) {
+    // this function is based on the sminmax subroutine from Rikkert
+    // expects t1_abs (positive t invariant) as input
+    FourMom<T> p_tot, p_12, pt2;
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+        p_12[i] = pa[i] + pb[i] - p3[i];
+        pt2[i] = pb[i] - p3[i];
+    }
+    auto m0_2 = lsquare<T>(p_tot);
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto s12 = lsquare<T>(p_12);
+    auto m1_2 = m1 * m1;
+    auto m2_2 = m2 * m2;
+    auto t2 = lsquare<T>(pt2);
+
+    auto s23_out = s23_min_max<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    s23_min = s23_out.first;
+    s23_max = s23_out.second;
+}
+
+template <typename T>
+KERNELSPEC void kernel_s23_value_and_min_max(
+    FIn<T, 1> pa,
+    FIn<T, 1> pb,
+    FIn<T, 1> p3,
+    FIn<T, 0> t1_abs,
+    FIn<T, 1> p1,
+    FIn<T, 1> p2,
+    FOut<T, 0> s_23,
+    FOut<T, 0> s23_min,
+    FOut<T, 0> s23_max
+) {
+    // this function is based on the sminmax subroutine from Rikkert
+    // expects t1_abs (positive t invariant) as input
+    FourMom<T> p_tot, p_12, pt2, p_23;
+    for (int i = 0; i < 4; ++i) {
+        p_tot[i] = pa[i] + pb[i];
+        p_12[i] = p1[i] + p2[i];
+        pt2[i] = pb[i] - p3[i];
+        p_23[i] = p2[i] + p3[i];
+    }
+    auto m0_2 = lsquare<T>(p_tot);
+    auto ma_2 = lsquare<T>(load_mom<T>(pa));
+    auto mb_2 = lsquare<T>(load_mom<T>(pb));
+    auto m3_2 = lsquare<T>(load_mom<T>(p3));
+    auto s12 = lsquare<T>(p_12);
+    auto m1_2 = lsquare<T>(load_mom<T>(p1));
+    auto m2_2 = lsquare<T>(load_mom<T>(p2));
+    auto t2 = lsquare<T>(pt2);
+
+    auto s23_out = s23_min_max<T>(m0_2, ma_2, mb_2, m1_2, m2_2, m3_2, t1_abs, t2, s12);
+    s23_min = s23_out.first;
+    s23_max = s23_out.second;
+    s_23 = lsquare<T>(p_23);
 }
 
 template <typename T>
