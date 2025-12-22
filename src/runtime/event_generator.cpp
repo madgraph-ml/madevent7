@@ -2,6 +2,7 @@
 #include "madevent/runtime/logger.h"
 
 #include <cmath>
+#include <filesystem>
 #include <format>
 #include <ranges>
 #include <sys/resource.h>
@@ -27,6 +28,7 @@ EventGenerator::EventGenerator(
     ContextPtr context,
     const std::vector<Integrand>& channels,
     const std::string& temp_file_prefix,
+    const std::string& status_file,
     const Config& config,
     const std::vector<std::size_t>& channel_subprocesses,
     const std::vector<std::string>& channel_names
@@ -42,6 +44,8 @@ EventGenerator::EventGenerator(
     )),
     _status_all(
         {0,
+         0,
+         "",
          0.,
          0.,
          0.,
@@ -54,7 +58,8 @@ EventGenerator::EventGenerator(
          false,
          false}
     ),
-    _job_id(0) {
+    _job_id(0),
+    _status_file(status_file) {
     std::size_t i = 0;
     for (auto& channel : channels) {
         if (channel.flags() != integrand_flags) {
@@ -395,17 +400,26 @@ void EventGenerator::reset_start_time() {
     _start_cpu_microsec = cpu_time_microsec();
 }
 
-std::string EventGenerator::format_run_time() const {
+void EventGenerator::add_timing_data(const std::string& key) {
     using namespace std::chrono_literals;
     std::size_t diff = cpu_time_microsec() - _start_cpu_microsec;
-    std::chrono::duration<double> cpu_duration(diff / 1000000.);
+    _timing_data[key] = EventGenerator::TimingData{
+        .wall_time_sec = static_cast<double>(
+            (std::chrono::steady_clock::now() - _start_time) / 1.0s
+        ),
+        .cpu_time_sec = diff / 1e6,
+    };
+}
+
+std::string EventGenerator::format_run_time(const std::string& key) const {
+    using namespace std::chrono_literals;
+    auto [wall_time_sec, cpu_time_sec] = _timing_data.at(key);
+    std::chrono::duration<double> cpu_duration(cpu_time_sec),
+        wall_duration(wall_time_sec);
     // we don't use the ratio feature of duration here because it seems to lead
     // to errors in old gcc versions
-    double cpu_centisec = std::fmod(diff / 10000., 100.);
-    std::chrono::duration<double> wall_duration(
-        std::chrono::steady_clock::now() - _start_time
-    );
-    double wall_centisec = std::fmod(wall_duration / 0.01s, 100.);
+    double cpu_centisec = std::fmod(cpu_time_sec / 0.01, 100.);
+    double wall_centisec = std::fmod(wall_time_sec / 0.01, 100.);
     return std::format(
         "{:%H:%M:%S}.{:02.0f} wall, {:%H:%M:%S}.{:02.0f} cpu",
         wall_duration,
@@ -493,6 +507,8 @@ std::vector<EventGenerator::Status> EventGenerator::channel_status() const {
         double target_count = channel.integral_fraction * _config.target_count;
         status.push_back(
             {channel.index,
+             channel.subprocess_index,
+             channel.name,
              channel.cross_section.mean(),
              channel.cross_section.error(),
              channel.cross_section.rel_std_dev(),
@@ -886,7 +902,35 @@ void EventGenerator::fill_lhe_event(
     );
 }
 
+void EventGenerator::init_status(const std::string& status) {
+    _last_status_time = std::chrono::steady_clock::now();
+    write_status(status, true);
+}
+
+void EventGenerator::write_status(const std::string& status, bool force_write) {
+    auto now = std::chrono::steady_clock::now();
+    using namespace std::chrono_literals;
+    if (now - _last_status_time < 10s && !force_write) {
+        return;
+    }
+    _last_status_time = now;
+
+    std::string status_tmp_file = std::format("{}.tmp", _status_file);
+    std::ofstream f(status_tmp_file);
+    nlohmann::json j{
+        {"status", status},
+        {"process", _status_all},
+        {"channels", channel_status()},
+        {"run_times", _timing_data},
+    };
+    f << j.dump();
+    // rename atomically deletes the old file and replaces it with the new one
+    // such that the status file exists at all times
+    std::filesystem::rename(status_tmp_file, _status_file);
+}
+
 void EventGenerator::print_survey_init() {
+    init_status("survey");
     _last_print_time = std::chrono::steady_clock::now();
     if (_config.verbosity != EventGenerator::pretty) {
         Logger::info("survey started");
@@ -902,6 +946,10 @@ void EventGenerator::print_survey_init() {
 void EventGenerator::print_survey_update(
     bool done, std::size_t done_job_count, std::size_t total_job_count, std::size_t iter
 ) {
+    if (done) {
+        add_timing_data("survey");
+    }
+    write_status("survey", done);
     if (_config.verbosity == EventGenerator::pretty) {
         print_survey_update_pretty(done, done_job_count, total_job_count, iter);
     } else if (_config.verbosity == EventGenerator::log) {
@@ -920,7 +968,8 @@ void EventGenerator::print_survey_update_pretty(
     );
     if (done) {
         _pretty_box_upper.set_column(
-            1, {std::format("{}", iter + 1), int_str, count_str, format_run_time()}
+            1,
+            {std::format("{}", iter + 1), int_str, count_str, format_run_time("survey")}
         );
     } else {
         auto now = std::chrono::steady_clock::now();
@@ -973,11 +1022,12 @@ void EventGenerator::print_survey_update_log(
     );
 
     if (done) {
-        Logger::info(std::format("survey done, {}", format_run_time()));
+        Logger::info(std::format("survey done, {}", format_run_time("survey")));
     }
 }
 
 void EventGenerator::print_gen_init() {
+    init_status("generate");
     _last_print_time = std::chrono::steady_clock::now();
     if (_config.verbosity != EventGenerator::pretty) {
         Logger::info("generating started");
@@ -1017,6 +1067,10 @@ void EventGenerator::print_gen_init() {
 }
 
 void EventGenerator::print_gen_update(bool done) {
+    if (done) {
+        add_timing_data("generate");
+    }
+    write_status("generate", done);
     if (_config.verbosity == EventGenerator::pretty) {
         print_gen_update_pretty(done);
     } else if (_config.verbosity == EventGenerator::log) {
@@ -1057,7 +1111,7 @@ void EventGenerator::print_gen_update_pretty(bool done) {
     );
     std::string time_str;
     if (_status_all.done) {
-        time_str = format_run_time();
+        time_str = format_run_time("generate");
     } else {
         unw_str = std::format(
             "{:<15} {}",
@@ -1144,11 +1198,12 @@ void EventGenerator::print_gen_update_log(bool done) {
     );
 
     if (done) {
-        Logger::info(std::format("generating done, {}", format_run_time()));
+        Logger::info(std::format("generating done, {}", format_run_time("generate")));
     }
 }
 
 void EventGenerator::print_combine_init() {
+    init_status("combine");
     _last_print_time = std::chrono::steady_clock::now();
     if (_config.verbosity != EventGenerator::pretty) {
         Logger::info("combining started");
@@ -1160,6 +1215,12 @@ void EventGenerator::print_combine_init() {
 }
 
 void EventGenerator::print_combine_update(std::size_t count) {
+    if (count == _config.target_count) {
+        add_timing_data("combine");
+        write_status("done", true);
+    } else {
+        write_status("combine", false);
+    }
     if (_config.verbosity == EventGenerator::pretty) {
         print_combine_update_pretty(count);
     } else if (_config.verbosity == EventGenerator::log) {
@@ -1176,7 +1237,7 @@ void EventGenerator::print_combine_update_pretty(std::size_t count) {
                  format_si_prefix(count),
                  format_si_prefix(_config.target_count)
              ),
-             format_run_time()}
+             format_run_time("combine")}
         );
     } else {
         auto now = std::chrono::steady_clock::now();
@@ -1221,6 +1282,35 @@ void EventGenerator::print_combine_update_log(std::size_t count) {
     );
 
     if (count == _config.target_count) {
-        Logger::info(std::format("combining done, {}", format_run_time()));
+        Logger::info(std::format("combining done, {}", format_run_time("combine")));
     }
+}
+
+void madevent::to_json(nlohmann::json& j, const EventGenerator::Status& status) {
+    j = nlohmann::json{
+        {"index", status.index},
+        {"subprocess", status.subprocess},
+        {"name", status.name},
+        {"mean", status.mean},
+        {"error", status.error},
+        {"rel_std_dev", status.rel_std_dev},
+        {"count", status.count},
+        {"count_opt", status.count_opt},
+        {"count_after_cuts", status.count_after_cuts},
+        {"count_after_cuts_opt", status.count_after_cuts_opt},
+        {"count_unweighted", status.count_unweighted},
+        {"count_target", status.count_target},
+        {"iterations", status.iterations},
+        {"optimized", status.optimized},
+        {"done", status.done},
+    };
+}
+
+void madevent::to_json(
+    nlohmann::json& j, const EventGenerator::TimingData& timing_data
+) {
+    j = nlohmann::json{
+        {"wall_time_sec", timing_data.wall_time_sec},
+        {"cpu_time_sec", timing_data.cpu_time_sec},
+    };
 }

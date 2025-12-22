@@ -5,6 +5,8 @@
 #include <random>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include "madevent/madcode.h"
 #include "madevent/phasespace.h"
 #include "madevent/runtime/discrete_optimizer.h"
@@ -66,11 +68,14 @@ public:
         std::size_t optimization_patience = 3;
         double optimization_threshold = 0.99;
         std::size_t batch_size = 1000;
-        Verbosity verbosity;
+        Verbosity verbosity = silent;
+        bool write_live_data = false;
     };
     static const Config default_config;
     struct Status {
         std::size_t index;
+        std::size_t subprocess;
+        std::string name;
         double mean;
         double error;
         double rel_std_dev;
@@ -92,6 +97,7 @@ public:
         ContextPtr context,
         const std::vector<Integrand>& channels,
         const std::string& temp_file_prefix,
+        const std::string& status_file = "",
         const Config& config = default_config,
         const std::vector<std::size_t>& channel_subprocesses = {},
         const std::vector<std::string>& channel_names = {}
@@ -143,6 +149,10 @@ private:
         EventBuffer weight_buffer;
         std::size_t buffer_index;
     };
+    struct TimingData {
+        double wall_time_sec;
+        double cpu_time_sec;
+    };
     inline static std::function<void(void)> _abort_check_function = [] {};
 
     ContextPtr _context;
@@ -155,11 +165,15 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> _start_time;
     std::size_t _start_cpu_microsec;
     std::chrono::time_point<std::chrono::steady_clock> _last_print_time;
+    std::chrono::time_point<std::chrono::steady_clock> _last_status_time;
     PrettyBox _pretty_box_upper;
     PrettyBox _pretty_box_lower;
+    std::string _status_file;
+    std::unordered_map<std::string, TimingData> _timing_data;
 
     void reset_start_time();
-    std::string format_run_time() const;
+    void add_timing_data(const std::string& key);
+    std::string format_run_time(const std::string& key) const;
     void unweight_all();
     void unweight_channel(ChannelState& channel, std::mt19937 rand_gen);
     std::tuple<Tensor, std::vector<Tensor>> integrate_and_optimize(
@@ -186,6 +200,9 @@ private:
         EventBuffer& buffer,
         std::size_t event_index
     );
+
+    void init_status(const std::string& status);
+    void write_status(const std::string& status, bool force_write);
 
     void print_survey_init();
     void print_survey_update(
@@ -216,6 +233,11 @@ private:
     void print_combine_update(std::size_t count);
     void print_combine_update_pretty(std::size_t count);
     void print_combine_update_log(std::size_t count);
+
+    friend void
+    to_json(nlohmann::json& j, const EventGenerator::TimingData& timing_data);
 };
+
+void to_json(nlohmann::json& j, const EventGenerator::Status& status);
 
 } // namespace madevent
