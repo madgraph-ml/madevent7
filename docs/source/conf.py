@@ -1,4 +1,6 @@
 import os
+import subprocess
+import sys
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -21,6 +23,7 @@ extensions = [
     # "sphinx.ext.napoleon",
     # "sphinx.ext.linkcode",
     "sphinx_autodoc_typehints",
+    "breathe",
 ]
 
 templates_path = ["_templates"]
@@ -40,3 +43,26 @@ html_theme_options = {
 autoclass_content = "both"
 # add_module_names = False
 typehints_fully_qualified = False
+
+breathe_projects = {"madevent7": "../build/doxygenxml"}
+breathe_default_project = "madevent7"
+breathe_domain_by_extension = {"h": "cpp"}
+breathe_default_members = ("members", "undoc-members")
+
+
+def generate_doxygen_xml(app):
+    build_dir = os.path.join(app.confdir, "..", "build")
+    if not os.path.exists(build_dir):
+        os.mkdir(build_dir)
+
+    try:
+        subprocess.call(["doxygen", "--version"])
+        retcode = subprocess.call(["doxygen"], cwd=os.path.join(app.confdir, ".."))
+        if retcode < 0:
+            sys.stderr.write(f"doxygen error code: {-retcode}\n")
+    except OSError as e:
+        sys.stderr.write(f"doxygen execution failed: {e}\n")
+
+
+def setup(app):
+    app.connect("builder-inited", generate_doxygen_xml)
