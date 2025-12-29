@@ -108,5 +108,31 @@ KERNELSPEC void kernel_cut_sqrt_s(FIn<T, 0> sqrt_s, FIn<T, 1> min_max, FOut<T, 0
     w = where((sqrt_s < min_max[0]) | (sqrt_s > min_max[1]), FVal<T>(0.), 1.);
 }
 
+template <typename T>
+KERNELSPEC void
+kernel_cut_one(FIn<T, 0> obs, FIn<T, 0> min, FIn<T, 0> max, FOut<T, 0> w) {
+    w = where((obs < min) | (obs > max), FVal<T>(0.), 1.);
+}
+
+template <typename T>
+KERNELSPEC void
+kernel_cut_all(FIn<T, 1> obs, FIn<T, 1> min, FIn<T, 1> max, FOut<T, 0> w) {
+    FVal<T> cut = 1.;
+    for (std::size_t i = 0; i < obs.size(); ++i) {
+        cut = where((obs[i] < min[i]) | (obs[i] > max[i]), 0., cut);
+    }
+    w = cut;
+}
+
+template <typename T>
+KERNELSPEC void
+kernel_cut_any(FIn<T, 1> obs, FIn<T, 1> min, FIn<T, 1> max, FOut<T, 0> w) {
+    FVal<T> cut = 0.;
+    for (std::size_t i = 0; i < obs.size(); ++i) {
+        cut = where((obs[i] < min[i]) | (obs[i] > max[i]), cut, 1.);
+    }
+    w = cut;
+}
+
 } // namespace kernels
 } // namespace madevent

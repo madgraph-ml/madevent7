@@ -8,6 +8,7 @@
 #include "phasespace/discrete_flow.h"
 #include "phasespace/discrete_sampler.h"
 #include "phasespace/flow.h"
+#include "phasespace/histograms.h"
 #include "phasespace/integrand.h"
 #include "phasespace/invariants.h"
 #include "phasespace/luminosity.h"

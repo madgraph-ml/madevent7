@@ -67,6 +67,10 @@ Value mul(Value in1, Value in2) {
     return instruction("mul", {in1, in2})[0];
 }
 
+Value reduce_sum(Value in1) {
+    return instruction("reduce_sum", {in1})[0];
+}
+
 Value reduce_product(Value in1) {
     return instruction("reduce_product", {in1})[0];
 }
@@ -85,6 +89,62 @@ Value min(Value in1, Value in2) {
 
 Value max(Value in1, Value in2) {
     return instruction("max", {in1, in2})[0];
+}
+
+Value obs_e(Value p) {
+    return instruction("obs_e", {p})[0];
+}
+
+Value obs_px(Value p) {
+    return instruction("obs_px", {p})[0];
+}
+
+Value obs_py(Value p) {
+    return instruction("obs_py", {p})[0];
+}
+
+Value obs_pz(Value p) {
+    return instruction("obs_pz", {p})[0];
+}
+
+Value obs_mass(Value p) {
+    return instruction("obs_mass", {p})[0];
+}
+
+Value obs_pt(Value p) {
+    return instruction("obs_pt", {p})[0];
+}
+
+Value obs_p_mag(Value p) {
+    return instruction("obs_p_mag", {p})[0];
+}
+
+Value obs_phi(Value p) {
+    return instruction("obs_phi", {p})[0];
+}
+
+Value obs_theta(Value p) {
+    return instruction("obs_theta", {p})[0];
+}
+
+Value obs_y(Value p) {
+    return instruction("obs_y", {p})[0];
+}
+
+Value obs_eta(Value p) {
+    return instruction("obs_eta", {p})[0];
+}
+
+Value obs_delta_eta(Value p1, Value p2) {
+    return instruction("obs_delta_eta", {p1, p2})[0];
+}
+
+Value obs_delta_phi(Value p1, Value p2) {
+    return instruction("obs_delta_phi", {p1, p2})[0];
+}
+
+Value obs_delta_r(Value p1, Value p2) {
+    return instruction("obs_delta_r", {p1, p2})[0];
 }
 
 Value boost_beam(Value p1, Value x1, Value x2) {
@@ -252,24 +312,16 @@ Value cut_unphysical(Value w_in, Value p, Value x1, Value x2) {
     return instruction("cut_unphysical", {w_in, p, x1, x2})[0];
 }
 
-Value cut_pt(Value p, Value min_max) {
-    return instruction("cut_pt", {p, min_max})[0];
+Value cut_one(Value obs, Value min, Value max) {
+    return instruction("cut_one", {obs, min, max})[0];
 }
 
-Value cut_eta(Value p, Value min_max) {
-    return instruction("cut_eta", {p, min_max})[0];
+Value cut_all(Value obs, Value min, Value max) {
+    return instruction("cut_all", {obs, min, max})[0];
 }
 
-Value cut_dr(Value p, Value indices, Value min_max) {
-    return instruction("cut_dr", {p, indices, min_max})[0];
-}
-
-Value cut_m_inv(Value p, Value indices, Value min_max) {
-    return instruction("cut_m_inv", {p, indices, min_max})[0];
-}
-
-Value cut_sqrt_s(Value p, Value min_max) {
-    return instruction("cut_sqrt_s", {p, min_max})[0];
+Value cut_any(Value obs, Value min, Value max) {
+    return instruction("cut_any", {obs, min, max})[0];
 }
 
 Value scale_transverse_energy(Value momenta) {

@@ -88,19 +88,19 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
 
     ValueVec weights;
     if (has_pt_cuts) {
-        weights.push_back(fb.cut_pt(momenta, Value(pt_cuts, {n_out, 2})));
+        // weights.push_back(fb.cut_pt(momenta, Value(pt_cuts, {n_out, 2})));
     }
     if (has_eta_cuts) {
-        weights.push_back(fb.cut_eta(momenta, Value(eta_cuts, {n_out, 2})));
+        // weights.push_back(fb.cut_eta(momenta, Value(eta_cuts, {n_out, 2})));
     }
     if (has_dr_cuts) {
         dr_indices1.insert(dr_indices1.end(), dr_indices2.begin(), dr_indices2.end());
         dr_cuts_min.insert(dr_cuts_min.end(), dr_cuts_max.begin(), dr_cuts_max.end());
-        weights.push_back(fb.cut_dr(
-            momenta,
-            Value(dr_indices1, {static_cast<int>(dr_indices1.size()) / 2, 2}),
-            Value(dr_cuts_min, {static_cast<int>(dr_cuts_min.size()) / 2, 2})
-        ));
+        // weights.push_back(fb.cut_dr(
+        //     momenta,
+        //     Value(dr_indices1, {static_cast<int>(dr_indices1.size()) / 2, 2}),
+        //     Value(dr_cuts_min, {static_cast<int>(dr_cuts_min.size()) / 2, 2})
+        //));
     }
     if (has_mass_cuts) {
         mass_indices1.insert(
@@ -109,14 +109,14 @@ ValueVec Cuts::build_function_impl(FunctionBuilder& fb, const ValueVec& args) co
         mass_cuts_min.insert(
             mass_cuts_min.end(), mass_cuts_max.begin(), mass_cuts_max.end()
         );
-        weights.push_back(fb.cut_m_inv(
-            momenta,
-            Value(mass_indices1, {static_cast<int>(mass_indices1.size()) / 2, 2}),
-            Value(mass_cuts_min, {static_cast<int>(mass_cuts_min.size()) / 2, 2})
-        ));
+        // weights.push_back(fb.cut_m_inv(
+        //     momenta,
+        //     Value(mass_indices1, {static_cast<int>(mass_indices1.size()) / 2, 2}),
+        //     Value(mass_cuts_min, {static_cast<int>(mass_cuts_min.size()) / 2, 2})
+        //));
     }
     if (has_sqrt_s_cuts && (sqrt_s_cuts.at(0) > 0. || sqrt_s_cuts.at(1) < inf)) {
-        weights.push_back(fb.cut_sqrt_s(momenta, Value(sqrt_s_cuts, {2})));
+        // weights.push_back(fb.cut_sqrt_s(momenta, Value(sqrt_s_cuts, {2})));
     }
     return {fb.product(weights)};
 }
