@@ -36,8 +36,8 @@ html_theme = "furo"
 html_static_path = ["_static"]
 html_theme_options = {
     "sidebar_hide_name": True,
-    # "light_logo": "logo-light.png",
-    # "dark_logo": "logo-dark.png",
+    "light_logo": "logo-light.png",
+    "dark_logo": "logo-dark.png",
 }
 
 autoclass_content = "both"
