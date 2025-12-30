@@ -457,6 +457,10 @@ Value select(Value input, Value indices) {
     return instruction("select", {input, indices})[0];
 }
 
+Value select_vector(Value input, Value indices) {
+    return instruction("select_vector", {input, indices})[0];
+}
+
 Value one_hot(Value index, Value option_count) {
     return instruction("one_hot", {index, option_count})[0];
 }

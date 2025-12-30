@@ -277,6 +277,7 @@ obs_e:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_px:
   inputs:
@@ -287,6 +288,7 @@ obs_px:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_py:
   inputs:
@@ -297,6 +299,7 @@ obs_py:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_pz:
   inputs:
@@ -307,6 +310,7 @@ obs_pz:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_mass:
   inputs:
@@ -317,6 +321,7 @@ obs_mass:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_pt:
   inputs:
@@ -327,6 +332,7 @@ obs_pt:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_p_mag:
   inputs:
@@ -337,6 +343,7 @@ obs_p_mag:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_phi:
   inputs:
@@ -347,6 +354,7 @@ obs_phi:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_theta:
   inputs:
@@ -357,6 +365,7 @@ obs_theta:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_y:
   inputs:
@@ -367,6 +376,7 @@ obs_y:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_eta:
   inputs:
@@ -377,6 +387,7 @@ obs_eta:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_delta_eta:
   inputs:
@@ -390,6 +401,7 @@ obs_delta_eta:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_delta_phi:
   inputs:
@@ -403,6 +415,7 @@ obs_delta_phi:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 obs_delta_r:
   inputs:
@@ -416,6 +429,7 @@ obs_delta_r:
     - name: obs
       type: [float, ...]
       desc:
+  dims: 0
 
 ---
 title: Kinematics
@@ -1771,6 +1785,19 @@ select:
       type: [float, m]
       desc:
   differentiable: True
+
+select_vector:
+  inputs:
+    - name: input
+      type: [float, n, k]
+      desc:
+    - name: indices
+      type: [int, single, m]
+      desc:
+  outputs:
+    - name: output
+      type: [float, m, k]
+      desc:
 
 one_hot:
   inputs:

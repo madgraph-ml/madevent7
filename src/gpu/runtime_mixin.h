@@ -68,46 +68,46 @@ case 21:
     batch_foreach<tensor_foreach_dynamic<kernel_max<GpuTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 22:
-    batch_foreach<tensor_foreach<kernel_obs_e<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_e<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 23:
-    batch_foreach<tensor_foreach<kernel_obs_px<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_px<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 24:
-    batch_foreach<tensor_foreach<kernel_obs_py<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_py<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 25:
-    batch_foreach<tensor_foreach<kernel_obs_pz<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_pz<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 26:
-    batch_foreach<tensor_foreach<kernel_obs_mass<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_mass<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 27:
-    batch_foreach<tensor_foreach<kernel_obs_pt<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_pt<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 28:
-    batch_foreach<tensor_foreach<kernel_obs_p_mag<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_p_mag<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 29:
-    batch_foreach<tensor_foreach<kernel_obs_phi<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_phi<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 30:
-    batch_foreach<tensor_foreach<kernel_obs_theta<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_theta<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 31:
-    batch_foreach<tensor_foreach<kernel_obs_y<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_y<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 32:
-    batch_foreach<tensor_foreach<kernel_obs_eta<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_eta<GpuTypes>, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 33:
-    batch_foreach<tensor_foreach<kernel_obs_delta_eta<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_delta_eta<GpuTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 34:
-    batch_foreach<tensor_foreach<kernel_obs_delta_phi<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_delta_phi<GpuTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 35:
-    batch_foreach<tensor_foreach<kernel_obs_delta_r<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach_dynamic<kernel_obs_delta_r<GpuTypes>, 2, 1>, 2, 1>(instr, locals, device);
     break;
 case 36:
     batch_foreach<tensor_foreach<kernel_boost_beam<GpuTypes>, 3, 1, 1>, 3, 1>(instr, locals, device);
@@ -317,29 +317,32 @@ case 104:
     batch_foreach<tensor_foreach<kernel_select<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 105:
-    batch_foreach<tensor_foreach<kernel_one_hot<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select_vector<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 106:
-    op_nonzero(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_one_hot<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 107:
-    op_batch_gather(instr, locals, device);
+    op_nonzero(instr, locals, device);
     break;
 case 108:
-    op_batch_scatter(instr, locals, device);
+    op_batch_gather(instr, locals, device);
     break;
 case 109:
-    op_random(instr, locals, device);
+    op_batch_scatter(instr, locals, device);
     break;
 case 110:
-    op_unweight(instr, locals, device);
+    op_random(instr, locals, device);
     break;
 case 111:
-    batch_foreach<tensor_foreach<kernel_vegas_forward<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    op_unweight(instr, locals, device);
     break;
 case 112:
-    batch_foreach<tensor_foreach<kernel_vegas_inverse<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_vegas_forward<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;
 case 113:
+    batch_foreach<tensor_foreach<kernel_vegas_inverse<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    break;
+case 114:
     op_vegas_histogram(instr, locals, device);
     break;

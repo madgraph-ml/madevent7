@@ -221,6 +221,7 @@ set(
     src/kernels/invariants.h
     src/kernels/kernels.h
     src/kernels/kinematics.h
+    src/kernels/multichannel.h
     src/kernels/math.h
     src/kernels/rambo.h
     src/kernels/cuts.h
@@ -229,6 +230,7 @@ set(
     src/kernels/observables.h
     src/kernels/discrete.h
     src/kernels/vegas.h
+    src/kernels/util.h
     src/kernels/definitions.h
     src/kernels/operations.h
 )

@@ -118,6 +118,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("gather", &FunctionBuilder::gather, py::arg("index"), py::arg("choices"));
     fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
     fb.def("select", &FunctionBuilder::select, py::arg("input"), py::arg("indices"));
+    fb.def("select_vector", &FunctionBuilder::select_vector, py::arg("input"), py::arg("indices"));
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
     fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
     fb.def("batch_gather", &FunctionBuilder::batch_gather, py::arg("indices"), py::arg("values"));

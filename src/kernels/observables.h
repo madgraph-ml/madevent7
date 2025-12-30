@@ -100,20 +100,5 @@ KERNELSPEC void kernel_obs_delta_r(FIn<T, 1> p1, FIn<T, 1> p2, FOut<T, 0> obs) {
     obs = sqrt(deta * deta + dphi * dphi);
 }
 
-template <typename T>
-KERNELSPEC void kernel_argsort(FIn<T, 1> in, IOut<T, 1> out) {
-    for (std::size_t i = 0; i < in.size(); ++i) {
-        out[i] = i;
-    }
-    for (std::size_t i = 1; i < in.size(); ++i) {
-        auto index = out[i];
-        std::size_t j = i;
-        for (; j > 0 && in[out[j]] > in[index]; --j) {
-            out[j] = out[j - 1];
-        }
-        out[j] = index;
-    }
-}
-
 } // namespace kernels
 } // namespace madevent

@@ -6,26 +6,6 @@ namespace madevent {
 namespace kernels {
 
 template <typename T>
-KERNELSPEC void kernel_copy(FIn<T, 0> in, FOut<T, 0> out) {
-    out = in;
-}
-
-template <typename T>
-KERNELSPEC void kernel_copy_int(IIn<T, 0> in, IOut<T, 0> out) {
-    out = in;
-}
-
-template <typename T>
-KERNELSPEC void kernel_zero(FIn<T, 0> in, FOut<T, 0> out) {
-    out = 0.;
-}
-
-template <typename T>
-KERNELSPEC void kernel_zero_int(IIn<T, 0> in, IOut<T, 0> out) {
-    out = 0;
-}
-
-template <typename T>
 KERNELSPEC void kernel_add_inplace(FIn<T, 0> in, FOut<T, 0> out) {
     out += in;
 }
