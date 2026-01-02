@@ -19,7 +19,9 @@ int observable_type(Observable::ObservableOption observable) {
     case Observable::obs_phi:
     case Observable::obs_theta:
     case Observable::obs_y:
+    case Observable::obs_y_abs:
     case Observable::obs_eta:
+    case Observable::obs_eta_abs:
         return 1;
     case Observable::obs_delta_eta:
     case Observable::obs_delta_phi:
@@ -57,8 +59,12 @@ Value build_observable(
         return fb.obs_theta(momenta.at(0));
     case Observable::obs_y:
         return fb.obs_y(momenta.at(0));
+    case Observable::obs_y_abs:
+        return fb.obs_y_abs(momenta.at(0));
     case Observable::obs_eta:
         return fb.obs_eta(momenta.at(0));
+    case Observable::obs_eta_abs:
+        return fb.obs_eta_abs(momenta.at(0));
     case Observable::obs_delta_eta:
         return fb.obs_delta_eta(momenta.at(0), momenta.at(1));
     case Observable::obs_delta_phi:

@@ -390,7 +390,29 @@ obs_y:
       desc:
   dims: 0
 
+obs_y_abs:
+  inputs:
+    - name: p
+      type: [float, ..., 4]
+      desc:
+  outputs:
+    - name: obs
+      type: [float, ...]
+      desc:
+  dims: 0
+
 obs_eta:
+  inputs:
+    - name: p
+      type: [float, ..., 4]
+      desc:
+  outputs:
+    - name: obs
+      type: [float, ...]
+      desc:
+  dims: 0
+
+obs_eta_abs:
   inputs:
     - name: p
       type: [float, ..., 4]

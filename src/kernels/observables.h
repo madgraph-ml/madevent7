@@ -79,8 +79,19 @@ KERNELSPEC void kernel_obs_y(FIn<T, 1> p, FOut<T, 0> obs) {
 }
 
 template <typename T>
+KERNELSPEC void kernel_obs_y_abs(FIn<T, 1> p, FOut<T, 0> obs) {
+    auto e = p[0], px = p[1], py = p[2], pz = p[3];
+    obs = abs(0.5 * log((e + pz) / (e - pz)));
+}
+
+template <typename T>
 KERNELSPEC void kernel_obs_eta(FIn<T, 1> p, FOut<T, 0> obs) {
     obs = eta<T>(p);
+}
+
+template <typename T>
+KERNELSPEC void kernel_obs_eta_abs(FIn<T, 1> p, FOut<T, 0> obs) {
+    obs = abs(eta<T>(p));
 }
 
 template <typename T>

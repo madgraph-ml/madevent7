@@ -27,7 +27,9 @@ public:
         obs_phi,
         obs_theta,
         obs_y,
+        obs_y_abs,
         obs_eta,
+        obs_eta_abs,
         obs_delta_eta,
         obs_delta_phi,
         obs_delta_r,
@@ -44,6 +46,14 @@ public:
         const std::vector<int>& order_indices = {},
         bool ignore_incoming = true
     );
+    ObservableOption observable() const { return _observable; }
+    std::vector<std::size_t> simple_observable_indices() const {
+        if (_sum_momenta || _sum_observable || _indices.size() != 1) {
+            return {};
+        } else {
+            return {_indices.at(0).begin(), _indices.at(0).end()};
+        }
+    }
 
 private:
     Observable(

@@ -46,7 +46,9 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("obs_phi", &FunctionBuilder::obs_phi, py::arg("p"));
     fb.def("obs_theta", &FunctionBuilder::obs_theta, py::arg("p"));
     fb.def("obs_y", &FunctionBuilder::obs_y, py::arg("p"));
+    fb.def("obs_y_abs", &FunctionBuilder::obs_y_abs, py::arg("p"));
     fb.def("obs_eta", &FunctionBuilder::obs_eta, py::arg("p"));
+    fb.def("obs_eta_abs", &FunctionBuilder::obs_eta_abs, py::arg("p"));
     fb.def("obs_delta_eta", &FunctionBuilder::obs_delta_eta, py::arg("p1"), py::arg("p2"));
     fb.def("obs_delta_phi", &FunctionBuilder::obs_delta_phi, py::arg("p1"), py::arg("p2"));
     fb.def("obs_delta_r", &FunctionBuilder::obs_delta_r, py::arg("p1"), py::arg("p2"));

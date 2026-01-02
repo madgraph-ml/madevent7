@@ -135,8 +135,16 @@ Value obs_y(Value p) {
     return instruction("obs_y", {p})[0];
 }
 
+Value obs_y_abs(Value p) {
+    return instruction("obs_y_abs", {p})[0];
+}
+
 Value obs_eta(Value p) {
     return instruction("obs_eta", {p})[0];
+}
+
+Value obs_eta_abs(Value p) {
+    return instruction("obs_eta_abs", {p})[0];
 }
 
 Value obs_delta_eta(Value p1, Value p2) {

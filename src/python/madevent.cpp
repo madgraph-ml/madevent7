@@ -460,64 +460,38 @@ PYBIND11_MODULE(_madevent_py, m) {
            py::arg("order_indices") = std::vector<int>{},
            py::arg("ignore_incoming") = true
     )
-        .def_readonly_static("jet_pids", &Cuts::jet_pids)
-        .def_readonly_static("bottom_pids", &Cuts::bottom_pids)
-        .def_readonly_static("lepton_pids", &Cuts::lepton_pids)
-        .def_readonly_static("missing_pids", &Cuts::missing_pids)
-        .def_readonly_static("photon_pids", &Cuts::photon_pids);
+        .def_readonly_static("jet_pids", &Observable::jet_pids)
+        .def_readonly_static("bottom_pids", &Observable::bottom_pids)
+        .def_readonly_static("lepton_pids", &Observable::lepton_pids)
+        .def_readonly_static("missing_pids", &Observable::missing_pids)
+        .def_readonly_static("photon_pids", &Observable::photon_pids);
 
     auto cuts = py::classh<Cuts, FunctionGenerator>(m, "Cuts");
-    add_enum<Cuts::CutObservable>(
+    add_enum<Cuts::CutMode>(
         cuts,
-        "CutObservable",
+        "CutMode",
         {
-            {"obs_pt", Cuts::obs_pt},
-            {"obs_eta", Cuts::obs_eta},
-            {"obs_dr", Cuts::obs_dr},
-            {"obs_mass", Cuts::obs_mass},
-            {"obs_sqrt_s", Cuts::obs_sqrt_s},
-        }
-    );
-    add_enum<Cuts::LimitType>(
-        cuts,
-        "LimitType",
-        {
-            {"min", Cuts::min},
-            {"max", Cuts::max},
+            {"min", Cuts::any},
+            {"max", Cuts::all},
         }
     );
     py::classh<Cuts::CutItem>(m, "CutItem")
         .def(
-            py::init<
-                Cuts::CutObservable,
-                Cuts::LimitType,
-                double,
-                Cuts::PidVec,
-                Cuts::PidVec>(),
+            py::init<Observable, double, double, Cuts::CutMode>(),
             py::arg("observable"),
-            py::arg("limit_type"),
-            py::arg("value"),
-            py::arg("pids"),
-            py::arg("pids2") = Cuts::PidVec{}
+            py::arg("min") = -std::numeric_limits<double>::infinity(),
+            py::arg("max") = std::numeric_limits<double>::infinity(),
+            py::arg("mode") = Cuts::CutMode::all
         )
         .def_readonly("observable", &Cuts::CutItem::observable)
-        .def_readonly("limit_type", &Cuts::CutItem::limit_type)
-        .def_readonly("value", &Cuts::CutItem::value)
-        .def_readonly("pids", &Cuts::CutItem::pids)
-        .def_readonly("pids2", &Cuts::CutItem::pids2);
-    cuts.def(
-            py::init<std::vector<int>, std::vector<Cuts::CutItem>>(),
-            py::arg("pids"),
-            py::arg("cut_data")
-    )
+        .def_readonly("min", &Cuts::CutItem::min)
+        .def_readonly("max", &Cuts::CutItem::max)
+        .def_readonly("mode", &Cuts::CutItem::mode);
+    cuts.def(py::init<const std::vector<Cuts::CutItem>&>(), py::arg("cut_data"))
+        .def(py::init<std::size_t>(), py::arg("particle_count"))
         .def("sqrt_s_min", &Cuts::sqrt_s_min)
         .def("eta_max", &Cuts::eta_max)
-        .def("pt_min", &Cuts::pt_min)
-        .def_readonly_static("jet_pids", &Cuts::jet_pids)
-        .def_readonly_static("bottom_pids", &Cuts::bottom_pids)
-        .def_readonly_static("lepton_pids", &Cuts::lepton_pids)
-        .def_readonly_static("missing_pids", &Cuts::missing_pids)
-        .def_readonly_static("photon_pids", &Cuts::photon_pids);
+        .def("pt_min", &Cuts::pt_min);
 
     py::classh<Diagram::LineRef>(m, "LineRef")
         .def(py::init<std::string>(), py::arg("str"))
