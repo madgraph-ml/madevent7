@@ -15,6 +15,7 @@
 #include "phasespace/matrix_element.h"
 #include "phasespace/mlp.h"
 #include "phasespace/multichannel.h"
+#include "phasespace/observable.h"
 #include "phasespace/pdf.h"
 #include "phasespace/phasespace.h"
 #include "phasespace/rambo.h"

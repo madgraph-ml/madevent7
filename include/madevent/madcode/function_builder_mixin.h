@@ -71,6 +71,10 @@ Value reduce_sum(Value in1) {
     return instruction("reduce_sum", {in1})[0];
 }
 
+Value reduce_sum_vector(Value in1) {
+    return instruction("reduce_sum_vector", {in1})[0];
+}
+
 Value reduce_product(Value in1) {
     return instruction("reduce_product", {in1})[0];
 }
@@ -459,6 +463,10 @@ Value select(Value input, Value indices) {
 
 Value select_vector(Value input, Value indices) {
     return instruction("select_vector", {input, indices})[0];
+}
+
+Value argsort(Value input) {
+    return instruction("argsort", {input})[0];
 }
 
 Value one_hot(Value index, Value option_count) {

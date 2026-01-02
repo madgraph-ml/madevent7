@@ -30,6 +30,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("sub", &FunctionBuilder::sub, py::arg("in1"), py::arg("in2"));
     fb.def("mul", &FunctionBuilder::mul, py::arg("in1"), py::arg("in2"));
     fb.def("reduce_sum", &FunctionBuilder::reduce_sum, py::arg("in1"));
+    fb.def("reduce_sum_vector", &FunctionBuilder::reduce_sum_vector, py::arg("in1"));
     fb.def("reduce_product", &FunctionBuilder::reduce_product, py::arg("in1"));
     fb.def("sqrt", &FunctionBuilder::sqrt, py::arg("in1"));
     fb.def("square", &FunctionBuilder::square, py::arg("in1"));
@@ -119,6 +120,7 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("gather_int", &FunctionBuilder::gather_int, py::arg("index"), py::arg("choices"));
     fb.def("select", &FunctionBuilder::select, py::arg("input"), py::arg("indices"));
     fb.def("select_vector", &FunctionBuilder::select_vector, py::arg("input"), py::arg("indices"));
+    fb.def("argsort", &FunctionBuilder::argsort, py::arg("input"));
     fb.def("one_hot", &FunctionBuilder::one_hot, py::arg("index"), py::arg("option_count"));
     fb.def("nonzero", &FunctionBuilder::nonzero, py::arg("input"));
     fb.def("batch_gather", &FunctionBuilder::batch_gather, py::arg("indices"), py::arg("values"));

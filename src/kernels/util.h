@@ -62,9 +62,8 @@ template <typename T>
 KERNELSPEC void
 kernel_select_vector(FIn<T, 2> input, IIn<T, 1> indices, FOut<T, 2> output) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
-        auto index = single_index(indices[i]);
         auto output_i = output[i];
-        auto input_i = input[i];
+        auto input_i = input[single_index(indices[i])];
         for (std::size_t j = 0; j < output_i.size(); ++j) {
             output_i[j] = input_i[j];
         }
@@ -77,8 +76,8 @@ KERNELSPEC void kernel_argsort(FIn<T, 1> in, IOut<T, 1> out) {
         out[i] = i;
     }
     for (std::size_t i = 1; i < in.size(); ++i) {
-        auto index = out[i];
-        std::size_t j = i;
+        IVal<T> index = out[i];
+        IVal<T> j = i;
         for (; j > 0 && in[out[j]] > in[index]; --j) {
             out[j] = out[j - 1];
         }

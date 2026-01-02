@@ -66,12 +66,13 @@ template <typename EnumType, typename ParentType>
 void add_enum(
     ParentType& parent,
     const char* enum_name,
-    std::initializer_list<std::pair<const std::string, EnumType>> values
+    std::initializer_list<std::pair<const std::string, EnumType>> values,
+    const std::string& prefix = ""
 ) {
     std::unordered_map<std::string, EnumType> str_to_enum_map(values);
     py::enum_<EnumType> enumeration(parent, enum_name);
     for (auto& [key, value] : values) {
-        enumeration.value(key.c_str(), value);
+        enumeration.value((prefix + key).c_str(), value);
     }
     enumeration.def(
         "__init__",
@@ -416,6 +417,54 @@ PYBIND11_MODULE(_madevent_py, m) {
 
     py::classh<MultiChannelMapping, Mapping>(m, "MultiChannelMapping")
         .def(py::init<std::vector<std::shared_ptr<Mapping>>&>(), py::arg("mappings"));
+
+    auto obs = py::classh<Observable, FunctionGenerator>(m, "Observable");
+    add_enum<Observable::ObservableOption>(
+        obs,
+        "ObservableOption",
+        {
+            {"e", Observable::obs_e},
+            {"px", Observable::obs_px},
+            {"py", Observable::obs_py},
+            {"pz", Observable::obs_pz},
+            {"mass", Observable::obs_mass},
+            {"pt", Observable::obs_pt},
+            {"p_mag", Observable::obs_p_mag},
+            {"phi", Observable::obs_phi},
+            {"theta", Observable::obs_theta},
+            {"y", Observable::obs_y},
+            {"eta", Observable::obs_eta},
+            {"delta_eta", Observable::obs_delta_eta},
+            {"delta_phi", Observable::obs_delta_phi},
+            {"delta_r", Observable::obs_delta_r},
+            {"sqrt_s", Observable::obs_sqrt_s},
+        },
+        "obs_"
+    );
+    obs.def(
+           py::init<
+               const std::vector<int>&,
+               Observable::ObservableOption,
+               const nested_vector2<int>&,
+               bool,
+               bool,
+               const std::optional<Observable::ObservableOption>&,
+               const std::vector<int>&,
+               bool>(),
+           py::arg("pids"),
+           py::arg("observable"),
+           py::arg("select_pids"),
+           py::arg("sum_momenta") = false,
+           py::arg("sum_observable") = false,
+           py::arg("order_observable") = std::nullopt,
+           py::arg("order_indices") = std::vector<int>{},
+           py::arg("ignore_incoming") = true
+    )
+        .def_readonly_static("jet_pids", &Cuts::jet_pids)
+        .def_readonly_static("bottom_pids", &Cuts::bottom_pids)
+        .def_readonly_static("lepton_pids", &Cuts::lepton_pids)
+        .def_readonly_static("missing_pids", &Cuts::missing_pids)
+        .def_readonly_static("photon_pids", &Cuts::photon_pids);
 
     auto cuts = py::classh<Cuts, FunctionGenerator>(m, "Cuts");
     add_enum<Cuts::CutObservable>(

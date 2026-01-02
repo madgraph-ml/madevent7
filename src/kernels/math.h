@@ -44,11 +44,23 @@ KERNELSPEC void backward_kernel_mul(
 
 template <typename T>
 KERNELSPEC void kernel_reduce_sum(FIn<T, 1> in, FOut<T, 0> out) {
-    FVal<T> sum(1.);
+    FVal<T> sum(0.);
     for (std::size_t i = 0; i < in.size(); ++i) {
         sum = sum + in[i];
     }
     out = sum;
+}
+
+template <typename T>
+KERNELSPEC void kernel_reduce_sum_vector(FIn<T, 2> in, FOut<T, 1> out) {
+    for (std::size_t i = 0; i < in.size(); ++i) {
+        auto in_i = in[i];
+        FVal<T> sum(0.);
+        for (std::size_t j = 0; j < in_i.size(); ++j) {
+            sum = sum + in_i[j];
+        }
+        out[i] = sum;
+    }
 }
 
 template <typename T>

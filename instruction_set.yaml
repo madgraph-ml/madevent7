@@ -197,12 +197,24 @@ mul:
 reduce_sum:
   inputs:
     - name: in1
-      type: [float, n]
+      type: [float, ..., n]
       desc:
   outputs:
     - name: out
-      type: [float]
+      type: [float, ...]
       desc:
+  dims: 0
+
+reduce_sum_vector:
+  inputs:
+    - name: in1
+      type: [float, ..., n, m]
+      desc:
+  outputs:
+    - name: out
+      type: [float, ..., m]
+      desc:
+  dims: 0
 
 reduce_product:
   inputs:
@@ -1798,6 +1810,17 @@ select_vector:
     - name: output
       type: [float, m, k]
       desc:
+
+argsort:
+  inputs:
+    - name: input
+      type: [float, n]
+      desc:
+  outputs:
+    - name: indices
+      type: [int, n]
+      desc:
+  vectorized: False
 
 one_hot:
   inputs:
