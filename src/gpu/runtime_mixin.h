@@ -317,38 +317,41 @@ case 104:
     batch_foreach<tensor_foreach<kernel_gather_int<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 105:
-    batch_foreach<tensor_foreach<kernel_select<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select_int<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 106:
-    batch_foreach<tensor_foreach<kernel_select_vector<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 107:
-    batch_foreach<tensor_foreach<kernel_argsort<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_select_vector<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 108:
-    batch_foreach<tensor_foreach<kernel_one_hot<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_argsort<GpuTypes>, 1, 1, 1>, 1, 1>(instr, locals, device);
     break;
 case 109:
-    op_nonzero(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_one_hot<GpuTypes>, 2, 1, 1>, 2, 1>(instr, locals, device);
     break;
 case 110:
-    op_batch_gather(instr, locals, device);
+    op_nonzero(instr, locals, device);
     break;
 case 111:
-    op_batch_scatter(instr, locals, device);
+    op_batch_gather(instr, locals, device);
     break;
 case 112:
-    op_random(instr, locals, device);
+    op_batch_scatter(instr, locals, device);
     break;
 case 113:
-    op_unweight(instr, locals, device);
+    op_random(instr, locals, device);
     break;
 case 114:
-    batch_foreach<tensor_foreach<kernel_vegas_forward<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    op_unweight(instr, locals, device);
     break;
 case 115:
-    batch_foreach<tensor_foreach<kernel_vegas_inverse<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    batch_foreach<tensor_foreach<kernel_vegas_forward<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
     break;
 case 116:
+    batch_foreach<tensor_foreach<kernel_vegas_inverse<GpuTypes>, 2, 2, 2>, 2, 2>(instr, locals, device);
+    break;
+case 117:
     op_vegas_histogram(instr, locals, device);
     break;

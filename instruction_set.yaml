@@ -1783,13 +1783,26 @@ gather_int:
       type: [int]
       desc:
 
+select_int:
+  inputs:
+    - name: input
+      type: [int, n]
+      desc:
+    - name: indices
+      type: [int, m]
+      desc:
+  outputs:
+    - name: output
+      type: [int, m]
+      desc:
+
 select:
   inputs:
     - name: input
       type: [float, n]
       desc:
     - name: indices
-      type: [int, single, m]
+      type: [int, m]
       desc:
       backward_arg: True
   outputs:
@@ -1804,12 +1817,13 @@ select_vector:
       type: [float, n, k]
       desc:
     - name: indices
-      type: [int, single, m]
+      type: [int, m]
       desc:
   outputs:
     - name: output
       type: [float, m, k]
       desc:
+  vectorized: False
 
 argsort:
   inputs:

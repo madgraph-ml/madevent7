@@ -457,6 +457,10 @@ Value gather_int(Value index, Value choices) {
     return instruction("gather_int", {index, choices})[0];
 }
 
+Value select_int(Value input, Value indices) {
+    return instruction("select_int", {input, indices})[0];
+}
+
 Value select(Value input, Value indices) {
     return instruction("select", {input, indices})[0];
 }

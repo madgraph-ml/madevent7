@@ -141,14 +141,14 @@ std::tuple<nested_vector2<me_int_t>, nested_vector2<me_int_t>, Type> build_indic
                 continue;
             }
             order_indices_out = indices;
-            if (order_index_in < -indices.size() || order_index_in > indices.size()) {
+            if (std::abs(order_index_in) > indices.size()) {
                 throw std::invalid_argument(
                     "absolute value of order index must be smaller or equal to number "
                     "of selected PIDs"
                 );
             }
             indices = {static_cast<me_int_t>(
-                order_index_in > 0 ? order_index_in - 1
+                order_index_in < 0 ? -order_index_in - 1
                                    : indices.size() - order_index_in
             )};
         }
@@ -164,11 +164,17 @@ std::tuple<nested_vector2<me_int_t>, nested_vector2<me_int_t>, Type> build_indic
         bool done = false;
         while (!done) {
             index_set.clear();
-            for (auto [prod_index, indices] : zip(product_indices, selected_indices)) {
+            std::size_t max_set_size = 0;
+            for (auto [prod_index, indices, ord_indices] :
+                 zip(product_indices, selected_indices, ret_order_indices)) {
+                if (ord_indices.size() > 0) {
+                    continue;
+                }
                 index_set.insert(indices.at(prod_index));
+                ++max_set_size;
             }
-            bool keep_indices = index_set.size() == selected_indices.size() &&
-                !found_indices.contains(index_set);
+            bool keep_indices =
+                index_set.size() == max_set_size && !found_indices.contains(index_set);
             if (keep_indices) {
                 found_indices.insert(index_set);
             }
@@ -274,40 +280,56 @@ Observable::build_function_impl(FunctionBuilder& fb, const ValueVec& args) const
     int obs_type = observable_type(_observable);
     if (obs_type == 0) {
         return {build_observable(fb, _observable, {}, sqrt_s)};
-    } else if (obs_type == 1) {
-        ValueVec selected_momenta;
-        for (auto& indices : _indices) {
-            selected_momenta.push_back(fb.select_vector(momenta, indices));
-        }
-        if (selected_momenta.size() == 1) {
-            if (_sum_momenta) {
-                selected_momenta.at(0) = fb.reduce_sum_vector(selected_momenta.at(0));
-            }
-            Value obs = build_observable(fb, _observable, selected_momenta, sqrt_s);
-            if (_sum_observable && !_sum_momenta) {
-                obs = fb.reduce_sum(obs);
-            }
-            return {obs};
-        } else if (_sum_momenta) {
-            return {
-                build_observable(fb, _observable, {fb.sum(selected_momenta)}, sqrt_s)
-            };
-        } else {
-            ValueVec observables;
-            for (auto& momentum : selected_momenta) {
-                observables.push_back(
-                    build_observable(fb, _observable, {momentum}, sqrt_s)
-                );
-            }
-            return {fb.sum(observables)};
-        }
-    } else {
-        return {build_observable(
-            fb,
-            _observable,
-            {fb.select_vector(momenta, _indices.at(0)),
-             fb.select_vector(momenta, _indices.at(1))},
-            sqrt_s
-        )};
     }
+
+    ValueVec selected_momenta;
+    for (auto [indices, order_indices] : zip(_indices, _order_indices)) {
+        Value sel_indices;
+        if (order_indices.size() > 0) {
+            /*ValueVec order = fb.unstack(fb.argsort(build_observable(
+                fb,
+                _order_observable.value(),
+                {fb.select_vector(momenta, order_indices)},
+                sqrt_s
+            )));
+            //sel_indices = fb.unsqueeze(fb.gather_int(order.at(indices.at(0)),
+            order_indices)); sel_indices = fb.select_int(order_indices,
+            fb.unsqueeze(order.at(indices.at(0))));*/
+            Value order = fb.argsort(build_observable(
+                fb,
+                _order_observable.value(),
+                {fb.select_vector(momenta, order_indices)},
+                sqrt_s
+            ));
+            sel_indices = fb.select_int(order_indices, fb.select_int(order, indices));
+        } else {
+            sel_indices = indices;
+        }
+        selected_momenta.push_back(fb.select_vector(momenta, sel_indices));
+    }
+
+    if (obs_type == 2) {
+        return {build_observable(fb, _observable, selected_momenta, sqrt_s)};
+    }
+
+    if (selected_momenta.size() == 1) {
+        if (_sum_momenta) {
+            selected_momenta.at(0) = fb.reduce_sum_vector(selected_momenta.at(0));
+        }
+        Value obs = build_observable(fb, _observable, selected_momenta, sqrt_s);
+        if (_sum_observable && !_sum_momenta) {
+            obs = fb.reduce_sum(obs);
+        }
+        return {obs};
+    }
+
+    if (_sum_momenta) {
+        return {build_observable(fb, _observable, {fb.sum(selected_momenta)}, sqrt_s)};
+    }
+
+    ValueVec observables;
+    for (auto& momentum : selected_momenta) {
+        observables.push_back(build_observable(fb, _observable, {momentum}, sqrt_s));
+    }
+    return {fb.sum(observables)};
 }

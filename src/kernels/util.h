@@ -40,9 +40,17 @@ kernel_gather_int(IIn<T, 0> index, IIn<T, 1> choices, IOut<T, 0> output) {
 }
 
 template <typename T>
+KERNELSPEC void
+kernel_select_int(IIn<T, 1> input, IIn<T, 1> indices, IOut<T, 1> output) {
+    for (std::size_t i = 0; i < indices.size(); ++i) {
+        output[i] = input.gather(indices[i]);
+    }
+}
+
+template <typename T>
 KERNELSPEC void kernel_select(FIn<T, 1> input, IIn<T, 1> indices, FOut<T, 1> output) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
-        output[i] = input[single_index(indices[i])];
+        output[i] = input.gather(indices[i]);
     }
 }
 
@@ -54,7 +62,7 @@ KERNELSPEC void backward_kernel_select(
     FOut<T, 1> indices_grad
 ) {
     for (std::size_t i = 0; i < indices.size(); ++i) {
-        input_grad[single_index(indices[i])] = output_grad[i];
+        input_grad.scatter_add(indices[i], output_grad[i]);
     }
 }
 
@@ -76,9 +84,10 @@ KERNELSPEC void kernel_argsort(FIn<T, 1> in, IOut<T, 1> out) {
         out[i] = i;
     }
     for (std::size_t i = 1; i < in.size(); ++i) {
-        IVal<T> index = out[i];
-        IVal<T> j = i;
-        for (; j > 0 && in[out[j]] > in[index]; --j) {
+        std::size_t index = out[i];
+        FVal<T> ref = in[index];
+        std::size_t j = i;
+        for (; j > 0 && in[out[j - 1]] > ref; --j) {
             out[j] = out[j - 1];
         }
         out[j] = index;
