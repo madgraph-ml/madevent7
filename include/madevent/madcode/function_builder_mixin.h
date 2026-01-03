@@ -520,3 +520,7 @@ std::array<Value, 2> vegas_histogram(Value input, Value weights, Value bin_count
     auto output_vector = instruction("vegas_histogram", {input, weights, bin_count});
     return {output_vector[0], output_vector[1]};
 }
+
+Value histogram(Value input, Value weights, Value min, Value max, Value bin_count) {
+    return instruction("histogram", {input, weights, min, max, bin_count})[0];
+}

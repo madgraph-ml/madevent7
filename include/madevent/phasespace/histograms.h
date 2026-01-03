@@ -1,26 +1,25 @@
 #pragma once
 
 #include "madevent/phasespace/base.h"
+#include "madevent/phasespace/observable.h"
 
 namespace madevent {
 
-/*class Histograms : public FunctionGenerator {
+class ObservableHistograms : public FunctionGenerator {
 public:
-    enum HistObservables {
-        obs_pt, obs_eta, obs_dr, obs_mass
-    };
     struct HistItem {
-        HistObservable observable;
-        std::vector<std::size_t> indices;
-        double limit_low;
-        double limit_high;
+        Observable observable;
+        double min;
+        double max;
         std::size_t bin_count;
     };
-    Histograms(
+    ObservableHistograms(const std::vector<HistItem>& observables);
 
 private:
     ValueVec
     build_function_impl(FunctionBuilder& fb, const ValueVec& args) const override;
-};*/
 
-}
+    std::vector<HistItem> _observables;
+};
+
+} // namespace madevent

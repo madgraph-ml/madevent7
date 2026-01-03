@@ -117,4 +117,5 @@ random = 115,
 unweight = 116,
 vegas_forward = 117,
 vegas_inverse = 118,
-vegas_histogram = 119
+vegas_histogram = 119,
+histogram = 120

@@ -133,5 +133,6 @@ void add_instructions(py::classh<FunctionBuilder>& fb) {
     fb.def("vegas_forward", &FunctionBuilder::vegas_forward, py::arg("input"), py::arg("grid"));
     fb.def("vegas_inverse", &FunctionBuilder::vegas_inverse, py::arg("input"), py::arg("grid"));
     fb.def("vegas_histogram", &FunctionBuilder::vegas_histogram, py::arg("input"), py::arg("weights"), py::arg("bin_count"));
+    fb.def("histogram", &FunctionBuilder::histogram, py::arg("input"), py::arg("weights"), py::arg("min"), py::arg("max"), py::arg("bin_count"));
 }
 }

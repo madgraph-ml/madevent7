@@ -135,6 +135,7 @@ add_library(
     src/phasespace/rambo.cpp
     src/phasespace/cuts.cpp
     src/phasespace/observable.cpp
+    src/phasespace/histograms.cpp
     src/phasespace/chili.cpp
     src/phasespace/integrand.cpp
     src/phasespace/vegas.cpp
@@ -181,6 +182,7 @@ add_library(
     include/madevent/phasespace/rambo.h
     include/madevent/phasespace/cuts.h
     include/madevent/phasespace/observable.h
+    include/madevent/phasespace/histograms.h
     include/madevent/phasespace/chili.h
     include/madevent/phasespace/integrand.h
     include/madevent/phasespace/vegas.h

@@ -361,3 +361,6 @@ case 118:
 case 119:
     op_vegas_histogram(instr, locals, device);
     break;
+case 120:
+    op_histogram(instr, locals, device);
+    break;

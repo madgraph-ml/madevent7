@@ -493,6 +493,24 @@ PYBIND11_MODULE(_madevent_py, m) {
         .def("eta_max", &Cuts::eta_max)
         .def("pt_min", &Cuts::pt_min);
 
+    py::classh<ObservableHistograms::HistItem>(m, "HistItem")
+        .def(
+            py::init<Observable, double, double, std::size_t>(),
+            py::arg("observable"),
+            py::arg("min"),
+            py::arg("max"),
+            py::arg("bin_count")
+        )
+        .def_readonly("observable", &ObservableHistograms::HistItem::observable)
+        .def_readonly("min", &ObservableHistograms::HistItem::min)
+        .def_readonly("max", &ObservableHistograms::HistItem::max)
+        .def_readonly("bin_count", &ObservableHistograms::HistItem::bin_count);
+    py::classh<ObservableHistograms, FunctionGenerator>(m, "ObservableHistograms")
+        .def(
+            py::init<const std::vector<ObservableHistograms::HistItem>&>(),
+            py::arg("observables")
+        );
+
     py::classh<Diagram::LineRef>(m, "LineRef")
         .def(py::init<std::string>(), py::arg("str"))
         .def("__repr__", &to_string<Diagram::LineRef>);

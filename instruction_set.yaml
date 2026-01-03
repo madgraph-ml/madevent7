@@ -1995,3 +1995,26 @@ vegas_histogram:
       type: [int, single, n, b]
       desc:
   custom_op: True
+
+histogram:
+  inputs:
+    - name: input
+      type: [float, ...]
+      desc:
+    - name: weights
+      type: [float]
+      desc:
+    - name: min
+      type: [float]
+      desc:
+    - name: max
+      type: [float]
+      desc:
+    - name: bin_count
+      type: [size, b]
+      desc:
+  outputs:
+    - name: values
+      type: [float, single, b+2]
+      desc:
+  custom_op: True
